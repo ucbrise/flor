@@ -34,4 +34,10 @@ t3 = BashOperator(
     task_id='predict',
     bash_command='python3 ' + abspath + '/predictor.py',
     dag=dag)
-t3.set_upstream([t1, t2])
+t3.set_upstream(t1)
+
+t4 = BashOperator(
+    task_id='validate',
+    bash_command='python3 ' + abspath + '/validator.py',
+    dag=dag)
+t4.set_upstream([t2, t3])
