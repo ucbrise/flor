@@ -31,13 +31,25 @@ t2 = BashOperator(
     dag=dag)
 
 t3 = BashOperator(
-    task_id='predict',
-    bash_command='python3 ' + abspath + '/predictor.py',
+    task_id='cleantr',
+    bash_command='python3 ' + abspath + '/cleaner.py tr',
     dag=dag)
 t3.set_upstream(t1)
 
 t4 = BashOperator(
+    task_id='cleante',
+    bash_command='python3 ' + abspath + '/cleaner.py te',
+    dag=dag)
+t4.set_upstream(t2)
+
+t5 = BashOperator(
+    task_id='predict',
+    bash_command='python3 ' + abspath + '/predictor.py',
+    dag=dag)
+t5.set_upstream(t3)
+
+t6 = BashOperator(
     task_id='validate',
     bash_command='python3 ' + abspath + '/validator.py',
     dag=dag)
-t4.set_upstream([t2, t3])
+t6.set_upstream([t4, t5])

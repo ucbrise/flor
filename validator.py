@@ -10,18 +10,20 @@ from shared import params, relevant_attributes
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 with open(abspath + '/country_dict.pkl', 'rb') as f:
-	country_dict = pickle.load(f)
+    country_dict = pickle.load(f)
 
 ## Convert tweet to bag of words for learning
 
 # Tokenize Text
 with open(abspath + '/vectorizer.pkl', 'rb') as f:
-	count_vect = pickle.load(f)
+    count_vect = pickle.load(f)
 
 clf = joblib.load(abspath + '/classifier.pkl')
 
 ## Now we test.
-test_df = pd.read_csv(abspath + '/testing_tweets.csv', **params)
+with open(abspath + '/testing_tweets.pkl', 'rb') as f:
+    test_df = pickle.load(f)
+    
 test_df = test_df[relevant_attributes]
 
 def special_convert_to_int(country_string):

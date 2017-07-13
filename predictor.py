@@ -9,7 +9,8 @@ from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-tweet_df = pd.read_csv(abspath + '/training_tweets.csv', **params)
+with open(abspath + '/training_tweets.pkl', 'rb') as f:
+    tweet_df = pickle.load(f)
 
 # Select a relevant subset of features
 tweet_df = tweet_df[relevant_attributes]
@@ -21,7 +22,7 @@ for idx, code in enumerate(country_codes):
     country_dict[code] = idx
 
 with open(abspath + '/country_dict.pkl', 'wb') as f:
-	pickle.dump(country_dict, f)
+    pickle.dump(country_dict, f)
     
 def convert_to_int(country_string):
     return country_dict[country_string]
@@ -35,7 +36,7 @@ count_vect = CountVectorizer()
 X_train = count_vect.fit_transform(tweet_df["tweet"])
 
 with open(abspath + '/vectorizer.pkl', 'wb') as f:
-	pickle.dump(count_vect, f)
+    pickle.dump(count_vect, f)
 
 X_train_label = np.array(tweet_df["code"].data)
 
