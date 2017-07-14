@@ -13,6 +13,7 @@ numpy
 pandas
 scikit-learn
 tweepy
+tweet-preprocessor
 ```
 For detailed Airflow installation instructions, please visit https://airflow.incubator.apache.org/installation.html
 
