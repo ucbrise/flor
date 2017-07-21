@@ -12,17 +12,12 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 with open(abspath + '/country_dict.pkl', 'rb') as f:
     country_dict = pickle.load(f)
 
-## Convert tweet to bag of words for learning
-
-# Tokenize Text
-with open(abspath + '/vectorizer.pkl', 'rb') as f:
-    count_vect = pickle.load(f)
-
-clf = joblib.load(abspath + '/classifier.pkl')
-
-## Now we test.
 with open(abspath + '/testing_tweets.pkl', 'rb') as f:
     test_df = pickle.load(f)
+
+with open(abspath + '/stdout.txt', 'r') as f:
+    content = f.readlines()
+    accuracy = float(content[0].strip())
 
 test_df = test_df[relevant_attributes]
 
@@ -37,11 +32,15 @@ test_df["code"] = test_df["code"].apply(special_convert_to_int)
 # Ignore countries unseen in training (only 12 instances out of 20k)
 test_df = test_df[test_df["code"] != -1]
 
-# Tokenize Text
-X_test = count_vect.transform(test_df["tweet"])
-X_test_label = np.array(test_df["code"].data)
+X_test_label = test_df["code"]
+countOfCommonClass = X_test_label[X_test_label == X_test_label.mode()[0]].size
+mostCommonClassFreq = countOfCommonClass / X_test_label.size
 
-score = clf.score(X_test, X_test_label)
-
-with open(abspath + "/stdout.txt", "w") as f:
-    f.write("%.6f" % score)
+with open(abspath + "/deployflag.txt", "w") as f:
+    if mostCommonClassFreq < accuracy:
+        # model passes the test
+        f.write("True")
+    else:
+        # model fails the test
+        f.write("False")
+    f.write("\n%.6f" % mostCommonClassFreq)
