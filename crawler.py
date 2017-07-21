@@ -2,9 +2,11 @@
 import tweepy
 import os.path
 import sys
-from credentials import keychain
 
 abspath = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from credentials import keychain
+
 filename = ""
 tweet_num = 0
 tweet_list = []
