@@ -22,7 +22,7 @@ for idx, code in enumerate(country_codes):
     country_dict[code] = idx
 
 with open(abspath + '/country_dict.pkl', 'wb') as f:
-    pickle.dump(country_dict, f)
+    pickle.dump(country_dict, f, protocol = 2)
     
 def convert_to_int(country_string):
     return country_dict[country_string]
@@ -36,10 +36,10 @@ count_vect = CountVectorizer()
 X_train = count_vect.fit_transform(tweet_df["tweet"])
 
 with open(abspath + '/vectorizer.pkl', 'wb') as f:
-    pickle.dump(count_vect, f)
+    pickle.dump(count_vect, f, protocol = 2)
 
 X_train_label = np.array(tweet_df["code"].data)
 
 # Train a classifier
 clf = MultinomialNB().fit(X_train, X_train_label)
-joblib.dump(clf, abspath + '/classifier.pkl')
+joblib.dump(clf, abspath + '/classifier.pkl', protocol=2)
