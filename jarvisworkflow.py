@@ -53,3 +53,15 @@ t6 = BashOperator(
     bash_command='python3 ' + abspath + '/validator.py',
     dag=dag)
 t6.set_upstream([t4, t5])
+
+t7 = BashOperator(
+    task_id='verify',
+    bash_command='python3 ' + abspath + '/verify.py',
+    dag=dag)
+t7.set_upstream(t6)
+
+t8 = BashOperator(
+    task_id='deploy',
+    bash_command='python ' + abspath + '/deploy.py',
+    dag=dag)
+t8.set_upstream(t7)
