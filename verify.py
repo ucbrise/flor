@@ -4,13 +4,15 @@ import numpy as np
 import os, pickle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.externals import joblib
 from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-with open(abspath + '/country_dict.pkl', 'rb') as f:
-    country_dict = pickle.load(f)
+
+# country_dict
+with open(abspath + '/intermediary.pkl', 'rb') as f:
+    intermediary = pickle.load(f)
+    country_dict = intermediary["country_dict"]
 
 with open(abspath + '/testing_tweets.pkl', 'rb') as f:
     test_df = pickle.load(f)

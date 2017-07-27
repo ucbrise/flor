@@ -3,8 +3,9 @@ import pandas as pd
 import numpy as np
 import os, pickle, sys
 from clipper_admin import Clipper
-from cleaner import clean
-from sklearn.externals import joblib
+# from cleaner import clean
+import HTMLParser
+#import preprocessor as twpre
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
@@ -13,11 +14,17 @@ with open(abspath + '/deployflag.txt', 'r') as f:
     if not bool(content[0].strip()):
         sys.exit(0)
 
-with open(abspath + '/country_dict.pkl', 'rb') as f:
-    global_country_dict = pickle.load(f)
-with open(abspath + '/vectorizer.pkl', 'rb') as f:
-    global_count_vect = pickle.load(f)
-global_clf = joblib.load(abspath + '/classifier.pkl')
+with open(abspath + '/intermediary.pkl', 'rb') as f:
+    intermediary = pickle.load(f)
+    global_country_dict = intermediary["country_dict"]
+    global_count_vect = intermediary["vectorizer"]
+    global_clf = intermediary["classifier"]
+
+html_parser = HTMLParser.HTMLParser()
+
+def clean(inputdf_column):
+    inputdf_column.apply(html_parser.unescape)
+    # inputdf_column.apply(twpre.tokenize)
 
 def txt_to_country(tweet):
     tweetdf_col = pd.DataFrame(data=[tweet])[0]
@@ -36,13 +43,13 @@ clipper_conn = Clipper("localhost")
 clipper_conn.start()
 
 if "jarvis" not in clipper_conn.get_all_apps():
-    clipper_conn.register_application("jarvis", "txt_to_country", "strings", "ERROR", 100000)
+    clipper_conn.register_application("jarvis", "txt_to_country", "strings", "ERROR", 1000000000)
 
-with open(abspath + '/version.txt', 'r') as f:
+with open(abspath + '/version.v', 'r') as f:
     content = f.readlines()
     versh = int(content[0].strip())
 
 clipper_conn.deploy_predict_function("txt_to_country", versh, txt_to_country, "strings")
 
-with open(abspath + '/version.txt', 'w') as f:
+with open(abspath + '/version.v', 'w') as f:
     f.write(str(versh + 1))

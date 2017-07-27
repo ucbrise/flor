@@ -4,21 +4,29 @@ import numpy as np
 import os, pickle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.externals import joblib
+#from sklearn.externals import joblib
 from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-with open(abspath + '/country_dict.pkl', 'rb') as f:
-    country_dict = pickle.load(f)
+with open(abspath + '/intermediary.pkl', 'rb') as f:
+    intermediary = pickle.load(f)
+country_dict = intermediary["country_dict"]
+count_vect = intermediary["vectorizer"]
+clf = intermediary["classifier"]
+
+# with open(abspath + '/country_dict.pkl', 'rb') as f:
+#     country_dict = pickle.load(f)
 
 ## Convert tweet to bag of words for learning
 
 # Tokenize Text
-with open(abspath + '/vectorizer.pkl', 'rb') as f:
-    count_vect = pickle.load(f)
+# with open(abspath + '/vectorizer.pkl', 'rb') as f:
+#     count_vect = pickle.load(f)
 
-clf = joblib.load(abspath + '/classifier.pkl')
+# clf = joblib.load(abspath + '/classifier.pkl')
+# with open(abspath + '/classifier.pkl', 'rb') as f:
+#     clf = pickle.load(f)
 
 ## Now we test.
 with open(abspath + '/testing_tweets.pkl', 'rb') as f:
