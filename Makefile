@@ -10,16 +10,16 @@ training_tweets.pkl: training_tweets.csv
 testing_tweets.pkl: testing_tweets.csv
 	python3 cleaner.py te
 
-country_dict.pkl vectorizer.pkl classifier.pkl: training_tweets.pkl
+intermediary.pkl: training_tweets.pkl
 	python3 predictor.py
 
-stdout.txt: country_dict.pkl vectorizer.pkl classifier.pkl testing_tweets.pkl
+stdout.txt: intermediary.pkl testing_tweets.pkl
 	python3 validator.py
 
-deployfalg.txt: stdout.txt testing_tweets.pkl country_dict.pkl
+deployfalg.txt: stdout.txt
 	python3 verify.py
 
-train: classifier.pkl
+train: intermediary.pkl
 
 validate: stdout.txt
 

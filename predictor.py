@@ -4,10 +4,11 @@ import numpy as np
 import os, pickle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.externals import joblib
+#from sklearn.externals import joblib
 from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
+intermediary = {}
 
 with open(abspath + '/training_tweets.pkl', 'rb') as f:
     tweet_df = pickle.load(f)
@@ -21,8 +22,10 @@ country_dict = {}
 for idx, code in enumerate(country_codes):
     country_dict[code] = idx
 
-with open(abspath + '/country_dict.pkl', 'wb') as f:
-    pickle.dump(country_dict, f, protocol = 2)
+intermediary["country_dict"] = country_dict
+
+# with open(abspath + '/country_dict.pkl', 'wb') as f:
+#     pickle.dump(country_dict, f, protocol = 2)
     
 def convert_to_int(country_string):
     return country_dict[country_string]
@@ -35,11 +38,19 @@ tweet_df["code"] = tweet_df["code"].apply(convert_to_int)
 count_vect = CountVectorizer()
 X_train = count_vect.fit_transform(tweet_df["tweet"])
 
-with open(abspath + '/vectorizer.pkl', 'wb') as f:
-    pickle.dump(count_vect, f, protocol = 2)
+intermediary["vectorizer"] = count_vect
+
+# with open(abspath + '/vectorizer.pkl', 'wb') as f:
+#     pickle.dump(count_vect, f, protocol = 2)
 
 X_train_label = np.array(tweet_df["code"].data)
 
 # Train a classifier
 clf = MultinomialNB().fit(X_train, X_train_label)
-joblib.dump(clf, abspath + '/classifier.pkl', protocol=2)
+
+# joblib.dump(clf, abspath + '/classifier.pkl', protocol=2)
+intermediary["classifier"] = clf
+
+
+with open(abspath + '/intermediary.pkl', 'wb') as f:
+    pickle.dump(intermediary, f, protocol = 2)
