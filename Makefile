@@ -1,23 +1,23 @@
 training_tweets.csv:
-	python3 crawler.py tr
+	source activate py36 && python3 crawler.py tr && source deactivate
 
 testing_tweets.csv:
-	python3 crawler.py te 
+	source activate py36 && python3 crawler.py te  && source deactivate
 
 training_tweets.pkl: training_tweets.csv
-	python3 cleaner.py tr
+	source activate py36 && python3 cleaner.py tr && source deactivate
 
 testing_tweets.pkl: testing_tweets.csv
-	python3 cleaner.py te
+	source activate py36 && python3 cleaner.py te && source deactivate
 
 intermediary.pkl: training_tweets.pkl
-	python3 predictor.py
+	source activate py36 && python3 predictor.py && source deactivate
 
 stdout.txt: intermediary.pkl testing_tweets.pkl
-	python3 validator.py
+	source activate py36 && python3 validator.py && source deactivate
 
 deployfalg.txt: stdout.txt
-	python3 verify.py
+	source activate py36 && python3 verify.py && source deactivate
 
 train: intermediary.pkl
 
@@ -27,4 +27,4 @@ deploy: deployfalg.txt
 	python deploy.py
 
 clean:
-	rm *.pkl *.txt
+	rm -f *.pkl *.txt
