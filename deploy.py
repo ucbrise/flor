@@ -53,3 +53,4 @@ clipper_conn.deploy_predict_function("txt_to_country", versh, txt_to_country, "s
 
 with open(abspath + '/version.v', 'w') as f:
     f.write(str(versh + 1))
+
