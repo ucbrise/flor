@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+""" validate.py
+
+To run:
+    validate.py
+
+Output:
+    deployflag.txt
+        line 1: either True or False
+        line 2: floating point value in the range [0.0, 1.0] denoting the frequency of the most common class
+
+"""
 import pandas as pd
 import numpy as np
 import os, pickle
@@ -14,10 +25,10 @@ with open(abspath + '/intermediary.pkl', 'rb') as f:
     intermediary = pickle.load(f)
     country_dict = intermediary["country_dict"]
 
-with open(abspath + '/testing_tweets.pkl', 'rb') as f:
+with open(abspath + '/clean_testing_tweets.pkl', 'rb') as f:
     test_df = pickle.load(f)
 
-with open(abspath + '/stdout.txt', 'r') as f:
+with open(abspath + '/model_accuracy.txt', 'r') as f:
     content = f.readlines()
     accuracy = float(content[0].strip())
 

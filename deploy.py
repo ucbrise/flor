@@ -1,11 +1,17 @@
 #!/usr/bin/env python
+""" deploy.py
+
+To run:
+    deploy.py
+
+Publishes model to Clipper, if the model passes validation test.
+
+"""
 import pandas as pd
 import numpy as np
 import os, pickle, sys
 from clipper_admin import Clipper
-# from cleaner import clean
 import HTMLParser
-#import preprocessor as twpre
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
@@ -36,8 +42,8 @@ def txt_to_country(tweet):
     country_int = clf.predict(vect_df)
     for countrycode in country_dict.keys():
         if country_dict[countrycode] == country_int:
-            return [countrycode]
-    return ["ERR"]
+            return countrycode
+    return "ERR"
 
 clipper_conn = Clipper("localhost")
 clipper_conn.start()
