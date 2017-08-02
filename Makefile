@@ -1,30 +1,51 @@
-training_tweets.csv:
-	source activate py36 && python3 crawler.py tr && source deactivate
+CONDA36_ENV ?= py36
 
-testing_tweets.csv:
-	source activate py36 && python3 crawler.py te  && source deactivate
-
-training_tweets.pkl: training_tweets.csv
-	source activate py36 && python3 cleaner.py tr && source deactivate
-
-testing_tweets.pkl: testing_tweets.csv
-	source activate py36 && python3 cleaner.py te && source deactivate
-
-intermediary.pkl: training_tweets.pkl
-	source activate py36 && python3 predictor.py && source deactivate
-
-stdout.txt: intermediary.pkl testing_tweets.pkl
-	source activate py36 && python3 validator.py && source deactivate
-
-deployfalg.txt: stdout.txt
-	source activate py36 && python3 verify.py && source deactivate
-
-train: intermediary.pkl
-
-validate: stdout.txt
-
-deploy: deployfalg.txt
+deploy : deployflag.txt version.v intermediary.pkl deploy.py
 	python deploy.py
 
-clean:
+validate : deployflag.txt
+
+test : model_accuracy.txt
+
+train : intermediary.pkl
+
+deployflag.txt : model_accuracy.txt shared.py intermediary.pkl clean_testing_tweets.pkl validate.py
+	source activate $(CONDA36_ENV) && \
+	python validate.py && \
+	source deactivate
+
+model_accuracy.txt : intermediary.pkl clean_testing_tweets.pkl shared.py test_model.py
+	source activate $(CONDA36_ENV) && \
+	python test_model.py && \
+	source deactivate
+
+intermediary.pkl : clean_training_tweets.pkl shared.py train_model.py
+	source activate $(CONDA36_ENV) && \
+	python train_model.py && \
+	source deactivate
+
+clean_testing_tweets.pkl : testing_tweets.csv shared.py cleaner.py
+	source activate $(CONDA36_ENV) && \
+	python cleaner.py te && \
+	source deactivate
+
+clean_training_tweets.pkl : training_tweets.csv shared.py cleaner.py
+	source activate $(CONDA36_ENV) && \
+	python cleaner.py tr && \
+	source deactivate
+
+
+testing_tweets.csv : credentials.py crawler.py
+	source activate $(CONDA36_ENV) && \
+	python crawler.py te  && \
+	source deactivate
+
+training_tweets.csv : credentials.py crawler.py
+	source activate $(CONDA36_ENV) && \
+	python crawler.py tr && \
+	source deactivate
+
+clean :
 	rm -f *.pkl *.txt
+
+.PHONY : clean train test validate deploy

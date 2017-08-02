@@ -1,4 +1,29 @@
 #!/usr/bin/env python3
+""" cleaner.py
+
+To run:
+    cleaner.py tr
+    cleaner.py te
+
+The 'tr' flag cleans training tweets.
+The 'te' flag cleans testing tweets.
+
+Output:
+    clean_training_tweets.pkl
+    clean_testing_tweets.pkl
+
+    ...Depending on the flag.
+    The output is a pandas dataframe with a schema of the Input CSV schema
+
+Input CSV schema:
+    id : integer, primary key
+    tweet: string, the text of the tweet
+    place: string, usually CITY STATE but not consistently
+    city: string, city
+    country: string, Full name of country
+    code: string, two-character country code
+
+"""
 import pandas as pd
 import html.parser
 import preprocessor as twpre
@@ -16,16 +41,16 @@ def clean(inputdf_column):
 def main():
     flag = sys.argv[1]
     if flag == "tr":
-        filename = "/training"
+        filename = "training"
     elif flag == "te":
-        filename = "/testing"
+        filename = "testing"
     else:
         sys.exit(1)
 
-    tweet_df = pd.read_csv(abspath + filename + '_tweets.csv', **params)
+    tweet_df = pd.read_csv(abspath + '/' + filename + '_tweets.csv', **params)
     clean(tweet_df["tweet"])
 
-    with open(abspath + filename + '_tweets.pkl', 'wb') as f:
+    with open(abspath + '/clean_'  + filename + '_tweets.pkl', 'wb') as f:
         pickle.dump(tweet_df, f)
 
 if __name__ == "__main__":
