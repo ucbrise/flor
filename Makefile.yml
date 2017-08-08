@@ -21,12 +21,12 @@ make:
   deploy:
     meta-data:
       - version.v
-    scripts:
-      - deploy.py
+    script: deploy.py
     tasks:
       - validate
     models:
       - intermediary.pkl
+    recipe: *rec00
   
   test:
     meta-data:
@@ -40,8 +40,7 @@ make:
     meta-data:
       - shared.py
       - model_accuracy.txt
-    scripts:
-      - validate.py
+    script: validate.py
     models:
       - intermediary.pkl
     data:
@@ -53,8 +52,7 @@ make:
   model_accuracy.txt:
     meta-data:
       - shared.py
-    scripts:
-      - test_model.py
+    script: test_model.py
     models:
       - intermediary.pkl
     data:
@@ -64,8 +62,7 @@ make:
   intermediary.pkl:
     meta-data:
       - shared.py
-    scripts:
-      - train_model.py
+    script: train_model.py
     data:
       - clean_training_tweets.pkl
     recipe: *rec01
@@ -73,8 +70,7 @@ make:
   clean_testing_tweets.pkl:
     meta-data:
       - shared.py
-    scripts:
-      - cleaner.py
+    script: cleaner.py
     args:
       - te
     data:
@@ -84,8 +80,7 @@ make:
   clean_training_tweets.pkl:
     meta-data:
       - shared.py
-    scripts:
-      - cleaner.py
+    script: cleaner.py
     args:
       - tr
     data:
@@ -95,8 +90,7 @@ make:
   testing_tweets.csv:
     meta-data:
       - credentials.py
-    scripts:
-      - crawler.py
+    script: crawler.py
     args:
       - te
     recipe: *rec01
@@ -104,8 +98,7 @@ make:
   training_tweets.csv:
     meta-data:
       - credentials
-    scripts:
-      - crawler.py
+    script: crawler.py
     args:
       - tr
     recipe: *rec01
