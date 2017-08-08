@@ -15,11 +15,6 @@ import HTMLParser
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-with open(abspath + '/deployflag.txt', 'r') as f:
-    content = f.readlines()
-    if not bool(content[0].strip()):
-        sys.exit(0)
-
 with open(abspath + '/intermediary.pkl', 'rb') as f:
     intermediary = pickle.load(f)
     global_country_dict = intermediary["country_dict"]

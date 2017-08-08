@@ -49,11 +49,17 @@ X_test_label = test_df["code"]
 countOfCommonClass = X_test_label[X_test_label == X_test_label.mode()[0]].size
 mostCommonClassFreq = countOfCommonClass / X_test_label.size
 
+
+wroteFile = False
 with open(abspath + "/deployflag.txt", "w") as f:
     if mostCommonClassFreq < accuracy:
+        wroteFile = True
         # model passes the test
         f.write("True")
     else:
         # model fails the test
         f.write("False")
     f.write("\n%.6f" % mostCommonClassFreq)
+
+if not wroteFile:
+    os.remove(abspath + "/deployflag.txt")

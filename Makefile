@@ -1,18 +1,17 @@
 CONDA36_ENV ?= py36
 
-deploy : deployflag.txt version.v intermediary.pkl deploy.py
+deploy : validate version.v intermediary.pkl deploy.py
 	python deploy.py
-
-validate : deployflag.txt
 
 test : model_accuracy.txt
 
 train : intermediary.pkl
 
-deployflag.txt : model_accuracy.txt shared.py intermediary.pkl clean_testing_tweets.pkl validate.py
+validate : model_accuracy.txt shared.py intermediary.pkl clean_testing_tweets.pkl validate.py
 	source activate $(CONDA36_ENV) && \
 	python validate.py && \
-	source deactivate
+	source deactivate && \
+	test -f deployflag.txt
 
 model_accuracy.txt : intermediary.pkl clean_testing_tweets.pkl shared.py test_model.py
 	source activate $(CONDA36_ENV) && \
