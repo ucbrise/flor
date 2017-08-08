@@ -51,6 +51,9 @@ for target in pipeline.keys():
 	else:
 		recipe = ""
 
+	if "test" in pipeline[target]:
+		recipe += " && test -f " + " ".join(pipeline[target]["test"])
+
 	recipe = recipe.replace("$0", dollar0)
 	if len(recipe) > 0:
 		print("\t" + recipe)
