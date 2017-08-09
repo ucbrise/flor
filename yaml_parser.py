@@ -8,6 +8,8 @@ with open("Makefile.yml", 'r') as stream:
     except yaml.YAMLError as exc:
         print(exc)
 
+print_table = []
+
 pipeline = makefile["make"]
 for target in pipeline.keys():
 	lhs = target
@@ -34,7 +36,7 @@ for target in pipeline.keys():
 		script = ""
 
 	rhs = " ".join([elm for elm in [tasks, metadata, models, data, script] if len(elm) > 0])
-	print(lhs + colon + rhs)
+	print_table.append(lhs + colon + rhs + "\n")
 
 	if "args" in pipeline[target]:
 		args = " ".join(pipeline[target]["args"])
@@ -56,7 +58,11 @@ for target in pipeline.keys():
 
 	recipe = recipe.replace("$0", dollar0)
 	if len(recipe) > 0:
-		print("\t" + recipe)
-	print
+		print_table.append("\t" + recipe + "\n")
+	print_table.append("\n")
 
-print(".PHONY : " + " ".join(makefile["phony"]))
+print_table.append(".PHONY : " + " ".join(makefile["phony"]) + "\n")
+
+with open("myMakefile", "w") as f:
+	for line in print_table:
+		f.write(line)
