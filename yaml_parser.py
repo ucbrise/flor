@@ -7,9 +7,30 @@ with open("Makefile.yml", "r") as stream:
     except yaml.YAMLError as exc:
         print exc
 
+if "make" not in makefile: 
+	raise AssertionError("A hash or dictionary with the name 'make' is not defined.")
+
 # buffer for saving printable strings
 print_table = []
 pipeline = makefile["make"]
+
+valid_dependency_types = set([
+	'tasks',
+	'script',
+	'models',
+	'meta-data',
+	'args',
+	'recipe',
+	'test',
+	'data'
+	])
+
+used_dependency_types = set([])
+for target in pipeline.keys():
+	used_dependency_types |= set(pipeline[target].keys())
+invalid_dependency_types = used_dependency_types - valid_dependency_types
+if invalid_dependency_types:
+	raise AssertionError("Use of invalid dependency types: " + str(invalid_dependency_types))
 
 """
 This function takes an Array (possible of arrays)
