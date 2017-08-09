@@ -33,7 +33,7 @@ if invalid_dependency_types:
 	raise AssertionError("Use of invalid dependency types: " + str(invalid_dependency_types))
 
 """
-This function takes an Array (possible of arrays)
+This function takes an Array (possibly of arrays)
 and outputs a string, s.t. each element is seperated
 by &&
 
@@ -126,7 +126,8 @@ for target in pipeline.keys():
 	
 	print_table.append("\n")
 
-print_table.append(".PHONY : " + " ".join(makefile["phony"]) + "\n")
+if "phony" in makefile:
+	print_table.append(".PHONY : " + " ".join(makefile["phony"]) + "\n")
 
 with open("Makefile", "w") as f:
 	for line in print_table:
