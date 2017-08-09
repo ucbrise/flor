@@ -1,50 +1,32 @@
-CONDA36_ENV ?= py36
+intermediary.pkl : shared.py clean_training_tweets.pkl train_model.py
+	source activate py36 && python train_model.py && source deactivate
+
+training_tweets.csv : credentials.py crawler.py
+	source activate py36 && python crawler.py tr && source deactivate
 
 deploy : validate version.v intermediary.pkl deploy.py
 	python deploy.py
 
-test : model_accuracy.txt
+clean_testing_tweets.pkl : shared.py testing_tweets.csv cleaner.py
+	source activate py36 && python cleaner.py te && source deactivate
+
+clean_training_tweets.pkl : shared.py training_tweets.csv cleaner.py
+	source activate py36 && python cleaner.py tr && source deactivate
+
+model_accuracy.txt : shared.py intermediary.pkl clean_testing_tweets.pkl test_model.py
+	source activate py36 && python test_model.py && source deactivate
 
 train : intermediary.pkl
 
-validate : model_accuracy.txt shared.py intermediary.pkl clean_testing_tweets.pkl validate.py
-	source activate $(CONDA36_ENV) && \
-	python validate.py && \
-	source deactivate && \
-	test -f deployflag.txt
+clean : 
+	rm -f *.pkl *.txt
 
-model_accuracy.txt : intermediary.pkl clean_testing_tweets.pkl shared.py test_model.py
-	source activate $(CONDA36_ENV) && \
-	python test_model.py && \
-	source deactivate
+test : model_accuracy.txt
 
-intermediary.pkl : clean_training_tweets.pkl shared.py train_model.py
-	source activate $(CONDA36_ENV) && \
-	python train_model.py && \
-	source deactivate
-
-clean_testing_tweets.pkl : testing_tweets.csv shared.py cleaner.py
-	source activate $(CONDA36_ENV) && \
-	python cleaner.py te && \
-	source deactivate
-
-clean_training_tweets.pkl : training_tweets.csv shared.py cleaner.py
-	source activate $(CONDA36_ENV) && \
-	python cleaner.py tr && \
-	source deactivate
-
+validate : shared.py model_accuracy.txt intermediary.pkl clean_testing_tweets.pkl validate.py
+	source activate py36 && python validate.py && source deactivate && test -f deployflag.txt
 
 testing_tweets.csv : credentials.py crawler.py
-	source activate $(CONDA36_ENV) && \
-	python crawler.py te  && \
-	source deactivate
-
-training_tweets.csv : credentials.py crawler.py
-	source activate $(CONDA36_ENV) && \
-	python crawler.py tr && \
-	source deactivate
-
-clean :
-	rm -f *.pkl *.txt
+	source activate py36 && python crawler.py te && source deactivate
 
 .PHONY : clean train test validate deploy
