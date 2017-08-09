@@ -7,14 +7,16 @@ phony:
 
 recipes:
   
-  default-recipe: &rec00 'python $0'
+  default-recipe: &rec00 
+    - 'python $0'
   
   wrapped-recipe: &rec01
     - 'source activate py36'
     - *rec00
     - 'source deactivate'
 
-  clean-recipe: &rec02 'rm -f *.pkl *.txt'
+  clean-recipe: &rec02 
+    - 'rm -f *.pkl *.txt'
 
 make:
   
@@ -97,7 +99,7 @@ make:
 
   training_tweets.csv:
     meta-data:
-      - credentials
+      - credentials.py
     script: crawler.py
     args:
       - tr
