@@ -11,7 +11,7 @@ Output:
 """
 import pandas as pd
 import numpy as np
-import os, pickle
+import os, pickle, sys
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from shared import params, relevant_attributes
@@ -42,9 +42,10 @@ test_df["code"] = test_df["code"].apply(special_convert_to_int)
 # Ignore countries unseen in training (only 12 instances out of 20k)
 test_df = test_df[test_df["code"] != -1]
 
+
 # Tokenize Text
 X_test = count_vect.transform(test_df["tweet"])
-X_test_label = np.array(test_df["code"].data)
+X_test_label = np.array(test_df["code"])
 
 score = clf.score(X_test, X_test_label)
 
