@@ -30,8 +30,8 @@ def crawl(in_artifacts, out_artifacts, out_types, data_source):
 
 def tr_crawl(in_artifacts, out_artifacts, out_types):
 	crawl(in_artifacts, out_artifacts, out_types, 
-		'../training_tweets.csv')
+		'deprecated/training_tweets.csv')
 
 def te_crawl(in_artifacts, out_artifacts, out_types):
 	crawl(in_artifacts, out_artifacts, out_types, 
-		'../testing_tweets.csv')
+		'deprecated/testing_tweets.csv')
