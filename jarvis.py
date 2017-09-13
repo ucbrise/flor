@@ -65,6 +65,9 @@ class Action:
 				artifact.pull()
 		self.func(self.in_artifacts, self.out_artifacts, self.out_types)
 
+	def produce(self, loc, typ):
+		return Artifact(loc, typ, self)
+
 		
 
 __valid_types__ = {"metadata", "data", "model", "script"}
