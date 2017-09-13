@@ -1,39 +1,39 @@
 #!/usr/bin/env python3
-
 import jarvis
 import os, dill
 
-abspath = os.path.dirname(os.path.abspath(__file__))
+from crawler import tr_crawl, te_crawl
+from cleaner import clean
+from train_model import train
+from test_model import test
 
-def crawl():
-	import pandas as pd
-	import numpy as np
-	# Define the names of each column in the tweets file
-	attribute_names = []
-	attribute_names.append('id')
-	attribute_names.append('tweet')
-	attribute_names.append('place')
-	attribute_names.append('city')
-	attribute_names.append('country')
-	attribute_names.append('code')
+tr_crawler = jarvis.Action(func=tr_crawl)
+training_tweets = jarvis.Artifact(loc='training_tweets.csv',
+	typ="data", parent=tr_crawler)
 
-	# Define the data type of every element in a column
-	attribute_types = {
-	    'id': np.int32,
-	    'tweet': str,
-	    'place': str,
-	    'city': str,
-	    'country': str,
-	    'code': str
-	}
+te_crawler = jarvis.Action(func=te_crawl)
+testing_tweets = jarvis.Artifact(loc='testing_tweets.csv',
+	typ="data", parent=te_crawler)
 
-	# Read the twitter data into a pandas dataframe
-	params = dict(header=None, names=attribute_names, dtype=attribute_types)
+tr_cleaner = jarvis.Action(func=clean, 
+	in_artifacts=[training_tweets])
+clean_training_tweets = jarvis.Artifact(loc='clean_training_tweets.pkl',
+	typ='data', parent=tr_cleaner)
 
-	return pd.read_csv('training_tweets.csv', **params)
+te_cleaner = jarvis.Action(func=clean,
+	in_artifacts=[testing_tweets])
+clean_testing_tweets = jarvis.Artifact(loc='clean_testing_tweets.pkl',
+	typ='data', parent=te_cleaner)
 
-crawler = jarvis.Task(func = crawl, preconditions=[], postconditions=[])
+trainer = jarvis.Action(func=train,
+	in_artifacts=[clean_training_tweets])
+intermediary = jarvis.Artifact(loc='intermediary.pkl',
+	typ='model', parent=trainer)
 
-with open(abspath + '/workflow.pkl', 'wb') as f:
-	dill.dump(crawler, f)
+tester = jarvis.Action(func=test,
+	in_artifacts=[intermediary, clean_testing_tweets])
+model_accuracy = jarvis.Artifact(loc='model_accuracy.txt',
+	typ='metadata', parent=tester)
+
+model_accuracy.pull()
 
