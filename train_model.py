@@ -29,7 +29,7 @@ def train(in_artifacts, out_artifacts, out_types):
 	in_artifact = in_artifacts[0]
 	out_artifact = out_artifacts[0]
 
-	with open(abspath + '/' + in_artifact.getLocation(), 'rb') as f:
+	with open(abspath + '/' + in_artifact.getLocation('r'), 'rb') as f:
 	    tweet_df = pickle.load(f)
 
 	# Select a relevant subset of features
@@ -63,5 +63,5 @@ def train(in_artifacts, out_artifacts, out_types):
 
 	intermediary["classifier"] = clf
 
-	with open(abspath + '/' + out_artifact.getLocation(), 'wb') as f:
+	with open(abspath + '/' + out_artifact.getLocation('w'), 'wb') as f:
 	    pickle.dump(intermediary, f)

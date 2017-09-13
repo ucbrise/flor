@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 def crawl(in_artifacts, out_artifacts, out_types, data_source):
-	destination = out_artifacts[0].getLocation()
+	destination = out_artifacts[0].getLocation('w')
 	# Define the names of each column in the tweets file
 	attribute_names = []
 	attribute_names.append('id')
