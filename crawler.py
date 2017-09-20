@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
+import os
 
 def crawl(in_artifacts, out_artifacts, out_types, data_source):
-	destination = out_artifacts[0].getLocation('w')
+	destination = out_artifacts[0].getLocation()
 	# Define the names of each column in the tweets file
 	attribute_names = []
 	attribute_names.append('id')
@@ -31,7 +32,9 @@ def crawl(in_artifacts, out_artifacts, out_types, data_source):
 def tr_crawl(in_artifacts, out_artifacts, out_types):
 	crawl(in_artifacts, out_artifacts, out_types, 
 		'deprecated/training_tweets.csv')
+	return os.path.basename(__file__)
 
 def te_crawl(in_artifacts, out_artifacts, out_types):
 	crawl(in_artifacts, out_artifacts, out_types, 
 		'deprecated/testing_tweets.csv')
+	return os.path.basename(__file__)

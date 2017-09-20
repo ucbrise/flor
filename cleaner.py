@@ -17,8 +17,9 @@ Clean takes one in artifact and outputs one out artifact
 def clean(in_artifacts, out_artifacts, out_types):
     in_artifact = in_artifacts[0]
     out_artifacts = out_artifacts[0]
-    tweet_df = pd.read_csv(abspath + '/' + in_artifact.getLocation('r'), **params)
+    tweet_df = pd.read_csv(abspath + '/' + in_artifact.getLocation(), **params)
     tweet_df["tweet"] = tweet_df["tweet"].apply(html_parser.unescape)
     tweet_df["tweet"] = tweet_df["tweet"].apply(twpre.tokenize)
-    with open(abspath + '/'  + out_artifacts.getLocation('w'), 'wb') as f:
+    with open(abspath + '/'  + out_artifacts.getLocation(), 'wb') as f:
         pickle.dump(tweet_df, f)
+    return os.path.basename(__file__)
