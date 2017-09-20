@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys, git
+from shutil import copyfile
 
 class Artifact:
 
@@ -8,7 +9,7 @@ class Artifact:
 	# parent: each artifact is produced by 1 action
 	def __init__(self, loc, typ, parent):
 		self.loc = loc
-		self.dir = self.loc.split('.')[0] + ".d"
+		self.dir = "artifacts.d"
 		self.typ = typ
 		self.parent = parent
 		# Need a way to manage versions, possibly with Ground integration
@@ -20,41 +21,43 @@ class Artifact:
 
 
 	def pull(self):
-		print(self.loc)
-		self.parent.run()
+		loclist = [self.loc,]
+		self.parent.__run__(loclist)
+
+		# get the script names
+		scriptNames = ['driver.py',]
+		self.parent.__scriptNameWalk__(scriptNames)
+
 		# Now the artifact exists, do git
 		# We resolve the directory name by loc
 		dir_name = self.dir
 		# If the directory not exists, need to init repo
 		if not os.path.exists(dir_name):
 			os.makedirs(dir_name)
-			# Move new file to its repo
-			os.rename(self.loc, dir_name + "/" + self.loc)
+			# Move new files to the artifacts repo
+			for loc in loclist:
+				os.rename(loc, dir_name + "/" + loc)
+			for script in scriptNames:
+				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo.init(os.getcwd())
 			repo.index.add([self.loc])
 			repo.index.commit("initial commit")
 			os.chdir('../')
 		else:
-			os.rename(self.loc, dir_name + "/" + self.loc)
+			for loc in loclist:
+				os.rename(loc, dir_name + "/" + loc)
+			for script in scriptNames:
+				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo(os.getcwd())
 			repo.index.add([self.loc])
 			repo.index.commit("incremental commit")
 			os.chdir('../')
+		
 
-	"""
-	Specify the intent:
-	r -> read
-	w -> write
-	Are you getting the location to read or write?
-	This is a workaround for how git artifact versioning is implemented
-	"""
-	def getLocation(self, intent):
-		if intent == 'r':
-			return self.dir + "/" + self.loc
-		elif intent == 'w':
-			return self.loc
+	def getLocation(self):
+		return self.loc
 
 	def hasChanged(self):
 		pass
@@ -89,15 +92,24 @@ class Action:
 		self.in_artifacts = in_artifacts
 
 
-	def run(self):
+	def __run__(self, loclist):
 		if self.in_artifacts:
 			for artifact in self.in_artifacts:
-				artifact.pull()
-		self.func(self.in_artifacts, self.out_artifacts, self.out_types)
+				loclist.append(artifact.loc)
+				artifact.parent.__run__(loclist)
+		self.script = self.func(self.in_artifacts, self.out_artifacts, self.out_types)
 
 	def produce(self, loc, typ):
 		return Artifact(loc, typ, self)
 
-		
+	def __scriptNameWalk__(self, scriptNames):
+		scriptNames.append(self.script)
+		if self.in_artifacts:
+			for artifact in self.in_artifacts:
+				artifact.parent.__scriptNameWalk__(scriptNames)
 
+
+
+
+		
 __valid_types__ = {"metadata", "data", "model", "script"}

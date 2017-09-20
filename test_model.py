@@ -21,7 +21,7 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 def test(in_artifacts, out_artifacts, out_types):
     out_artifact = out_artifacts[0]
 
-    with open(abspath + '/' + in_artifacts[0].getLocation('r'), 'rb') as f:
+    with open(abspath + '/' + in_artifacts[0].getLocation(), 'rb') as f:
         intermediary = pickle.load(f)
 
     country_dict = intermediary["country_dict"]
@@ -29,7 +29,7 @@ def test(in_artifacts, out_artifacts, out_types):
     clf = intermediary["classifier"]
 
     ## Now we test.
-    with open(abspath + '/' + in_artifacts[1].getLocation('r'), 'rb') as f:
+    with open(abspath + '/' + in_artifacts[1].getLocation(), 'rb') as f:
         test_df = pickle.load(f)
 
     test_df = test_df[relevant_attributes]
@@ -52,5 +52,6 @@ def test(in_artifacts, out_artifacts, out_types):
 
     score = clf.score(X_test, X_test_label)
 
-    with open(abspath + "/" + out_artifact.getLocation('w'), "w") as f:
+    with open(abspath + "/" + out_artifact.getLocation(), "w") as f:
         f.write("%.5f" % score)
+    return os.path.basename(__file__)
