@@ -41,7 +41,7 @@ class Artifact:
 				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo.init(os.getcwd())
-			repo.index.add([self.loc])
+			repo.index.add(loclist + scriptNames)
 			repo.index.commit("initial commit")
 			os.chdir('../')
 		else:
@@ -51,7 +51,7 @@ class Artifact:
 				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo(os.getcwd())
-			repo.index.add([self.loc])
+			repo.index.add(loclist + scriptNames)
 			repo.index.commit("incremental commit")
 			os.chdir('../')
 		
