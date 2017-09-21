@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-import os, sys, git
+import os, sys, git, subprocess
 from shutil import copyfile
+
+def __run_proc__(bashCommand):
+	process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+	output, error = process.communicate()
+	return str(output, 'UTF-8')
 
 class Artifact:
 
@@ -41,8 +46,15 @@ class Artifact:
 				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo.init(os.getcwd())
+			with open('.gitignore', 'w') as f:
+				f.write('.jarvis\n')
 			repo.index.add(loclist + scriptNames)
 			repo.index.commit("initial commit")
+			tree = repo.tree()
+			with open('.jarvis', 'w') as f:
+				for obj in tree:
+					commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
+					f.write(obj.path + " " + commithash + "\n")
 			os.chdir('../')
 		else:
 			for loc in loclist:
@@ -53,6 +65,11 @@ class Artifact:
 			repo = git.Repo(os.getcwd())
 			repo.index.add(loclist + scriptNames)
 			repo.index.commit("incremental commit")
+			tree = repo.tree()
+			with open('.jarvis', 'w') as f:
+				for obj in tree:
+					commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
+					f.write(obj.path + " " + commithash + "\n")
 			os.chdir('../')
 		
 
