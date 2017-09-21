@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import jarvis
-import os, dill
 
 from crawler import tr_crawl, te_crawl
 from cleaner import clean

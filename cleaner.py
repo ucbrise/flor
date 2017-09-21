@@ -19,7 +19,6 @@ def clean(in_artifacts, out_artifacts, out_types):
     out_artifacts = out_artifacts[0]
     tweet_df = pd.read_csv(abspath + '/' + in_artifact.getLocation(), **params)
     tweet_df["tweet"] = tweet_df["tweet"].apply(html_parser.unescape)
-    tweet_df["tweet"] = tweet_df["tweet"].apply(twpre.tokenize)
     with open(abspath + '/'  + out_artifacts.getLocation(), 'wb') as f:
         pickle.dump(tweet_df, f)
     return os.path.basename(__file__)
