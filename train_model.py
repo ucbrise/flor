@@ -23,7 +23,7 @@ from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-def train(in_artifacts, out_artifacts, out_types):
+def train(in_artifacts, out_artifacts):
 	intermediary = {}
 
 	in_artifact = in_artifacts[0]

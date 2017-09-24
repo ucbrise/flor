@@ -10,20 +10,14 @@ def __run_proc__(bashCommand):
 class Artifact:
 
 	# loc: location
-	# typ: type
 	# parent: each artifact is produced by 1 action
-	def __init__(self, loc, typ, parent):
+	def __init__(self, loc, parent):
 		self.loc = loc
 		self.dir = "artifacts.d"
-		self.typ = typ
 		self.parent = parent
-		# Need a way to manage versions, possibly with Ground integration
-		self.version = None
 
 		# Now we bind the artifact to its parent
 		self.parent.out_artifacts.append(self)
-		self.parent.out_types.append(typ)
-
 
 	def pull(self):
 		loclist = [self.loc,]
@@ -105,7 +99,6 @@ class Action:
 	def __init__(self, func, in_artifacts=None):
 		self.func = func
 		self.out_artifacts = []
-		self.out_types = []
 		self.in_artifacts = in_artifacts
 
 
@@ -114,10 +107,10 @@ class Action:
 			for artifact in self.in_artifacts:
 				loclist.append(artifact.loc)
 				artifact.parent.__run__(loclist)
-		self.script = self.func(self.in_artifacts, self.out_artifacts, self.out_types)
+		self.script = self.func(self.in_artifacts, self.out_artifacts)
 
-	def produce(self, loc, typ):
-		return Artifact(loc, typ, self)
+	def produce(self, loc):
+		return Artifact(loc, self)
 
 	def __scriptNameWalk__(self, scriptNames):
 		scriptNames.append(self.script)
@@ -125,8 +118,3 @@ class Action:
 			for artifact in self.in_artifacts:
 				artifact.parent.__scriptNameWalk__(scriptNames)
 
-
-
-
-		
-__valid_types__ = {"metadata", "data", "model", "script"}

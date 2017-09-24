@@ -18,7 +18,7 @@ from shared import params, relevant_attributes
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-def test(in_artifacts, out_artifacts, out_types):
+def test(in_artifacts, out_artifacts):
     out_artifact = out_artifacts[0]
 
     with open(abspath + '/' + in_artifacts[0].getLocation(), 'rb') as f:
