@@ -14,7 +14,7 @@ html_parser = html.parser.HTMLParser()
 """
 Clean takes one in artifact and outputs one out artifact
 """
-def clean(in_artifacts, out_artifacts, out_types):
+def clean(in_artifacts, out_artifacts):
     in_artifact = in_artifacts[0]
     out_artifacts = out_artifacts[0]
     tweet_df = pd.read_csv(abspath + '/' + in_artifact.getLocation(), **params)

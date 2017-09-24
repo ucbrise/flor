@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 
-def crawl(in_artifacts, out_artifacts, out_types, data_source):
+def crawl(in_artifacts, out_artifacts, data_source):
 	destination = out_artifacts[0].getLocation()
 	# Define the names of each column in the tweets file
 	attribute_names = []
@@ -29,12 +29,10 @@ def crawl(in_artifacts, out_artifacts, out_types, data_source):
 	df = pd.read_csv(data_source, **params)
 	df.to_csv(destination, index=False, header=False)
 
-def tr_crawl(in_artifacts, out_artifacts, out_types):
-	crawl(in_artifacts, out_artifacts, out_types, 
-		'deprecated/training_tweets.csv')
+def tr_crawl(in_artifacts, out_artifacts):
+	crawl(in_artifacts, out_artifacts, 'deprecated/training_tweets.csv')
 	return os.path.basename(__file__)
 
-def te_crawl(in_artifacts, out_artifacts, out_types):
-	crawl(in_artifacts, out_artifacts, out_types, 
-		'deprecated/testing_tweets.csv')
+def te_crawl(in_artifacts, out_artifacts):
+	crawl(in_artifacts, out_artifacts, 'deprecated/testing_tweets.csv')
 	return os.path.basename(__file__)
