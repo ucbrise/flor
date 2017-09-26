@@ -20,18 +20,23 @@ class Artifact:
 	# parent: each artifact is produced by 1 action
 	def __init__(self, loc, parent):
 		self.loc = loc
-		self.dir = "artifacts.d"
+		self.dir = "jarvis.d"
 		self.parent = parent
 
 		# Now we bind the artifact to its parent
 		self.parent.out_artifacts.append(self)
 
 	def pull(self):
+
+		frame = inspect.stack()[1]
+		module = inspect.getmodule(frame[0])
+		driverfile = module.__file__.split('/')[-1]
+
 		loclist = [self.loc,]
 		self.parent.__run__(loclist)
 
 		# get the script names
-		scriptNames = ['driver.py',]
+		scriptNames = [driverfile,]
 		self.parent.__scriptNameWalk__(scriptNames)
 
 		# Now the artifact exists, do git
@@ -47,15 +52,16 @@ class Artifact:
 				copyfile(script, dir_name + "/" + script)
 			os.chdir(dir_name)
 			repo = git.Repo.init(os.getcwd())
-			with open('.gitignore', 'w') as f:
-				f.write('.jarvis\n')
 			repo.index.add(loclist + scriptNames)
 			repo.index.commit("initial commit")
 			tree = repo.tree()
 			with open('.jarvis', 'w') as f:
 				for obj in tree:
 					commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
-					f.write(obj.path + " " + commithash + "\n")
+					if obj.path != '.jarvis':
+						f.write(obj.path + " " + commithash + "\n")
+			repo.index.add(['.jarvis'])
+			repo.index.commit('.jarvis commit')
 			os.chdir('../')
 		else:
 			for loc in loclist:
@@ -70,7 +76,10 @@ class Artifact:
 			with open('.jarvis', 'w') as f:
 				for obj in tree:
 					commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
-					f.write(obj.path + " " + commithash + "\n")
+					if obj.path != '.jarvis':
+						f.write(obj.path + " " + commithash + "\n")
+			repo.index.add(['.jarvis'])
+			repo.index.commit('.jarvis commit')
 			os.chdir('../')
 			
 	def plot(self, rankdir=None):
@@ -79,7 +88,7 @@ class Artifact:
 		dot = Digraph()
 		diagram = {"dot": dot, "counter": 0, "sha": {}}
 
-		with open('artifacts.d/.jarvis') as csvfile:
+		with open('jarvis.d/.jarvis') as csvfile:
 			reader = csv.reader(csvfile, delimiter=' ')
 			for row in reader:
 				ob, sha = row
