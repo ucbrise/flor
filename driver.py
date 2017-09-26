@@ -26,3 +26,4 @@ model_accuracy = jarvis.Artifact('model_accuracy.txt', tester)
 
 model_accuracy.pull()
 
+model_accuracy.plot()

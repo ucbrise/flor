@@ -15,9 +15,11 @@ import os, pickle, sys
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from shared import params, relevant_attributes
+import jarvis
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
+@jarvis.func
 def test(in_artifacts, out_artifacts):
     out_artifact = out_artifacts[0]
 
@@ -54,4 +56,3 @@ def test(in_artifacts, out_artifacts):
 
     with open(abspath + "/" + out_artifact.getLocation(), "w") as f:
         f.write("%.5f" % score)
-    return os.path.basename(__file__)
