@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-import os, sys, git, subprocess
+import os, sys, git, subprocess, csv, inspect
+from graphviz import Digraph
 from shutil import copyfile
 
 def __run_proc__(bashCommand):
 	process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
 	output, error = process.communicate()
 	return str(output, 'UTF-8')
+
+def func(f):
+	def wrapped_func(in_artifacts, out_artifacts):
+		f(in_artifacts, out_artifacts)
+		return inspect.getsourcefile(f).split('/')[-1]
+	return wrapped_func
 
 class Artifact:
 
@@ -65,6 +72,26 @@ class Artifact:
 					commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
 					f.write(obj.path + " " + commithash + "\n")
 			os.chdir('../')
+			
+	def plot(self, rankdir=None):
+		# WARNING: can't plot before pulling.
+		# Prep globals, passed through arguments
+		dot = Digraph()
+		diagram = {"dot": dot, "counter": 0, "sha": {}}
+
+		with open('artifacts.d/.jarvis') as csvfile:
+			reader = csv.reader(csvfile, delimiter=' ')
+			for row in reader:
+				ob, sha = row
+				diagram["sha"][ob] = sha
+
+		self.parent.__plotWalk__(diagram)
+		
+		dot.format = 'png'
+		if rankdir == 'LR':
+			dot.attr(rankdir='LR')
+		dot.render('driver.gv', view=True)
+		
 		
 
 	def getLocation(self):
@@ -117,4 +144,33 @@ class Action:
 		if self.in_artifacts:
 			for artifact in self.in_artifacts:
 				artifact.parent.__scriptNameWalk__(scriptNames)
-
+				
+	def __plotWalk__(self, diagram):
+		dot = diagram["dot"]
+		
+		# Create nodes for the children
+		
+		to_list = []
+		
+		# Prepare the children nodes
+		for child in self.out_artifacts:
+			node_diagram_id = str(diagram["counter"])
+			dot.node(node_diagram_id, child.loc + "\n" + diagram["sha"][child.loc][0:6] + "...", shape="box")
+			to_list.append(node_diagram_id)
+			diagram["counter"] += 1
+		
+		# Prepare this node
+		node_diagram_id = str(diagram["counter"])
+		dot.node(node_diagram_id, self.script + "\n" + diagram["sha"][self.script][0:6] + "...", shape="ellipse")
+		diagram["counter"] += 1
+		
+		for to_node in to_list:
+			dot.edge(node_diagram_id, to_node)
+		
+		if self.in_artifacts:
+			for artifact in self.in_artifacts:
+				from_nodes = artifact.parent.__plotWalk__(diagram)
+				for from_node in from_nodes:
+					dot.edge(from_node, node_diagram_id)
+		
+		return to_list
