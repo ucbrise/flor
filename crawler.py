@@ -3,6 +3,8 @@ import numpy as np
 import os
 import jarvis
 
+# comment
+
 def crawl(in_artifacts, out_artifacts, data_source):
 	destination = out_artifacts[0].getLocation()
 	# Define the names of each column in the tweets file

@@ -9,10 +9,12 @@ def __run_proc__(bashCommand):
 	return str(output, 'UTF-8')
 
 def func(f):
+	def name_func():
+		return inspect.getsourcefile(f).split('/')[-1]
 	def wrapped_func(in_artifacts, out_artifacts):
 		f(in_artifacts, out_artifacts)
 		return inspect.getsourcefile(f).split('/')[-1]
-	return wrapped_func
+	return [name_func, wrapped_func]
 
 class Artifact:
 
@@ -27,6 +29,8 @@ class Artifact:
 		self.parent.out_artifacts.append(self)
 
 	def pull(self):
+		global __visited__
+		__visited__ = []
 
 		frame = inspect.stack()[1]
 		module = inspect.getmodule(frame[0])
@@ -34,11 +38,12 @@ class Artifact:
 
 		loclist = [self.loc,]
 		self.parent.__run__(loclist)
+		loclist = list(set(loclist))
 
 		# get the script names
 		scriptNames = [driverfile,]
 		self.parent.__scriptNameWalk__(scriptNames)
-
+		scriptNames = list(set(scriptNames))
 		# Now the artifact exists, do git
 		# We resolve the directory name by loc
 		dir_name = self.dir
@@ -85,6 +90,9 @@ class Artifact:
 	def plot(self, rankdir=None):
 		# WARNING: can't plot before pulling.
 		# Prep globals, passed through arguments
+		global __nodes__
+		__nodes__ = {}
+
 		dot = Digraph()
 		diagram = {"dot": dot, "counter": 0, "sha": {}}
 
@@ -133,17 +141,26 @@ class Artifact:
 class Action:
 
 	def __init__(self, func, in_artifacts=None):
-		self.func = func
+		self.name = func[0]()
+		self.func = func[1]
 		self.out_artifacts = []
 		self.in_artifacts = in_artifacts
 
 
 	def __run__(self, loclist):
+		outNames = ''
+		for out_artifact in self.out_artifacts:
+			outNames += out_artifact.getLocation()
+		if self.name+outNames in __visited__:
+			print(self.name+outNames); print(self.in_artifacts); print(self.out_artifacts)
+			return
 		if self.in_artifacts:
 			for artifact in self.in_artifacts:
 				loclist.append(artifact.loc)
 				artifact.parent.__run__(loclist)
 		self.script = self.func(self.in_artifacts, self.out_artifacts)
+		__visited__.append(self.script+outNames)
+
 
 	def produce(self, loc):
 		return Artifact(loc, self)
@@ -155,6 +172,9 @@ class Action:
 				artifact.parent.__scriptNameWalk__(scriptNames)
 				
 	def __plotWalk__(self, diagram):
+
+
+
 		dot = diagram["dot"]
 		
 		# Create nodes for the children
@@ -165,21 +185,30 @@ class Action:
 		for child in self.out_artifacts:
 			node_diagram_id = str(diagram["counter"])
 			dot.node(node_diagram_id, child.loc + "\n" + diagram["sha"][child.loc][0:6] + "...", shape="box")
-			to_list.append(node_diagram_id)
+			__nodes__[child.loc] = node_diagram_id
+			to_list.append((node_diagram_id, child.loc))
 			diagram["counter"] += 1
 		
 		# Prepare this node
 		node_diagram_id = str(diagram["counter"])
 		dot.node(node_diagram_id, self.script + "\n" + diagram["sha"][self.script][0:6] + "...", shape="ellipse")
+		__nodes__[self.script] = node_diagram_id
 		diagram["counter"] += 1
 		
-		for to_node in to_list:
+		for to_node, loc in to_list:
 			dot.edge(node_diagram_id, to_node)
 		
 		if self.in_artifacts:
 			for artifact in self.in_artifacts:
-				from_nodes = artifact.parent.__plotWalk__(diagram)
-				for from_node in from_nodes:
-					dot.edge(from_node, node_diagram_id)
+				if artifact.getLocation() in __nodes__:
+					dot.edge(__nodes__[artifact.getLocation()], node_diagram_id)
+				else:
+					from_nodes = artifact.parent.__plotWalk__(diagram)
+					for from_node, loc in from_nodes:
+						if loc in [art.getLocation() for art in self.in_artifacts]:
+							dot.edge(from_node, node_diagram_id)
 		
 		return to_list
+
+__visited__ = []
+__nodes__ = {}
