@@ -172,9 +172,6 @@ class Action:
 				artifact.parent.__scriptNameWalk__(scriptNames)
 				
 	def __plotWalk__(self, diagram):
-
-
-
 		dot = diagram["dot"]
 		
 		# Create nodes for the children
@@ -191,10 +188,16 @@ class Action:
 		
 		# Prepare this node
 		node_diagram_id = str(diagram["counter"])
-		dot.node(node_diagram_id, self.script + "\n" + diagram["sha"][self.script][0:6] + "...", shape="ellipse")
+		dot.node(node_diagram_id, self.script.split('.')[0], shape="ellipse")
 		__nodes__[self.script] = node_diagram_id
 		diagram["counter"] += 1
 		
+		# Add the script artifact
+		node_diagram_id_script = str(diagram["counter"])
+		dot.node(node_diagram_id_script, self.script + "\n" + diagram["sha"][self.script][0:6] + "...", shape="box")
+		diagram["counter"] += 1
+		dot.edge(node_diagram_id_script, node_diagram_id)
+
 		for to_node, loc in to_list:
 			dot.edge(node_diagram_id, to_node)
 		
