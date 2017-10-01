@@ -36,7 +36,7 @@ class Artifact:
 
 		frame = inspect.stack()[1]
 		module = inspect.getmodule(frame[0])
-		driverfile = "driver.py" #module.__file__.split('/')[-1]
+		driverfile = module.__file__.split('/')[-1]
 
 		loclist = [self.loc,]
 		self.parent.__run__(loclist)
@@ -176,7 +176,6 @@ class Action:
 		for out_artifact in self.out_artifacts:
 			outNames += out_artifact.getLocation()
 		if self.name+outNames in __visited__:
-			print(self.name+outNames); print(self.in_artifacts); print(self.out_artifacts)
 			return
 		if self.in_artifacts:
 			for artifact in self.in_artifacts:
