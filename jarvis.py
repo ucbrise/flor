@@ -3,6 +3,8 @@ import os, sys, git, subprocess, csv, inspect
 from graphviz import Digraph
 from shutil import copyfile
 
+import networkx as nx
+
 def __run_proc__(bashCommand):
 	process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
 	output, error = process.communicate()
@@ -34,7 +36,7 @@ class Artifact:
 
 		frame = inspect.stack()[1]
 		module = inspect.getmodule(frame[0])
-		driverfile = module.__file__.split('/')[-1]
+		driverfile = "driver.py" #module.__file__.split('/')[-1]
 
 		loclist = [self.loc,]
 		self.parent.__run__(loclist)
@@ -109,6 +111,28 @@ class Artifact:
 			dot.attr(rankdir='LR')
 		dot.render('driver.gv', view=True)
 		
+	def to_graph(self, rankdir=None):
+		# WARNING: can't plot before pulling.
+		# Prep globals, passed through arguments
+		global __nodes__
+		__nodes__ = {}
+
+
+		diagram = {
+			"g": nx.Graph(),
+			"counter": 0, 
+			"sha": {}
+			}
+
+		with open('jarvis.d/.jarvis') as csvfile:
+			reader = csv.reader(csvfile, delimiter=' ')
+			for row in reader:
+				ob, sha = row
+				diagram["sha"][ob] = sha
+
+		self.parent.__graphWalk__(diagram)
+		
+		return diagram['g']
 		
 
 	def getLocation(self):
@@ -210,6 +234,62 @@ class Action:
 					for from_node, loc in from_nodes:
 						if loc in [art.getLocation() for art in self.in_artifacts]:
 							dot.edge(from_node, node_diagram_id)
+		
+		return to_list
+
+
+	def __graphWalk__(self, diagram):
+		g = diagram['g']
+		# Create nodes for the children
+		
+		to_list = []
+		
+		# Prepare the children nodes
+		for child in self.out_artifacts:
+			node_diagram_id = str(diagram["counter"])
+			g.add_node(node_diagram_id, 
+				{
+					"text": child.loc + "\n" + diagram["sha"][child.loc][0:6] + "...",
+					"shape": "box"
+				})
+			__nodes__[child.loc] = node_diagram_id
+			to_list.append((node_diagram_id, child.loc))
+			diagram["counter"] += 1
+		
+		# Prepare this node
+		node_diagram_id = str(diagram["counter"])
+		g.add_node(node_diagram_id, 
+			{
+					"text": self.script.split('.')[0],
+					"shape": "ellipse"
+			}
+		)
+		__nodes__[self.script] = node_diagram_id
+		diagram["counter"] += 1
+		
+		# Add the script artifact
+		node_diagram_id_script = str(diagram["counter"])
+		g.add_node(node_diagram_id_script, 
+			{
+					"text": self.script + "\n" + diagram["sha"][self.script][0:6] + "...",
+					"shape": "box"
+			}
+		)
+		diagram["counter"] += 1
+		g.add_edge(node_diagram_id_script, node_diagram_id)
+
+		for to_node, loc in to_list:
+			g.add_edge(node_diagram_id, to_node)
+		
+		if self.in_artifacts:
+			for artifact in self.in_artifacts:
+				if artifact.getLocation() in __nodes__:
+					dot.add_edge(__nodes__[artifact.getLocation()], node_diagram_id)
+				else:
+					from_nodes = artifact.parent.__graphWalk__(diagram)
+					for from_node, loc in from_nodes:
+						if loc in [art.getLocation() for art in self.in_artifacts]:
+							g.add_edge(from_node, node_diagram_id)
 		
 		return to_list
 
