@@ -1,3 +1,5 @@
+import jarvis
+
 import sys
 import os
 
@@ -179,6 +181,7 @@ class InceptionFeaturizationModel(ModelBase):
     def benchmark(self, batch_size=1, avg_after=5):
         benchmark_function(self.predict, gen_inception_featurization_inputs, batch_size, avg_after)
         
+@jarvis.func
 def inception_featurizer(in_artifacts, out_artifacts):
     feat_data = []
     encoded_strings = []
@@ -186,13 +189,15 @@ def inception_featurizer(in_artifacts, out_artifacts):
     feat = InceptionFeaturizationModel(inception_model_path=in_artifacts[0].getLocation(), gpu_num=1)
     with open(in_artifacts[1].getLocation(), 'rb') as f:
         training_data = pickle.load(f)
+    i = 0
     for datum in training_data:
+        # print("iteration %d" % i)
+        i += 1
         encoded_string, cls = datum
         encoded_strings.append(encoded_string)
         classes.append(cls)
     feat_encoded_strings = feat.predict(encoded_strings)
-    for i in len(classes):
+    for i in range(len(classes)):
         feat_data.append((feat_encoded_strings[i], classes[i]))
-    with open(out_artifacts[0].getLocation(), 'rb') as f:
+    with open(out_artifacts[0].getLocation(), 'wb') as f:
         pickle.dump(feat_data, f)
-    return os.path.basename(__file__)
