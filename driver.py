@@ -25,5 +25,4 @@ do_test = jarvis.Action(test, [intermediary, clean_testing_tweets])
 model_accuracy = jarvis.Artifact('model_accuracy.txt', do_test)
 
 model_accuracy.pull()
-
 model_accuracy.plot()
