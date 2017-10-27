@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys, git, subprocess, csv, inspect
+from ground import GroundClient
 from graphviz import Digraph
 from shutil import copyfile
 
@@ -38,7 +39,7 @@ class Artifact:
 		module = inspect.getmodule(frame[0])
 		driverfile = module.__file__.split('/')[-1]
 
-		loclist = [self.loc,]
+		loclist = self.parent.out_artifacts
 		self.parent.__run__(loclist)
 		loclist = list(set(loclist))
 
