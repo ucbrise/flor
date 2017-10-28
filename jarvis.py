@@ -19,6 +19,10 @@ def func(f):
 		return inspect.getsourcefile(f).split('/')[-1]
 	return [name_func, wrapped_func]
 
+def ground_client(backend):
+	global __gc__
+	__gc__ = GroundClient(backend)
+
 class Artifact:
 
 	# loc: location
@@ -47,11 +51,24 @@ class Artifact:
 		scriptNames = [driverfile,]
 		self.parent.__scriptNameWalk__(scriptNames)
 		scriptNames = list(set(scriptNames))
+
 		# Now the artifact exists, do git
 		# We resolve the directory name by loc
 		dir_name = self.dir
+
 		# If the directory not exists, need to init repo
 		if not os.path.exists(dir_name):
+
+			# Create a node for every artifact (everything in jarvis.d)
+			# Create a node version for every artifact (everything in jarvis.d)
+
+			# Roughly, actions map to edges
+			# Create an edge for every out-artifact for every action
+			# Create an edge version for every out-artifact for every action
+
+			# Create a graph
+			# Create a graph version, pass it the edges created
+
 			os.makedirs(dir_name)
 			# Move new files to the artifacts repo
 			for loc in loclist:
@@ -295,3 +312,4 @@ class Action:
 
 __visited__ = []
 __nodes__ = {}
+__gc__ = None

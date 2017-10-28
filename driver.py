@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import jarvis
 
+jarvis.ground_client('git')
+
 from crawl import tr_crawl
 do_tr_crawl = jarvis.Action(tr_crawl)
 training_tweets = jarvis.Artifact('training_tweets.csv', do_tr_crawl)
