@@ -94,8 +94,8 @@ class Graph:
         self.edgeVersions = {}
         self.ids = set([])
 
-        self.__loclist__ = None
-        self.__scriptNames__ = None
+        self.__loclist__ = []
+        self.__scriptNames__ = []
 
     def gen_id(self):
         newid = len(self.ids)
@@ -292,15 +292,16 @@ class GitImplementation(GroundAPI):
             nodeVersion.tags = tags
         if parentIds:
             nodeVersion.parentIds = parentIds
-        else:
-            # ALERT: THIS MAY NOT GENERALIZE TO K-LIFTING
-            nlvs = self.getNodeLatestVersions(self.graph.nodes[nodeId].sourceKey)
-            if nlvs:
-                nodeVersion.parentIds = nlvs
-            else:
-                nodeVersion.parentIds = None
-
+        # else:
+        #     # Match node versions with the same tags.
+        #     # ALERT: THIS MAY NOT GENERALIZE TO K-LIFTING
+        #     nlvs = self.getNodeLatestVersions(self.graph.nodes[nodeId].sourceKey)
+        #     if nlvs:
+        #         nodeVersion.parentIds = nlvs
+        #     else:
+        #         nodeVersion.parentIds = None
         nodeversionid = self.graph.gen_id()
+        print(nodeversionid)
         nodeVersion.nodeVersionId = nodeversionid
 
         if nodeVersion.sourceKey in self.graph.nodeVersions:
@@ -359,42 +360,32 @@ class GitImplementation(GroundAPI):
         raise NotImplementedError(
             "Invalid call to GroundClient.getGraphVersionh")
     
-    def commit(self, directory=None):
-        if directory:
-            os.makedirs(directory)
-            for loc in self.graph.__loclist__:
-                os.rename(loc, directory + '/' + loc)
-            for script in self.graph.__scriptNames__:
-                copyfile(script, directory + '/' + script)
-            os.chdir(directory)
-            stage = list(self.graph.__loclist__) + self.graph.__scriptNames__
-            for kee in self.graph.ids:
-                if kee in self.graph.nodes:
-                    serial = self.graph.nodes[kee].to_json()
-                elif kee in self.graph.nodeVersions:
-                    serial = self.graph.nodeVersions[kee].to_json()
-                elif kee in self.graph.edges:
-                    serial = self.graph.edges[kee].to_json()
-                else:
-                    serial = self.graph.edgeVersions[kee].to_json()
-                assert serial is not None
-                with open(str(kee) + '.json', 'w') as f:
-                    f.write(serial)
-                stage.append(str(kee) + '.json')
-            repo = git.Repo.init(os.getcwd())
-            repo.index.add(stage)
-            repo.index.commit("initial commit")
-            tree = repo.tree()
-            with open('.jarvis', 'w') as f:
-                for obj in tree:
-                    commithash = self.__run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
-                    if obj.path != '.jarvis':
-                        f.write(obj.path + " " + commithash + "\n")
-            repo.index.add(['.jarvis'])
-            repo.index.commit('.jarvis commit')
-            os.chdir('../')
-        else:
-            pass
+    def commit(self):
+        stage = []
+        for kee in self.graph.ids:
+            if kee in self.graph.nodes:
+                serial = self.graph.nodes[kee].to_json()
+            elif kee in self.graph.nodeVersions:
+                serial = self.graph.nodeVersions[kee].to_json()
+            elif kee in self.graph.edges:
+                serial = self.graph.edges[kee].to_json()
+            else:
+                serial = self.graph.edgeVersions[kee].to_json()
+            assert serial is not None
+            with open(str(kee) + '.json', 'w') as f:
+                f.write(serial)
+            stage.append(str(kee) + '.json')
+        repo = git.Repo.init(os.getcwd())
+        repo.index.add(stage)
+        # repo.index.commit("ground commit")
+        # tree = repo.tree()
+        # with open('.jarvis', 'w') as f:
+        #     for obj in tree:
+        #         commithash = self.__run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
+        #         if obj.path != '.jarvis':
+        #             f.write(obj.path + " " + commithash + "\n")
+        # repo.index.add(['.jarvis'])
+        # repo.index.commit('.jarvis commit')
 
     def to_class(self, obj):
         if obj['class'] == 'Node':
@@ -419,24 +410,27 @@ class GitImplementation(GroundAPI):
             else:
                 self.graph.nodeVersions[nv.sourceKey] = [nv, ]
             self.graph.nodeVersions[nv.nodeVersionId] = nv
-            self.graph.ids |= {nv.nodeId, }
+            self.graph.ids |= {nv.nodeVersionId, }
         
         elif obj['class'] == 'Edge':
-            e = Edge()
-            e.sourceKey = obj['sourceKey']
-            e.fromNodeId = obj['fromNodeId']
-            e.toNodeId =  obj['toNodeId']
-            e.edgeId = obj['edgeId']
+            raise NotImplementedError()
+            # e = Edge()
+            # e.sourceKey = obj['sourceKey']
+            # e.fromNodeId = obj['fromNodeId']
+            # e.toNodeId =  obj['toNodeId']
+            # e.edgeId = obj['edgeId']
+        elif obj['class'] == 'EdgeVersion':
+            raise NotImplementedError()
+        else:
+            raise NotImplementedError()
 
 
 
 
 
-    def load(self, directory):
-        if not os.path.exists(directory) or self.graph.ids:
+    def load(self):
+        if self.graph.ids:
             return
-        os.chdir(directory)
-        count = 0
         for _, _, filenames in os.walk('.'):
             for filename in filenames:
                 filename = filename.split('.')
@@ -444,8 +438,8 @@ class GitImplementation(GroundAPI):
                     filename = '.'.join(filename)
                     with open(filename, 'r') as f:
                         self.to_class(json.loads(f.read()))
-        
-        os.chdir('../')
+        print('ids: {}'.format(self.graph.ids))
+
 
 class GroundImplementation(GroundAPI):
 
