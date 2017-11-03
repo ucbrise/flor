@@ -57,9 +57,13 @@ class Artifact:
         dir_name = self.dir
         
         gc = __gc__
+
+        # Need to sort to compare
+        loclist.sort()
+        scriptNames.sort()
         tag = {
-            'Artifacts': loclist,
-            'Actions': scriptNames
+            'Artifacts': [i for i in loclist],
+            'Actions': [i for i in scriptNames]
         } 
 
         # If the directory not exists, need to init repo
@@ -109,7 +113,15 @@ class Artifact:
             gc.load()
 
             run_node = gc.getNode('Run')
-            gc.createNodeVersion(run_node.nodeId, tag)
+            run_node_latest_versions = gc.getNodeLatestVersions('Run')
+            parents = []
+            for nlv in run_node_latest_versions:
+                if nlv.tags == tag:
+                    parents.append(nlv.nodeVersionId)
+            if not parents:
+                parents = None
+            gc.createNodeVersion(run_node.nodeId, tag, parents)
+
 
 
             repo = git.Repo(os.getcwd())

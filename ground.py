@@ -301,7 +301,6 @@ class GitImplementation(GroundAPI):
         #     else:
         #         nodeVersion.parentIds = None
         nodeversionid = self.graph.gen_id()
-        print(nodeversionid)
         nodeVersion.nodeVersionId = nodeversionid
 
         if nodeVersion.sourceKey in self.graph.nodeVersions:
@@ -438,7 +437,6 @@ class GitImplementation(GroundAPI):
                     filename = '.'.join(filename)
                     with open(filename, 'r') as f:
                         self.to_class(json.loads(f.read()))
-        print('ids: {}'.format(self.graph.ids))
 
 
 class GroundImplementation(GroundAPI):
