@@ -38,8 +38,11 @@ class Sample:
     """
 
     def __init__(self, rate, loc, batch, times=1):
-        assert rate <= 1 and rate >= 0
+        assert rate <= 1 and rate > 0
         assert times >= 1
+
+        global __sample_interm_files__
+
         self.rate = rate
         self.times = times
         self.batch = batch
@@ -53,6 +56,8 @@ class Sample:
         self.loc = loc.split('.')[0] + '.pkl'
         self.dir = 'jarvis.d'
         self.parent = self.action
+
+        __sample_interm_files__ |= {self.loc,}
 
         self.parent.out_artifacts.append(self)
 
@@ -165,10 +170,12 @@ class Artifact:
             for script in scriptNames:
                 copyfile(script, dir_name + "/1/" + script)
             os.chdir(dir_name + '/1')
-            repo = git.Repo.init(os.getcwd())
-            repo.index.add(loclist + scriptNames)
 
             gc.commit()
+            os.chdir('../')
+
+            repo = git.Repo.init(os.getcwd())
+            repo.index.add(['1',])
 
             repo.index.commit("initial commit")
             tree = repo.tree()
@@ -179,16 +186,26 @@ class Artifact:
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
             repo.index.commit('.jarvis commit')
-            os.chdir('../../')
+            os.chdir('../')
         else:
-            nthDir =  str(len(os.listdir(dir_name)) + 1)
+
+            def is_number(s):
+                try:
+                    float(s)
+                    return True
+                except ValueError:
+                    return False
+
+            listdir = [x for x in filter(is_number, os.listdir(dir_name))]
+
+            nthDir =  str(len(listdir) + 1)
             os.makedirs(dir_name + "/" + nthDir)
             for loc in loclist:
                 copyfile(loc, dir_name + "/" + nthDir + "/" + loc)
             for script in scriptNames:
                 copyfile(script, dir_name + "/" + nthDir + "/" + script)
             os.chdir(dir_name + "/" + nthDir)
-            repo = git.Repo.init(os.getcwd())
+            # repo = git.Repo.init(os.getcwd())
 
             gc.load()
 
@@ -202,11 +219,12 @@ class Artifact:
                 parents = None
             gc.createNodeVersion(run_node.nodeId, tag, parents)
 
-
-
-            repo.index.add(loclist + scriptNames)
-
             gc.commit()
+
+            os.chdir('../')
+            repo = git.Repo(os.getcwd())
+
+            repo.index.add([nthDir,])
 
             repo.index.commit("incremental commit")
             tree = repo.tree()
@@ -217,7 +235,7 @@ class Artifact:
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
             repo.index.commit('.jarvis commit')
-            os.chdir('../../')
+            os.chdir('../')
 
     def __pop__(self, samples):
         if not samples:
@@ -247,11 +265,13 @@ class Artifact:
             self.parent.__run__(loclist)
         loclist = list(set(loclist))
 
+
         # get the script names
         scriptNames = [driverfile,]
         if self.parent:
             self.parent.__scriptNameWalk__(scriptNames)
         scriptNames = [x for x in set(scriptNames) if x != 'sample.79b14259b09e2608e3f704d0fd5a80fd']
+
 
         # Need to sort to compare
         loclist.sort()
@@ -263,16 +283,35 @@ class Artifact:
 
 
     def pull(self):
-        userDefFiles = os.listdir()
+        userDefFiles = set(os.listdir()) - __sample_interm_files__
         while True:
             self.__pull__()
             self.__commit__()
             subtreeMaxed = self.__pop__(__samples__)
             if subtreeMaxed:
                 break
-        intermediateFiles = set(self.loclist) - set(userDefFiles)
+        intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
+        commitables = []
+        for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
+            copyfile(file, self.dir + '/' + file)
+            commitables.append(file)
+        os.chdir(self.dir)
+        repo = git.Repo(os.getcwd())
+        repo.index.add(commitables)
+        repo.index.commit("incremental commit")
+        tree = repo.tree()
+        with open('.jarvis', 'w') as f:
+            for obj in tree:
+                commithash = __run_proc__("git log " + obj.path).replace('\n', ' ').split()[1]
+                if obj.path != '.jarvis':
+                    f.write(obj.path + " " + commithash + "\n")
+        repo.index.add(['.jarvis'])
+        repo.index.commit('.jarvis commit')
+        os.chdir('../')
+
+
 
 
     def plot(self, rankdir=None):
@@ -504,3 +543,4 @@ __samples__ = []
 __nodes__ = {}
 __gc__ = None
 __jarvisFile__ = 'driver.py'
+__sample_interm_files__ = set([])
