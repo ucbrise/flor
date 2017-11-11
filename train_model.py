@@ -27,44 +27,44 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 
 @jarvis.func
 def train(in_artifacts, out_artifacts):
-	intermediary = {}
+    intermediary = {}
 
-	in_artifact = in_artifacts[0]
-	out_artifact = out_artifacts[0]
+    in_artifact = in_artifacts[0]
+    out_artifact = out_artifacts[0]
 
-	with open(abspath + '/' + in_artifact.getLocation(), 'rb') as f:
-	    tweet_df = pickle.load(f)
+    with open(abspath + '/' + in_artifact.getLocation(), 'rb') as f:
+        tweet_df = pickle.load(f)
 
-	# Select a relevant subset of features
-	tweet_df = tweet_df[relevant_attributes]
+    # Select a relevant subset of features
+    tweet_df = tweet_df[relevant_attributes]
 
-	# Convert string country code to integer country code
-	country_codes = set([i for i in tweet_df["code"]])
-	country_dict = {}
-	for idx, code in enumerate(country_codes):
-	    country_dict[code] = idx
+    # Convert string country code to integer country code
+    country_codes = set([i for i in tweet_df["code"]])
+    country_dict = {}
+    for idx, code in enumerate(country_codes):
+        country_dict[code] = idx
 
-	intermediary["country_dict"] = country_dict
-	    
-	def convert_to_int(country_string):
-	    return country_dict[country_string]
+    intermediary["country_dict"] = country_dict
+        
+    def convert_to_int(country_string):
+        return country_dict[country_string]
 
-	tweet_df["code"] = tweet_df["code"].apply(convert_to_int)
+    tweet_df["code"] = tweet_df["code"].apply(convert_to_int)
 
-	## Convert tweet to bag of words for learning
+    ## Convert tweet to bag of words for learning
 
-	# Tokenize Text
-	count_vect = CountVectorizer()
-	X_train = count_vect.fit_transform(tweet_df["tweet"])
+    # Tokenize Text
+    count_vect = CountVectorizer()
+    X_train = count_vect.fit_transform(tweet_df["tweet"])
 
-	intermediary["vectorizer"] = count_vect
+    intermediary["vectorizer"] = count_vect
 
-	X_train_label = np.array(tweet_df["code"])
+    X_train_label = np.array(tweet_df["code"])
 
-	# Train a classifier
-	clf = MultinomialNB().fit(X_train, X_train_label)
+    # Train a classifier
+    clf = MultinomialNB().fit(X_train, X_train_label)
 
-	intermediary["classifier"] = clf
+    intermediary["classifier"] = clf
 
-	with open(abspath + '/' + out_artifact.getLocation(), 'wb') as f:
-	    pickle.dump(intermediary, f)
+    with open(abspath + '/' + out_artifact.getLocation(), 'wb') as f:
+        pickle.dump(intermediary, f)

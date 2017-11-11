@@ -3,8 +3,11 @@ import os, sys, git, subprocess, csv, inspect
 from ground import GroundClient
 from graphviz import Digraph
 from shutil import copyfile
-
+from random import shuffle
 import networkx as nx
+import pickle
+import math
+
 
 def __run_proc__(bashCommand):
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
@@ -19,54 +22,127 @@ def func(f):
         return inspect.getsourcefile(f).split('/')[-1]
     return [name_func, wrapped_func]
 
+
 def ground_client(backend):
     global __gc__
     __gc__ = GroundClient(backend)
+
+def jarvisFile(loc):
+    global __jarvisFile__
+    __jarvisFile__ = loc
+
+class Sample:
+
+    """
+    Constraint: Can only sample static, pre-existing data.
+    """
+
+    def __init__(self, rate, loc, batch, times=1):
+        assert rate <= 1 and rate >= 0
+        assert times >= 1
+        self.rate = rate
+        self.times = times
+        self.batch = batch
+
+        artifact = Artifact(loc)
+
+        # Action part
+        self.action = Action([self.__dummy__, self.__dummy__], [artifact])
+
+        # Artifact part
+        self.loc = loc.split('.')[0] + '.pkl'
+        self.dir = 'jarvis.d'
+        self.parent = self.action
+
+        self.parent.out_artifacts.append(self)
+
+        self.popped = False
+        self.superBuffer = None
+
+        self.__sample__(loc, self.loc)
+
+        __samples__.append(self)
+
+        # Initialization pop
+        self.__pop__()
+
+    def __sample__(self, in_artifact, out_artifact):
+        loc = in_artifact
+        out_loc = out_artifact
+        super_buffer = []
+        with open(loc, 'r') as f:
+            buffer = [x.strip() for x in f.readlines() if x.strip()]
+        for i in range(self.times):
+            shuffle(buffer)
+            buff = buffer[0:math.ceil(self.rate*len(buffer))]
+            super_buffer.append(buff)
+        # with open(out_loc, 'wb') as f:
+        #     pickle.dump(super_buffer, f)
+        assert len(super_buffer) > 0
+        self.superBuffer = super_buffer
+        self.i = 0
+        self.n = len(super_buffer)
+        if not self.batch:
+            self.j = 0
+            self.m = len(super_buffer[0])
+            assert self.m > 0
+        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
+
+    def __dummy__(self, in_artifacts=None, out_artifacts=None):
+        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
+
+    def __pop__(self):
+        if self.i >= self.n:
+            return False
+        if self.batch:
+            with open(self.loc, 'wb') as f:
+                pickle.dump(self.superBuffer[self.i], f)
+                self.i += 1
+            return True
+        else:
+            if self.j >= self.m:
+                self.i += 1
+                self.j = 0
+                return self.__pop__()
+            with open(self.loc, 'wb') as f:
+                pickle.dump(self.superBuffer[self.i][self.j], f)
+                self.j += 1
+            return True
+
+    def __reset__(self):
+        self.i = 0
+        self.j = 0
+        self.__pop__()
+
+    def getLocation(self):
+        return self.loc
+
+
 
 class Artifact:
 
     # loc: location
     # parent: each artifact is produced by 1 action
-    def __init__(self, loc, parent):
+    def __init__(self, loc, parent=None):
         self.loc = loc
         self.dir = "jarvis.d"
         self.parent = parent
 
         # Now we bind the artifact to its parent
-        self.parent.out_artifacts.append(self)
+        if self.parent:
+            self.parent.out_artifacts.append(self)
 
-    def pull(self):
-        global __visited__
-        __visited__ = []
+        self.popped = False
 
-        frame = inspect.stack()[1]
-        module = inspect.getmodule(frame[0])
-        driverfile = module.__file__.split('/')[-1]
-
-        loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
-        self.parent.__run__(loclist)
-        loclist = list(set(loclist))
-
-        # get the script names
-        scriptNames = [driverfile,]
-        self.parent.__scriptNameWalk__(scriptNames)
-        scriptNames = list(set(scriptNames))
-
-        # Now the artifact exists, do git
-        # We resolve the directory name by loc
-        dir_name = self.dir
-        
+    def __commit__(self):
         gc = __gc__
-
-        # Need to sort to compare
-        loclist.sort()
-        scriptNames.sort()
+        dir_name = self.dir
+        loclist = self.loclist
+        scriptNames = self.scriptNames
         tag = {
             'Artifacts': [i for i in loclist],
             'Actions': [i for i in scriptNames]
-        } 
-
-        # If the directory not exists, need to init repo
+        }
         if not os.path.exists(dir_name):
             nodeid = gc.createNode('Run')
             gc.createNodeVersion(nodeid, tag)
@@ -82,12 +158,13 @@ class Artifact:
             # Create a graph version, pass it the edges created
 
             os.makedirs(dir_name)
+            os.makedirs(dir_name + '/1')
             # Move new files to the artifacts repo
             for loc in loclist:
-                os.rename(loc, dir_name + "/" + loc)
+                copyfile(loc, dir_name + "/1/" + loc)
             for script in scriptNames:
-                copyfile(script, dir_name + "/" + script)
-            os.chdir(dir_name)
+                copyfile(script, dir_name + "/1/" + script)
+            os.chdir(dir_name + '/1')
             repo = git.Repo.init(os.getcwd())
             repo.index.add(loclist + scriptNames)
 
@@ -102,29 +179,31 @@ class Artifact:
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
             repo.index.commit('.jarvis commit')
-            os.chdir('../')
+            os.chdir('../../')
         else:
+            nthDir =  str(len(os.listdir(dir_name)) + 1)
+            os.makedirs(dir_name + "/" + nthDir)
             for loc in loclist:
-                os.rename(loc, dir_name + "/" + loc)
+                copyfile(loc, dir_name + "/" + nthDir + "/" + loc)
             for script in scriptNames:
-                copyfile(script, dir_name + "/" + script)
-            os.chdir(dir_name)
+                copyfile(script, dir_name + "/" + nthDir + "/" + script)
+            os.chdir(dir_name + "/" + nthDir)
+            repo = git.Repo.init(os.getcwd())
 
             gc.load()
 
             run_node = gc.getNode('Run')
-            run_node_latest_versions = gc.getNodeLatestVersions('Run')
+            # run_node_latest_versions = gc.getNodeLatestVersions('Run')
             parents = []
-            for nlv in run_node_latest_versions:
-                if nlv.tags == tag:
-                    parents.append(nlv.nodeVersionId)
+            # for nlv in run_node_latest_versions:
+            #     if nlv.tags == tag:
+            #         parents.append(nlv.nodeVersionId)
             if not parents:
                 parents = None
             gc.createNodeVersion(run_node.nodeId, tag, parents)
 
 
 
-            repo = git.Repo(os.getcwd())
             repo.index.add(loclist + scriptNames)
 
             gc.commit()
@@ -138,8 +217,64 @@ class Artifact:
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
             repo.index.commit('.jarvis commit')
-            os.chdir('../')
-            
+            os.chdir('../../')
+
+    def __pop__(self, samples):
+        if not samples:
+            return True
+        subtreeMaxed = self.__pop__(samples[0:-1])
+        if subtreeMaxed:
+            popSuccess = samples[-1].__pop__()
+            if not popSuccess:
+                return True
+            [sample.__reset__() for sample in samples[0:-1]]
+        return False
+
+
+    def __pull__(self):
+        global __visited__
+        __visited__ = []
+
+        frame = inspect.stack()[1]
+        module = inspect.getmodule(frame[0])
+        driverfile = __jarvisFile__ #module.__file__.split('/')[-1]
+
+        if self.parent:
+            loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
+        else:
+            loclist = [self.getLocation(),]
+        if self.parent:
+            self.parent.__run__(loclist)
+        loclist = list(set(loclist))
+
+        # get the script names
+        scriptNames = [driverfile,]
+        if self.parent:
+            self.parent.__scriptNameWalk__(scriptNames)
+        scriptNames = [x for x in set(scriptNames) if x != 'sample.79b14259b09e2608e3f704d0fd5a80fd']
+
+        # Need to sort to compare
+        loclist.sort()
+        scriptNames.sort()
+
+        self.loclist = loclist
+        self.scriptNames = scriptNames
+
+
+
+    def pull(self):
+        userDefFiles = os.listdir()
+        while True:
+            self.__pull__()
+            self.__commit__()
+            subtreeMaxed = self.__pop__(__samples__)
+            if subtreeMaxed:
+                break
+        intermediateFiles = set(self.loclist) - set(userDefFiles)
+        for file in intermediateFiles:
+            os.remove(file)
+
+
     def plot(self, rankdir=None):
         # WARNING: can't plot before pulling.
         # Prep globals, passed through arguments
@@ -149,19 +284,25 @@ class Artifact:
         dot = Digraph()
         diagram = {"dot": dot, "counter": 0, "sha": {}}
 
-        with open('jarvis.d/.jarvis') as csvfile:
-            reader = csv.reader(csvfile, delimiter=' ')
-            for row in reader:
-                ob, sha = row
-                diagram["sha"][ob] = sha
+        # with open('jarvis.d/.jarvis') as csvfile:
+        #     reader = csv.reader(csvfile, delimiter=' ')
+        #     for row in reader:
+        #         ob, sha = row
+        #         diagram["sha"][ob] = sha
 
-        self.parent.__plotWalk__(diagram)
-        
+        if self.parent:
+            self.parent.__plotWalk__(diagram)
+        else:
+            node_diagram_id = str(diagram["counter"])
+            dot.node(node_diagram_id, self.loc, shape="box")
+            __nodes__[self.loc] = node_diagram_id
+
+
         dot.format = 'png'
         if rankdir == 'LR':
             dot.attr(rankdir='LR')
         dot.render('driver.gv', view=True)
-        
+
     def to_graph(self, rankdir=None):
         # WARNING: can't plot before pulling.
         # Prep globals, passed through arguments
@@ -171,7 +312,7 @@ class Artifact:
 
         diagram = {
             "g": nx.Graph(),
-            "counter": 0, 
+            "counter": 0,
             "sha": {}
             }
 
@@ -181,10 +322,13 @@ class Artifact:
                 ob, sha = row
                 diagram["sha"][ob] = sha
 
-        self.parent.__graphWalk__(diagram)
-        
+        if self.parent:
+            self.parent.__graphWalk__(diagram)
+        else:
+            raise NotImplementedError()
+
         return diagram['g']
-        
+
 
     def getLocation(self):
         return self.loc
@@ -221,7 +365,6 @@ class Action:
         self.out_artifacts = []
         self.in_artifacts = in_artifacts
 
-
     def __run__(self, loclist):
         outNames = ''
         for out_artifact in self.out_artifacts:
@@ -231,10 +374,10 @@ class Action:
         if self.in_artifacts:
             for artifact in self.in_artifacts:
                 loclist.append(artifact.loc)
-                artifact.parent.__run__(loclist)
+                if artifact.parent:
+                    artifact.parent.__run__(loclist)
         self.script = self.func(self.in_artifacts, self.out_artifacts)
         __visited__.append(self.script+outNames)
-
 
     def produce(self, loc):
         return Artifact(loc, self)
@@ -243,7 +386,9 @@ class Action:
         scriptNames.append(self.script)
         if self.in_artifacts:
             for artifact in self.in_artifacts:
-                artifact.parent.__scriptNameWalk__(scriptNames)
+                if artifact.parent:
+                    artifact.parent.__scriptNameWalk__(scriptNames)
+
                 
     def __plotWalk__(self, diagram):
         dot = diagram["dot"]
@@ -255,7 +400,7 @@ class Action:
         # Prepare the children nodes
         for child in self.out_artifacts:
             node_diagram_id = str(diagram["counter"])
-            dot.node(node_diagram_id, child.loc + "\n" + diagram["sha"][child.loc][0:6] + "...", shape="box")
+            dot.node(node_diagram_id, child.loc, shape="box")
             __nodes__[child.loc] = node_diagram_id
             to_list.append((node_diagram_id, child.loc))
             diagram["counter"] += 1
@@ -267,10 +412,11 @@ class Action:
         diagram["counter"] += 1
         
         # Add the script artifact
-        node_diagram_id_script = str(diagram["counter"])
-        dot.node(node_diagram_id_script, self.script + "\n" + diagram["sha"][self.script][0:6] + "...", shape="box")
-        diagram["counter"] += 1
-        dot.edge(node_diagram_id_script, node_diagram_id)
+        if self.script != 'sample.79b14259b09e2608e3f704d0fd5a80fd':
+            node_diagram_id_script = str(diagram["counter"])
+            dot.node(node_diagram_id_script, self.script, shape="box")
+            diagram["counter"] += 1
+            dot.edge(node_diagram_id_script, node_diagram_id)
 
         for to_node, loc in to_list:
             dot.edge(node_diagram_id, to_node)
@@ -280,10 +426,19 @@ class Action:
                 if artifact.getLocation() in __nodes__:
                     dot.edge(__nodes__[artifact.getLocation()], node_diagram_id)
                 else:
-                    from_nodes = artifact.parent.__plotWalk__(diagram)
-                    for from_node, loc in from_nodes:
-                        if loc in [art.getLocation() for art in self.in_artifacts]:
-                            dot.edge(from_node, node_diagram_id)
+                    if artifact.parent:
+                        from_nodes = artifact.parent.__plotWalk__(diagram)
+                        for from_node, loc in from_nodes:
+                            if loc in [art.getLocation() for art in self.in_artifacts]:
+                                dot.edge(from_node, node_diagram_id)
+                    else:
+                        node_diagram_id2 = str(diagram["counter"])
+                        dot.node(node_diagram_id2, artifact.loc,
+                                 shape="box")
+                        __nodes__[artifact.loc] = node_diagram_id2
+                        diagram["counter"] += 1
+                        dot.edge(node_diagram_id2, node_diagram_id)
+
         
         return to_list
 
@@ -299,7 +454,7 @@ class Action:
             node_diagram_id = str(diagram["counter"])
             g.add_node(node_diagram_id, 
                 {
-                    "text": child.loc + "\n" + diagram["sha"][child.loc][0:6] + "...",
+                    "text": child.loc ,
                     "shape": "box"
                 })
             __nodes__[child.loc] = node_diagram_id
@@ -321,7 +476,7 @@ class Action:
         node_diagram_id_script = str(diagram["counter"])
         g.add_node(node_diagram_id_script, 
             {
-                    "text": self.script + "\n" + diagram["sha"][self.script][0:6] + "...",
+                    "text": self.script ,
                     "shape": "box"
             }
         )
@@ -334,7 +489,7 @@ class Action:
         if self.in_artifacts:
             for artifact in self.in_artifacts:
                 if artifact.getLocation() in __nodes__:
-                    dot.add_edge(__nodes__[artifact.getLocation()], node_diagram_id)
+                    g.add_edge(__nodes__[artifact.getLocation()], node_diagram_id)
                 else:
                     from_nodes = artifact.parent.__graphWalk__(diagram)
                     for from_node, loc in from_nodes:
@@ -343,6 +498,9 @@ class Action:
         
         return to_list
 
+
 __visited__ = []
+__samples__ = []
 __nodes__ = {}
 __gc__ = None
+__jarvisFile__ = 'driver.py'
