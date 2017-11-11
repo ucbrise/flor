@@ -430,6 +430,9 @@ class GitImplementation(GroundAPI):
     def load(self):
         if self.graph.ids:
             return
+        os.chdir('../')
+        prevDir = str(len(os.listdir()) - 1)
+        os.chdir(prevDir)
         for _, _, filenames in os.walk('.'):
             for filename in filenames:
                 filename = filename.split('.')
@@ -437,6 +440,7 @@ class GitImplementation(GroundAPI):
                     filename = '.'.join(filename)
                     with open(filename, 'r') as f:
                         self.to_class(json.loads(f.read()))
+        os.chdir('../' + str(int(prevDir) + 1))
 
 
 class GroundImplementation(GroundAPI):
