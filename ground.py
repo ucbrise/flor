@@ -373,9 +373,9 @@ class GitImplementation(GroundAPI):
             assert serial is not None
             with open(str(kee) + '.json', 'w') as f:
                 f.write(serial)
-            stage.append(str(kee) + '.json')
-        repo = git.Repo.init(os.getcwd())
-        repo.index.add(stage)
+            # stage.append(str(kee) + '.json')
+        # repo = git.Repo.init(os.getcwd())
+        # repo.index.add(stage)
         # repo.index.commit("ground commit")
         # tree = repo.tree()
         # with open('.jarvis', 'w') as f:
@@ -431,7 +431,17 @@ class GitImplementation(GroundAPI):
         if self.graph.ids:
             return
         os.chdir('../')
-        prevDir = str(len(os.listdir()) - 1)
+
+        def is_number(s):
+            try:
+                float(s)
+                return True
+            except ValueError:
+                return False
+
+        listdir = [x for x in filter(is_number, os.listdir())]
+
+        prevDir = str(len(listdir) - 1)
         os.chdir(prevDir)
         for _, _, filenames in os.walk('.'):
             for filename in filenames:
