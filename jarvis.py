@@ -164,6 +164,27 @@ class Artifact:
             'Artifacts': [i for i in loclist],
             'Actions': [i for i in scriptNames]
         }
+        for sample in __samples__:
+            name = sample.loc.split('.')[0]
+            if not sample.batch:
+                if not sample.to_csv:
+                    with open(sample.loc, 'rb') as f:
+                        value = pickle.load(f)
+                else:
+                    with open(sample.loc, 'r') as f:
+                        value = f.readline().strip()
+            else:
+                value = sample.i - 1
+            tag[name] = value
+
+        is_pickle = self.loc.split('.')[-1] == '.pkl'
+        if is_pickle:
+            with open(self.loc, 'rb') as f:
+                value = pickle.load(f)
+        else:
+            with open(self.loc, 'r') as f:
+                value = f.readline().strip()
+        tag[self.loc.split('.')[0]] = value
         if not os.path.exists(dir_name):
             nodeid = gc.createNode('Run')
             gc.createNodeVersion(nodeid, tag)
@@ -180,6 +201,7 @@ class Artifact:
 
             os.makedirs(dir_name)
             os.makedirs(dir_name + '/1')
+            __dirs_this_run__.append('1')
             # Move new files to the artifacts repo
             for loc in loclist:
                 copyfile(loc, dir_name + "/1/" + loc)
@@ -215,6 +237,7 @@ class Artifact:
             listdir = [x for x in filter(is_number, os.listdir(dir_name))]
 
             nthDir =  str(len(listdir) + 1)
+            __dirs_this_run__.append(nthDir)
             os.makedirs(dir_name + "/" + nthDir)
             for loc in loclist:
                 copyfile(loc, dir_name + "/" + nthDir + "/" + loc)
@@ -560,3 +583,4 @@ __nodes__ = {}
 __gc__ = None
 __jarvisFile__ = 'driver.py'
 __sample_interm_files__ = set([])
+__dirs_this_run__ = []
