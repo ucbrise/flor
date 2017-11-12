@@ -37,7 +37,7 @@ class Sample:
     Constraint: Can only sample static, pre-existing data.
     """
 
-    def __init__(self, rate, loc, batch, times=1):
+    def __init__(self, rate, loc, batch, times=1, to_csv=False):
         assert rate <= 1 and rate > 0
         assert times >= 1
 
@@ -46,6 +46,7 @@ class Sample:
         self.rate = rate
         self.times = times
         self.batch = batch
+        self.to_csv = to_csv
 
         artifact = Artifact(loc)
 
@@ -53,7 +54,10 @@ class Sample:
         self.action = Action([self.__dummy__, self.__dummy__], [artifact])
 
         # Artifact part
-        self.loc = loc.split('.')[0] + '.pkl'
+        if not self.to_csv:
+            self.loc = 'sampled_' + loc.split('.')[0] + '.pkl'
+        else:
+            self.loc = 'sampled_' + loc.split('.')[0] + '.csv'
         self.dir = 'jarvis.d'
         self.parent = self.action
 
@@ -100,18 +104,30 @@ class Sample:
         if self.i >= self.n:
             return False
         if self.batch:
-            with open(self.loc, 'wb') as f:
-                pickle.dump(self.superBuffer[self.i], f)
-                self.i += 1
+            if not self.to_csv:
+                with open(self.loc, 'wb') as f:
+                    pickle.dump(self.superBuffer[self.i], f)
+                    self.i += 1
+            else:
+                with open(self.loc, 'w') as f:
+                    for line in self.superBuffer[self.i]:
+                        f.write(line + '\n')
+                    self.i += 1
             return True
         else:
             if self.j >= self.m:
                 self.i += 1
                 self.j = 0
                 return self.__pop__()
-            with open(self.loc, 'wb') as f:
-                pickle.dump(self.superBuffer[self.i][self.j], f)
-                self.j += 1
+            if not self.to_csv:
+                with open(self.loc, 'wb') as f:
+                    pickle.dump(self.superBuffer[self.i][self.j], f)
+                    self.j += 1
+            else:
+                with open(self.loc, 'w') as f:
+                    for line in self.superBuffer[self.i][self.j]:
+                        f.write(line + '\n')
+                    self.j += 1
             return True
 
     def __reset__(self):
