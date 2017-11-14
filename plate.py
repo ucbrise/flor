@@ -12,4 +12,8 @@ from mult import multiply
 do_multiply = jarvis.Action(multiply, [ith_param, ith_param2])
 product = jarvis.Artifact('product.txt', do_multiply)
 
-product.pull()
+do_multiply2 = jarvis.Action(multiply, [product, ith_param2])
+product2 = jarvis.Artifact('product2.txt', do_multiply2)
+
+product2.pull()
+product2.plot()
