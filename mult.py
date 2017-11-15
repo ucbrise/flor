@@ -28,4 +28,5 @@ def multiply(in_artifacts, out_artifacts):
     z = int(x)*int(y)
     with open(out_loc, 'w') as f:
         f.write(str(z) + '\n')
-    print(z)
+    if out_loc == 'product2.txt':
+        print(z)
