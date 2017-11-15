@@ -31,115 +31,6 @@ def jarvisFile(loc):
     global __jarvisFile__
     __jarvisFile__ = loc
 
-class Sample:
-
-    """
-    Constraint: Can only sample static, pre-existing data.
-    """
-
-    def __init__(self, rate, loc, batch, times=1, to_csv=False):
-        assert rate <= 1 and rate > 0
-        assert times >= 1
-
-        global __sample_interm_files__
-
-        self.rate = rate
-        self.times = times
-        self.batch = batch
-        self.to_csv = to_csv
-
-        artifact = Artifact(loc)
-
-        # Action part
-        self.action = Action([self.__dummy__, self.__dummy__], [artifact])
-
-        # Artifact part
-        if not self.to_csv:
-            self.loc = 'sampled_' + loc.split('.')[0] + '.pkl'
-        else:
-            self.loc = 'sampled_' + loc.split('.')[0] + '.csv'
-        self.dir = 'jarvis.d'
-        self.parent = self.action
-
-        __sample_interm_files__ |= {self.loc,}
-
-        self.parent.out_artifacts.append(self)
-
-        self.popped = False
-        self.superBuffer = None
-
-        self.__sample__(loc, self.loc)
-
-        __samples__.append(self)
-
-        # Initialization pop
-        self.__pop__()
-
-    def __sample__(self, in_artifact, out_artifact):
-        loc = in_artifact
-        out_loc = out_artifact
-        super_buffer = []
-        with open(loc, 'r') as f:
-            buffer = [x.strip() for x in f.readlines() if x.strip()]
-        for i in range(self.times):
-            shuffle(buffer)
-            buff = buffer[0:math.ceil(self.rate*len(buffer))]
-            super_buffer.append(buff)
-        # with open(out_loc, 'wb') as f:
-        #     pickle.dump(super_buffer, f)
-        assert len(super_buffer) > 0
-        self.superBuffer = super_buffer
-        self.i = 0
-        self.n = len(super_buffer)
-        if not self.batch:
-            self.j = 0
-            self.m = len(super_buffer[0])
-            assert self.m > 0
-        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
-
-    def __dummy__(self, in_artifacts=None, out_artifacts=None):
-        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
-
-    def __pop__(self):
-        if self.i >= self.n:
-            return False
-        if self.batch:
-            if not self.to_csv:
-                with open(self.loc, 'wb') as f:
-                    pickle.dump(self.superBuffer[self.i], f)
-                    self.i += 1
-            else:
-                with open(self.loc, 'w') as f:
-                    for line in self.superBuffer[self.i]:
-                        f.write(line + '\n')
-                    self.i += 1
-            return True
-        else:
-            if self.j >= self.m:
-                self.i += 1
-                self.j = 0
-                return self.__pop__()
-            if not self.to_csv:
-                with open(self.loc, 'wb') as f:
-                    pickle.dump(self.superBuffer[self.i][self.j], f)
-                    self.j += 1
-            else:
-                with open(self.loc, 'w') as f:
-                    for line in self.superBuffer[self.i][self.j]:
-                        f.write(line + '\n')
-                    self.j += 1
-            return True
-
-    def __reset__(self):
-        self.i = 0
-        self.j = 0
-        self.__pop__()
-
-    def getLocation(self):
-        return self.loc
-
-
-
 class Artifact:
 
     # loc: location
@@ -177,7 +68,7 @@ class Artifact:
                 value = sample.i - 1
             tag[name] = value
 
-        is_pickle = self.loc.split('.')[-1] == '.pkl'
+        is_pickle = self.loc.split('.')[-1] == 'pkl'
         if is_pickle:
             with open(self.loc, 'rb') as f:
                 value = pickle.load(f)
@@ -276,10 +167,10 @@ class Artifact:
             repo.index.commit('.jarvis commit')
             os.chdir('../')
 
-    def __pop__(self, samples):
+    def __art_pop__(self, samples):
         if not samples:
             return True
-        subtreeMaxed = self.__pop__(samples[0:-1])
+        subtreeMaxed = self.__art_pop__(samples[0:-1])
         if subtreeMaxed:
             popSuccess = samples[-1].__pop__()
             if not popSuccess:
@@ -319,14 +210,20 @@ class Artifact:
         self.loclist = loclist
         self.scriptNames = scriptNames
 
-
+    def __activate__(self):
+        if type(self) == Sample:
+            self.__enable__()
+        if self.parent:
+            for in_art in self.parent.in_artifacts:
+                in_art.__activate__()
 
     def pull(self):
+        self.__activate__()
         userDefFiles = set(os.listdir()) - __sample_interm_files__
         while True:
             self.__pull__()
             self.__commit__()
-            subtreeMaxed = self.__pop__(__samples__)
+            subtreeMaxed = self.__art_pop__(__samples__)
             if subtreeMaxed:
                 break
         intermediateFiles = set(self.loclist) - userDefFiles
@@ -434,6 +331,109 @@ class Artifact:
     def stat(self):
         pass
 
+class Sample(Artifact):
+
+    """
+    Constraint: Can only sample static, pre-existing data.
+    """
+
+    def __init__(self, rate, loc, batch, times=1, to_csv=False):
+        assert rate <= 1 and rate > 0
+        assert times >= 1
+
+        self.rate = rate
+        self.times = times
+        self.batch = batch
+        self.to_csv = to_csv
+        self.__loc__ = loc
+
+        artifact = Artifact(loc)
+
+        # Action part
+        self.action = Action([self.__dummy__, self.__dummy__], [artifact])
+
+        # Artifact part
+        if not self.to_csv:
+            self.loc = 'sampled_' + loc.split('.')[0] + '.pkl'
+        else:
+            self.loc = 'sampled_' + loc.split('.')[0] + '.csv'
+        self.dir = 'jarvis.d'
+        self.parent = self.action
+
+        self.parent.out_artifacts.append(self)
+
+        self.popped = False
+        self.superBuffer = None
+
+
+    def __enable__(self):
+        global __sample_interm_files__
+        __sample_interm_files__ |= {self.loc, }
+        self.__sample__(self.__loc__, self.loc)
+        __samples__.append(self)
+        # Initialization pop
+        self.__pop__()
+
+
+    def __sample__(self, in_artifact, out_artifact):
+        loc = in_artifact
+        out_loc = out_artifact
+        super_buffer = []
+        with open(loc, 'r') as f:
+            buffer = [x.strip() for x in f.readlines() if x.strip()]
+        for i in range(self.times):
+            shuffle(buffer)
+            buff = buffer[0:math.ceil(self.rate*len(buffer))]
+            super_buffer.append(buff)
+        # with open(out_loc, 'wb') as f:
+        #     pickle.dump(super_buffer, f)
+        assert len(super_buffer) > 0
+        self.superBuffer = super_buffer
+        self.i = 0
+        self.n = len(super_buffer)
+        if not self.batch:
+            self.j = 0
+            self.m = len(super_buffer[0])
+            assert self.m > 0
+        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
+
+    def __dummy__(self, in_artifacts=None, out_artifacts=None):
+        return 'sample.79b14259b09e2608e3f704d0fd5a80fd'
+
+    def __pop__(self):
+        if self.i >= self.n:
+            return False
+        if self.batch:
+            if not self.to_csv:
+                with open(self.loc, 'wb') as f:
+                    pickle.dump(self.superBuffer[self.i], f)
+                    self.i += 1
+            else:
+                with open(self.loc, 'w') as f:
+                    for line in self.superBuffer[self.i]:
+                        f.write(line + '\n')
+                    self.i += 1
+            return True
+        else:
+            if self.j >= self.m:
+                self.i += 1
+                self.j = 0
+                return self.__pop__()
+            if not self.to_csv:
+                with open(self.loc, 'wb') as f:
+                    pickle.dump(self.superBuffer[self.i][self.j], f)
+                    self.j += 1
+            else:
+                with open(self.loc, 'w') as f:
+                    for line in self.superBuffer[self.i][self.j]:
+                        f.write(line + '\n')
+                    self.j += 1
+            return True
+
+    def __reset__(self):
+        self.i = 0
+        self.j = 0
+        self.__pop__()
 
 class Action:
 
