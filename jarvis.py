@@ -218,6 +218,8 @@ class Artifact:
                 in_art.__activate__()
 
     def pull(self):
+        global __samples__
+        global __sample_interm_files__
         self.__activate__()
         userDefFiles = set(os.listdir()) - __sample_interm_files__
         while True:
@@ -246,6 +248,9 @@ class Artifact:
         repo.index.add(['.jarvis'])
         repo.index.commit('.jarvis commit')
         os.chdir('../')
+        __samples__ = []
+        __sample_interm_files__ = set([])
+
 
 
 
