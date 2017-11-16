@@ -14,12 +14,40 @@ def __run_proc__(bashCommand):
     output, error = process.communicate()
     return str(output, 'UTF-8')
 
-def func(f):
+def func(lambdah):
     def name_func():
-        return inspect.getsourcefile(f).split('/')[-1]
+        return inspect.getsourcefile(lambdah).split('/')[-1]
     def wrapped_func(in_artifacts, out_artifacts):
-        f(in_artifacts, out_artifacts)
-        return inspect.getsourcefile(f).split('/')[-1]
+        in_args = []
+        for in_art in [in_art.loc for in_art in in_artifacts]:
+            isPickle = in_art.split('.')[1] == 'pkl'
+            if isPickle:
+                with open(in_art, 'rb') as f:
+                    x = pickle.load(f)
+            else:
+                with open(in_art, 'r') as f:
+                    x = f.readline().strip()
+            in_args.append(x)
+        outs = lambdah(*in_args)
+        if type(outs) == list or type(outs) == tuple:
+            for out, out_art in zip(outs, [out_art.loc for out_art in out_artifacts]):
+                isPickle = out_art.split('.')[1] == 'pkl'
+                if isPickle:
+                    with open(out_art, 'wb') as f:
+                        pickle.dump(out, f)
+                else:
+                    with open(out_art, 'w') as f:
+                        f.write(str(out) + '\n')
+        else:
+            out_art = out_artifacts[0].loc
+            isPickle = out_art.split('.')[1] == 'pkl'
+            if isPickle:
+                with open(out_art, 'wb') as f:
+                    pickle.dump(outs, f)
+            else:
+                with open(out_art, 'w') as f:
+                    f.write(str(outs) + '\n')
+        return inspect.getsourcefile(lambdah).split('/')[-1]
     return [name_func, wrapped_func]
 
 
