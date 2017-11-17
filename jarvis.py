@@ -6,7 +6,7 @@ from shutil import copyfile
 from random import shuffle
 import networkx as nx
 import pickle
-import math
+from math import ceil
 
 
 def __run_proc__(bashCommand):
@@ -18,27 +18,57 @@ def func(lambdah):
     def name_func():
         return inspect.getsourcefile(lambdah).split('/')[-1]
     def wrapped_func(in_artifacts, out_artifacts):
-        in_args = []
-        for in_art in [in_art.loc for in_art in in_artifacts]:
-            isPickle = in_art.split('.')[1] == 'pkl'
-            if isPickle:
-                with open(in_art, 'rb') as f:
-                    x = pickle.load(f)
-            else:
-                with open(in_art, 'r') as f:
-                    x = f.readline().strip()
-            in_args.append(x)
-        outs = lambdah(*in_args)
-        if type(outs) == list or type(outs) == tuple:
-            for out, out_art in zip(outs, [out_art.loc for out_art in out_artifacts]):
-                isPickle = out_art.split('.')[1] == 'pkl'
+        if in_artifacts:
+            in_args = []
+            for in_art in [in_art.loc for in_art in in_artifacts]:
+                isPickle = in_art.split('.')[1] == 'pkl'
+                isCsv = in_art.split('.')[1] == 'csv'
                 if isPickle:
-                    with open(out_art, 'wb') as f:
-                        pickle.dump(out, f)
+                    with open(in_art, 'rb') as f:
+                        x = pickle.load(f)
                 else:
-                    with open(out_art, 'w') as f:
-                        f.write(str(out) + '\n')
+                    if isCsv:
+                        x = in_art
+                    else:
+                        with open(in_art, 'r') as f:
+                            x = [i.strip() for i in f.readlines() if i.strip()]
+                        if len(x) == 1:
+                            x = x[0]
+                in_args.append(x)
+            outs = lambdah(*in_args)
         else:
+            outs = lambdah()
+        if type(outs) == list or type(outs) == tuple:
+            try:
+                assert len(outs) == len(out_artifacts)
+                for out, out_art in zip(outs, [out_art.loc for out_art in out_artifacts]):
+                    isPickle = out_art.split('.')[1] == 'pkl'
+                    if isPickle:
+                        with open(out_art, 'wb') as f:
+                            pickle.dump(out, f)
+                    else:
+                        with open(out_art, 'w') as f:
+                            if type(out) == list or type(out) == tuple:
+                                for o in out:
+                                    f.write(str(o) + '\n')
+                            else:
+                                f.write(str(out) + '\n')
+            except:
+                assert len(out_artifacts) == 1
+                outs = [outs,]
+                for out, out_art in zip(outs, [out_art.loc for out_art in out_artifacts]):
+                    isPickle = out_art.split('.')[1] == 'pkl'
+                    if isPickle:
+                        with open(out_art, 'wb') as f:
+                            pickle.dump(out, f)
+                    else:
+                        with open(out_art, 'w') as f:
+                            if type(out) == list or type(out) == tuple:
+                                for o in out:
+                                    f.write(str(o) + '\n')
+                            else:
+                                f.write(str(out) + '\n')
+        elif out_artifacts and outs is not None:
             out_art = out_artifacts[0].loc
             isPickle = out_art.split('.')[1] == 'pkl'
             if isPickle:
@@ -46,7 +76,13 @@ def func(lambdah):
                     pickle.dump(outs, f)
             else:
                 with open(out_art, 'w') as f:
-                    f.write(str(outs) + '\n')
+                    if type(outs) == list or type(outs) == tuple:
+                        for o in outs:
+                            f.write(str(o) + '\n')
+                    else:
+                        f.write(str(outs) + '\n')
+        else:
+            raise AssertionError("Missing location to write or Missing return value.")
         return inspect.getsourcefile(lambdah).split('/')[-1]
     return [name_func, wrapped_func]
 
@@ -239,11 +275,12 @@ class Artifact:
         self.scriptNames = scriptNames
 
     def __activate__(self):
-        if type(self) == Sample:
+        if issubclass(type(self), Sample):
             self.__enable__()
         if self.parent:
-            for in_art in self.parent.in_artifacts:
-                in_art.__activate__()
+            if self.parent.in_artifacts:
+                for in_art in self.parent.in_artifacts:
+                    in_art.__activate__()
 
     def pull(self):
         global __samples__
@@ -370,34 +407,50 @@ class Sample(Artifact):
     Constraint: Can only sample static, pre-existing data.
     """
 
-    def __init__(self, rate, loc, batch, times=1, to_csv=False):
+    def __init__(self, rate, loc, to_csv=False):
         assert rate <= 1 and rate > 0
-        assert times >= 1
 
         self.rate = rate
-        self.times = times
-        self.batch = batch
+        self.times = 1
+        self.batch = True
         self.to_csv = to_csv
         self.__loc__ = loc
 
-        artifact = Artifact(loc)
+        self.artifact = Artifact(loc)
 
         # Action part
-        self.action = Action([self.__dummy__, self.__dummy__], [artifact])
+        self.action = Action([self.__dummy__, self.__dummy__], [self.artifact])
 
         # Artifact part
-        if not self.to_csv:
-            self.loc = 'sampled_' + loc.split('.')[0] + '.pkl'
-        else:
-            self.loc = 'sampled_' + loc.split('.')[0] + '.csv'
+        self.__loc_name__()
+
         self.dir = 'jarvis.d'
         self.parent = self.action
 
         self.parent.out_artifacts.append(self)
 
-        self.popped = False
         self.superBuffer = None
 
+    def __loc_name__(self):
+        global __sample_loc_names__
+        if not self.to_csv:
+            locName = 'sampled_' + self.__loc__.split('.')[0] + '.pkl'
+            if locName in __sample_loc_names__:
+                count = __sample_loc_names__[locName] + 1
+                __sample_loc_names__[locName] = count
+                locName = 'sampled_' + str(count) + '_' + self.__loc__.split('.')[0] + '.pkl'
+            else:
+                __sample_loc_names__[locName] = 1
+            self.loc = locName
+        else:
+            locName = 'sampled_' + self.__loc__.split('.')[0] + '.csv'
+            if locName in __sample_loc_names__:
+                count = __sample_loc_names__[locName] + 1
+                __sample_loc_names__[locName] = count
+                locName = 'sampled_' + str(count) + '_' + self.__loc__.split('.')[0] + '.csv'
+            else:
+                __sample_loc_names__[locName] = 1
+            self.loc = locName
 
     def __enable__(self):
         global __sample_interm_files__
@@ -416,7 +469,7 @@ class Sample(Artifact):
             buffer = [x.strip() for x in f.readlines() if x.strip()]
         for i in range(self.times):
             shuffle(buffer)
-            buff = buffer[0:math.ceil(self.rate*len(buffer))]
+            buff = buffer[0:ceil(self.rate*len(buffer))]
             super_buffer.append(buff)
         # with open(out_loc, 'wb') as f:
         #     pickle.dump(super_buffer, f)
@@ -467,6 +520,52 @@ class Sample(Artifact):
         self.i = 0
         self.j = 0
         self.__pop__()
+
+class ForEach(Sample):
+
+    def __init__(self, sample):
+        self.rate = sample.rate
+        self.times = sample.times
+        self.batch = False
+        self.to_csv = sample.to_csv
+        self.__loc__ = sample.__loc__
+
+        self.artifact = sample.artifact
+
+        self.action = Action([self.__dummy__, self.__dummy__], [self.artifact])
+
+        self.__loc_name__()
+
+        self.dir = sample.dir
+        self.parent = self.action
+
+        self.parent.out_artifacts.append(self)
+
+        self.superBuffer = None
+
+
+class Fork(Sample):
+
+    def __init__(self, sample, k=1):
+        assert k >= 1
+        self.rate = sample.rate
+        self.times = sample.times * k
+        self.batch = sample.batch
+        self.to_csv = sample.to_csv
+        self.__loc__ = sample.__loc__
+
+        self.artifact = sample.artifact
+
+        self.action = Action([self.__dummy__, self.__dummy__], [self.artifact])
+
+        self.__loc_name__()
+
+        self.dir = sample.dir
+        self.parent = self.action
+
+        self.parent.out_artifacts.append(self)
+
+        self.superBuffer = None
 
 class Action:
 
@@ -616,4 +715,5 @@ __nodes__ = {}
 __gc__ = None
 __jarvisFile__ = 'driver.py'
 __sample_interm_files__ = set([])
+__sample_loc_names__ = {}
 __dirs_this_run__ = []
