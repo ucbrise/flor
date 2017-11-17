@@ -16,7 +16,10 @@ def __run_proc__(bashCommand):
 
 def func(lambdah):
     def name_func():
-        return inspect.getsourcefile(lambdah).split('/')[-1]
+        if __jarvisFile__.split('.')[1] == 'ipynb':
+            return __jarvisFile__
+        else:
+            return inspect.getsourcefile(lambdah).split('/')[-1]
     def wrapped_func(in_artifacts, out_artifacts):
         if in_artifacts:
             in_args = []
@@ -83,7 +86,10 @@ def func(lambdah):
                         f.write(str(outs) + '\n')
         else:
             raise AssertionError("Missing location to write or Missing return value.")
-        return inspect.getsourcefile(lambdah).split('/')[-1]
+        if __jarvisFile__.split('.')[1] == 'ipynb':
+            return __jarvisFile__
+        else:
+            return inspect.getsourcefile(lambdah).split('/')[-1]
     return [name_func, wrapped_func]
 
 
@@ -94,6 +100,22 @@ def ground_client(backend):
 def jarvisFile(loc):
     global __jarvisFile__
     __jarvisFile__ = loc
+
+class Literal:
+
+    def __init__(self, v, loc):
+        if loc.split('.')[1] == 'pkl':
+            with open(loc, 'wb') as f:
+                pickle.dump(v, loc)
+        else:
+            with open(loc, 'w') as f:
+                if type(v) == list or type(v) == tuple:
+                    for u in v:
+                        f.write(str(u) + '\n')
+                else:
+                    f.write(str(v) + '\n')
+        self.loc = loc
+
 
 class Artifact:
 
@@ -414,9 +436,12 @@ class Sample(Artifact):
         self.times = 1
         self.batch = True
         self.to_csv = to_csv
-        self.__loc__ = loc
+        if type(loc) == Literal:
+            self.__loc__ = loc.loc
+        else:
+            self.__loc__ = loc
 
-        self.artifact = Artifact(loc)
+        self.artifact = Artifact(self.__loc__)
 
         # Action part
         self.action = Action([self.__dummy__, self.__dummy__], [self.artifact])
