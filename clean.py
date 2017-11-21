@@ -13,11 +13,12 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 
 html_parser = html.parser.HTMLParser()
 
-"""
-Clean takes one in artifact and outputs one out artifact
-"""
 @jarvis.func
-def clean(in_artifacts, out_artifacts):
+def clean(tweets_df_loc):
+    tweet_df = pd.read_csv(tweets_df_loc, **params)
+    return tweet_df
+
+def oldclean(in_artifacts, out_artifacts):
     if len(in_artifacts) == 1:
         in_artifact = in_artifacts[0]
         out_artifacts = out_artifacts[0]

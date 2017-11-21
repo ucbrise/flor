@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import jarvis
 
-jarvis.ground_client('git')
+jarvis.groundClient('git')
 jarvis.jarvisFile('lifted_driver.py')
 
-training_tweets = jarvis.Sample(0.8, 'training_tweets.csv', batch=True, times=3, to_csv=True)
+training_tweets = jarvis.Artifact('training_tweets.csv')
 
 from clean import clean
 do_tr_clean = jarvis.Action(clean, [training_tweets])
@@ -14,7 +14,7 @@ from train_model import train
 do_train = jarvis.Action(train, [clean_training_tweets])
 intermediary = jarvis.Artifact('intermediary.pkl', do_train)
 
-testing_tweets = jarvis.Sample(1.0, 'testing_tweets.csv', True, 1, True)
+testing_tweets = jarvis.Artifact('testing_tweets.csv')
 
 do_te_clean = jarvis.Action(clean, [testing_tweets])
 clean_testing_tweets = jarvis.Artifact('clean_testing_tweets.pkl', do_te_clean)
