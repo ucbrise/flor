@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 import jarvis
 
-jarvis.ground_client('git')
+jarvis.groundClient('git')
 jarvis.jarvisFile('plate.py')
 
-ith_param = jarvis.ForEach(jarvis.Sample(1.0, 'params.txt'))
+ones = jarvis.Literal([1, 2, 3])
+ones.forEach()
 
-ith_param2 = jarvis.ForEach(jarvis.Sample(1.0, 'params2.txt'))
+tens = jarvis.Literal([10, 100])
+tens.forEach()
 
-from mult import multiply
-do_multiply = jarvis.Action(multiply, [ith_param, ith_param2])
-product = jarvis.Artifact('product.txt', do_multiply)
+@jarvis.func
+def multiply(x, y):
+    z = x*y
+    print(z)
+    return z
 
-ith_param3 = jarvis.Fork(ith_param2)
-
-do_multiply = jarvis.Action(multiply, [product, ith_param3])
-product = jarvis.Artifact('product2.txt', do_multiply)
+doMultiply = jarvis.Action(multiply, [ones, tens])
+product = jarvis.Artifact('product.txt', doMultiply)
 
 product.pull()
 product.plot()
