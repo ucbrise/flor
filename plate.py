@@ -4,10 +4,10 @@ import jarvis
 jarvis.groundClient('git')
 jarvis.jarvisFile('plate.py')
 
-ones = jarvis.Literal([1, 2, 3])
+ones = jarvis.Literal([1, 2, 3], "ones")
 ones.forEach()
 
-tens = jarvis.Literal([10, 100])
+tens = jarvis.Literal([10, 100], "tens")
 tens.forEach()
 
 @jarvis.func
