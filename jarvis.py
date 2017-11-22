@@ -325,6 +325,7 @@ class Artifact:
         # Prep globals, passed through arguments
 
         Util.nodes = {}
+        Util.edges = []
 
         dot = Digraph()
         diagram = {"dot": dot, "counter": 0, "sha": {}}
@@ -347,6 +348,7 @@ class Artifact:
         if rankdir == 'LR':
             dot.attr(rankdir='LR')
         dot.render('driver.gv', view=True)
+        return Util.edges
 
     def getLocation(self):
         return self.loc
@@ -412,20 +414,26 @@ class Action:
         dot.node(node_diagram_id_script, self.filenameWithFunc, shape="box")
         diagram["counter"] += 1
         dot.edge(node_diagram_id_script, node_diagram_id)
+        Util.edges.append((node_diagram_id_script, node_diagram_id))
 
         for to_node, loc in to_list:
             dot.edge(node_diagram_id, to_node)
+            Util.edges.append((node_diagram_id, to_node))
 
         if self.in_artifacts:
             for artifact in self.in_artifacts:
                 if artifact.getLocation() in Util.nodes:
-                    dot.edge(Util.nodes[artifact.getLocation()], node_diagram_id)
+                    if (Util.nodes[artifact.getLocation()], node_diagram_id) not in Util.edges:
+                        dot.edge(Util.nodes[artifact.getLocation()], node_diagram_id)
+                        Util.edges.append((Util.nodes[artifact.getLocation()], node_diagram_id))
                 else:
                     if not Util.isOrphan(artifact):
                         from_nodes = artifact.parent.__plotWalk__(diagram)
                         for from_node, loc in from_nodes:
                             if loc in [art.getLocation() for art in self.in_artifacts]:
-                                dot.edge(from_node, node_diagram_id)
+                                if (from_node, node_diagram_id) not in Util.edges:
+                                    dot.edge(from_node, node_diagram_id)
+                                    Util.edges.append((from_node, node_diagram_id))
                     else:
                         node_diagram_id2 = str(diagram["counter"])
                         if type(artifact) == Literal and artifact.name:
@@ -436,7 +444,9 @@ class Action:
                                      shape="box")
                         Util.nodes[artifact.loc] = node_diagram_id2
                         diagram["counter"] += 1
-                        dot.edge(node_diagram_id2, node_diagram_id)
+                        if (node_diagram_id2, node_diagram_id) not in Util.edges:
+                            dot.edge(node_diagram_id2, node_diagram_id)
+                            Util.edges.append((node_diagram_id2, node_diagram_id))
 
         return to_list
 
@@ -450,6 +460,7 @@ class Util:
     jarvisFile = 'driver.py'
     literalFilenames = 0
     nodes = {}
+    edges = []
     literals = []
     ghostFiles = set([])
     versioningDirectory = 'jarvis.d'
