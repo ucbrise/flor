@@ -102,6 +102,7 @@ class Literal:
             raise TypeError("Cannot iterate over literal {}".format(self.v))
         self.__oneByOne__ = True
         self.n = len(self.v)
+        return self
 
     def getLocation(self):
         return self.loc
@@ -234,33 +235,43 @@ class Artifact:
         driverfile = Util.jarvisFile
 
         if not Util.isOrphan(self):
-            loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
+            self.loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
         else:
-            loclist = [self.getLocation(),]
-        scriptNames = []
+            self.loclist = [self.getLocation(),]
+        self.scriptNames = []
         if not Util.isOrphan(self):
-            self.parent.__run__(loclist, scriptNames)
-        loclist = list(set(loclist))
-        scriptNames = list(set(scriptNames))
+            self.parent.__run__(self.loclist, self.scriptNames)
+        self.loclist = list(set(self.loclist))
+        self.scriptNames = list(set(self.scriptNames))
 
 
         # Need to sort to compare
-        loclist.sort()
-        scriptNames.sort()
+        self.loclist.sort()
+        self.scriptNames.sort()
 
-        self.loclist = loclist
-        self.scriptNames = scriptNames
 
     def pull(self):
 
         Util.activate(self)
         userDefFiles = set(os.listdir()) - Util.ghostFiles
-        while True:
-            self.__pull__()
-            self.__commit__()
-            subtreeMaxed = Util.master_pop(Util.literals)
-            if subtreeMaxed:
-                break
+        try:
+            while True:
+                self.__pull__()
+                self.__commit__()
+                subtreeMaxed = Util.master_pop(Util.literals)
+                if subtreeMaxed:
+                    break
+        except Exception as e:
+            try:
+                intermediateFiles = set(self.loclist) - userDefFiles
+                for file in intermediateFiles:
+                    if os.path.exists(file):
+                        os.remove(file)
+            except Exception as ee:
+                print(ee)
+            Util.literals = []
+            Util.ghostFiles = set([])
+            raise e
         intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
@@ -284,20 +295,26 @@ class Artifact:
         Util.literals = []
         Util.ghostFiles = set([])
 
-    def peek(self, func):
+    def peek(self, func = lambda x: x):
         trueVersioningDir = Util.versioningDirectory
         Util.versioningDirectory = '1fdf8583bfd663e98918dea393e273cc'
-        self.pull()
-        os.chdir(Util.versioningDirectory)
-        listdir = [x for x in filter(Util.isNumber, os.listdir())]
-        dir = str(len(listdir))
-        if Util.isPickle(self.loc):
-            out = func(Util.unpickle(dir + '/' + self.loc))
-        else:
-            with open(dir + '/' + self.loc, 'r') as f:
-                out = func(f.readlines())
-        os.chdir('../')
-        rmtree(Util.versioningDirectory)
+        try:
+            self.pull()
+            os.chdir(Util.versioningDirectory)
+            listdir = [x for x in filter(Util.isNumber, os.listdir())]
+            dir = str(len(listdir))
+            if Util.isPickle(self.loc):
+                out = func(Util.unpickle(dir + '/' + self.loc))
+            else:
+                with open(dir + '/' + self.loc, 'r') as f:
+                    out = func(f.readlines())
+            os.chdir('../')
+        except Exception as e:
+            out = e
+        try:
+            rmtree(Util.versioningDirectory)
+        except:
+            pass
         Util.versioningDirectory = trueVersioningDir
         return out
 
@@ -339,6 +356,19 @@ class Action:
     def __init__(self, func, in_artifacts=None):
         self.filenameWithFunc, self.funcName, self.func = func
         self.out_artifacts = []
+
+        if in_artifacts:
+            temp_artifacts = []
+            for in_art in in_artifacts:
+                if not Util.isJarvisClass(in_art):
+                    if Util.isIterable(in_art):
+                        in_art = Literal(in_art)
+                        in_art.forEach()
+                    else:
+                        in_art = Literal(in_art)
+                temp_artifacts.append(in_art)
+            in_artifacts = temp_artifacts
+
         self.in_artifacts = in_artifacts
 
     def __run__(self, loclist, scriptNames):
@@ -425,6 +455,9 @@ class Util:
     versioningDirectory = 'jarvis.d'
     visited = []
 
+    @staticmethod
+    def isJarvisClass(obj):
+        return type(obj) == Artifact or type(obj) == Action or type(obj) == Literal
     @staticmethod
     def isPickle(loc):
         return loc.split('.')[1] == 'pkl'

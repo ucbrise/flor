@@ -12,14 +12,11 @@ from clean import clean
 do_tr_clean = jarvis.Action(clean, [training_tweets])
 clean_training_tweets = jarvis.Artifact('clean_training_tweets.pkl', do_tr_clean)
 
-sample_seeds = jarvis.Literal([2, 5, 42], 'sample_seeds')
-sample_seeds.forEach()
-
 @jarvis.func
 def sample(tweet_df, frac, seed):
     return tweet_df.sample(frac=frac, random_state=seed)
 
-do_tr_sample = jarvis.Action(sample, [clean_training_tweets, jarvis.Literal(0.8), sample_seeds])
+do_tr_sample = jarvis.Action(sample, [clean_training_tweets, 0.8, [2, 5, 42]])
 sampled_training_tweets = jarvis.Artifact('sampled_training_tweets.pkl', do_tr_sample)
 
 from train_model import train
