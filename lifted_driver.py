@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import jarvis
+import random
 
 jarvis.groundClient('git')
 jarvis.jarvisFile('lifted_driver.py')
@@ -11,7 +12,7 @@ from clean import clean
 do_tr_clean = jarvis.Action(clean, [training_tweets])
 clean_training_tweets = jarvis.Artifact('clean_training_tweets.pkl', do_tr_clean)
 
-sample_seeds = jarvis.Literal([2, 5, 42])
+sample_seeds = jarvis.Literal([2, 5, 42], 'sample_seeds')
 sample_seeds.forEach()
 
 @jarvis.func

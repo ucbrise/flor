@@ -8,6 +8,7 @@ import pickle
 from ground import GroundClient
 from graphviz import Digraph
 from shutil import copyfile
+from shutil import rmtree
 
 def func(lambdah):
     if Util.jarvisFileIsIpynb():
@@ -86,12 +87,15 @@ def jarvisFile(loc):
 
 class Literal:
 
-    def __init__(self, v):
+    def __init__(self, v, name=None):
         self.v = v
         self.loc = 'ghost_literal_' + str(Util.literalFilenamesAndIncr()) + '.pkl'
         self.__oneByOne__ = False
         self.i = 0
         self.n = 1
+
+        # The name is used in the visualization and Ground versioning
+        self.name = name
 
     def forEach(self):
         if not Util.isIterable(self.v):
@@ -115,7 +119,7 @@ class Literal:
     def __enable__(self):
         Util.ghostFiles |= {self.loc}
         Util.literals.append(self)
-        self.__pop__()
+        self.__reset__()
 
     def __reset__(self):
         self.i = 0
@@ -143,6 +147,15 @@ class Artifact:
             'Artifacts': [i for i in loclist],
             'Actions': [i for i in scriptNames]
         }
+
+        for literal in Util.literals:
+            if literal.name:
+                try:
+                    value = str(Util.unpickle(literal.loc))
+                    if len(value) <= 250:
+                        tag[literal.name] = value
+                except:
+                    pass
 
         if not os.path.exists(dir_name):
             nodeid = gc.createNode('Run')
@@ -239,6 +252,7 @@ class Artifact:
         self.scriptNames = scriptNames
 
     def pull(self):
+
         Util.activate(self)
         userDefFiles = set(os.listdir()) - Util.ghostFiles
         while True:
@@ -269,6 +283,25 @@ class Artifact:
         os.chdir('../')
         Util.literals = []
         Util.ghostFiles = set([])
+
+    def peek(self, func):
+        trueVersioningDir = Util.versioningDirectory
+        Util.versioningDirectory = '1fdf8583bfd663e98918dea393e273cc'
+        self.pull()
+        os.chdir(Util.versioningDirectory)
+        listdir = [x for x in filter(Util.isNumber, os.listdir())]
+        dir = str(len(listdir))
+        if Util.isPickle(self.loc):
+            out = func(Util.unpickle(dir + '/' + self.loc))
+        else:
+            with open(dir + '/' + self.loc, 'r') as f:
+                out = func(f.readlines())
+        os.chdir('../')
+        rmtree(Util.versioningDirectory)
+        Util.versioningDirectory = trueVersioningDir
+        return out
+
+
 
     def plot(self, rankdir=None):
         # WARNING: can't plot before pulling.
@@ -365,8 +398,12 @@ class Action:
                                 dot.edge(from_node, node_diagram_id)
                     else:
                         node_diagram_id2 = str(diagram["counter"])
-                        dot.node(node_diagram_id2, artifact.loc,
-                                 shape="box")
+                        if type(artifact) == Literal and artifact.name:
+                            dot.node(node_diagram_id2, artifact.name,
+                                     shape="box")
+                        else:
+                            dot.node(node_diagram_id2, artifact.loc,
+                                     shape="box")
                         Util.nodes[artifact.loc] = node_diagram_id2
                         diagram["counter"] += 1
                         dot.edge(node_diagram_id2, node_diagram_id)
