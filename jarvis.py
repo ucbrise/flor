@@ -272,11 +272,14 @@ class Artifact:
 
     def parallelPull(self):
         Util.visited = []
-        driverfile = Util.jarvisFile
 
+        literalsAttached = set([])
         lambdas = []
         if not Util.isOrphan(self):
             self.parent.__serialize__(lambdas)
+
+        for _, names in lambdas:
+            literalsAttached |= set(names)
 
         def exportedExec(config, reporter):
             for f, names in lambdas:
@@ -286,10 +289,11 @@ class Artifact:
 
         config = {}
         for kee in Util.literalNameToObj:
-            if Util.literalNameToObj[kee].__oneByOne__:
-                config[kee] = grid_search(Util.literalNameToObj[kee].v)
-            else:
-                config[kee] = Util.literalNameToObj[kee].v
+            if kee in literalsAttached:
+                if Util.literalNameToObj[kee].__oneByOne__:
+                    config[kee] = grid_search(Util.literalNameToObj[kee].v)
+                else:
+                    config[kee] = Util.literalNameToObj[kee].v
 
         register_trainable('exportedExec', exportedExec)
 
