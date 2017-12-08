@@ -4,11 +4,13 @@ import git
 import inspect
 import subprocess
 import pickle
+import itertools
 
 from ground import GroundClient
 from graphviz import Digraph
 from shutil import copyfile
 from shutil import rmtree
+from shutil import copytree
 
 from ray.tune import register_trainable
 from ray.tune import grid_search
@@ -271,6 +273,19 @@ class Artifact:
         self.scriptNames.sort()
 
     def parallelPull(self):
+
+        # Runs one experiment per pull
+        # Each experiment has many trials
+
+        dirContents = set(os.listdir())
+
+        tmpexperiment = '/tmp/de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3'
+        if os.path.exists(tmpexperiment):
+            rmtree(tmpexperiment)
+            os.mkdir(tmpexperiment)
+        else:
+            os.mkdir(tmpexperiment)
+
         Util.visited = []
 
         literalsAttached = set([])
@@ -281,19 +296,51 @@ class Artifact:
         for _, names in lambdas:
             literalsAttached |= set(names)
 
+        original_dir = os.getcwd()
         def exportedExec(config, reporter):
+            tee = tuple([])
+            for litName in config['8ilk9274']:
+                tee += (config[litName], )
+            i = -1
+            for j, v in enumerate(config['6zax7937']):
+                if v == tee:
+                    i = j
+                    break
+            assert i >= 0
+            os.chdir(tmpexperiment + '/' + str(i))
             for f, names in lambdas:
                 literals = list(map(lambda x: config[x], names))
                 f(literals)
             reporter(timesteps_total=1)
+            os.chdir(original_dir)
 
         config = {}
+        numTrials = 1
+        literals = []
+        literalNames = []
         for kee in Util.literalNameToObj:
             if kee in literalsAttached:
                 if Util.literalNameToObj[kee].__oneByOne__:
                     config[kee] = grid_search(Util.literalNameToObj[kee].v)
+                    numTrials *= len(Util.literalNameToObj[kee].v)
+                    literals.append(Util.literalNameToObj[kee].v)
                 else:
                     config[kee] = Util.literalNameToObj[kee].v
+                    if Util.isIterable(Util.literalNameToObj[kee].v):
+                        if type(Util.literalNameToObj[kee].v) == tuple:
+                            literals.append((Util.literalNameToObj[kee].v,))
+                        else:
+                            literals.append([Util.literalNameToObj[kee].v,])
+                literalNames.append(kee)
+
+        literals = list(itertools.product(*literals))
+        config['6zax7937'] = literals
+        config['8ilk9274'] = literalNames
+
+        for i in range(numTrials):
+            dst = tmpexperiment + '/' + str(i)
+            copytree(os.getcwd(), dst, True)
+
 
         register_trainable('exportedExec', exportedExec)
 
@@ -623,3 +670,4 @@ class Util:
         elif not Util.isOrphan(pseudoArtifact) and pseudoArtifact.parent.in_artifacts:
             for in_art in pseudoArtifact.parent.in_artifacts:
                 Util.activate(in_art)
+
