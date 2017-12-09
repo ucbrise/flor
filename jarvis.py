@@ -5,6 +5,8 @@ import inspect
 import subprocess
 import pickle
 import itertools
+import json
+import datetime
 
 from ground import GroundClient
 from graphviz import Digraph
@@ -159,10 +161,7 @@ class Artifact:
             self.parent.out_artifacts.append(self)
 
     def __commit__(self):
-        """
-        Needs more refactoring
-        :return:
-        """
+
         gc = Util.gc
         dir_name = Util.versioningDirectory
         loclist = self.loclist
@@ -274,10 +273,10 @@ class Artifact:
 
     def parallelPull(self):
 
+        Util.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
+
         # Runs one experiment per pull
         # Each experiment has many trials
-
-        dirContents = set(os.listdir())
 
         tmpexperiment = '/tmp/de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3'
         if os.path.exists(tmpexperiment):
@@ -288,10 +287,23 @@ class Artifact:
 
         Util.visited = []
 
+        if not Util.isOrphan(self):
+            self.loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
+        else:
+            self.loclist = [self.getLocation(),]
+        self.scriptNames = []
+
         literalsAttached = set([])
         lambdas = []
         if not Util.isOrphan(self):
-            self.parent.__serialize__(lambdas)
+            self.parent.__serialize__(lambdas, self.loclist, self.scriptNames)
+
+        self.loclist = list(set(self.loclist))
+        self.scriptNames = list(set(self.scriptNames))
+
+        # Need to sort to compare
+        self.loclist.sort()
+        self.scriptNames.sort()
 
         for _, names in lambdas:
             literalsAttached |= set(names)
@@ -312,6 +324,8 @@ class Artifact:
                 literals = list(map(lambda x: config[x], names))
                 f(literals)
             reporter(timesteps_total=1)
+            with open(experimentName + '_' + ts + '.json', 'w') as fp:
+                json.dump(config, fp)
             os.chdir(original_dir)
 
         config = {}
@@ -342,17 +356,29 @@ class Artifact:
             copytree(os.getcwd(), dst, True)
 
 
+        ts = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
         register_trainable('exportedExec', exportedExec)
 
+        experimentName = Util.jarvisFile.split('.')[0]
+
         run_experiments({
-            Util.jarvisFile.split('.')[0] : {
+            experimentName : {
                 'run': 'exportedExec',
                 'resources': {'cpu': 1, 'gpu': 0},
                 'config': config
             }
         })
 
+        if not os.path.isdir(Util.versioningDirectory):
+            os.mkdir(Util.versioningDirectory)
+        copytree(tmpexperiment, Util.versioningDirectory + '/' + Util.jarvisFile.split('.')[0] + '_' + ts)
+
+
     def pull(self):
+
+        # temporary fix for backward compatibility
+        Util.versioningDirectory = 'jarvis.d'
 
         Util.activate(self)
         userDefFiles = set(os.listdir()) - Util.ghostFiles
@@ -488,17 +514,19 @@ class Action:
         self.func(self.in_artifacts, self.out_artifacts)
         Util.visited.append(self.funcName + outNames)
 
-    def __serialize__(self, lambdas):
+    def __serialize__(self, lambdas, loclist, scriptNames):
         outNames = ''
         namedLiterals = []
         for out_artifact in self.out_artifacts:
             outNames += out_artifact.loc
         if self.funcName + outNames in Util.visited:
             return
+        scriptNames.append(self.filenameWithFunc)
         if self.in_artifacts:
             for artifact in self.in_artifacts:
+                loclist.append(artifact.loc)
                 if not Util.isOrphan(artifact):
-                    artifact.parent.__serialize__(lambdas)
+                    artifact.parent.__serialize__(lambdas, loclist, scriptNames)
                 elif type(artifact) == Literal:
                     namedLiterals.append(artifact.name)
 
@@ -512,8 +540,6 @@ class Action:
                 else:
                     args.append(in_art)
             self.func(args, self.out_artifacts)
-
-
 
         lambdas.append((_lambda, namedLiterals))
         Util.visited.append(self.funcName + outNames)
@@ -592,7 +618,7 @@ class Util:
     literalNames = set([])
     literalNameToObj = {}
     nodes = {}
-    versioningDirectory = 'jarvis.d'
+    versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
     visited = []
 
     @staticmethod
