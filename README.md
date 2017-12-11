@@ -1,18 +1,15 @@
-Jarvis
+#Jarvis
 =====
 
 Build, configure, and track workflows with Jarvis.
 
 ## What is Jarvis?
---------------------------
 Jarvis is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Jarvis enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Jarvis serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
 
 ## Installation
----------------------
 Instructions pending.
 
 ## Example program
------------------------------
 Contents of the `plate.py` file:
 ```python
 import jarvis
@@ -51,11 +48,9 @@ On run produces:
 ```
 
 ## Motivation
---------------------
 Jarvis should facilitate the development of auditable, reproducible, justifiable, and reusable data science workflows. Is the data scientist building the right thing? We want to encourage discipline and best practices in ML workflow development by making dependencies explicit, while improving the productivity of adopters by automating multiple runs of the workflow under different configurations. The motivation for Jarvis has been explained as porting software engineering practices to machine learning. Data scientists should not be training models on default hyper-parameters merely because of convenience: what are the assumptions that justify the choice of hyper-parameters? Is the choice of ML model justified given the distribution of the data? Jarvis should also provide lineage information so developers can understand why a model behaved the way that it did, in cases of failure or exceptional performance: what were they hyper-parameters and scripts that led to a high classification accuracy in production?
 
 ## Challenges
--------------------
 * **Running the workflow many times, varying the configuration**:  The Jarvis workflow specification language is declarative, and we wanted to maintain this declarativity even when describing parallel and iterative computation. It's likely that a data scientist will want to run some workflow for each value of a hyper-parameter, say gamma, in some range. Jarvis supports this by wrapping that range in a *Literal*, and calling the `forEach()` method on that *Literal*. Then, when that literal is a dependency to some *Action*, Jarvis will run the workflow many times by iterating in parallel over the values in the list wrapped by that literal. When there are many such literals, the number of computations is the cross product of those literals. Keeping the execution environments of these workflows, with filesystem dependencies, isolated, when running in parallel, was a challenge. Reducing the amount of computation by re-using identical artifacts across parallel workflow executions, respecting isolation, is another foreseeable challenge.
 
 * **Coherent types**: Before the introduction of Jarvis *Literals*, the types of objects in a Jarvis workflow were straightforward. There were only Actions and Artifacts. After the introduction of *Literals*, with the added feature for specifying parallel and iterative computation declaratively, the typing was complicated: is a Jarvis Action that depends on an iterable array of configurations a single action or many actions? What about the downstream artifacts this action produces: are they one artifact or many? We are still in the process of working through this added complication. Some alternatives to explore are python type annotations, or a formal specification of the types in the documentation.'
@@ -69,11 +64,9 @@ Jarvis should facilitate the development of auditable, reproducible, justifiable
 * [Pending] **Interactive environment support**: Data scientists in the wild use interactive environments such as Jupyter Notebooks. As a workflow development system, Jarvis should support the creative design and discovery of data science workflows. This process will necessarily involve real-time feedback and support for user interaction. Thus, we have numerous reasons to support interactive environments. However, interactive environments pose challenges for reproducibility, since the cells can be executed non-linearly. Supporting interactivity without compromising versioning and reproducibility is another foreseeable challenge. 
 
 ## Approach
-------------------
 ### Simple and expressive object model
 ### Data-centric workflows
 
 ## Results
-------------------
 This project is still work in progress. Please check back at a later time.
 
