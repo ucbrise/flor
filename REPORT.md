@@ -76,6 +76,10 @@ The Jarvis dataflow graph model is defined as follows:
 * Every Action must have some edge to an Artifact.
 
 ### Data-Centric Workflows
+How are machine learning applications different from other applications? The main difference is data. Machine learning applications have data dependencies that obscure traiditional abstraction boundaries, and complicate the use of standard software engineering practices and tools. Moreover, data itself is in many ways fundamentally different from code artifacts which are front-and-center in major software projects. One dimension of difference is scale: it is not unusual for data files to be larger than several gigabytes. Even Github requires us to use Git LFS to version data artifacts. Another way in which data differs from code is in what counts as meaningful difference, or change. It is possible to get a sense for the similarity of two files, with a diff-style line by line comparison. This same technique would be ineffective when comparing two tables, since we usually care about whether they are instances of the same schema, or whether the points are sampled from the same distribution, rather than whether they contain exactly the same records. Unlike code, data is not something we should edit directly. Furthermore, we usually cannot skim data in plain text form, we must use visualization techniques to enable exploratory analysis, and to help us understand our data.
+
+In Jarvis, data is a first-class citizen. Data is represented as an *Artifact* in Jarvis, and no *Action* runs unless it is to produce some *Artifact* the user requested. Jarvis will include built-in features to pre-process, visualize, version, and describe data by manipulating Artifacts, without making irreversibly modifications to the data.
+
 ### Artifact Versioning
 ### Artifact Contextualization
 ### Parallel Multi-Trial Experiments
