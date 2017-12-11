@@ -81,6 +81,16 @@ How are machine learning applications different from other applications? The mai
 In Jarvis, data is a first-class citizen. Data is represented as an *Artifact* in Jarvis, and no *Action* runs unless it is to produce some *Artifact* the user requested. Jarvis will include built-in features to pre-process, visualize, version, and describe data by manipulating Artifacts, without making irreversibly modifications to the data. Additionally, dataflow is implicit in the edges that connect the Jarvis workflow (a graph).
 
 ### Artifact Versioning
+Jarvis uses git to automatically version every (data, code, etc.) Artifact in a Jarvis workflow. After executing some workflow, and producing all the intermediary Artifacts, Jarvis uses a global list of pre-existing Artifacts it accessed and intermediary Artifacts that were generated during the execution to move these files to a separate directory (this directory is a git repo) called `jarvis.d`, and then commits the repository. Jarvis commits the `jarvis.d` repository after every run of a workflow. We refer to one run of a workflow as an 'experiment'. Sometimes, an experiment runs the same workflow many times, varying only the configuration parameters (controlled via Jarvis *Literals*). We refer to one executed configuration of a workflow as a 'trial'. Every trial is part of some experiment. Every experiment has at least one trial, but it can have many trials.  
+
+The `jarvis.d` repository has the following location and structure:
+1. By default, it is located in `~/jarvis.d`, in the filesystem of the localhost. The location of this directory can be changed by modifying a global variable in Jarvis, or (pending) will be set by setting an environment flag. `jarvis.d` is analogous to a lab journal, it tracks and stores multiple experiments.
+2. Inside the `jarvis.d` directory is a list of folders. Each folder corresponds to one experiment. The naming convention is `(name of the experiment definition file)_(timestamp)`.
+3. Inside each experiment folder is a list of folders. Each folder corresponds to one trial.
+4. Inside each trial folder is a full copy of the files and folders in the directory where the Jarvis workflow specification file was run from, and all of the intermediary artifacts produced by running that trial. The metadata is stored in json files.
+
+It is our plan to support moving a user's local instance of Jarvis to the cloud, so we will be adding support for pushing the `jarvis.d` repository to an online repository, and making its location and service available to other Jarvis components that depend on versioning.
+
 ### Artifact Contextualization
 ### Parallel Multi-Trial Experiments
 Rapid discovery process. Within-trial parallelization, independent branches.
