@@ -96,7 +96,9 @@ Jarvis uses [Ground](http://www.ground-context.org/) to store data about the con
 accuracy for this configuration? Storing Artifact context will also be essential for reproducibility, because it enables not only materializing past versions, but also informs the user about which version to materialize. Ground and git are complementary services used by Jarvis.
 
 ### Parallel Multi-Trial Experiments
-Rapid discovery process. Within-trial parallelization, independent branches.
+
+We hope that Jarvis will enable data scientists to try more ideas quickly. For this, we need to enhance speed of execution, and therefore levarage [Ray](https://github.com/ray-project/ray) to execute multiple trials in parallel. Although trials can be run independently, often times there will be a number of Artifacts that are the same across all trials, yielding an opportunity for caching and re-use. Jarvis will also need to support execution in remote distributed systems, and have a way to centralize all the artifacts for versioning and reproducibility. Another opportunity for parallelization is within-trial: many times, data science workflows will contain independent branches that may be run in parallel. We will explore whether Ray is the right architecture to manage nested parallelization.
+
 ### Visualization and Exploratory Data Analysis
 Previewing mechanism of Jupyter.
 
