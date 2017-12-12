@@ -6,9 +6,6 @@ Build, configure, and track workflows with Jarvis.
 ## What is Jarvis?
 Jarvis is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Jarvis enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Jarvis serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
 
-## Installation
-Instructions pending.
-
 ## Example program
 Contents of the `plate.py` file:
 ```python
@@ -29,10 +26,8 @@ z = x*y
 print(z)
 return z
 
-doMultiply = jarvis.Action(multiply,
-[ones, tens])
-product = jarvis.Artifact('product.txt',
-doMultiply)
+doMultiply = jarvis.Action(multiply, [ones, tens])
+product = jarvis.Artifact('product.txt', doMultiply)
 
 product.pull()
 product.plot()
@@ -92,9 +87,19 @@ The `jarvis.d` repository has the following location and structure:
 It is our plan to support moving a user's local instance of Jarvis to the cloud, so we will be adding support for pushing the `jarvis.d` repository to an online repository, and making its location and service available to other Jarvis components that depend on versioning.
 
 ### Artifact Contextualization
+
+Jarvis uses [Ground](http://www.ground-context.org/) to store data about the context of *Artifacts*. Artifacts have a temporal context: they evolve over time. One example is a script being improved by a developer over time. Artifacts have provenance: they originate from other Artifacts together with the Actions that transform them. This provenance, or lineage, of an Artifact is captured in the Jarvis workflow specification, and is then communicated to the Ground service. Suppose you witness a drop in model accuracy, an Artifact, and you want to perform a root cause analysis: you'll need to know which versions of the data and code produced that Artifact, and then look for errors there. Jarvis, with Ground, will capture all the relevant metadata to answer questions such as: which configuration of gamma gave me the best model accuracy? When a user wishes to materialize a past experiment, they'll use information stored in Ground to find the version of the experiment they need. Jarvis will also log and track configuration parameters with the ideal that no experiment is ever unknowingly run twice. Jarvis will be able to answer questions such as, what was the model 
+accuracy for this configuration? Storing Artifact context will also be essential for reproducibility, because it enables not only materializing past versions, but also informs the user about which version to materialize. Ground and git are complementary services used by Jarvis.
+
 ### Parallel Multi-Trial Experiments
 Rapid discovery process. Within-trial parallelization, independent branches.
 ### Visualization and Exploratory Data Analysis
 Previewing mechanism of Jupyter.
+
+![Machine Learning Workflow](images/MLWorkflow.png "Machine Learning Workflow")
+
+
+
+
 ### Low Threshold, High Ceiling, and Wide Walls
 
