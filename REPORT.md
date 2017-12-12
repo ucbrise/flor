@@ -102,10 +102,9 @@ We hope that Jarvis will enable data scientists to try more ideas quickly. For t
 ### Visualization and Exploratory Data Analysis
 In order to establish the fitness of data for some particular purpose, it will be useful to levarage visualization techniques in an interactive environment such as Jupyter notebook. Visualizations can help the data scientist learn which features to use, pre-processing algorithms to apply to correct for outliers, skew, or missing data, and so on. During the more time-intesive stage of workflow validation, visualization can be used to give the data scientist a sense of, for example, how efficiently the model is learnig from the data and whether further tuning is necessary. We are particulatly interested in visualization for its ability to give immediate feedback and guide the creative process. One common example is the previewing mechanism of Jupyter. We would like to enhance this so that the workflow graph is illustrated on-the-fly, and the user interact with either the code or the diagram to specify the workflow. Currently, we use GraphViz by calling `plot()` on some Artifact to visualize the graph rooted at that Artifact (see figure below). 
 
-
 <p align="center">
   <img src='images/MLWorkflow.png' />
 </p>
 
-
-
+## License
+Jarvis is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
