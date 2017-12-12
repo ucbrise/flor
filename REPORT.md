@@ -96,9 +96,10 @@ Rapid discovery process. Within-trial parallelization, independent branches.
 ### Visualization and Exploratory Data Analysis
 Previewing mechanism of Jupyter.
 
-![Machine Learning Workflow](images/MLWorkflow.png "Machine Learning Workflow")
 
-
+<p align="center">
+  <img src='images/MLWorkflow.png' />
+</p>
 
 
 ### Low Threshold, High Ceiling, and Wide Walls
