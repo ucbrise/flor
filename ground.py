@@ -3,7 +3,6 @@ import requests
 import json
 import numpy as np
 import os
-import json
 import git
 import subprocess
 from shutil import copyfile

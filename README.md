@@ -6,6 +6,33 @@ Build, configure, and track workflows with Jarvis.
 ## What is Jarvis?
 Jarvis is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Jarvis enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Jarvis serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
 
+## How do I run it?
+
+Clone or download this repository.
+
+You'll need Anaconda, and please run the following command from a Python 3.6 Anaconda environment (use the requirements.txt file in this repo):
+```
+pip install -r requirements.txt
+```
+
+From this repo, copy the `jarvis.py` and `ground.py` files into the directory containing the files you want to use in your workflow.
+
+For examples on how to write your own jarvis workflow, please have a look at:
+```
+driver.py -- classic example
+plate.py -- multi-trial example
+lifted_driver.py -- multi-trial + aggregation example
+```
+
+Make sure you:
+1. Import `jarvis`
+2. Call `jarvis.groundClient('git')`
+3. Call `jarvis.jarvisFile(path)`, the path is the name of the file containing these instructions, the one you are writing.
+
+Once you build the workflow, call `parallelPull()` on the artifact you want to produce. You can find it in `~/jarvis.d/`.
+
+If you pass in a non-empty `dict` to `parallelPull` (see `lifted_driver.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
+
 ## Example program
 Contents of the `plate.py` file:
 ```python
