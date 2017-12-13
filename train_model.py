@@ -26,7 +26,7 @@ import jarvis
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 @jarvis.func
-def train(tweet_df):
+def train(tweet_df, alpha):
     intermediary = {}
 
     tweet_df = tweet_df.loc[:, relevant_attributes]
@@ -55,7 +55,7 @@ def train(tweet_df):
     X_train_label = np.array(tweet_df["code"])
 
     # Train a classifier
-    clf = MultinomialNB().fit(X_train, X_train_label)
+    clf = MultinomialNB(alpha=alpha).fit(X_train, X_train_label)
 
     intermediary["classifier"] = clf
 

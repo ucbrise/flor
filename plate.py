@@ -19,5 +19,7 @@ def multiply(x, y):
 doMultiply = jarvis.Action(multiply, [ones, tens])
 product = jarvis.Artifact('product.txt', doMultiply)
 
-product.pull()
-product.plot()
+# product.pull()
+# product.plot()
+product_df = product.parallelPull(manifest=True)
+jarvis.Util.pickleTo(product_df, 'product.pkl')

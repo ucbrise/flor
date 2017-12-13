@@ -7,6 +7,7 @@ import pickle
 import itertools
 import json
 import datetime
+import pandas as pd
 
 from ground import GroundClient
 from graphviz import Digraph
@@ -153,7 +154,7 @@ class Literal:
 
 class Artifact:
 
-    def __init__(self, loc, parent=None):
+    def __init__(self, loc, parent=None, manifest=False):
         self.loc = loc
         self.parent = parent
 
@@ -271,7 +272,7 @@ class Artifact:
         self.loclist.sort()
         self.scriptNames.sort()
 
-    def parallelPull(self):
+    def parallelPull(self, manifest={}):
 
         Util.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
 
@@ -324,7 +325,7 @@ class Artifact:
                 literals = list(map(lambda x: config[x], names))
                 f(literals)
             reporter(timesteps_total=1)
-            with open(experimentName + '_' + ts + '.json', 'w') as fp:
+            with open('.' + experimentName + '.jarvis', 'w') as fp:
                 json.dump(config, fp)
             os.chdir(original_dir)
 
@@ -373,6 +374,31 @@ class Artifact:
         if not os.path.isdir(Util.versioningDirectory):
             os.mkdir(Util.versioningDirectory)
         copytree(tmpexperiment, Util.versioningDirectory + '/' + Util.jarvisFile.split('.')[0] + '_' + ts)
+
+        if manifest:
+
+            os.chdir(tmpexperiment)
+
+            dirs = [x for x in os.listdir() if Util.isNumber(x)]
+            table = []
+
+            for trial in dirs:
+                os.chdir(trial)
+                with open('.' + experimentName + '.jarvis', 'r') as fp:
+                    config = json.load(fp)
+                record = {}
+                for literalName in literalNames:
+                    record[literalName] = config[literalName]
+                for artifactLabel in manifest:
+                    record[artifactLabel] = Util.loadArtifact(manifest[artifactLabel].loc)
+                    if Util.isNumber(record[artifactLabel]):
+                        record[artifactLabel] = eval(record[artifactLabel])
+                table.append(record)
+                os.chdir('../')
+
+            os.chdir(original_dir)
+
+            return pd.DataFrame(table)
 
 
     def pull(self):
@@ -673,10 +699,12 @@ class Util:
         return type(obj) == Literal or (type(obj) == Artifact and obj.parent is None)
     @staticmethod
     def isNumber(s):
+        if type(s) == int or type(s) == float:
+            return True
         try:
             float(s)
             return True
-        except ValueError:
+        except:
             return False
     @staticmethod
     def master_pop(literals):
@@ -696,4 +724,16 @@ class Util:
         elif not Util.isOrphan(pseudoArtifact) and pseudoArtifact.parent.in_artifacts:
             for in_art in pseudoArtifact.parent.in_artifacts:
                 Util.activate(in_art)
+    @staticmethod
+    def loadArtifact(loc):
+        if Util.isPickle(loc):
+            x = Util.unpickle(loc)
+        elif Util.isLoc(loc):
+            with open(loc, 'r') as f:
+                x = [i.strip() for i in f.readlines() if i.strip()]
+            if len(x) == 1:
+                x = x[0]
+        else:
+            raise NotImplementedError("Don't know how to load that file.")
+        return x
 
