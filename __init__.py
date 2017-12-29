@@ -10,5 +10,7 @@ except:
     pass
 
 from .decorators import func
-from .headers import *
+from .headers import setNotebookName
+from .experiment import Experiment
 
+__all__ = ["func", "setNotebookName", "Experiment"]

@@ -32,7 +32,7 @@ class Experiment:
                         in_art = self.literal(in_art)
                         in_art.forEach()
                     else:
-                        in_art = Literal(in_art)
+                        in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
             in_artifacts = temp_artifacts
         return Action(func, in_artifacts, self.xp_state)

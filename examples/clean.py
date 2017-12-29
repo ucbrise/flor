@@ -6,14 +6,13 @@ import html.parser
 import preprocessor as twpre
 import os, pickle, sys
 from shared import params
-import project
-import tempfile
+import jarvis
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 html_parser = html.parser.HTMLParser()
 
-@project.func
+@jarvis.func
 def clean(tweets_df_loc):
     tweet_df = pd.read_csv(tweets_df_loc, **params)
     return tweet_df

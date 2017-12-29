@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 import os
+import git
+import json
+import itertools
+import datetime
+import pandas as pd
 
 from graphviz import Digraph
 from shutil import copyfile
@@ -26,8 +31,8 @@ class Artifact:
 
     def __commit__(self):
 
-        gc = Util.gc
-        dir_name = Util.versioningDirectory
+        gc = self.xp_state.gc
+        dir_name = self.xp_state.versioningDirectory
         loclist = self.loclist
         scriptNames = self.scriptNames
         tag = {
@@ -35,10 +40,10 @@ class Artifact:
             'Actions': [i for i in scriptNames]
         }
 
-        for literal in Util.literals:
+        for literal in self.xp_state.literals:
             if literal.name:
                 try:
-                    value = str(Util.unpickle(literal.loc))
+                    value = str(util.unpickle(literal.loc))
                     if len(value) <= 250:
                         tag[literal.name] = value
                 except:
@@ -67,7 +72,7 @@ class Artifact:
             tree = repo.tree()
             with open('.jarvis', 'w') as f:
                 for obj in tree:
-                    commithash = Util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
+                    commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
                     if obj.path != '.jarvis':
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
@@ -75,7 +80,7 @@ class Artifact:
             os.chdir('../')
         else:
 
-            listdir = [x for x in filter(Util.isNumber, os.listdir(dir_name))]
+            listdir = [x for x in filter(util.isNumber, os.listdir(dir_name))]
 
             nthDir =  str(len(listdir) + 1)
             os.makedirs(dir_name + "/" + nthDir)
@@ -105,7 +110,7 @@ class Artifact:
             tree = repo.tree()
             with open('.jarvis', 'w') as f:
                 for obj in tree:
-                    commithash = Util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
+                    commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
                     if obj.path != '.jarvis':
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
@@ -137,7 +142,7 @@ class Artifact:
 
     def parallelPull(self, manifest={}):
 
-        Util.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
+        self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
 
         # Runs one experiment per pull
         # Each experiment has many trials
@@ -149,9 +154,9 @@ class Artifact:
         else:
             os.mkdir(tmpexperiment)
 
-        Util.visited = []
+        self.xp_state.visited = []
 
-        if not Util.isOrphan(self):
+        if not util.isOrphan(self):
             self.loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
         else:
             self.loclist = [self.getLocation(),]
@@ -159,7 +164,7 @@ class Artifact:
 
         literalsAttached = set([])
         lambdas = []
-        if not Util.isOrphan(self):
+        if not util.isOrphan(self):
             self.parent.__serialize__(lambdas, self.loclist, self.scriptNames)
 
         self.loclist = list(set(self.loclist))
@@ -196,19 +201,19 @@ class Artifact:
         numTrials = 1
         literals = []
         literalNames = []
-        for kee in Util.literalNameToObj:
+        for kee in self.xp_state.literalNameToObj:
             if kee in literalsAttached:
-                if Util.literalNameToObj[kee].__oneByOne__:
-                    config[kee] = grid_search(Util.literalNameToObj[kee].v)
-                    numTrials *= len(Util.literalNameToObj[kee].v)
-                    literals.append(Util.literalNameToObj[kee].v)
+                if self.xp_state.literalNameToObj[kee].__oneByOne__:
+                    config[kee] = grid_search(self.xp_state.literalNameToObj[kee].v)
+                    numTrials *= len(self.xp_state.literalNameToObj[kee].v)
+                    literals.append(self.xp_state.literalNameToObj[kee].v)
                 else:
-                    config[kee] = Util.literalNameToObj[kee].v
-                    if Util.isIterable(Util.literalNameToObj[kee].v):
-                        if type(Util.literalNameToObj[kee].v) == tuple:
-                            literals.append((Util.literalNameToObj[kee].v,))
+                    config[kee] = self.xp_state.literalNameToObj[kee].v
+                    if util.isIterable(self.xp_state.literalNameToObj[kee].v):
+                        if type(self.xp_state.literalNameToObj[kee].v) == tuple:
+                            literals.append((self.xp_state.literalNameToObj[kee].v,))
                         else:
-                            literals.append([Util.literalNameToObj[kee].v,])
+                            literals.append([self.xp_state.literalNameToObj[kee].v,])
                 literalNames.append(kee)
 
         literals = list(itertools.product(*literals))
@@ -224,7 +229,7 @@ class Artifact:
 
         register_trainable('exportedExec', exportedExec)
 
-        experimentName = Util.jarvisFile.split('.')[0]
+        experimentName = self.xp_state.jarvisFile.split('.')[0]
 
         run_experiments({
             experimentName : {
@@ -234,15 +239,15 @@ class Artifact:
             }
         })
 
-        if not os.path.isdir(Util.versioningDirectory):
-            os.mkdir(Util.versioningDirectory)
-        copytree(tmpexperiment, Util.versioningDirectory + '/' + Util.jarvisFile.split('.')[0] + '_' + ts)
+        if not os.path.isdir(self.xp_state.versioningDirectory):
+            os.mkdir(self.xp_state.versioningDirectory)
+        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0] + '_' + ts)
 
         if manifest:
 
             os.chdir(tmpexperiment)
 
-            dirs = [x for x in os.listdir() if Util.isNumber(x)]
+            dirs = [x for x in os.listdir() if util.isNumber(x)]
             table = []
 
             for trial in dirs:
@@ -253,8 +258,8 @@ class Artifact:
                 for literalName in literalNames:
                     record[literalName] = config[literalName]
                 for artifactLabel in manifest:
-                    record[artifactLabel] = Util.loadArtifact(manifest[artifactLabel].loc)
-                    if Util.isNumber(record[artifactLabel]):
+                    record[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
+                    if util.isNumber(record[artifactLabel]):
                         record[artifactLabel] = eval(record[artifactLabel])
                 table.append(record)
                 os.chdir('../')
@@ -267,15 +272,15 @@ class Artifact:
     def pull(self):
 
         # temporary fix for backward compatibility
-        Util.versioningDirectory = 'jarvis.d'
+        self.xp_state.versioningDirectory = 'jarvis.d'
 
-        Util.activate(self)
-        userDefFiles = set(os.listdir()) - Util.ghostFiles
+        util.activate(self)
+        userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
         try:
             while True:
                 self.__pull__()
                 self.__commit__()
-                subtreeMaxed = Util.master_pop(Util.literals)
+                subtreeMaxed = util.master_pop(self.xp_state.literals)
                 if subtreeMaxed:
                     break
         except Exception as e:
@@ -286,31 +291,31 @@ class Artifact:
                         os.remove(file)
             except Exception as ee:
                 print(ee)
-            Util.literals = []
-            Util.ghostFiles = set([])
+            self.xp_state.literals = []
+            self.xp_state.ghostFiles = set([])
             raise e
         intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
         commitables = []
         for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
-            copyfile(file, Util.versioningDirectory + '/' + file)
+            copyfile(file, self.xp_state.versioningDirectory + '/' + file)
             commitables.append(file)
-        os.chdir(Util.versioningDirectory)
+        os.chdir(self.xp_state.versioningDirectory)
         repo = git.Repo(os.getcwd())
         repo.index.add(commitables)
         repo.index.commit("incremental commit")
         tree = repo.tree()
         with open('.jarvis', 'w') as f:
             for obj in tree:
-                commithash = Util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
+                commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
                 if obj.path != '.jarvis':
                     f.write(obj.path + " " + commithash + "\n")
         repo.index.add(['.jarvis'])
         repo.index.commit('.jarvis commit')
         os.chdir('../')
-        Util.literals = []
-        Util.ghostFiles = set([])
+        self.xp_state.literals = []
+        self.xp_state.ghostFiles = set([])
 
     def peek(self, func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory
@@ -319,11 +324,11 @@ class Artifact:
             self.pull()
             os.chdir(self.xp_state.versioningDirectory)
             listdir = [x for x in filter(util.isNumber, os.listdir())]
-            dir = str(len(listdir))
+            _dir = str(len(listdir))
             if util.isPickle(self.loc):
-                out = func(util.unpickle(dir + '/' + self.loc))
+                out = func(util.unpickle(_dir + '/' + self.loc))
             else:
-                with open(dir + '/' + self.loc, 'r') as f:
+                with open(_dir + '/' + self.loc, 'r') as f:
                     out = func(f.readlines())
             os.chdir('../')
         except Exception as e:

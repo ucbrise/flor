@@ -1,33 +1,32 @@
 #!/usr/bin/env python3
-import project
+import jarvis
 import numpy as np
 import pandas as pd
 
-project.groundClient('git')
-project.jarvisFile('lifted_driver.py')
+ex = jarvis.Experiment("lifted_twitter")
+ex.groundClient('git')
 
-
-training_tweets = project.Artifact('training_tweets.csv')
+training_tweets = ex.artifact('training_tweets.csv')
 
 from clean import clean
-do_tr_clean = project.Action(clean, [training_tweets])
-clean_training_tweets = project.Artifact('clean_training_tweets.pkl', do_tr_clean)
+do_tr_clean = ex.action(clean, [training_tweets])
+clean_training_tweets = ex.artifact('clean_training_tweets.pkl', do_tr_clean)
 
-alpha = project.Literal(np.linspace(0.0, 1.0, 11).tolist(), 'alpha')
+alpha = ex.literal(np.linspace(0.0, 1.0, 11).tolist(), 'alpha')
 alpha.forEach()
 
 from train_model import train
-do_train = project.Action(train, [clean_training_tweets, alpha])
-intermediary = project.Artifact('intermediary.pkl', do_train)
+do_train = ex.action(train, [clean_training_tweets, alpha])
+intermediary = ex.artifact('intermediary.pkl', do_train)
 
-testing_tweets = project.Artifact('testing_tweets.csv')
+testing_tweets = ex.artifact('testing_tweets.csv')
 
-do_te_clean = project.Action(clean, [testing_tweets])
-clean_testing_tweets = project.Artifact('clean_testing_tweets.pkl', do_te_clean)
+do_te_clean = ex.action(clean, [testing_tweets])
+clean_testing_tweets = ex.artifact('clean_testing_tweets.pkl', do_te_clean)
 
 from test_model import test
-do_test = project.Action(test, [intermediary, clean_testing_tweets])
-model_accuracy = project.Artifact('model_accuracy.txt', do_test)
+do_test = ex.action(test, [intermediary, clean_testing_tweets])
+model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 
 columnArtifacts = {'model_accuracy': model_accuracy,
                    'model': intermediary}
