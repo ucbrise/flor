@@ -21,11 +21,11 @@ import os, pickle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from shared import params, relevant_attributes
-import jarvis
+import project
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 
-@jarvis.func
+@project.func
 def train(tweet_df, alpha):
     intermediary = {}
 

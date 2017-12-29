@@ -1,9 +1,9 @@
-import jarvis
+import project
 import os
 import pickle
 import numpy as np
 
-@jarvis.func
+@project.func
 def get_training_data(in_artifacts, out_artifacts):
     if os.path.isfile(out_artifacts[0].getLocation()):
         #run once

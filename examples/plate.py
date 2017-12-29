@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-import jarvis
+import project
 
-jarvis.groundClient('git')
-jarvis.jarvisFile('plate.py')
+project.groundClient('git')
+project.jarvisFile('plate.py')
 
-ones = jarvis.Literal([1, 2, 3], "ones")
+ones = project.Literal([1, 2, 3], "ones")
 ones.forEach()
 
-tens = jarvis.Literal([10, 100], "tens")
+tens = project.Literal([10, 100], "tens")
 tens.forEach()
 
-@jarvis.func
+@project.func
 def multiply(x, y):
     z = x*y
     print(z)
     return z
 
-doMultiply = jarvis.Action(multiply, [ones, tens])
-product = jarvis.Artifact('product.txt', doMultiply)
+doMultiply = project.Action(multiply, [ones, tens])
+product = project.Artifact('product.txt', doMultiply)
 
 # product.pull()
 # product.plot()
 product_df = product.parallelPull(manifest=True)
-jarvis.Util.pickleTo(product_df, 'product.pkl')
+project.Util.pickleTo(product_df, 'product.pkl')

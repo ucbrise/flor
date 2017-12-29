@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-import jarvis
+import project
 
 # comment
 
@@ -32,10 +32,10 @@ def crawl(in_artifacts, out_artifacts, data_source):
 	df = pd.read_csv(data_source, **params)
 	df.to_csv(destination, index=False, header=False)
 
-@jarvis.func
+@project.func
 def tr_crawl(in_artifacts, out_artifacts):
 	crawl(in_artifacts, out_artifacts, 'deprecated/training_tweets.csv')
 
-@jarvis.func
+@project.func
 def te_crawl(in_artifacts, out_artifacts):
 	crawl(in_artifacts, out_artifacts, 'deprecated/testing_tweets.csv')

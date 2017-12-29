@@ -1,6 +1,6 @@
-import jarvis
+import project
 import os
 
-@jarvis.func
+@project.func
 def get_inception_model(in_artifacts, out_artifacts):
 	return

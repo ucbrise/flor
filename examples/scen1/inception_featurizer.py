@@ -1,4 +1,4 @@
-import jarvis
+import project
 
 import sys
 import os
@@ -181,7 +181,7 @@ class InceptionFeaturizationModel(ModelBase):
     def benchmark(self, batch_size=1, avg_after=5):
         benchmark_function(self.predict, gen_inception_featurization_inputs, batch_size, avg_after)
         
-@jarvis.func
+@project.func
 def inception_featurizer(in_artifacts, out_artifacts):
     feat_data = []
     encoded_strings = []

@@ -9,7 +9,7 @@ import json
 import datetime
 import pandas as pd
 
-from ground import GroundClient
+from .ground import GroundClient
 from graphviz import Digraph
 from shutil import copyfile
 from shutil import rmtree
@@ -634,6 +634,8 @@ class Action:
         return to_list
 
 class Util:
+
+    # The following are experiment-wide variables
 
     edges = []
     gc = None
