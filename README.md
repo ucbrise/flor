@@ -15,48 +15,47 @@ You'll need Anaconda, and please run the following command from a Python 3.6 Ana
 pip install -r requirements.txt
 ```
 
-From this repo, copy the `jarvis.py` and `ground.py` files into the directory containing the files you want to use in your workflow.
+Add the directory containing this jarvis package (repo) to your `PYTHONPATH`.
 
 For examples on how to write your own jarvis workflow, please have a look at:
 ```
-driver.py -- classic example
-plate.py -- multi-trial example
-lifted_driver.py -- multi-trial + aggregation example
+examples/twitter.py -- classic example
+examples/plate.py -- multi-trial example
+examples/lifted_twitter.py -- multi-trial + aggregation example
 ```
 
 Make sure you:
 1. Import `jarvis`
-2. Call `jarvis.groundClient('git')`
-3. Call `jarvis.jarvisFile(path)`, the path is the name of the file containing these instructions, the one you are writing.
+2. Initialize a `jarvis.Experiment`
+2. set the experiment's `groundClient` to 'git'.
 
 Once you build the workflow, call `parallelPull()` on the artifact you want to produce. You can find it in `~/jarvis.d/`.
 
-If you pass in a non-empty `dict` to `parallelPull` (see `lifted_driver.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
+If you pass in a non-empty `dict` to `parallelPull` (see `lifted_twitter.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
 
 ## Example program
 Contents of the `plate.py` file:
 ```python
 import jarvis
 
-jarvis.groundClient('git')
-jarvis.jarvisFile('plate.py')
+ex = jarvis.Experiment('plate_demo')
 
-ones = jarvis.Literal([1, 2, 3], "ones")
+ex.groundClient('git')
+
+ones = ex.literal([1, 2, 3], "ones")
 ones.forEach()
 
-tens = jarvis.Literal([10, 100], "tens")
+tens = ex.literal([10, 100], "tens")
 tens.forEach()
 
 @jarvis.func
 def multiply(x, y):
-z = x*y
-print(z)
-return z
+    z = x*y
+    print(z)
+    return z
 
-doMultiply = jarvis.Action(multiply,
-[ones, tens])
-product = jarvis.Artifact('product.txt',
-doMultiply)
+doMultiply = ex.action(multiply, [ones, tens])
+product = ex.artifact('product.txt', doMultiply)
 
 product.pull()
 product.plot()
