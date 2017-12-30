@@ -211,9 +211,11 @@ class Artifact:
                     config[kee] = self.xp_state.literalNameToObj[kee].v
                     if util.isIterable(self.xp_state.literalNameToObj[kee].v):
                         if type(self.xp_state.literalNameToObj[kee].v) == tuple:
-                            literals.append((self.xp_state.literalNameToObj[kee].v,))
+                            literals.append((self.xp_state.literalNameToObj[kee].v, ))
                         else:
-                            literals.append([self.xp_state.literalNameToObj[kee].v,])
+                            literals.append([self.xp_state.literalNameToObj[kee].v, ])
+                    else:
+                        literals.append([self.xp_state.literalNameToObj[kee].v, ])
                 literalNames.append(kee)
 
         literals = list(itertools.product(*literals))
