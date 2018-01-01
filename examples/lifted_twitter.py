@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import jarvis
 import numpy as np
-import pandas as pd
 
 ex = jarvis.Experiment("lifted_twitter")
 ex.groundClient('git')
@@ -49,6 +48,3 @@ while True:
     tweet_vec = vectorizer.transform(np.array([tweet,]))
     country_id = classifier.predict(tweet_vec)
     print("Predicted country of origin: {}\n".format(code_dict[country_id[0]]))
-
-
-
