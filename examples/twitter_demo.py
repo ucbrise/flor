@@ -2,7 +2,7 @@
 import jarvis
 import numpy as np
 
-ex = jarvis.Experiment("lifted_twitter")
+ex = jarvis.Experiment("twitter_demo")
 ex.groundClient('git')
 
 tweets = ex.artifact('tweets.csv')
