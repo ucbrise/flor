@@ -75,7 +75,7 @@ Jarvis should facilitate the development of auditable, reproducible, justifiable
 
 ## Features
 * **Simple and Expressive Object Model**: The Jarvis object model consists exclusively of *Actions*, *Artifacts*, and *Literals*, that are connected to form dataflow graphs.
-* **Data-Centric Workflows**: Machine learning applications have data dependencies that obscure traiditional abstraction boundaries, and complicate the use of standard software engineering practices and tools. In Jarvis, data is a first-class citizen.
+* **Data-Centric Workflows**: Machine learning applications have data dependencies that obscure traditional abstraction boundaries, and complicate the use of standard software engineering practices and tools. In Jarvis, data is a first-class citizen.
 * **Artifact Versioning**: Jarvis uses git to automatically version every (data, code, etc.) Artifact in a Jarvis workflow.
 * **Artifact Contextualization**: Jarvis uses [Ground](http://www.ground-context.org/) to store data about the context of *Artifacts*. Ground and git are complementary services used by Jarvis.
 * **Parallel Multi-Trial Experiments**: We hope that Jarvis will enable data scientists to try more ideas quickly. For this, we need to enhance speed of execution, and therefore levarage parallel execution systems such as [Ray](https://github.com/ray-project/ray) to execute multiple trials in parallel.
