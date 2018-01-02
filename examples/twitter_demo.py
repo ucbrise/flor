@@ -26,6 +26,12 @@ from test_model import test
 do_test = ex.action(test, [intermediary, testing_tweets])
 model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 
+
+
+
+
+
+
 columnArtifacts = {'model_accuracy': model_accuracy,
                    'model': intermediary}
 

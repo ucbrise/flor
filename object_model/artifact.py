@@ -147,7 +147,7 @@ class Artifact:
         # Runs one experiment per pull
         # Each experiment has many trials
 
-        tmpexperiment = '/tmp/de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3'
+        tmpexperiment = self.xp_state.tmpexperiment
         if os.path.exists(tmpexperiment):
             rmtree(tmpexperiment)
             os.mkdir(tmpexperiment)
@@ -178,6 +178,8 @@ class Artifact:
             literalsAttached |= set(names)
 
         original_dir = os.getcwd()
+
+        experimentName = self.xp_state.jarvisFile.split('.')[0]
         def exportedExec(config, reporter):
             tee = tuple([])
             for litName in config['8ilk9274']:
@@ -189,12 +191,12 @@ class Artifact:
                     break
             assert i >= 0
             os.chdir(tmpexperiment + '/' + str(i))
+            with open('.' + experimentName + '.jarvis', 'w') as fp:
+                json.dump(config, fp)
             for f, names in lambdas:
                 literals = list(map(lambda x: config[x], names))
                 f(literals)
             reporter(timesteps_total=1)
-            with open('.' + experimentName + '.jarvis', 'w') as fp:
-                json.dump(config, fp)
             os.chdir(original_dir)
 
         config = {}
@@ -231,7 +233,9 @@ class Artifact:
 
         register_trainable('exportedExec', exportedExec)
 
-        experimentName = self.xp_state.jarvisFile.split('.')[0]
+
+
+        self.xp_state.ray['literalNames'] = literalNames
 
         run_experiments({
             experimentName : {
