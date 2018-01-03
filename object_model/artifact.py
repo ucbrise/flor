@@ -249,6 +249,8 @@ class Artifact:
             os.mkdir(self.xp_state.versioningDirectory)
         copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0] + '_' + ts)
 
+
+
         if manifest:
 
             os.chdir(tmpexperiment)
