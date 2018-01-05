@@ -10,12 +10,16 @@ Jarvis is a system with a declarative DSL embedded in python for managing the wo
 
 Clone or download this repository.
 
-You'll need Anaconda, and please run the following command from a Python 3.6 Anaconda environment (use the requirements.txt file in this repo):
+You'll need Anaconda, preferable version 4.4+
+
+Please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a Python 3.6 environment inside Anaconda. Whenever you work with Jarvis, make sure the Python 3.6 environment is active.
+
+Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this repo):
 ```
 pip install -r requirements.txt
 ```
 
-Add the directory containing this jarvis package (repo) to your `PYTHONPATH`.
+**Add the directory containing this jarvis package (repo) to your `PYTHONPATH`.**
 
 For examples on how to write your own jarvis workflow, please have a look at:
 ```
