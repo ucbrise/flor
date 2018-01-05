@@ -3,6 +3,7 @@
 import os
 import warnings
 from tqdm import tqdm
+import pandas as pd
 
 from . import global_state
 from . import util
@@ -108,6 +109,14 @@ def listVersionSummaries(experimentName):
         processed_out.append((version, df))
     util.runProc('git checkout master')
     os.chdir(original_dir)
+
+    for experiment_pair in processed_out:
+        commithash, df = experiment_pair
+        df.loc[:, '__commitHash__'] = [commithash for i in range(len(df))]
+
+    processed_out = list(map(lambda x: x[1], processed_out))
+    processed_out = pd.concat(processed_out).reset_index(drop=True)
+
     return processed_out
 
 def materialize(experimentName, trialNum, commitHash, fileName):
