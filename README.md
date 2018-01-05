@@ -12,7 +12,7 @@ Clone or download this repository.
 
 You'll need Anaconda, preferable version 4.4+
 
-Please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a Python 3.6 environment inside Anaconda. Whenever you work with Jarvis, make sure the Python 3.6 environment is active.
+Please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a Python 3.6 environment inside Anaconda. **Whenever you work with Jarvis, make sure the Python 3.6 environment is active**.
 
 Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this repo):
 ```
