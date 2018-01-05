@@ -113,7 +113,7 @@ def listVersionSummaries(experimentName):
 def materialize(experimentName, trialNum, commitHash, fileName):
     original_dir = os.getcwd()
     os.chdir(State().versioningDirectory + '/' + experimentName)
-    util.runProc('git checkout' + commitHash)
+    util.runProc('git checkout ' + commitHash)
     os.chdir(str(trialNum))
     warnings.filterwarnings("ignore")
     res = util.loadArtifact(fileName)
