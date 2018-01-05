@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ADD COMMENT
+# Hello world!
 """ train_model.py
 To run:
     train_model.py
@@ -18,7 +18,7 @@ intermediary.pkl is a python dictionary with the following keys, values:
 import pandas as pd
 import numpy as np
 import os, pickle
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from shared import params, relevant_attributes
 import jarvis
@@ -48,6 +48,7 @@ def train(tweet_df, alpha):
 
     # Tokenize Text
     count_vect = CountVectorizer()
+    #count_vect = TfidfVectorizer()
     X_train = count_vect.fit_transform(tweet_df["tweet"])
 
     intermediary["vectorizer"] = count_vect

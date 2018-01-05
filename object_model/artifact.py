@@ -6,17 +6,20 @@ import json
 import itertools
 import datetime
 import pandas as pd
+import sys
 
 from graphviz import Digraph
 from shutil import copyfile
 from shutil import rmtree
 from shutil import copytree
+from shutil import move
 
 from ray.tune import register_trainable
 from ray.tune import grid_search
 from ray.tune import run_experiments
 
 from .. import util
+from .recursivesizeof import total_size
 
 class Artifact:
 
@@ -247,34 +250,71 @@ class Artifact:
 
         if not os.path.isdir(self.xp_state.versioningDirectory):
             os.mkdir(self.xp_state.versioningDirectory)
-        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0] + '_' + ts)
 
+        moveBackFlag = False
 
+        if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0]):
+            move(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0] + '/.git', '/tmp/')
+            rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+            moveBackFlag = True
 
         if manifest:
 
             os.chdir(tmpexperiment)
 
             dirs = [x for x in os.listdir() if util.isNumber(x)]
-            table = []
+            table_full = []
+            table_small = []
 
             for trial in dirs:
                 os.chdir(trial)
                 with open('.' + experimentName + '.jarvis', 'r') as fp:
                     config = json.load(fp)
-                record = {}
+                record_full = {}
+                record_small = {}
+
                 for literalName in literalNames:
-                    record[literalName] = config[literalName]
+                    record_full[literalName] = config[literalName]
+                    record_small[literalName] = config[literalName]
                 for artifactLabel in manifest:
-                    record[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
-                    if util.isNumber(record[artifactLabel]):
-                        record[artifactLabel] = eval(record[artifactLabel])
-                table.append(record)
+                    record_full[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
+                    if total_size(record_full[artifactLabel]) >= 1000:
+                        record_small[artifactLabel] = "NOT LOADED"
+                    else:
+                        record_small[artifactLabel] = record_full[artifactLabel]
+                    if util.isNumber(record_full[artifactLabel]):
+                        record_full[artifactLabel] = eval(record_full[artifactLabel])
+                    if util.isNumber(record_small[artifactLabel]):
+                        record_small[artifactLabel] = eval(record_small[artifactLabel])
+                record_small['__trialNum__'] = trial
+                record_full['__trialNum__'] = trial
+
+                table_full.append(record_full)
+                table_small.append(record_small)
                 os.chdir('../')
+
+            df = pd.DataFrame(table_small)
+            util.pickleTo(df, experimentName + '.pkl')
 
             os.chdir(original_dir)
 
-            return pd.DataFrame(table)
+        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+
+        os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+        if moveBackFlag:
+            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+            repo = git.Repo(os.getcwd())
+            repo.git.add(A=True)
+            repo.index.commit('incremental commit')
+        else:
+            repo = git.Repo.init(os.getcwd())
+            repo.git.add(A=True)
+            repo.index.commit('initial commit')
+        os.chdir(original_dir)
+
+        if manifest:
+
+            return pd.DataFrame(table_full)
 
 
     def pull(self):

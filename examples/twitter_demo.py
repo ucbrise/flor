@@ -26,12 +26,6 @@ from test_model import test
 do_test = ex.action(test, [intermediary, testing_tweets])
 model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 
-
-
-
-
-
-
 columnArtifacts = {'model_accuracy': model_accuracy,
                    'model': intermediary}
 
@@ -49,7 +43,7 @@ for kee in country_dict:
 
 while True:
     tweet = input("What's on your mind? ")
-    if tweet == 'nothing':
+    if tweet == 'exit':
         break
     tweet_vec = vectorizer.transform(np.array([tweet,]))
     country_id = classifier.predict(tweet_vec)
