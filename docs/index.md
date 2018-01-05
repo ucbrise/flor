@@ -13,7 +13,7 @@ Jarvis is a system with a declarative DSL embedded in python for managing the wo
 * **Visualization and Exploratory Data Analysis**: To establish the fitness of data for some particular purpose, or gain valuable insights about properties of the data, Jarvis will leverage visualization techniques in an interactive environment such as Jupyter Notebook. We use visualization for its ability to give immediate feedback and guide the creative process.
 
 ## Here for the demo?
-1. Please read and complete the HOW TO section of the [README](https://ucbrise.github.io/jarvis/)
+1. Please read and complete the HOW TO section of the [README](https://github.com/ucbrise/jarvis/)
 2. Please activate your Python 3.6 environment in Anaconda: `source activate [name_of_env]`
 3. `cd` into `jarvis\examples\` and run: `python twitter_demo.py` (Your Python 3.6 environment in Anaconda should still be active).
 4. Open `train_model.py` and comment line 50 and uncomment line 51.
