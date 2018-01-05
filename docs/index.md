@@ -1,8 +1,6 @@
 # Jarvis
 
-<p align="center">
-  <img src='MLLifecycle.png' />
-</p>
+![MLLifecycle](MLLifecycle.png "Machine Learning Lifecycle")
 
 Jarvis is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Jarvis enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Jarvis serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
 
