@@ -9,14 +9,12 @@ try:
 except:
     pass
 
-import warnings
-with warnings.catch_warnings():
-    from .decorators import func
-    from .headers import setNotebookName
-    from .headers import listVersionSummaries
-    from .headers import diffExperimentVersions
-    from .headers import materialize
-    from .experiment import Experiment
+from .decorators import func
+from .headers import setNotebookName
+from .headers import listVersionSummaries
+from .headers import diffExperimentVersions
+from .headers import materialize
+from .experiment import Experiment
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
            "materialize", "listVersionSummaries", "Experiment"]
