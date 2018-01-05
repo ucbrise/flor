@@ -7,4 +7,4 @@
 5. Run: `python twitter_demo.py`
 6. From `jarvis\examples\`, and with your Python 3.6 environment in Anaconda still active, type `jupyter notebook`
 7. Walk-through `JarvisDemo.ipynb` from within Jupyter Notebook.
-8. To exit out of the Country-of-origin prediction app, simply enter `exit`.
+8. To exit out of the Country-of-origin prediction app, simply enter `exit` into the text input box.
