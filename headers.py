@@ -99,7 +99,7 @@ def diffExperimentVersions(experimentName, v1, v2):
     for r in color_res:
         print(r)
 
-def listVersionSummaries(experimentName):
+def versionSummaries(experimentName):
     original_dir = os.getcwd()
     processed_out = []
     os.chdir(State().versioningDirectory + '/' + experimentName)
@@ -119,7 +119,7 @@ def listVersionSummaries(experimentName):
 
     return processed_out
 
-def materialize(experimentName, trialNum, commitHash, fileName):
+def checkout(experimentName, trialNum, commitHash, fileName):
     original_dir = os.getcwd()
     os.chdir(State().versioningDirectory + '/' + experimentName)
     util.runProc('git checkout ' + commitHash)

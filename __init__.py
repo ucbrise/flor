@@ -11,10 +11,10 @@ except:
 
 from .decorators import func
 from .headers import setNotebookName
-from .headers import listVersionSummaries
+from .headers import versionSummaries
 from .headers import diffExperimentVersions
-from .headers import materialize
+from .headers import checkout
 from .experiment import Experiment
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
-           "materialize", "listVersionSummaries", "Experiment"]
+           "checkout", "versionSummaries", "Experiment"]

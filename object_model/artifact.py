@@ -279,7 +279,7 @@ class Artifact:
                 for artifactLabel in manifest:
                     record_full[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
                     if total_size(record_full[artifactLabel]) >= 1000:
-                        record_small[artifactLabel] = "NOT LOADED"
+                        record_small[artifactLabel] = " . . . "
                     else:
                         record_small[artifactLabel] = record_full[artifactLabel]
                     if util.isNumber(record_full[artifactLabel]):
