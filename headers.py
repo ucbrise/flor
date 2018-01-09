@@ -119,7 +119,7 @@ def versionSummaries(experimentName):
 
     return processed_out
 
-def checkout(experimentName, trialNum, commitHash, fileName):
+def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     original_dir = os.getcwd()
     os.chdir(State().versioningDirectory + '/' + experimentName)
     util.runProc('git checkout ' + commitHash)

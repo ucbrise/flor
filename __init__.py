@@ -13,8 +13,8 @@ from .decorators import func
 from .headers import setNotebookName
 from .headers import versionSummaries
 from .headers import diffExperimentVersions
-from .headers import checkout
+from .headers import checkoutArtifact
 from .experiment import Experiment
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
-           "checkout", "versionSummaries", "Experiment"]
+           "checkoutArtifact", "versionSummaries", "Experiment"]

@@ -20,13 +20,13 @@ alpha.forEach()
 
 from train_model import train
 do_train = ex.action(train, [training_tweets, alpha])
-intermediary = ex.artifact('intermediary.pkl', do_train)
+model = ex.artifact('model.pkl', do_train)
 
 from test_model import test
-do_test = ex.action(test, [intermediary, testing_tweets])
+do_test = ex.action(test, [model, testing_tweets])
 model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 
 columnArtifacts = {'model_accuracy': model_accuracy,
-                   'model': intermediary}
+                   'model': model}
 
 model_accuracy.parallelPull(manifest=columnArtifacts)

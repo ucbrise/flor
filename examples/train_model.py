@@ -47,11 +47,12 @@ def train(tweet_df, alpha):
     ## Convert tweet to bag of words for learning
 
     # Tokenize Text
-    count_vect = CountVectorizer()
-    #count_vect = TfidfVectorizer()
-    X_train = count_vect.fit_transform(tweet_df["tweet"])
+    vectorizer = TfidfVectorizer()
+    #vectorizer = CountVectorizer()
 
-    intermediary["vectorizer"] = count_vect
+    X_train = vectorizer.fit_transform(tweet_df["tweet"])
+
+    intermediary["vectorizer"] = vectorizer
 
     X_train_label = np.array(tweet_df["code"])
 
