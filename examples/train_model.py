@@ -47,8 +47,8 @@ def train(tweet_df, alpha):
     ## Convert tweet to bag of words for learning
 
     # Tokenize Text
-    vectorizer = TfidfVectorizer()
-    #vectorizer = CountVectorizer()
+    #vectorizer = TfidfVectorizer()
+    vectorizer = CountVectorizer()
 
     X_train = vectorizer.fit_transform(tweet_df["tweet"])
 
