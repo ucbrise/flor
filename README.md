@@ -19,7 +19,19 @@ Once the Python 3.6 environment in Anaconda is active, please run the following 
 pip install -r requirements.txt
 ```
 
-**Add the directory containing this jarvis package (repo) to your `PYTHONPATH`.**
+Next, we will install RAY, a Jarvis dependency:
+
+```
+brew update
+brew install cmake pkg-config automake autoconf libtool boost wget
+
+pip install numpy funcsigs click colorama psutil redis flatbuffers cython --ignore-installed six
+conda install libgcc
+
+pip install git+https://github.com/ray-project/ray.git#subdirectory=python
+```
+
+Next, **Add the directory containing this jarvis package (repo) to your `PYTHONPATH`.**
 
 For examples on how to write your own jarvis workflow, please have a look at:
 ```
