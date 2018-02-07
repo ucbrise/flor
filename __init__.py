@@ -15,6 +15,12 @@ from .headers import versionSummaries
 from .headers import diffExperimentVersions
 from .headers import checkoutArtifact
 from .experiment import Experiment
+import ray
+
+try:
+	ray.get([])
+except:
+	ray.init()
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
            "checkoutArtifact", "versionSummaries", "Experiment"]

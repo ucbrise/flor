@@ -14,12 +14,10 @@ from shutil import rmtree
 from shutil import copytree
 from shutil import move
 
-from ray.tune import register_trainable
-from ray.tune import grid_search
-from ray.tune import run_experiments
-
 from .. import util
 from .recursivesizeof import total_size
+
+import ray
 
 class Artifact:
 
@@ -34,13 +32,13 @@ class Artifact:
 
     def __commit__(self):
 
-        gc = self.xp_state.gc
+        gc = self.xp_state.gc #ground client
         dir_name = self.xp_state.versioningDirectory
         loclist = self.loclist
         scriptNames = self.scriptNames
         tag = {
-            'Artifacts': [i for i in loclist],
-            'Actions': [i for i in scriptNames]
+            'Artifacts': [i for i in loclist], 
+            'Actions': [i for i in scriptNames] 
         }
 
         for literal in self.xp_state.literals:
@@ -48,27 +46,26 @@ class Artifact:
                 try:
                     value = str(util.unpickle(literal.loc))
                     if len(value) <= 250:
-                        tag[literal.name] = value
+                        tag[literal.name] = value 
                 except:
                     pass
 
         if not os.path.exists(dir_name):
             nodeid = gc.createNode('Run')
-            gc.createNodeVersion(nodeid, tag)
+            gc.createNodeVersion(nodeid, tag) 
 
-            os.makedirs(dir_name)
-            os.makedirs(dir_name + '/1')
-            # Move new files to the artifacts repo
+            os.makedirs(dir_name) 
+            os.makedirs(dir_name + '/1') 
             for loc in loclist:
                 copyfile(loc, dir_name + "/1/" + loc)
             for script in scriptNames:
                 copyfile(script, dir_name + "/1/" + script)
             os.chdir(dir_name + '/1')
 
-            gc.commit()
-            os.chdir('../')
+            gc.commit() 
+            os.chdir('../') 
 
-            repo = git.Repo.init(os.getcwd())
+            repo = git.Repo.init(os.getcwd()) 
             repo.index.add(['1',])
 
             repo.index.commit("initial commit")
@@ -80,22 +77,24 @@ class Artifact:
                         f.write(obj.path + " " + commithash + "\n")
             repo.index.add(['.jarvis'])
             repo.index.commit('.jarvis commit')
-            os.chdir('../')
+            os.chdir('../') 
         else:
 
-            listdir = [x for x in filter(util.isNumber, os.listdir(dir_name))]
+            listdir = [x for x in filter(util.isNumber, os.listdir(dir_name))] 
 
+            
             nthDir =  str(len(listdir) + 1)
             os.makedirs(dir_name + "/" + nthDir)
             for loc in loclist:
                 copyfile(loc, dir_name + "/" + nthDir + "/" + loc)
             for script in scriptNames:
                 copyfile(script, dir_name + "/" + nthDir + "/" + script)
-            os.chdir(dir_name + "/" + nthDir)
+            os.chdir(dir_name + "/" + nthDir) #adding an extra directory
 
             gc.load()
 
             run_node = gc.getNode('Run')
+            
             parents = []
 
             if not parents:
@@ -144,109 +143,91 @@ class Artifact:
         self.scriptNames.sort()
 
     def parallelPull(self, manifest={}):
-
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
-
-        # Runs one experiment per pull
-        # Each experiment has many trials
 
         tmpexperiment = self.xp_state.tmpexperiment
         if os.path.exists(tmpexperiment):
             rmtree(tmpexperiment)
-            os.mkdir(tmpexperiment)
-        else:
-            os.mkdir(tmpexperiment)
+        os.mkdir(tmpexperiment)
 
         self.xp_state.visited = []
 
         if not util.isOrphan(self):
             self.loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
         else:
-            self.loclist = [self.getLocation(),]
+            self.loclist = [self.getLocation(), ]
         self.scriptNames = []
 
         literalsAttached = set([])
         lambdas = []
+
         if not util.isOrphan(self):
             self.parent.__serialize__(lambdas, self.loclist, self.scriptNames)
 
         self.loclist = list(set(self.loclist))
-        self.scriptNames = list(set(self.scriptNames))
+        self.scriptNames = list(set(self.scriptNames)) 
 
-        # Need to sort to compare
         self.loclist.sort()
-        self.scriptNames.sort()
+        self.scriptNames.sort()  
 
         for _, names in lambdas:
             literalsAttached |= set(names)
 
         original_dir = os.getcwd()
+        experimentName = self.xp_state.jarvisFile.split('.')[0]  
 
-        experimentName = self.xp_state.jarvisFile.split('.')[0]
-        def exportedExec(config, reporter):
-            tee = tuple([])
-            for litName in config['8ilk9274']:
-                tee += (config[litName], )
-            i = -1
-            for j, v in enumerate(config['6zax7937']):
-                if v == tee:
-                    i = j
-                    break
-            assert i >= 0
-            os.chdir(tmpexperiment + '/' + str(i))
-            with open('.' + experimentName + '.jarvis', 'w') as fp:
-                json.dump(config, fp)
-            for f, names in lambdas:
-                literals = list(map(lambda x: config[x], names))
-                f(literals)
-            reporter(timesteps_total=1)
-            os.chdir(original_dir)
-
-        config = {}
         numTrials = 1
         literals = []
         literalNames = []
+        config = {}
+
         for kee in self.xp_state.literalNameToObj:
             if kee in literalsAttached:
+                config[kee] = self.xp_state.literalNameToObj[kee].v
                 if self.xp_state.literalNameToObj[kee].__oneByOne__:
-                    config[kee] = grid_search(self.xp_state.literalNameToObj[kee].v)
                     numTrials *= len(self.xp_state.literalNameToObj[kee].v)
                     literals.append(self.xp_state.literalNameToObj[kee].v)
                 else:
-                    config[kee] = self.xp_state.literalNameToObj[kee].v
-                    if util.isIterable(self.xp_state.literalNameToObj[kee].v):
-                        if type(self.xp_state.literalNameToObj[kee].v) == tuple:
-                            literals.append((self.xp_state.literalNameToObj[kee].v, ))
-                        else:
-                            literals.append([self.xp_state.literalNameToObj[kee].v, ])
+                    if type(self.xp_state.literalNameToObj[kee].v) == tuple:
+                        literals.append((self.xp_state.literalNameToObj[kee].v,))
                     else:
                         literals.append([self.xp_state.literalNameToObj[kee].v, ])
                 literalNames.append(kee)
 
         literals = list(itertools.product(*literals))
-        config['6zax7937'] = literals
-        config['8ilk9274'] = literalNames
 
         for i in range(numTrials):
             dst = tmpexperiment + '/' + str(i)
-            copytree(os.getcwd(), dst, True)
+            copytree(os.getcwd(), dst, True)  
 
+        ts = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')  
+        self.xp_state.ray['literalNames'] = literalNames  
 
-        ts = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        config['6zax7937'] = literals
+        config['8ilk9274'] = literalNames
+        
+        @ray.remote
+        def helperChangeDir(dir_path, lambdas, literals, config):
+            os.chdir(dir_path)
+            i = 0
+            for f, names in lambdas:
+                for each in names:
+                    if i < len(literals):
+                        config[each] = literals[i]
+                        i += 1
+                literal = list(map(lambda x: config[x], names))
+                f(literal) 
 
-        register_trainable('exportedExec', exportedExec)
+            with open('.' + experimentName + '.jarvis', 'w') as fp:
+                json.dump(config, fp)
 
+        remaining_ids = []
 
+        for i in range(numTrials):
+            dir_path = tmpexperiment + '/' + str(i)
+            remaining_ids.append(helperChangeDir.remote(dir_path, lambdas, literals[i], config))
 
-        self.xp_state.ray['literalNames'] = literalNames
-
-        run_experiments({
-            experimentName : {
-                'run': 'exportedExec',
-                'resources': {'cpu': 1, 'gpu': 0},
-                'config': config
-            }
-        })
+        _, _ = ray.wait(remaining_ids, num_returns=numTrials)
 
         if not os.path.isdir(self.xp_state.versioningDirectory):
             os.mkdir(self.xp_state.versioningDirectory)
@@ -259,16 +240,16 @@ class Artifact:
             moveBackFlag = True
 
         if manifest:
-
             os.chdir(tmpexperiment)
 
             dirs = [x for x in os.listdir() if util.isNumber(x)]
+            dirs.sort()
             table_full = []
             table_small = []
 
             for trial in dirs:
                 os.chdir(trial)
-                with open('.' + experimentName + '.jarvis', 'r') as fp:
+                with open('.' + experimentName + '.jarvis', 'r') as fp: #error here
                     config = json.load(fp)
                 record_full = {}
                 record_small = {}
@@ -276,6 +257,7 @@ class Artifact:
                 for literalName in literalNames:
                     record_full[literalName] = config[literalName]
                     record_small[literalName] = config[literalName]
+
                 for artifactLabel in manifest:
                     record_full[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
                     if total_size(record_full[artifactLabel]) >= 1000:
@@ -313,15 +295,15 @@ class Artifact:
         os.chdir(original_dir)
 
         if manifest:
-
             return pd.DataFrame(table_full)
+
 
 
     def pull(self):
 
         # temporary fix for backward compatibility
         self.xp_state.versioningDirectory = 'jarvis.d'
-
+        
         util.activate(self)
         userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
         try:
@@ -342,6 +324,7 @@ class Artifact:
             self.xp_state.literals = []
             self.xp_state.ghostFiles = set([])
             raise e
+
         intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
@@ -349,6 +332,7 @@ class Artifact:
         for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
             copyfile(file, self.xp_state.versioningDirectory + '/' + file)
             commitables.append(file)
+
         os.chdir(self.xp_state.versioningDirectory)
         repo = git.Repo(os.getcwd())
         repo.index.add(commitables)
