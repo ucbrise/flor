@@ -2,6 +2,7 @@
 
 import subprocess
 import pickle
+import hashlib
 
 from .object_model import *
 
@@ -88,3 +89,11 @@ def activate(pseudoArtifact):
     elif not isOrphan(pseudoArtifact) and pseudoArtifact.parent.in_artifacts:
         for in_art in pseudoArtifact.parent.in_artifacts:
             activate(in_art)
+
+def md5(fname):
+    # Credit: https://stackoverflow.com/a/3431838
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()

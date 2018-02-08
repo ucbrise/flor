@@ -8,7 +8,7 @@ import time
 
 from . import global_state
 from . import util
-from .ground import GroundClient
+from .jground import GroundClient
 from .object_model import *
 from .decorators import func
 
@@ -16,7 +16,7 @@ class Experiment:
 
     def __init__(self, name):
         self.xp_state = State()
-        self.experimentName = name
+        self.xp_state.EXPERIMENT_NAME = name
 
     def groundClient(self, backend):
         self.xp_state.gc = GroundClient(backend)
@@ -48,6 +48,7 @@ class State:
 
     def __init__(self):
         self.edges = []
+        self.EXPERIMENT_NAME = None
         self.gc = None
         self.ghostFiles = set([])
 

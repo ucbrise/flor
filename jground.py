@@ -1,4 +1,5 @@
 #/usr/bin/env python3
+
 import requests
 import json
 import numpy as np
@@ -6,6 +7,8 @@ import os
 import git
 import subprocess
 from shutil import copyfile
+
+from ground import client
 
 class Node:
 
@@ -201,7 +204,7 @@ class GroundAPI:
         raise NotImplementedError(
             "Invalid call to GroundClient.getGraphLatestVersions")
 
-    def getGraphHitory(self, sourceKey):
+    def getGraphHistory(self, sourceKey):
         raise NotImplementedError(
             "Invalid call to GroundClient.getGraphHitory")
 
@@ -350,7 +353,7 @@ class GitImplementation(GroundAPI):
         raise NotImplementedError(
             "Invalid call to GroundClient.getGraphLatestVersions")
 
-    def getGraphHitory(self, sourceKey):
+    def getGraphHistory(self, sourceKey):
         raise NotImplementedError(
             "Invalid call to GroundClient.getGraphHitory")
 
@@ -458,6 +461,65 @@ class GroundImplementation(GroundAPI):
         self.host = host
         self.port = str(port)
         self.url = "http://" + self.host + ":" + self.port
+
+        self.gc = client.GroundClient()
+
+    def createEdge(self, sourceKey, fromNodeId, toNodeId, name="null"):
+        return self.gc.create_edge(sourceKey, name,fromNodeId, toNodeId)
+
+    def createEdgeVersion(self, edgeId, fromNodeVersionStartId, toNodeVersionStartId):
+        return self.gc.create_edge_version(edgeId, fromNodeVersionStartId, toNodeVersionStartId)
+
+    def getEdge(self, sourceKey):
+        return self.gc.get_edge(sourceKey)
+
+    def getEdgeLatestVersions(self, sourceKey):
+        return self.gc.get_edge_latest_versions(sourceKey)
+
+    def getEdgeHistory(self, sourceKey):
+        return self.gc.get_edge_history(sourceKey)
+
+    def getEdgeVersion(self, edgeVersionId):
+        return self.gc.get_edge_version(edgeVersionId)
+
+    def createNode(self, sourceKey, name="null"):
+        return self.gc.create_node(sourceKey, name)
+
+    def createNodeVersion(self, nodeId, tags=None, parentIds=None):
+        return self.gc.create_node_version(nodeId, tags=tags, parent_ids=parentIds)
+
+    def getNode(self, sourceKey):
+        return self.gc.get_node(sourceKey)
+
+    def getNodeLatestVersions(self, sourceKey):
+        return self.gc.get_node_latest_versions(sourceKey)
+
+    def getNodeHistory(self, sourceKey):
+        return self.gc.get_node_history(sourceKey)
+
+    def getNodeVersion(self, nodeId):
+        return self.gc.get_node_version(nodeId)
+
+    def getNodeVersionAdjacentLineage(self, nodeid):
+        return self.gc.get_node_version_adjacent_lineage(nodeid)
+
+    def createGraph(self, sourceKey, name="null"):
+        return self.gc.create_graph(sourceKey, name)
+
+    def createGraphVersion(self, graphId, edgeVersionIds):
+        return self.gc.create_graph_version(graphId, edgeVersionIds)
+
+    def getGraph(self, sourceKey):
+        return self.gc.get_graph(sourceKey)
+
+    def getGraphLatestVersions(self, sourceKey):
+        return self.get_graph_latest_versions(sourceKey)
+
+    def getGraphHistory(self, sourceKey):
+        return self.gc.get_graph_history(sourceKey)
+
+    def getGraphVersion(self, graphId):
+        return self.gc.get_graph_version(graphId)
 
 class GroundClient(GroundAPI):
 

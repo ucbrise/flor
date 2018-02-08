@@ -3,7 +3,7 @@ import jarvis
 
 ex = jarvis.Experiment('plate_demo')
 
-ex.groundClient('git')
+ex.groundClient('ground')
 
 ones = ex.literal([1, 2, 3], "ones")
 ones.forEach()
@@ -20,7 +20,7 @@ def multiply(x, y):
 doMultiply = ex.action(multiply, [ones, tens])
 product = ex.artifact('product.txt', doMultiply)
 
-product.pull()
-product.plot()
-# product_df = product.parallelPull(manifest=True)
+# product.pull()
+# product.plot()
+product.parallelPull()
 # jarvis.Util.pickleTo(product_df, 'product.pkl')

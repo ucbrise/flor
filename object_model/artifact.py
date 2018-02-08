@@ -15,7 +15,9 @@ from shutil import copytree
 from shutil import move
 
 from .. import util
+from .. import above_ground as ag
 from .recursivesizeof import total_size
+import time
 
 import ray
 
@@ -119,6 +121,58 @@ class Artifact:
             repo.index.commit('.jarvis commit')
             os.chdir('../')
 
+    def __newCommit__(self):
+        # BEHAVIOR LAYER NEXT
+
+        # Reset visited for getLiteralsAttached graph traversal
+        self.xp_state.visited = []
+        experimentName = self.xp_state.EXPERIMENT_NAME
+        experimentDirectory = self.xp_state.versioningDirectory + '/' + experimentName
+
+        xpnv = ag.newExperimentVersion(self.xp_state)
+        assert xpnv is not None
+
+        literalsAttachedNames = self.__getLiteralsAttached__()
+
+        original_dir  = os.getcwd()
+        os.chdir(experimentDirectory)
+        trialDirs = [x for x in os.listdir() if util.isNumber(x)]
+
+        for trialDir in trialDirs:
+            os.chdir(str(trialDir))
+            with open('.' + experimentName + '.jarvis', 'r') as fp:
+                config = json.load(fp)
+            literals = {}
+            for name in literalsAttachedNames:
+                assert name in config
+                literals[name] = config[name]
+            trnv = ag.newTrialVersion(self.xp_state)
+            assert trnv is not None
+            ag.newExperimentTrialEdgeVersion(self.xp_state, xpnv, trnv)
+            for litName in literals:
+                ltnv = ag.newLiteralVersion(self.xp_state, litName, literals[litName])
+                assert ltnv is not None
+                ag.newTrialLiteralEdgeVersion(self.xp_state, trnv, ltnv)
+            for artifactName in set(self.loclist + self.scriptNames) - self.xp_state.ghostFiles:
+                rtnv = ag.newArtifactVersion(self.xp_state, artifactName, util.md5(artifactName))
+                assert rtnv is not None
+                ag.newTrialArtifactEdgeVersion(self.xp_state, trnv, rtnv)
+            # We sleep to allow Ground server to complete all insertions before next iteration
+            time.sleep(5)
+
+
+            os.chdir('../')
+
+        os.chdir(original_dir)
+
+    def __getLiteralsAttached__(self):
+        literalsAttachedNames = []
+        if not self.parent:
+            return literalsAttachedNames
+        self.parent.__getLiteralsAttached__(literalsAttachedNames)
+        return literalsAttachedNames
+
+
     def __pull__(self):
         """
         Partially refactored
@@ -175,7 +229,6 @@ class Artifact:
 
         original_dir = os.getcwd()
         experimentName = self.xp_state.jarvisFile.split('.')[0]  
-
         numTrials = 1
         literals = []
         literalNames = []
@@ -234,9 +287,9 @@ class Artifact:
 
         moveBackFlag = False
 
-        if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0]):
-            move(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0] + '/.git', '/tmp/')
-            rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+        if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME):
+            move(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git', '/tmp/')
+            rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             moveBackFlag = True
 
         if manifest:
@@ -280,11 +333,11 @@ class Artifact:
 
             os.chdir(original_dir)
 
-        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
 
-        os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+        os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
         if moveBackFlag:
-            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             repo = git.Repo(os.getcwd())
             repo.git.add(A=True)
             repo.index.commit('incremental commit')
@@ -293,6 +346,8 @@ class Artifact:
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original_dir)
+
+        self.__newCommit__()
 
         if manifest:
             return pd.DataFrame(table_full)
@@ -309,7 +364,7 @@ class Artifact:
         try:
             while True:
                 self.__pull__()
-                self.__commit__()
+                # self.__commit__() COMMENTING OUT FOR GROUND REF PROTO
                 subtreeMaxed = util.master_pop(self.xp_state.literals)
                 if subtreeMaxed:
                     break
@@ -348,6 +403,8 @@ class Artifact:
         os.chdir('../')
         self.xp_state.literals = []
         self.xp_state.ghostFiles = set([])
+
+        # self.__newCommit__()
 
     def peek(self, func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory

@@ -31,6 +31,7 @@ class Literal:
         self.xp_state.literalNames |= {self.name}
 
         self.xp_state.literalNameToObj[self.name] = self
+        self.xp_state.ghostFiles |= {self.loc, }
 
     def forEach(self):
         if not util.isIterable(self.v):

@@ -26,6 +26,19 @@ class Action:
         self.func(self.in_artifacts, self.out_artifacts)
         self.xp_state.visited.append(self.funcName + outNames)
 
+    def __getLiteralsAttached__(self, literalsAttachedNames):
+        outNames = ''
+        for out_artifact in self.out_artifacts:
+            outNames += out_artifact.loc
+        if self.funcName + outNames in self.xp_state.visited:
+            return
+        if self.in_artifacts:
+            for artifact in self.in_artifacts:
+                if not util.isOrphan(artifact):
+                    artifact.parent.__getLiteralsAttached__(literalsAttachedNames)
+                elif type(artifact) == Literal:
+                    literalsAttachedNames.append(artifact.name)
+
     def __serialize__(self, lambdas, loclist, scriptNames):
         outNames = ''
         namedLiterals = []
