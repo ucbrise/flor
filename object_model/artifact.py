@@ -228,7 +228,7 @@ class Artifact:
             literalsAttached |= set(names)
 
         original_dir = os.getcwd()
-        experimentName = self.xp_state.jarvisFile.split('.')[0]  
+        experimentName = self.xp_state.EXPERIMENT_NAME
         numTrials = 1
         literals = []
         literalNames = []
