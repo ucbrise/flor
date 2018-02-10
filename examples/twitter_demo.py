@@ -3,7 +3,7 @@ import jarvis
 import numpy as np
 
 ex = jarvis.Experiment("twitter_demo")
-ex.groundClient('git')
+ex.groundClient('ground')
 
 tweets = ex.artifact('tweets.csv')
 
