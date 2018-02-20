@@ -16,6 +16,9 @@ def isLoc(loc):
 def isJarvisClass(obj):
     return type(obj) == Artifact or type(obj) == Action or type(obj) == Literal
 
+def isLiteral(obj):
+    return type(obj) == Literal
+
 def isPickle(loc):
     try:
         return loc.split('.')[1] == 'pkl'

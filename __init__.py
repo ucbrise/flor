@@ -42,11 +42,14 @@ try:
             gc.create_edge(s+t, s+t, gc.get_node(s).get_id(), gc.get_node(t).get_id())
 
     # Let's set up the schema
-    [node(s) for s in ['Experiment', 'Trial', 'Literal', 'Artifact']]
+    [node(s) for s in ['Experiment', 'Trial', 'Literal', 'Artifact', 'Action']]
 
     edge('Experiment', 'Trial')
     edge('Trial', 'Literal')
     edge('Trial', 'Artifact')
+    edge('Literal', 'Action')
+    edge('Artifact', 'Action')
+    edge('Action', 'Artifact')
 
     # Ground application layer ready
 
@@ -65,9 +68,9 @@ from .experiment import Experiment
 import ray
 
 try:
-	ray.get([])
+    ray.get([])
 except:
-	ray.init()
+    ray.init()
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
            "checkoutArtifact", "versionSummaries", "Experiment"]

@@ -25,8 +25,34 @@ def newExperimentVersion(xp_state):
                                            }},
                                        parentIds=latest_experiment_node_versions)
 
-def newTrialVersion(xp_state):
-    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('jarvisTrial').get_id())
+def newTrialVersion(xp_state, literals, artifacts):
+
+    my_tag = {}
+    for i, kee in enumerate(literals):
+        my_tag['literalName' + str(i)] = {
+            'key' : 'literalName' + str(i),
+            'value': kee,
+            'type': 'STRING'
+        }
+        my_tag['literalValue' + str(i)] = {
+            'key' : 'literalValue' + str(i),
+            'value' : str(literals[kee]),
+            'type' : 'STRING'
+        }
+    for i, kee in enumerate(artifacts):
+        my_tag['artifactName' + str(i)] = {
+            'key' : 'artifactName' + str(i),
+            'value': kee,
+            'type': 'STRING'
+        }
+        my_tag['artifactMD5_' + str(i)] = {
+            'key' : 'artifactMD5_' + str(i),
+            'value' : artifacts[kee],
+            'type' : 'STRING'
+        }
+
+    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('jarvisTrial').get_id(),
+                                         tags=my_tag)
 
 def newLiteralVersion(xp_state, literalName, literalValue):
 
@@ -52,7 +78,7 @@ def newLiteralVersion(xp_state, literalName, literalValue):
         return xp_state.gc.createNodeVersion(xp_state.gc.getNode('jarvisLiteral').get_id(),
                                          tags = my_tag)
 
-def newArtifactVersion(xp_state, artifactName, md5hash):
+def newArtifactVersion(xp_state, artifactName):
     # Connect artifact versions to parents offline
     # What's important at this level is the tags
     # What artifact meta-data do we care about
@@ -62,12 +88,7 @@ def newArtifactVersion(xp_state, artifactName, md5hash):
                        'key': 'artifactName',
                        'value': artifactName,
                        'type': 'STRING'
-                   },
-                    'artifactMD5': {
-                        'key' : 'artifactMD5',
-                        'value' : md5hash,
-                        'type' : 'STRING'
-                    }
+                   }
                }
 
     candidate_nvs = [xp_state.gc.getNodeVersion(str(x)) for x in xp_state.gc.getNodeLatestVersions('jarvisArtifact')
@@ -80,6 +101,17 @@ def newArtifactVersion(xp_state, artifactName, md5hash):
         return xp_state.gc.createNodeVersion(xp_state.gc.getNode('jarvisArtifact').get_id(),
                                        tags=my_tag)
 
+def newActionVersion(xp_state, actionName):
+    my_tag = {     'actionName' : {
+                         'key' : 'actionName',
+                         'value' : actionName,
+                         'type' : 'STRING'
+                 }
+    }
+    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('jarvisAction').get_id(),
+                                         tags=my_tag)
+
+
 def newExperimentTrialEdgeVersion(xp_state, fromNv, toNv):
     return __newEdgeVersion__(xp_state, fromNv, toNv, 'jarvisExperimentjarvisTrial')
 
@@ -88,6 +120,15 @@ def newTrialLiteralEdgeVersion(xp_state, fromNv, toNv):
 
 def newTrialArtifactEdgeVersion(xp_state, fromNv, toNv):
     return __newEdgeVersion__(xp_state, fromNv, toNv, 'jarvisTrialjarvisArtifact')
+
+def newLiteralActionEdgeVersion(xp_state, fromNv, toNv):
+    return __newEdgeVersion__(xp_state, fromNv, toNv, 'jarvisLiteraljarvisAction')
+
+def newArtifactActionEdgeVersion(xp_state, fromNv, toNv):
+    return __newEdgeVersion__(xp_state, fromNv, toNv, 'jarvisArtifactjarvisAction')
+
+def newActionArtifactEdgeVersion(xp_state, fromNv, toNv):
+    return __newEdgeVersion__(xp_state, fromNv, toNv, 'jarvisActionjarvisArtifact')
 
 def __newEdgeVersion__(xp_state, fromNv, toNv, edgeKey):
     return xp_state.gc.createEdgeVersion(xp_state.gc.getEdge(edgeKey).get_id(),

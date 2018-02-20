@@ -124,8 +124,10 @@ class Artifact:
     def __newCommit__(self):
         # BEHAVIOR LAYER NEXT
 
-        # Reset visited for getLiteralsAttached graph traversal
-        self.xp_state.visited = []
+        # The cache
+        trialToNv = {}
+        jarvisObjToNv = {}
+
         experimentName = self.xp_state.EXPERIMENT_NAME
         experimentDirectory = self.xp_state.versioningDirectory + '/' + experimentName
 
@@ -143,29 +145,94 @@ class Artifact:
             with open('.' + experimentName + '.jarvis', 'r') as fp:
                 config = json.load(fp)
             literals = {}
+            artifacts = {}
             for name in literalsAttachedNames:
                 assert name in config
                 literals[name] = config[name]
-            trnv = ag.newTrialVersion(self.xp_state)
+            for artifactName in set(self.loclist + self.scriptNames) - self.xp_state.ghostFiles:
+                md5 =  util.md5(artifactName)
+                artifacts[artifactName] = md5
+            trnv = ag.newTrialVersion(self.xp_state, literals, artifacts)
             assert trnv is not None
             ag.newExperimentTrialEdgeVersion(self.xp_state, xpnv, trnv)
-            for litName in literals:
-                ltnv = ag.newLiteralVersion(self.xp_state, litName, literals[litName])
-                assert ltnv is not None
-                ag.newTrialLiteralEdgeVersion(self.xp_state, trnv, ltnv)
-            for artifactName in set(self.loclist + self.scriptNames) - self.xp_state.ghostFiles:
-                rtnv = ag.newArtifactVersion(self.xp_state, artifactName, util.md5(artifactName))
-                assert rtnv is not None
-                ag.newTrialArtifactEdgeVersion(self.xp_state, trnv, rtnv)
-            # We sleep to allow Ground server to complete all insertions before next iteration
-            time.sleep(5)
-
+            trialToNv[str(trialDir)] = trnv
+            # for litName in literals:
+            #     ltnv = ag.newLiteralVersion(self.xp_state, litName, literals[litName])
+            #     assert ltnv is not None
+            #     jarvObjToNv[litName+str(literals[litName])] = ltnv
+            #     ag.newTrialLiteralEdgeVersion(self.xp_state, trnv, ltnv)
+            # for artifactName in set(self.loclist + self.scriptNames) - self.xp_state.ghostFiles:
+            #     md5 =  util.md5(artifactName)
+            #     rtnv = ag.newArtifactVersion(self.xp_state, artifactName, md5)
+            #     assert rtnv is not None
+            #     jarvObjToNv[artifactName + md5] = rtnv
+            #     ag.newTrialArtifactEdgeVersion(self.xp_state, trnv, rtnv)
+            # # We sleep to allow Ground server to complete all insertions before next iteration
+            # time.sleep(5)
 
             os.chdir('../')
+
+        # BGT: Behavior Graph Traverse
+        def BGT(n, visited={}):
+            # Track subgraph rooted at n in Ground behavior layer
+            # WHAT IF THE PARENT IS ALREADY registered in GROUND BEHAVIOR
+            # MAKE SURE n.parent IS NOT A node version in ACTION
+            if util.isLiteral(n):
+                if n.name not in jarvisObjToNv:
+                    ltnv = ag.newLiteralVersion(self.xp_state, n.name, n.v)
+                    assert ltnv is not None
+                    jarvisObjToNv[n.name] = ltnv
+                    for kee in trialToNv:
+                        trnv = trialToNv[kee]
+                        ag.newTrialLiteralEdgeVersion(self.xp_state, trnv, ltnv)
+                return n
+            else:
+                if n.loc not in jarvisObjToNv:
+                    rtnv = ag.newArtifactVersion(self.xp_state, n.loc)
+                    assert rtnv is not None
+                    jarvisObjToNv[n.loc] = rtnv
+                    for kee in trialToNv:
+                        trnv = trialToNv[kee]
+                        ag.newTrialArtifactEdgeVersion(self.xp_state, trnv, rtnv)
+            outNames = ''
+            if n.parent:
+                for out_artifact in n.parent.out_artifacts:
+                    outNames += out_artifact.loc
+            if n.parent and n.parent.funcName + outNames not in visited:  # AND PARENT NOT REGISTERED
+                acnv = ag.newActionVersion(self.xp_state, n.parent.funcName)
+                visited[n.parent.funcName + outNames] = acnv
+                p = [BGT(t, visited) for t in n.parent.in_artifacts]
+                for ancestor in p:
+                    if util.isLiteral(ancestor):
+                        # LITERAL TO ACTION
+                        assert ancestor.name in jarvisObjToNv
+                        ev = ag.newLiteralActionEdgeVersion(self.xp_state, jarvisObjToNv[ancestor.name], acnv)
+                        assert ev is not None
+                    else:
+                        # ARTIFACT TO ACTION
+                        assert ancestor.loc in jarvisObjToNv
+                        ev = ag.newArtifactActionEdgeVersion(self.xp_state, jarvisObjToNv[ancestor.loc], acnv)
+                        assert ev is not None
+                # ACTION TO ARTIFACT n
+                assert not util.isLiteral(n)
+                ev = ag.newActionArtifactEdgeVersion(self.xp_state, acnv, jarvisObjToNv[n.loc])
+                assert ev is not None
+            elif n.parent:
+                # GET ACTION NODE VERSION
+                acnv = visited[n.parent.funcName + outNames]
+                # ACTION TO ARTIFACT n
+                assert not util.isLiteral(n)
+                ev = ag.newActionArtifactEdgeVersion(self.xp_state, acnv, jarvisObjToNv[n.loc])
+                assert ev is not None
+            return n
+
+        BGT(self)
 
         os.chdir(original_dir)
 
     def __getLiteralsAttached__(self):
+        # Reset visited for getLiteralsAttached graph traversal
+        self.xp_state.visited = []
         literalsAttachedNames = []
         if not self.parent:
             return literalsAttachedNames
