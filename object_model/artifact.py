@@ -420,21 +420,32 @@ class Artifact:
             return pd.DataFrame(table_full)
 
 
-
     def pull(self):
 
-        # temporary fix for backward compatibility
-        self.xp_state.versioningDirectory = 'jarvis.d'
-        
+        # self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
+
+        # Recreate the tmpexperiment directory
+        tmpexperiment = self.xp_state.tmpexperiment
+        if os.path.exists(tmpexperiment):
+            rmtree(tmpexperiment)
+            os.mkdir(tmpexperiment)
+        else:
+            os.mkdir(tmpexperiment)
+
+        self.xp_state.visited = []
         util.activate(self)
         userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
         try:
+            currTrialNum = 0
             while True:
+                # Pull all literals and create trial directories.
                 self.__pull__()
-                # self.__commit__() COMMENTING OUT FOR GROUND REF PROTO
+                dst = tmpexperiment + '/' + str(currTrialNum)
+                copytree(os.getcwd(), dst, True)
                 subtreeMaxed = util.master_pop(self.xp_state.literals)
                 if subtreeMaxed:
                     break
+                currTrialNum += 1
         except Exception as e:
             try:
                 intermediateFiles = set(self.loclist) - userDefFiles
@@ -447,31 +458,48 @@ class Artifact:
             self.xp_state.ghostFiles = set([])
             raise e
 
+        experimentName = self.xp_state.EXPERIMENT_NAME
         intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
-        commitables = []
+        original_dir = os.getcwd()
+
+        # Create versioning directory jarvis.d
+        if not os.path.isdir(self.xp_state.versioningDirectory):
+            os.mkdir(self.xp_state.versioningDirectory)
+
+        # Copy all relevant files into the versioning directory.
         for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
             copyfile(file, self.xp_state.versioningDirectory + '/' + file)
-            commitables.append(file)
 
         os.chdir(self.xp_state.versioningDirectory)
-        repo = git.Repo(os.getcwd())
-        repo.index.add(commitables)
-        repo.index.commit("incremental commit")
-        tree = repo.tree()
-        with open('.jarvis', 'w') as f:
-            for obj in tree:
-                commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
-                if obj.path != '.jarvis':
-                    f.write(obj.path + " " + commithash + "\n")
-        repo.index.add(['.jarvis'])
-        repo.index.commit('.jarvis commit')
-        os.chdir('../')
+
         self.xp_state.literals = []
         self.xp_state.ghostFiles = set([])
 
-        # self.__newCommit__()
+        moveBackFlag = False
+
+        # move back  .git file in the versioning directory to the /tmp folder. Delete experiment folder in versioning directory.
+        if os.path.exists(self.xp_state.versioningDirectory + '/' + experimentName):
+            move(self.xp_state.versioningDirectory + '/' + experimentName + '/.git', '/tmp/')
+            rmtree(self.xp_state.versioningDirectory + '/' + experimentName)
+            moveBackFlag = True
+
+        # Copy the tmpexperiment directory to the versioning jarvis.d directory and change to that directory.
+        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + experimentName)
+        os.chdir(self.xp_state.versioningDirectory + '/' + experimentName)
+
+        if moveBackFlag:
+            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+            repo = git.Repo(os.getcwd())
+            repo.git.add(A=True)
+            repo.index.commit('incremental commit')
+        else:
+            repo = git.Repo.init(os.getcwd())
+            repo.git.add(A=True)
+            repo.index.commit('initial commit')
+        os.chdir(original_dir)
+
 
     def peek(self, func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory
