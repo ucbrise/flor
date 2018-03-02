@@ -422,7 +422,7 @@ class Artifact:
 
     def pull(self):
 
-        # self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
+        self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
 
         # Recreate the tmpexperiment directory
         tmpexperiment = self.xp_state.tmpexperiment
@@ -490,7 +490,7 @@ class Artifact:
         os.chdir(self.xp_state.versioningDirectory + '/' + experimentName)
 
         if moveBackFlag:
-            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.jarvisFile.split('.')[0])
+            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             repo = git.Repo(os.getcwd())
             repo.git.add(A=True)
             repo.index.commit('incremental commit')
@@ -499,6 +499,8 @@ class Artifact:
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original_dir)
+
+        self.__newCommit__()
 
 
     def peek(self, func = lambda x: x):
