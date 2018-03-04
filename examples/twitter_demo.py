@@ -29,4 +29,5 @@ model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 columnArtifacts = {'model_accuracy': model_accuracy,
                    'model': model}
 
-model_accuracy.parallelPull(manifest=columnArtifacts)
+#model_accuracy.parallelPull(manifest=columnArtifacts)
+model_accuracy.pull(manifest=columnArtifacts)

@@ -248,13 +248,15 @@ class Artifact:
         self.xp_state.visited = []
         driverfile = self.xp_state.jarvisFile
 
+        self.literalNamesAddendum = {}
         if not util.isOrphan(self):
             self.loclist = list(map(lambda x: x.getLocation(), self.parent.out_artifacts))
         else:
             self.loclist = [self.getLocation(),]
         self.scriptNames = []
         if not util.isOrphan(self):
-            self.parent.__run__(self.loclist, self.scriptNames)
+            self.parent.__run__(self.loclist, self.scriptNames, self.literalNamesAddendum)
+        
         self.loclist = list(set(self.loclist))
         self.scriptNames = list(set(self.scriptNames))
 
@@ -420,7 +422,7 @@ class Artifact:
             return pd.DataFrame(table_full)
 
 
-    def pull(self):
+    def pull(self, manifest={}):
 
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
 
@@ -435,11 +437,20 @@ class Artifact:
         self.xp_state.visited = []
         util.activate(self)
         userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
+        experimentName = self.xp_state.EXPERIMENT_NAME
         try:
             currTrialNum = 0
             while True:
                 # Pull all literals and create trial directories.
                 self.__pull__()
+
+                # Write the config file
+                config = {}
+                for litName in self.literalNamesAddendum:
+                    config[litName] = util.unpickle(self.literalNamesAddendum[litName])
+                with open('.' + experimentName + '.jarvis', 'w') as fp:
+                    json.dump(config, fp)
+
                 dst = tmpexperiment + '/' + str(currTrialNum)
                 copytree(os.getcwd(), dst, True)
                 subtreeMaxed = util.master_pop(self.xp_state.literals)
@@ -458,10 +469,10 @@ class Artifact:
             self.xp_state.ghostFiles = set([])
             raise e
 
-        experimentName = self.xp_state.EXPERIMENT_NAME
         intermediateFiles = set(self.loclist) - userDefFiles
         for file in intermediateFiles:
             os.remove(file)
+        os.remove('.' + experimentName + '.jarvis')
         original_dir = os.getcwd()
 
         # Create versioning directory jarvis.d
@@ -469,8 +480,8 @@ class Artifact:
             os.mkdir(self.xp_state.versioningDirectory)
 
         # Copy all relevant files into the versioning directory.
-        for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
-            copyfile(file, self.xp_state.versioningDirectory + '/' + file)
+        # for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
+        #     copyfile(file, self.xp_state.versioningDirectory + '/' + file)
 
         os.chdir(self.xp_state.versioningDirectory)
 
@@ -484,6 +495,47 @@ class Artifact:
             move(self.xp_state.versioningDirectory + '/' + experimentName + '/.git', '/tmp/')
             rmtree(self.xp_state.versioningDirectory + '/' + experimentName)
             moveBackFlag = True
+
+        if manifest:
+            os.chdir(tmpexperiment)
+
+            dirs = [x for x in os.listdir() if util.isNumber(x)]
+            dirs.sort()
+            table_full = []
+            table_small = []
+
+            for trial in dirs:
+                os.chdir(trial)
+                with open('.' + experimentName + '.jarvis', 'r') as fp: #error here
+                    config = json.load(fp)
+                record_full = {}
+                record_small = {}
+
+                for literalName in self.literalNamesAddendum:
+                    record_full[literalName] = config[literalName]
+                    record_small[literalName] = config[literalName]
+
+                for artifactLabel in manifest:
+                    record_full[artifactLabel] = util.loadArtifact(manifest[artifactLabel].loc)
+                    if total_size(record_full[artifactLabel]) >= 1000:
+                        record_small[artifactLabel] = " . . . "
+                    else:
+                        record_small[artifactLabel] = record_full[artifactLabel]
+                    if util.isNumber(record_full[artifactLabel]):
+                        record_full[artifactLabel] = eval(record_full[artifactLabel])
+                    if util.isNumber(record_small[artifactLabel]):
+                        record_small[artifactLabel] = eval(record_small[artifactLabel])
+                record_small['__trialNum__'] = trial
+                record_full['__trialNum__'] = trial
+
+                table_full.append(record_full)
+                table_small.append(record_small)
+                os.chdir('../')
+
+            df = pd.DataFrame(table_small)
+            util.pickleTo(df, experimentName + '.pkl')
+
+            os.chdir(original_dir)
 
         # Copy the tmpexperiment directory to the versioning jarvis.d directory and change to that directory.
         copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + experimentName)

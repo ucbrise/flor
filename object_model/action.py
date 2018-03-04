@@ -11,7 +11,7 @@ class Action:
         self.in_artifacts = in_artifacts
         self.xp_state = xp_state
 
-    def __run__(self, loclist, scriptNames):
+    def __run__(self, loclist, scriptNames, literalNames={}):
         outNames = ''
         for out_artifact in self.out_artifacts:
             outNames += out_artifact.loc
@@ -21,8 +21,10 @@ class Action:
         if self.in_artifacts:
             for artifact in self.in_artifacts:
                 loclist.append(artifact.loc)
+                if type(artifact) == Literal:
+                    literalNames[artifact.name] = artifact.loc
                 if not util.isOrphan(artifact):
-                    artifact.parent.__run__(loclist, scriptNames)
+                    artifact.parent.__run__(loclist, scriptNames, literalNames)
         self.func(self.in_artifacts, self.out_artifacts)
         self.xp_state.visited.append(self.funcName + outNames)
 

@@ -3,6 +3,8 @@ import requests, sys, time
 from ground import client
 from . import global_state
 
+# print("JARVIS INITIALIZED")
+
 # Am I running from an interactive environment?
 try:
     get_ipython
