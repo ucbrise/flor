@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 def __tags_equal__(groundtag, mytag):
     groundtagprime = {}
     for kee in groundtag:

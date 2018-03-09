@@ -3,6 +3,7 @@
 import subprocess
 import pickle
 import hashlib
+import os
 
 from .object_model import *
 
@@ -100,3 +101,14 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+class chinto(object):
+    def __init__(self, target):
+        self.original_dir = os.getcwd()
+        self.target = target
+
+    def __enter__(self):
+        os.chdir(self.target)
+
+    def __exit__(self, type, value, traceback):
+        os.chdir(self.original_dir)

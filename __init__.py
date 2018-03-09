@@ -3,8 +3,6 @@ import requests, sys, time
 from ground import client
 from . import global_state
 
-# print("JARVIS INITIALIZED")
-
 # Am I running from an interactive environment?
 try:
     get_ipython
@@ -68,11 +66,6 @@ from .headers import diffExperimentVersions
 from .headers import checkoutArtifact
 from .experiment import Experiment
 import ray
-
-try:
-    ray.get([])
-except:
-    ray.init()
 
 __all__ = ["func", "setNotebookName", "diffExperimentVersions",
            "checkoutArtifact", "versionSummaries", "Experiment"]

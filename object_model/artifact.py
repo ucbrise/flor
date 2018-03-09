@@ -266,6 +266,11 @@ class Artifact:
         self.scriptNames.sort()
 
     def parallelPull(self, manifest={}):
+        try:
+            ray.get([])
+        except:
+            ray.init()
+
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'jarvis.d'
 
         tmpexperiment = self.xp_state.tmpexperiment

@@ -111,6 +111,7 @@ class Action:
                         dot.edge(self.xp_state.nodes[artifact.getLocation()], node_diagram_id)
                         self.xp_state.edges.append((self.xp_state.nodes[artifact.getLocation()], node_diagram_id))
                 else:
+                    # Never seen this artifact before
                     if not util.isOrphan(artifact):
                         from_nodes = artifact.parent.__plotWalk__(diagram)
                         for from_node, loc in from_nodes:
