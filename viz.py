@@ -2,6 +2,13 @@
 
 from typing import List, Dict
 from graphviz import Digraph
+import numpy as np
+
+"""
+Should optimize with an all-pairs longest path algorithm.
+Compute once, then query
+"""
+
 
 class MyDigraph:
     def __init__(self, name, node_attr=None, label=None):
@@ -21,9 +28,20 @@ class MyDigraph:
 
     def subgraph(self, g : 'MyDigraph'):
         g.type = 'subgraph'
-        self.subgraphs.append(g)
+        if g.name not in [i.name for i in self.subgraphs]:
+            self.subgraphs.append(g)
+
+    def __clean_nesting__(self):
+        these_subgraphs = [i.name for i in self.subgraphs]
+        flattened_subgraphs = [g.__clean_nesting__() for g in self.subgraphs]
+        if len(flattened_subgraphs) > 0:
+            flattened_subgraphs = [item for sublist in flattened_subgraphs for item in sublist]
+        self.subgraphs = [i for i in self.subgraphs if i.name not in flattened_subgraphs]
+        return [i.name for i in self.subgraphs]
+
 
     def write(self):
+        self.__clean_nesting__()
         with open('output.gv', 'w') as f:
             self.wrapped_write(f)
 
@@ -33,9 +51,9 @@ class MyDigraph:
                 f.write('node [shape=box]\n')
             if self.label:
                 if 'x' in self.label:
-                    f.write('label = "{}"'.format(self.label))
+                    f.write('label = "{}\n"'.format(self.label))
                 else:
-                    f.write('label = "{}x"'.format(self.label))
+                    f.write('label = "{}x\n"'.format(self.label))
             for id, name, shape in self.nodes:
                 f.write('\t {} [label="{}" shape={}]\n'.format(id, name, shape))
             for g, t in self.edges:
@@ -64,8 +82,17 @@ class VizNode:
     def set_plate_label_source(self, name):
         self.plate_label_source = name
 
-    def is_plate_collision(self, other: 'VizNode'):
-        return (self.plate_label, self.plate_label_source) != (other.plate_label, other.plate_label_source)
+    def is_plate_collision(self, other: 'VizNode', graph: 'VizGraph'):
+        if (self.plate_label, self.plate_label_source) != (other.plate_label, other.plate_label_source):
+            our_path_rank = action_longest_path(graph, self, other)
+            their_path_rank = action_longest_path(graph, other, other)
+            if our_path_rank == their_path_rank:
+                return 'COLLISION'
+            elif our_path_rank < their_path_rank:
+                return 'PARENT_WIN'
+            else:
+                return 'CHILD_WIN'
+        return 'NO_COLLISION'
 
     def print(self):
         out = "name: {}\n" \
@@ -141,7 +168,7 @@ class VizGraph:
 
         while queue:
             node = queue.pop(0)
-            node.print()
+            # node.print()
 
             dot = self.clusters[(node.plate_label, node.plate_label_source)]
 
@@ -170,6 +197,7 @@ class VizGraph:
 
 
     def rollback(self, v : VizNode):
+        signature = (v.plate_label, v.plate_label_source)
         v = self.plate_heads[v.plate_label_source]
         explored = []
         stack = [v,]
@@ -177,8 +205,9 @@ class VizGraph:
 
         while stack:
             node = stack.pop()
-            node.plate_label = None
-            node.plate_label_source = None
+            if (node.plate_label, node.plate_label_source) == signature:
+                node.plate_label = None
+                node.plate_label_source = None
             if node not in visited():
                 explored.append(node)
                 for child in node.get_children():
@@ -198,15 +227,20 @@ class VizGraph:
                     if not child.plate_label:
                         child.plate_label = node.plate_label
                         child.plate_label_source = node.plate_label_source
-                    elif node.is_plate_collision(child):
-                        a = child.plate_label
-                        b = node.plate_label
-                        c = a + 'x' + b
-                        self.rollback(child)
-                        self.rollback(node)
-                        child.plate_label = c
-                        child.plate_label_source = child.name
-                        self.plate_heads[child.name] = child
+                    else:
+                        collision_type = node.is_plate_collision(child, self)
+                        if collision_type == 'COLLISION':
+                            a = child.plate_label
+                            b = node.plate_label
+                            c = a + 'x' + b
+                            self.rollback(child)
+                            self.rollback(node)
+                            child.plate_label = c
+                            child.plate_label_source = child.name
+                            self.plate_heads[child.name] = child
+                        elif collision_type == 'PARENT_WIN':
+                            child.plate_label = node.plate_label
+                            child.plate_label_source = node.plate_label_source
 
                     stack.append(child)
 
@@ -230,3 +264,34 @@ class VizGraph:
         self.start.append(node)
 
 
+def action_longest_path(graph: VizGraph, s: VizNode, t: VizNode):
+    s: VizNode = graph.plate_heads[s.plate_label_source]
+    explored = []
+    stack: List[VizNode] = [s, ]
+    visited = lambda: explored + stack
+    longest_paths = {}
+
+    if s.shape == 'ellipse':
+        longest_paths[s.name] = 1
+    else:
+        longest_paths[s.name] = 0
+
+    while stack:
+        node = stack.pop()
+        if node not in visited():
+            explored.append(node)
+            for child in node.get_children():
+
+                if child.name not in longest_paths:
+                    if child.shape == 'ellipse':
+                        longest_paths[child.name] = longest_paths[node.name] + 1
+                    else:
+                        longest_paths[child.name] = longest_paths[node.name]
+                else:
+                    if child.shape == 'ellipse':
+                        longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name] + 1)
+                    else:
+                        longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name])
+
+                stack.append(child)
+    return longest_paths[t.name]
