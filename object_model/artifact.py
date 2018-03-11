@@ -8,7 +8,7 @@ import datetime
 import pandas as pd
 import sys
 
-from graphviz import Digraph
+from graphviz import Digraph, Source
 from shutil import copyfile
 from shutil import rmtree
 from shutil import copytree
@@ -16,6 +16,7 @@ from shutil import move
 
 from .. import util
 from .. import above_ground as ag
+from .. import viz
 from .recursivesizeof import total_size
 import time
 
@@ -33,95 +34,6 @@ class Artifact:
         self.xp_state = xp_state
 
     def __commit__(self):
-
-        gc = self.xp_state.gc #ground client
-        dir_name = self.xp_state.versioningDirectory
-        loclist = self.loclist
-        scriptNames = self.scriptNames
-        tag = {
-            'Artifacts': [i for i in loclist], 
-            'Actions': [i for i in scriptNames] 
-        }
-
-        for literal in self.xp_state.literals:
-            if literal.name:
-                try:
-                    value = str(util.unpickle(literal.loc))
-                    if len(value) <= 250:
-                        tag[literal.name] = value 
-                except:
-                    pass
-
-        if not os.path.exists(dir_name):
-            nodeid = gc.createNode('Run')
-            gc.createNodeVersion(nodeid, tag) 
-
-            os.makedirs(dir_name) 
-            os.makedirs(dir_name + '/1') 
-            for loc in loclist:
-                copyfile(loc, dir_name + "/1/" + loc)
-            for script in scriptNames:
-                copyfile(script, dir_name + "/1/" + script)
-            os.chdir(dir_name + '/1')
-
-            gc.commit() 
-            os.chdir('../') 
-
-            repo = git.Repo.init(os.getcwd()) 
-            repo.index.add(['1',])
-
-            repo.index.commit("initial commit")
-            tree = repo.tree()
-            with open('.jarvis', 'w') as f:
-                for obj in tree:
-                    commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
-                    if obj.path != '.jarvis':
-                        f.write(obj.path + " " + commithash + "\n")
-            repo.index.add(['.jarvis'])
-            repo.index.commit('.jarvis commit')
-            os.chdir('../') 
-        else:
-
-            listdir = [x for x in filter(util.isNumber, os.listdir(dir_name))] 
-
-            
-            nthDir =  str(len(listdir) + 1)
-            os.makedirs(dir_name + "/" + nthDir)
-            for loc in loclist:
-                copyfile(loc, dir_name + "/" + nthDir + "/" + loc)
-            for script in scriptNames:
-                copyfile(script, dir_name + "/" + nthDir + "/" + script)
-            os.chdir(dir_name + "/" + nthDir) #adding an extra directory
-
-            gc.load()
-
-            run_node = gc.getNode('Run')
-            
-            parents = []
-
-            if not parents:
-                parents = None
-            gc.createNodeVersion(run_node.nodeId, tag, parents)
-
-            gc.commit()
-
-            os.chdir('../')
-            repo = git.Repo(os.getcwd())
-
-            repo.index.add([nthDir,])
-
-            repo.index.commit("incremental commit")
-            tree = repo.tree()
-            with open('.jarvis', 'w') as f:
-                for obj in tree:
-                    commithash = util.runProc("git log " + obj.path).replace('\n', ' ').split()[1]
-                    if obj.path != '.jarvis':
-                        f.write(obj.path + " " + commithash + "\n")
-            repo.index.add(['.jarvis'])
-            repo.index.commit('.jarvis commit')
-            os.chdir('../')
-
-    def __newCommit__(self):
         # BEHAVIOR LAYER NEXT
 
         # The cache
@@ -421,7 +333,7 @@ class Artifact:
             repo.index.commit('initial commit')
         os.chdir(original_dir)
 
-        self.__newCommit__()
+        self.__commit__()
 
         if manifest:
             return pd.DataFrame(table_full)
@@ -557,7 +469,7 @@ class Artifact:
             repo.index.commit('initial commit')
         os.chdir(original_dir)
 
-        self.__newCommit__()
+        self.__commit__()
 
 
     def peek(self, func = lambda x: x):
@@ -584,34 +496,31 @@ class Artifact:
         return out
 
     def plot(self, rankdir=None):
-        # WARNING: can't plot before pulling.
         # Prep globals, passed through arguments
 
         self.xp_state.nodes = {}
         self.xp_state.edges = []
 
         dot = Digraph()
-        diagram = {"dot": dot, "counter": 0, "sha": {}}
-
-        # with open('jarvis.d/.jarvis') as csvfile:
-        #     reader = csv.reader(csvfile, delimiter=' ')
-        #     for row in reader:
-        #         ob, sha = row
-        #         diagram["sha"][ob] = sha
+        # diagram = {"dot": dot, "counter": 0, "sha": {}}
 
         if not util.isOrphan(self):
-            self.parent.__plotWalk__(diagram)
+            # self.parent.__plotWalk__(diagram)
+            vg = viz.VizGraph()
+            self.parent.__plotWalk__(vg)
+            # vg.bft()
+            vg.to_graphViz()
+            Source.from_file('output.gv').view()
         else:
-            node_diagram_id = str(diagram["counter"])
+            node_diagram_id = '0'
             dot.node(node_diagram_id, self.loc, shape="box")
             self.xp_state.nodes[self.loc] = node_diagram_id
+            dot.format = 'png'
+            if rankdir == 'LR':
+                dot.attr(rankdir='LR')
+            dot.render('driver.gv', view=True)
 
 
-        dot.format = 'png'
-        if rankdir == 'LR':
-            dot.attr(rankdir='LR')
-        dot.render('driver.gv', view=True)
-        # return self.xp_state.edges
 
     def getLocation(self):
         return self.loc
