@@ -86,7 +86,6 @@ class VizGraph:
         self.dot = MyDigraph(name='source')
         self.counter = 0
         self.plate_heads = {}
-        self.delta = []
         self.clusters = {
             (None, None) : self.dot
         }
@@ -161,14 +160,9 @@ class VizGraph:
 
     def to_graphViz(self):
         plate_heads = [i for i in self.plate_heads.keys()]
-        while(True):
-            for plate_head in plate_heads:
-                self.derive_plate_membership(self.plate_heads[plate_head])
-            if self.delta:
-                plate_heads = self.delta
-                self.delta = []
-            else:
-                break
+        for plate_head in plate_heads:
+            self.derive_plate_membership(self.plate_heads[plate_head])
+
         self.bfs()
         self.drawNodes()
         self.drawEdges()
@@ -213,7 +207,6 @@ class VizGraph:
                         child.plate_label = c
                         child.plate_label_source = child.name
                         self.plate_heads[child.name] = child
-                        self.delta.append(child.name)
 
                     stack.append(child)
 
