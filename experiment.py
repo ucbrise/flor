@@ -24,7 +24,8 @@ class Experiment:
         filename = module.__file__
         if not global_state.interactive:
             target_dir = '/'.join(filename.split('/')[0:-1])
-            os.chdir(target_dir)
+            if target_dir:
+                os.chdir(target_dir)
 
     def groundClient(self, backend):
         self.xp_state.gc = GroundClient(backend)

@@ -12,7 +12,7 @@ Compute once, then query
 
 class MyDigraph:
     def __init__(self, name, node_attr=None, label=None):
-        self.name = name
+        self.name = self.__format_name__(name)
         self.node_attr = node_attr
         self.type = 'digraph'
         self.nodes = []
@@ -30,6 +30,11 @@ class MyDigraph:
         g.type = 'subgraph'
         if g.name not in [i.name for i in self.subgraphs]:
             self.subgraphs.append(g)
+
+    def __format_name__(self, name):
+        if '.' in name:
+            name = name.split('.')[0]
+        return name
 
     def __clean_nesting__(self):
         these_subgraphs = [i.name for i in self.subgraphs]
@@ -268,7 +273,6 @@ def action_longest_path(graph: VizGraph, s: VizNode, t: VizNode):
     s: VizNode = graph.plate_heads[s.plate_label_source]
     explored = []
     stack: List[VizNode] = [s, ]
-    visited = lambda: explored + stack
     longest_paths = {}
 
     if s.shape == 'ellipse':
@@ -278,20 +282,19 @@ def action_longest_path(graph: VizGraph, s: VizNode, t: VizNode):
 
     while stack:
         node = stack.pop()
-        if node not in visited():
-            explored.append(node)
-            for child in node.get_children():
+        explored.append(node)
+        for child in node.get_children():
 
-                if child.name not in longest_paths:
-                    if child.shape == 'ellipse':
-                        longest_paths[child.name] = longest_paths[node.name] + 1
-                    else:
-                        longest_paths[child.name] = longest_paths[node.name]
+            if child.name not in longest_paths:
+                if child.shape == 'ellipse':
+                    longest_paths[child.name] = longest_paths[node.name] + 1
                 else:
-                    if child.shape == 'ellipse':
-                        longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name] + 1)
-                    else:
-                        longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name])
+                    longest_paths[child.name] = longest_paths[node.name]
+            else:
+                if child.shape == 'ellipse':
+                    longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name] + 1)
+                else:
+                    longest_paths[child.name] = max(longest_paths[child.name], longest_paths[node.name])
 
-                stack.append(child)
+            stack.append(child)
     return longest_paths[t.name]
