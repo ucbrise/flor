@@ -471,29 +471,49 @@ class Artifact:
 
         self.__commit__()
 
-
     def peek(self, func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory
-        self.xp_state.versioningDirectory = '1fdf8583bfd663e98918dea393e273cc'
-        try:
-            self.pull()
-            os.chdir(self.xp_state.versioningDirectory)
-            listdir = [x for x in filter(util.isNumber, os.listdir())]
-            _dir = str(len(listdir))
-            if util.isPickle(self.loc):
-                out = func(util.unpickle(_dir + '/' + self.loc))
-            else:
-                with open(_dir + '/' + self.loc, 'r') as f:
-                    out = func(f.readlines())
-            os.chdir('../')
-        except Exception as e:
-            out = e
+        self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + '1fdf8583bfd663e98918dea393e273cc'
+
+        # Create temporary versioning directory to store files
+        if os.path.exists(self.xp_state.versioningDirectory):
+            rmtree(self.xp_state.versioningDirectory)
+            os.mkdir(self.xp_state.versioningDirectory)
+        else:
+            os.mkdir(self.xp_state.versioningDirectory)
+
+        # Update elements visited and literals array
+        self.xp_state.visited = []
+        util.activate(self)
+
+        if type == "default":
+            try:
+                # Just pull once and put output in folder peek0 within versioning directory.
+                self.__pull__()
+                dst = self.xp_state.versioningDirectory + '/' + "peek0"
+                copytree(os.getcwd(), dst, True)
+
+                # Unpickle and read the file to output.
+                if util.isPickle(dst + "/" + self.loc):
+                    out = func(util.unpickle(dst + '/' + self.loc))
+                else:
+                    with open(dst + '/' + self.loc, 'r') as f:
+                        out = func(f.readlines())
+                os.chdir('../')
+            except Exception as e:
+                print(e)
+                out =e
+        # TODO: add case for peek next.
+
+        # Delete the temporary versioning directory created.
         try:
             rmtree(self.xp_state.versioningDirectory)
         except:
             pass
+        # Reset versioning directory to original jarvis.d directory.
         self.xp_state.versioningDirectory = trueVersioningDir
         return out
+
 
     def plot(self, rankdir=None):
         # Prep globals, passed through arguments

@@ -20,7 +20,7 @@ def multiply(x, y):
 doMultiply = ex.action(multiply, [ones, tens])
 product = ex.artifact('product.txt', doMultiply)
 
-# product.pull()
+product.peek()
 # product.plot()
-product.parallelPull()
+#product.parallelPull()
 # jarvis.Util.pickleTo(product_df, 'product.pkl')
