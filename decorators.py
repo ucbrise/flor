@@ -2,14 +2,14 @@
 
 import inspect
 
-from . import util
-from . import global_state
+from jarvis import util
+from jarvis import global_state
 
 
 def func(lambdah):
     if global_state.interactive:
         if global_state.nb_name is None:
-            raise ValueError("Please call jarvis.setNotebookName")
+            raise Value+Error("Please call jarvis.setNotebookName")
         filename = global_state.nb_name
     else:
         filename = inspect.getsourcefile(lambdah).split('/')[-1]

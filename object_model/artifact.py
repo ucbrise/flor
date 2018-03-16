@@ -505,6 +505,7 @@ class Artifact:
                     with open(dst + '/' + self.loc, 'r') as f:
                         out = func(f.readlines())
                 os.chdir(original_dir)
+                # [os.remove(i) for i in self.xp_state.ghostFiles] # We want to keep resources intact
             except Exception as e:
                 print(e)
                 out = e

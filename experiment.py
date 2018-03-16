@@ -10,7 +10,7 @@ from . import global_state
 from . import util
 from .jground import GroundClient
 from .object_model import *
-from .decorators import func
+from jarvis.decorators import func
 
 class Experiment:
 
