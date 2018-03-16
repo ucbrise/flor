@@ -471,7 +471,7 @@ class Artifact:
 
         self.__commit__()
 
-    def peek(self, func = lambda x: x):
+    def peek(self, taip='default', func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + '1fdf8583bfd663e98918dea393e273cc'
 
@@ -486,12 +486,17 @@ class Artifact:
         self.xp_state.visited = []
         util.activate(self)
 
-        if type == "default":
+        if taip == "default":
             try:
                 # Just pull once and put output in folder peek0 within versioning directory.
-                self.__pull__()
+                original_dir = os.getcwd()
                 dst = self.xp_state.versioningDirectory + '/' + "peek0"
                 copytree(os.getcwd(), dst, True)
+                os.chdir(dst)
+                self.__pull__()
+
+                # dst = self.xp_state.versioningDirectory + '/' + "peek0"
+                # copytree(os.getcwd(), dst, True)
 
                 # Unpickle and read the file to output.
                 if util.isPickle(dst + "/" + self.loc):
@@ -499,10 +504,10 @@ class Artifact:
                 else:
                     with open(dst + '/' + self.loc, 'r') as f:
                         out = func(f.readlines())
-                os.chdir('../')
+                os.chdir(original_dir)
             except Exception as e:
                 print(e)
-                out =e
+                out = e
         # TODO: add case for peek next.
 
         # Delete the temporary versioning directory created.
