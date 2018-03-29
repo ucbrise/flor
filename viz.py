@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 from typing import List, Dict
-from graphviz import Digraph
-import numpy as np
 
 """
 Should optimize with an all-pairs longest path algorithm.

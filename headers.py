@@ -7,7 +7,7 @@ import pandas as pd
 
 from . import global_state
 from . import util
-from .experiment import State
+from jarvis.stateful import State
 
 def setNotebookName(name):
     global_state.nb_name = name
