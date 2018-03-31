@@ -3,10 +3,11 @@
 from typing import Set, Union
 import hashlib
 import json
+import datetime
 
+import jarvis.util as util
 from jarvis.stateful import State
 from jarvis.object_model import Artifact, Action, Literal
-
 
 
 def commit(xp_state : State):
@@ -19,6 +20,7 @@ def commit(xp_state : State):
                 n = xp_state.gc.create_node(sourceKey, name, tags)
         except:
             n = xp_state.gc.create_node(sourceKey, name, tags)
+
         return n
 
     def safeCreateGetEdge(sourceKey, name, fromNodeId, toNodeId, tags=None):
@@ -31,52 +33,104 @@ def commit(xp_state : State):
 
         return n
 
+    def safeCreateGetNodeVersion(sourceKey):
+        # Good for singleton node versions
+        try:
+            n = xp_state.gc.get_node_latest_versions(sourceKey)
+            if n is None:
+                n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+        except:
+            n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+
+        return n
+
     def stringify(v):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
+    # Begin
+
     sourcekeySpec = 'jarvis.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
+
+    latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
+    if latest_experiment_node_versions == []:
+        latest_experiment_node_versions = None
+    assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
+
+    # How does fork affect latest_experiment_node_versions
+
+    specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
+        'timestamp':
+            {
+                'key' : 'timestamp',
+                'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+                'type' : 'STRING'
+            }
+    }, parent_ids=latest_experiment_node_versions)
 
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
             litnode = safeCreateGetNode(sourcekeyLit, "null")
-            safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
+            e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
+
+            litnodev = xp_state.gc.create_node_version(litnode.get_id())
+            xp_state.gc.create_edge_version(e1.get_id(), specnodev.get_id(), litnodev.get_id())
+
             if node.__oneByOne__:
                 for i, v in enumerate(node.v):
                     sourcekeyBind = sourcekeyLit + '.' + stringify(v)
                     bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
                         'value':
                             {
-                                'key': 'v',
+                                'key': 'value',
                                 'value': str(v),
                                 'type' : 'STRING'
                             }})
-                    safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+                    e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                    # Bindings are singleton node versions
+
+                    bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                    xp_state.gc.create_edge_version(e3.get_id(), litnodev.get_id(), bindnodev.get_id())
+
             else:
                 sourcekeyBind = sourcekeyLit + '.' + stringify(node.v)
                 bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
                     'value':
                         {
-                            'key': 'v',
+                            'key': 'value',
                             'value': str(node.v),
                             'type': 'STRING'
                         }})
-                safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+                e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                # Bindings are singleton node versions
+
+                bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
+
         elif type(node) == Artifact:
-            sourcekeyArt = 'jarvis' + xp_state.EXPERIMENT_NAME + '.artifact.' + stringify(node.loc)
+            sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
-            safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
+            e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
+
+            # Artifact versioning will use git semantics
+
+            artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
+                'checksum': {
+                    'key': 'checksum',
+                    'value': util.md5(node.loc),
+                    'type': 'STRING'
+                }
+            })
+            xp_state.gc.create_edge_version(e2.get_id(), specnodev.get_id(), artnodev.get_id())
+
         else:
             raise TypeError(
                 "Action cannot be in set: starts")
-
-
-
-
-    # There is no self.xp_state
 
 
 
