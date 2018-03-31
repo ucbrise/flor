@@ -37,8 +37,10 @@ def commit(xp_state : State):
         # Good for singleton node versions
         try:
             n = xp_state.gc.get_node_latest_versions(sourceKey)
-            if n is None:
+            if n is None or n == []:
                 n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+            else:
+                return n[0]
         except:
             n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
 
