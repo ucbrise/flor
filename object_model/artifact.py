@@ -365,7 +365,7 @@ class Artifact:
 
         self.__commit__()
 
-    def peek(self, taip='default', func = lambda x: x):
+    def peek(self, head=25, taip='default', func = lambda x: x):
         trueVersioningDir = self.xp_state.versioningDirectory
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + '1fdf8583bfd663e98918dea393e273cc'
 
@@ -396,8 +396,12 @@ class Artifact:
                 if util.isPickle(dst + "/" + self.loc):
                     out = func(util.unpickle(dst + '/' + self.loc))
                 else:
+                    out = []
                     with open(dst + '/' + self.loc, 'r') as f:
-                        out = func(f.readlines())
+                        for i in range(head):
+                            out.append(f.readline())
+                    out = func(out)
+
                 os.chdir(original_dir)
                 # [os.remove(i) for i in self.xp_state.ghostFiles] # We want to keep resources intact
             except Exception as e:
