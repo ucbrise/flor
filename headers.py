@@ -4,10 +4,16 @@ import os
 import warnings
 from tqdm import tqdm
 import pandas as pd
+import tempfile
+import shutil
+import dill
+
+from typing import Dict, Union, Optional, List
 
 from . import global_state
 from . import util
 from jarvis.stateful import State
+from jarvis.object_model.artifact import Artifact
 
 def setNotebookName(name):
     global_state.nb_name = name
@@ -131,3 +137,96 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     util.runProc('git checkout master')
     os.chdir(original_dir)
     return res
+
+def run(experimentName : str, artifactLoc : str,
+        squashMap : Dict[str, List[str]], commitHash : Optional[Union[List[str], str]] = None):
+
+    with tempfile.TemporaryDirectory() as sharedtemp:
+
+        resourceMap = {}
+
+        xpdir = State().versioningDirectory + '/' + experimentName
+
+        for currentPath in squashMap:
+            currentPath2 = os.path.abspath(currentPath)
+            filename = os.path.basename(currentPath2)
+            shutil.copy(currentPath2, sharedtemp)
+            resourceMap[currentPath2] = squashMap[currentPath]
+
+        with util.chinto(xpdir):
+
+            beforeTrialNum = len([x for x in os.listdir() if util.isNumber(x)])
+            before = pd.DataFrame(columns=['version'] + [i for i in range(beforeTrialNum)])
+
+            afterTrialNum = None
+            after = None
+
+
+            if commitHash:
+                if type(commitHash) == str:
+                    commitHashes = [commitHash,]
+                else:
+                    commitHashes = commitHash
+            else:
+                commitHashes = [x.split(' ')[1] for x in util.runProc('git log').split('\n')
+                       if len(x) >= 6 and x[0:6] == 'commit']
+
+            for version in tqdm(commitHashes):
+                util.runProc('git checkout' + version)
+
+                record = {'version': version}
+
+                for i in range(beforeTrialNum):
+                    record[i] = util.loadArtifact(str(i) + '/' + artifactLoc)
+
+                before = before.append([record,]).loc[:, ['version'] + [i for i in range(beforeTrialNum)]]
+
+                with tempfile.TemporaryDirectory() as tempdir:
+                    shutil.copytree(xpdir, tempdir + '/' + experimentName)
+                    with util.chinto(tempdir + '/' + experimentName + '/0' ):
+                        with open('experiment_graph.pkl', 'rb') as f:
+                            eg = dill.load(f)
+                        for node in eg.d:
+                            if type(node) == Artifact and node.loc == artifactLoc:
+                                pullnode = node
+                                break
+                        for absfilepath in resourceMap:
+                            for relativefilepath in resourceMap[absfilepath]:
+                                shutil.copy(absfilepath, relativefilepath)
+                        try:
+                            pullnode.pull()
+                        except Exception as e:
+                            print("Exception in version: {}\nError message: {}".format(version, e))
+
+                # Now back in xpdir
+                util.runProc('git branch garbage')
+                util.runProc('git checkout master')
+                util.runProc('git merge garbage --no-edit')
+                util.runProc('git branch -d garbage')
+
+                raw = util.runProc('git log').split('\n')
+                if len(raw) > 1 and 'Merge' in raw[1]:
+                    #get second commit
+                    newCommitHashes = [x.split(' ')[1] for x in raw if len(x) >= 6 and x[0:6] == 'commit']
+                    newVersion = newCommitHashes[1]
+                    del newCommitHashes
+                else:
+                    #Get first commit
+                    newVersion = raw[0].split(' ')[1]
+
+                if after is None:
+                    afterTrialNum = len([x for x in os.listdir() if util.isNumber(x)])
+                    after  = pd.DataFrame(columns=['version', 'newVersion'] + ['n_' + str(i) for i in range(afterTrialNum)])
+
+                record = {'version': version, 'newVersion': newVersion}
+
+                for i in range(afterTrialNum):
+                    record['n_' + str(i)] = util.loadArtifact(str(i) + '/' + artifactLoc)
+
+                after = after.append([record,]).loc[:, ['version', 'newVersion'] + ['n_' + str(i) for i in range(afterTrialNum)]]
+
+    return before.merge(after, left_on='version', right_on='version', how='inner')
+
+
+
+

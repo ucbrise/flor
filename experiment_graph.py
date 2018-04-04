@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import dill
+
 class ExperimentGraph:
 
     def __init__(self):
@@ -17,3 +19,7 @@ class ExperimentGraph:
         assert v in self.d
         self.d[u] |= {v,}
         self.starts -= {v,}
+
+    def serialize(self):
+        with open('experiment_graph.pkl', 'wb') as f:
+            dill.dump(self, f)
