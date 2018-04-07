@@ -4,12 +4,13 @@ import inspect
 
 from jarvis import util
 from jarvis import global_state
+from sklearn.externals import joblib
 
 
 def func(lambdah):
     if global_state.interactive:
         if global_state.nb_name is None:
-            raise Value+Error("Please call jarvis.setNotebookName")
+            raise ValueError("Please call jarvis.setNotebookName")
         filename = global_state.nb_name
     else:
         filename = inspect.getsourcefile(lambdah).split('/')[-1]
@@ -19,7 +20,10 @@ def func(lambdah):
             in_args = []
             for in_art in [in_art.loc if util.isJarvisClass(in_art) else in_art for in_art in in_artifacts]:
                 if util.isPickle(in_art):
-                    x = util.unpickle(in_art)
+                    try:
+                        x = util.unpickle(in_art)
+                    except:
+                        x = joblib.load(in_art)
                 elif util.isCsv(in_art):
                     x = in_art
                 elif util.isLoc(in_art):
@@ -38,7 +42,10 @@ def func(lambdah):
                 assert len(outs) == len(out_artifacts)
                 for out, out_loc in zip(outs, [out_art.loc for out_art in out_artifacts]):
                     if util.isPickle(out_loc):
-                        util.pickleTo(out, out_loc)
+                        try:
+                            util.pickleTo(out, out_loc)
+                        except:
+                            joblib.dump(out, out_loc)
                     else:
                         with open(out_loc, 'w') as f:
                             if util.isIterable(out):
