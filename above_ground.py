@@ -40,7 +40,7 @@ def commit(xp_state : State):
             if n is None or n == []:
                 n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
             else:
-                return n[0]
+                return xp_state.gc.get_node_version(n[0])
         except:
             n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
 
