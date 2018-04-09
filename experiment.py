@@ -37,7 +37,7 @@ class Experiment(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, typ, value, traceback):
+    def __exit__(self, typ=None, value=None, traceback=None):
         self.xp_state.eg.serialize()
         ag.commit(self.xp_state)
 
