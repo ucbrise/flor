@@ -33,8 +33,8 @@ def getExperimentVersions(experimentName):
 def diffExperimentVersions(experimentName, v1, v2):
     original_dir = os.getcwd()
     os.chdir(State().versioningDirectory + '/' + experimentName)
-    response = util.runProc('git diff ' + v1 + ' ' + v2)
-
+    response = util.runProc('git diff ' + v1 + ' ' + v2 + ' ' + '0/' + experimentName + '.py')
+    
     os.chdir(original_dir)
 
     response = response.split('\n')

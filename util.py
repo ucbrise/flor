@@ -42,7 +42,10 @@ def isIterable(obj):
 def runProc(bashCommand):
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
-    return str(output, 'UTF-8')
+    try:
+        return str(output, 'UTF-8')
+    except:
+        return output
 
 def pickleTo(obj, loc):
     with open(loc, 'wb') as f:
