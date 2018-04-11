@@ -40,6 +40,7 @@ def commit(xp_state : State):
             if n is None or n == []:
                 n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
             else:
+                assert len(n) == 1
                 return xp_state.gc.get_node_version(n[0])
         except:
             n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
@@ -60,7 +61,9 @@ def commit(xp_state : State):
         latest_experiment_node_versions = None
     assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
 
-    # How does fork affect latest_experiment_node_versions
+    # How does fork affect latest_experiment_node_versions?
+        # Don't worry about it: managed by fork
+        # Relying on valid pre-condition, we can always just get the latest node version
 
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
         'timestamp':
@@ -94,10 +97,10 @@ def commit(xp_state : State):
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
 
                     # Bindings are singleton node versions
+                    #   Facilitates backward lookup (All trials with alpha=0.0)
 
                     bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
                     xp_state.gc.create_edge_version(e3.get_id(), litnodev.get_id(), bindnodev.get_id())
-
             else:
                 sourcekeyBind = sourcekeyLit + '.' + stringify(node.v)
                 bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
@@ -119,7 +122,7 @@ def commit(xp_state : State):
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
 
-            # Artifact versioning will use git semantics
+            # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
 
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
