@@ -10,7 +10,7 @@ Jarvis is a system with a declarative DSL embedded in python for managing the wo
 
 Clone or download this repository.
 
-You'll need Anaconda, preferable version 4.4+
+You'll need Anaconda, preferably version 4.4+
 
 Please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a Python 3.6 environment inside Anaconda. **Whenever you work with Jarvis, make sure the Python 3.6 environment is active**.
 
@@ -37,17 +37,16 @@ For examples on how to write your own jarvis workflow, please have a look at:
 ```
 examples/twitter.py -- classic example
 examples/plate.py -- multi-trial example
-examples/lifted_twitter.py -- multi-trial + aggregation example
 ```
 
 Make sure you:
 1. Import `jarvis`
 2. Initialize a `jarvis.Experiment`
-2. set the experiment's `groundClient` to 'git'.
+2. set the experiment's `groundClient` to 'ground'.
 
-Once you build the workflow, call `parallelPull()` on the artifact you want to produce. You can find it in `~/jarvis.d/`.
+Once you build the workflow, call `pull()` on the artifact you want to produce. You can find it in `~/jarvis.d/`.
 
-If you pass in a non-empty `dict` to `parallelPull` (see `lifted_twitter.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
+If you pass in a non-empty `dict` to `pull` (see `lifted_twitter.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
 
 ## Note on data
 
