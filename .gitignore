@@ -2,6 +2,9 @@
 .project
 .pydevproject
 .DS_Store
+experiment_graph.pkl
+output.gv
+output.gv.pdf
 *.ipynb_checkpoints/
 *__pycache__/
 *.idea/
