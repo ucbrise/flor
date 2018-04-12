@@ -49,6 +49,10 @@ Once you build the workflow, call `parallelPull()` on the artifact you want to p
 
 If you pass in a non-empty `dict` to `parallelPull` (see `lifted_twitter.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
 
+## Note on data
+
+The dataset used in some of our examples has [migrated](https://drive.google.com/drive/folders/1kKtBETmx0bY2_mT9M6PlyPgvGYzBz-sn?usp=sharing).
+
 ## Example program
 Contents of the `examples/plate.py` file:
 ```python
@@ -56,7 +60,7 @@ import jarvis
 
 ex = jarvis.Experiment('plate_demo')
 
-ex.groundClient('git')
+ex.groundClient('ground')
 
 ones = ex.literal([1, 2, 3], "ones")
 ones.forEach()
