@@ -9,3 +9,4 @@ output.gv.pdf
 *__pycache__/
 *.idea/
 *.csv
+*logs/
