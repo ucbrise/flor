@@ -8,3 +8,4 @@ output.gv.pdf
 *.ipynb_checkpoints/
 *__pycache__/
 *.idea/
+*.csv
