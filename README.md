@@ -1,4 +1,4 @@
-Jarvis
+Jarvis (has been renamed to [Flor](https://github.com/ucbrise/flor) please use that repo instead)
 =====
 
 Build, configure, and track workflows with Jarvis.
