@@ -138,6 +138,19 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     os.chdir(original_dir)
     return res
 
+def fork(experimentName, commitHash):
+	original_dir = os.getcwd()
+	#wipe original_dir here?
+	os.chdir(State().versioningDirectory + '/' + experimentName)
+	util.runProc('git checkout ' + commitHash)
+	#modify current working directory to contain all of the stuff from prev commit?
+	os.chdir("0/")
+	util.runProc("cp * " + original_dir)
+	os.chdir('../')
+	util.runProc("git checkout master")
+	os.chdir(original_dir)
+
+
 def run(experimentName : str, artifactLoc : str,
         squashMap : Dict[str, List[str]], commitHash : Optional[Union[List[str], str]] = None):
 
