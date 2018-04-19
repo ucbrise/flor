@@ -137,6 +137,98 @@ def commit(xp_state : State):
             raise TypeError(
                 "Action cannot be in set: starts")
 
+def fork(xp_state : State, forkNode, inputCH):
+    def safeCreateGetNode(sourceKey, name, tags=None):
+        # Work around small bug in ground client
+        try:
+            n = xp_state.gc.get_node(sourceKey)
+            if n is None:
+                n = xp_state.gc.create_node(sourceKey, name, tags)
+        except:
+            n = xp_state.gc.create_node(sourceKey, name, tags)
+
+        return n
+
+    def safeCreateGetEdge(sourceKey, name, fromNodeId, toNodeId, tags=None):
+        try:
+            n = xp_state.gc.get_edge(sourceKey)
+            if n is None:
+                n = xp_state.gc.create_edge(sourceKey, name, fromNodeId, toNodeId, tags)
+        except:
+            n = xp_state.gc.create_edge(sourceKey, name, fromNodeId, toNodeId, tags)
+
+        return n
+
+    def safeCreateGetNodeVersion(sourceKey):
+        # Good for singleton node versions
+        try:
+            n = xp_state.gc.get_node_latest_versions(sourceKey)
+            if n is None or n == []:
+                n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+            else:
+                assert len(n) == 1
+                return xp_state.gc.get_node_version(n[0])
+        except:
+            n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+
+        return n
+
+    def stringify(v):
+         # https://stackoverflow.com/a/22505259/9420936
+        return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
+
+    sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
+    specnode = safeCreateGetNode(sourcekeySpec, "null")
+
+    latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
+    if latest_experiment_node_versions == []:
+        latest_experiment_node_versions = None
+    assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
+
+    #TODO: fix all the stuff below, which contains a lot of speculation
+    #get specnodev corresponding to forkedNode?
+    forkedNodev = xp_state.gc.get_node_version(forkNode)
+    if forkedNode is None:
+        raise Error("Cannot fork to node that already exists")
+
+
+
+    # How does fork affect latest_experiment_node_versions?
+        # Don't worry about it: managed by fork
+        # Relying on valid pre-condition, we can always just get the latest node version
+
+    specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
+        'timestamp':
+            {
+                'key' : 'timestamp',
+                'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+                'type' : 'STRING'
+            },
+        'commitHash':
+            {
+                'key' : 'commitHash'
+                'value' : #String?
+                'type' : 'STRING'
+            },
+        'sequenceNumber':
+            {
+                'key' : 'sequenceNumber' #? 
+                'value' : int
+                'type' : 'INTEGER'
+            },
+        'prepostExec'
+            {
+                'key' : #pre or post exec
+                'value' : bool
+                'type' : 'BOOLEAN'
+            }
+    }, parent_ids=forkedNodev) #changed this from original
+
+    if inputCH == specnodev.get_hash():
+        seqNo = sepcnodev.get_sequence_number()
+
+        #TODO: increment seq #, add lineage edges to everything
+
 
 
 def __tags_equal__(groundtag, mytag):

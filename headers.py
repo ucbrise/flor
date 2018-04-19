@@ -138,17 +138,16 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     os.chdir(original_dir)
     return res
 
-def fork(experimentName, commitHash):
+def fork(experimentName, commitHash, outputDir):
 	original_dir = os.getcwd()
-	#wipe original_dir here?
 	os.chdir(State().versioningDirectory + '/' + experimentName)
 	util.runProc('git checkout ' + commitHash)
-	#modify current working directory to contain all of the stuff from prev commit?
-	os.chdir("0/")
-	util.runProc("cp * " + original_dir)
-	os.chdir('../')
+	#TODO: load experiment graph, call above_ground fork()
+	#move files into outputDir
+	util.runProc("cp * " + outputDir)
 	util.runProc("git checkout master")
 	os.chdir(original_dir)
+	#should we checkout to the new outputDir? (I think not, but idk)
 
 
 def run(experimentName : str, artifactLoc : str,
