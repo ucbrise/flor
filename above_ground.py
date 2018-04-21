@@ -8,6 +8,7 @@ import datetime
 import flor.util as util
 from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
+import dill
 
 
 def commit(xp_state : State):
@@ -137,7 +138,7 @@ def commit(xp_state : State):
             raise TypeError(
                 "Action cannot be in set: starts")
 
-def fork(xp_state : State, forkNode, inputCH):
+def fork(xp_state : State, inputCH):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -180,18 +181,30 @@ def fork(xp_state : State, forkNode, inputCH):
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
 
+    #gives you a list of most recent experiment versions
     latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
     assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
 
+    forkedNodev = None
+    flag = False
+    for each in latest_experiment_node_versions:
+        if flag:
+            break
+        history = xp_state.gc.get_node_history(each)
+        for node in history:
+            #does this return tags d for every node?
+            #assume history returns a list of nodeIds
+            d = xp_state.gc.getNodeVersion(node)
+            if d['commitHash'] == inputCH:
+                forkedNodev = each
+                flag = True
+
     #TODO: fix all the stuff below, which contains a lot of speculation
     #get specnodev corresponding to forkedNode?
-    forkedNodev = xp_state.gc.get_node_version(forkNode)
-    if forkedNode is None:
+    if forkedNodev is None:
         raise Error("Cannot fork to node that already exists")
-
-
 
     # How does fork affect latest_experiment_node_versions?
         # Don't worry about it: managed by fork
@@ -207,27 +220,99 @@ def fork(xp_state : State, forkNode, inputCH):
         'commitHash':
             {
                 'key' : 'commitHash'
-                'value' : #String?
+                'value' : inputCH
                 'type' : 'STRING'
             },
         'sequenceNumber':
             {
                 'key' : 'sequenceNumber' #? 
-                'value' : int
+                'value' : 
                 'type' : 'INTEGER'
             },
         'prepostExec'
             {
-                'key' : #pre or post exec
-                'value' : bool
+                'key' : 'prepostExec'
+                'value' : 
                 'type' : 'BOOLEAN'
             }
     }, parent_ids=forkedNodev) #changed this from original
 
-    if inputCH == specnodev.get_hash():
-        seqNo = sepcnodev.get_sequence_number()
+    #TODO: increment seq #, add lineage edges to everything
+    #TODO: specify lineage edges?
 
-        #TODO: increment seq #, add lineage edges to everything
+    #checkout previous version and nab experiment_graph.pkl
+    original = os.getcwd()
+    os.chdir(State().versioningDirectory + '/' + experimentName)
+    util.runProc('git checkout ' + inputCH)
+    os.chdir("0/")
+    with open('experiment_graph.pkl', 'rb') as f:
+        experimentg = dill.load(f)
+
+
+    starts : Set[Union[Artifact, Literal]] = experimentg.starts
+
+
+    for node in starts:
+        if type(node) == Literal:
+            sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+            litnode = safeCreateGetNode(sourcekeyLit, "null")
+            e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
+
+            litnodev = xp_state.gc.create_node_version(litnode.get_id())
+            xp_state.gc.create_edge_version(e1.get_id(), specnodev.get_id(), litnodev.get_id())
+
+            if node.__oneByOne__:
+                for i, v in enumerate(node.v):
+                    sourcekeyBind = sourcekeyLit + '.' + stringify(v)
+                    bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
+                        'value':
+                            {
+                                'key': 'value',
+                                'value': str(v),
+                                'type' : 'STRING'
+                            }})
+                    e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                    # Bindings are singleton node versions
+                    #   Facilitates backward lookup (All trials with alpha=0.0)
+
+                    bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                    xp_state.gc.create_edge_version(e3.get_id(), litnodev.get_id(), bindnodev.get_id())
+            else:
+                sourcekeyBind = sourcekeyLit + '.' + stringify(node.v)
+                bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
+                    'value':
+                        {
+                            'key': 'value',
+                            'value': str(node.v),
+                            'type': 'STRING'
+                        }})
+                e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                # Bindings are singleton node versions
+
+                bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
+
+        elif type(node) == Artifact:
+            sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
+            artnode = safeCreateGetNode(sourcekeyArt, "null")
+            e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
+
+            # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
+
+            artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
+                'checksum': {
+                    'key': 'checksum',
+                    'value': util.md5(node.loc),
+                    'type': 'STRING'
+                }
+            })
+            xp_state.gc.create_edge_version(e2.get_id(), specnodev.get_id(), artnodev.get_id())
+
+        else:
+            raise TypeError(
+                "Action cannot be in set: starts")
 
 
 
