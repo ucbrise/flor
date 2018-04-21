@@ -185,7 +185,9 @@ def fork(xp_state : State, inputCH):
     latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
-    assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
+
+    timestamps = [getNodeVersion(x)['timestamp'] for x in latest_experiment_node_versions]
+    latest_experiment_node = latest_experiment_node_versions[timestamps.index(min(timestamps))]
 
     forkedNodev = None
     flag = False
@@ -197,8 +199,8 @@ def fork(xp_state : State, inputCH):
             #does this return tags d for every node?
             #assume history returns a list of nodeIds
             d = xp_state.gc.getNodeVersion(node)
-            if d['commitHash'] == inputCH:
-                forkedNodev = each
+            if d['commitHash'] == inputCH and d['prepostExec']:
+                forkedNodev = node
                 flag = True
 
     #TODO: fix all the stuff below, which contains a lot of speculation
@@ -226,13 +228,13 @@ def fork(xp_state : State, inputCH):
         'sequenceNumber':
             {
                 'key' : 'sequenceNumber' #? 
-                'value' : 
+                'value' : xp_state.gc.getNodeVersion(forkedNodev)['sequenceNumber'] + 1
                 'type' : 'INTEGER'
             },
         'prepostExec'
             {
                 'key' : 'prepostExec'
-                'value' : 
+                'value' : xp_state.gc.getNodeVersion(forkedNodev)['prepostExec']
                 'type' : 'BOOLEAN'
             }
     }, parent_ids=forkedNodev) #changed this from original
@@ -249,8 +251,8 @@ def fork(xp_state : State, inputCH):
         experimentg = dill.load(f)
 
 
+    lineage = safeCreateGetEdge(sourcekeySpec, "null", specnodev.get_id(), latest_experiment_node.get_id())
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
-
 
     for node in starts:
         if type(node) == Literal:
