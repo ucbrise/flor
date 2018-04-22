@@ -221,21 +221,21 @@ def fork(xp_state : State, inputCH):
             },
         'commitHash':
             {
-                'key' : 'commitHash'
-                'value' : inputCH
-                'type' : 'STRING'
+                'key' : 'commitHash',
+                'value' : inputCH,
+                'type' : 'STRING',
             },
         'sequenceNumber':
             {
-                'key' : 'sequenceNumber' #? 
-                'value' : xp_state.gc.getNodeVersion(forkedNodev)['sequenceNumber'] + 1
-                'type' : 'INTEGER'
+                'key' : 'sequenceNumber', #? 
+                'value' : xp_state.gc.getNodeVersion(forkedNodev)['sequenceNumber'] + 1,
+                'type' : 'INTEGER',
             },
-        'prepostExec'
+        'prepostExec':
             {
-                'key' : 'prepostExec'
-                'value' : xp_state.gc.getNodeVersion(forkedNodev)['prepostExec']
-                'type' : 'BOOLEAN'
+                'key' : 'prepostExec',
+                'value' : xp_state.gc.getNodeVersion(forkedNodev)['prepostExec'],
+                'type' : 'BOOLEAN',
             }
     }, parent_ids=forkedNodev) #changed this from original
 
