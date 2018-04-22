@@ -14,6 +14,7 @@ from . import global_state
 from . import util
 from flor.stateful import State
 from flor.object_model.artifact import Artifact
+import flor.above_ground as ag
 
 def setNotebookName(name):
     global_state.nb_name = name
@@ -140,11 +141,14 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
 
 def fork(experimentName, commitHash, outputDir):
 	original_dir = os.getcwd()
+	outputDir = os.path.expanduser('~/temp')
+	#TODO: fix filepathing
 	os.chdir(State().versioningDirectory + '/' + experimentName)
 	util.runProc('git checkout ' + commitHash)
 	#TODO: load experiment graph, call above_ground fork()
+	ag.fork()
 	#move files into outputDir
-	util.runProc("cp * " + outputDir)
+	shutil.copytree(os.getcwd(), outputDir, True)  
 	util.runProc("git checkout master")
 	os.chdir(original_dir)
 	#should we checkout to the new outputDir? (I think not, but idk)
