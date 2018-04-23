@@ -186,6 +186,9 @@ def fork(xp_state : State, inputCH):
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
 
+    print(sourcekeySpec)
+    print(xp_state.gc.get_node_latest_versions('flor.plate_demo'))
+    input()
     timestamps = [getNodeVersion(x)['timestamp'] for x in latest_experiment_node_versions]
     latest_experiment_node = latest_experiment_node_versions[timestamps.index(min(timestamps))]
 

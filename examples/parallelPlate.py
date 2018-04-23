@@ -4,7 +4,7 @@ ex = flor.Experiment('plate_demo')
 
 ex.groundClient('git')
 
-ones = ex.literal([1, 2], "ones")
+ones = ex.literal([3, 4, 5], "ones")
 ones.forEach()
 
 tens = ex.literal([10, 100], "tens")

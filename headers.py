@@ -139,14 +139,15 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     os.chdir(original_dir)
     return res
 
-def fork(experimentName, commitHash, outputDir):
+def fork(experimentName, commitHash, outputDir, xp_state : State):
 	original_dir = os.getcwd()
 	outputDir = os.path.expanduser('~/temp')
 	#TODO: fix filepathing
 	os.chdir(State().versioningDirectory + '/' + experimentName)
+	ag.fork(xp_state, commitHash)
 	util.runProc('git checkout ' + commitHash)
 	#TODO: load experiment graph, call above_ground fork()
-	ag.fork()
+	input()
 	#move files into outputDir
 	shutil.copytree(os.getcwd(), outputDir, True)  
 	util.runProc("git checkout master")

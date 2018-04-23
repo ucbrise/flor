@@ -4,7 +4,7 @@ ex = flor.Experiment('plate_demo')
 
 ex.groundClient('git')
 
-temp = flor.fork('plate_demo', '6852e098f9464b3fa56d71822a6503729f9dde72', "~/temp")
+temp = flor.fork('plate_demo', '6852e098f9464b3fa56d71822a6503729f9dde72', "temp", ex.xp_state)
 
 # ones = ex.literal([1, 2], "ones")
 # ones.forEach()
