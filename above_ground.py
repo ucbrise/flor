@@ -9,9 +9,10 @@ import flor.util as util
 from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
 import dill
+import os
 
-
-def commit(xp_state : State):
+#TODO: inputCH does not belong - how do we get hash information into commit?
+def commit(xp_state : State, inputCH):
 
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -72,6 +73,24 @@ def commit(xp_state : State):
                 'key' : 'timestamp',
                 'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
                 'type' : 'STRING'
+            },
+        'commitHash':
+            {
+                'key' : 'commitHash',
+                'value' : inputCH,
+                'type' : 'STRING',
+            },
+        'sequenceNumber':
+            {
+                'key' : 'sequenceNumber', #? 
+                'value' : 0,
+                'type' : 'INTEGER',
+            },
+        'prepostExec':
+            {
+                'key' : 'prepostExec',
+                'value' : False, #change this later. This needs to be true
+                'type' : 'BOOLEAN',
             }
     }, parent_ids=latest_experiment_node_versions)
 
@@ -186,31 +205,40 @@ def fork(xp_state : State, inputCH):
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
 
-    print(sourcekeySpec)
-    print(xp_state.gc.get_node_latest_versions('flor.plate_demo'))
-    input()
-    timestamps = [getNodeVersion(x)['timestamp'] for x in latest_experiment_node_versions]
+    # print(sourcekeySpec)
+    # print(xp_state.gc.get_node_history(sourcekeySpec))
+    # print(xp_state.gc.get_node_latest_versions('flor.plate_demo'))
+    # input()
+    timestamps = [xp_state.gc.get_node_version(x).get_tags()['timestamp']['value'] for x in latest_experiment_node_versions]
     latest_experiment_node = latest_experiment_node_versions[timestamps.index(min(timestamps))]
+    #you are at the latest_experiment_node
 
     forkedNodev = None
-    flag = False
-    for each in latest_experiment_node_versions:
-        if flag:
-            break
-        history = xp_state.gc.get_node_history(each)
-        for node in history:
-            #does this return tags d for every node?
-            #assume history returns a list of nodeIds
-            d = xp_state.gc.getNodeVersion(node)
-            if d['commitHash'] == inputCH and d['prepostExec']:
-                forkedNodev = node
-                flag = True
+    # for each in latest_experiment_node_versions:
+    #     if flag:
+    #         break
+    #     history = xp_state.gc.get_node_version_adjacent_lineage(each)
+    #     for node in history:
+    #         #does this return tags d for every node?
+    #         #assume history returns a list of nodeIds
+    #         d = xp_state.gc.getNodeVersion(node)
+    #         if d['commitHash'] == inputCH and d['prepostExec']:
+    #             forkedNodev = node
+    #             flag = True
+
+    history = xp_state.gc.get_node_history(sourcekeySpec)
+    for each in history.keys():
+        tags = xp_state.gc.get_node_version(history[each]).get_tags()
+        if 'commitHash' in tags.keys():
+            if tags['commitHash']['value'] == inputCH:
+                forkedNodev = history[each]
+                break;
+
 
     #TODO: fix all the stuff below, which contains a lot of speculation
     #get specnodev corresponding to forkedNode?
     if forkedNodev is None:
         raise Error("Cannot fork to node that already exists")
-
     # How does fork affect latest_experiment_node_versions?
         # Don't worry about it: managed by fork
         # Relying on valid pre-condition, we can always just get the latest node version
@@ -231,13 +259,13 @@ def fork(xp_state : State, inputCH):
         'sequenceNumber':
             {
                 'key' : 'sequenceNumber', #? 
-                'value' : xp_state.gc.getNodeVersion(forkedNodev)['sequenceNumber'] + 1,
+                'value' : xp_state.gc.get_node_version(forkedNodev).get_tags()['sequenceNumber']['value'] + 1,
                 'type' : 'INTEGER',
             },
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : xp_state.gc.getNodeVersion(forkedNodev)['prepostExec'],
+                'value' : xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'],
                 'type' : 'BOOLEAN',
             }
     }, parent_ids=forkedNodev) #changed this from original
@@ -247,17 +275,22 @@ def fork(xp_state : State, inputCH):
 
     #checkout previous version and nab experiment_graph.pkl
     original = os.getcwd()
-    os.chdir(State().versioningDirectory + '/' + experimentName)
+    os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
     util.runProc('git checkout ' + inputCH)
     os.chdir("0/")
     with open('experiment_graph.pkl', 'rb') as f:
         experimentg = dill.load(f)
 
-
-    lineage = safeCreateGetEdge(sourcekeySpec, "null", specnodev.get_id(), latest_experiment_node.get_id())
+    #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
+    lineage = safeCreateGetEdge(sourcekeySpec, "null", latest_experiment_node, specnodev.get_id())
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
+    print(starts)
+     #lineage is none right now
+    print(lineage)
+    input()
 
     for node in starts:
+        print(node.loc)
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
             litnode = safeCreateGetNode(sourcekeyLit, "null")
@@ -305,7 +338,7 @@ def fork(xp_state : State, inputCH):
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
 
             # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
-
+            # TODO: node.loc here is tweets.csv....why is tweets showing up here?
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
                     'key': 'checksum',

@@ -4,7 +4,8 @@ ex = flor.Experiment('plate_demo')
 
 ex.groundClient('git')
 
-temp = flor.fork('plate_demo', '6852e098f9464b3fa56d71822a6503729f9dde72', "temp", ex.xp_state)
+#your commit hash experience may vary
+temp = flor.fork('plate_demo', '4418a7e6026bb28e7b50406f77ffda562009a810', "temp", ex.xp_state)
 
 # ones = ex.literal([1, 2], "ones")
 # ones.forEach()
