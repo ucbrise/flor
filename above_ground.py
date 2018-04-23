@@ -283,6 +283,7 @@ def fork(xp_state : State, inputCH):
 
     #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
     lineage = safeCreateGetEdge(sourcekeySpec, "null", latest_experiment_node, specnodev.get_id())
+    xp_state.gc.create_edge_version(lineage.get_id(), latest_experiment_node, specnodev.get_id())
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
     print(starts)
      #lineage is none right now
