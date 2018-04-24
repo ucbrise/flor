@@ -10,9 +10,10 @@ from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
 import dill
 import os
+import subprocess
 
 #TODO: inputCH does not belong - how do we get hash information into commit?
-def commit(xp_state : State, inputCH):
+def commit(xp_state : State):
 
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -53,6 +54,10 @@ def commit(xp_state : State, inputCH):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
+    def get_sha(versioningDirectory):
+        sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
+        return sha
+
     # Begin
 
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
@@ -77,20 +82,20 @@ def commit(xp_state : State, inputCH):
         'commitHash':
             {
                 'key' : 'commitHash',
-                'value' : inputCH,
+                'value' : None,
                 'type' : 'STRING',
             },
         'sequenceNumber':
             {
                 'key' : 'sequenceNumber', #? 
-                'value' : 0,
+                'value' : 0, #fixme given a commit hash we'll have to search through for existing CH
                 'type' : 'INTEGER',
             },
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : False, #change this later. This needs to be true
-                'type' : 'BOOLEAN',
+                'value' : 'Pre', #change to 'Post' after exec
+                'type' : 'STRING',
             }
     }, parent_ids=latest_experiment_node_versions)
 
@@ -157,6 +162,9 @@ def commit(xp_state : State, inputCH):
             raise TypeError(
                 "Action cannot be in set: starts")
 
+    inputCH = get_sha(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
+    
+
 def fork(xp_state : State, inputCH):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -210,7 +218,7 @@ def fork(xp_state : State, inputCH):
     # print(xp_state.gc.get_node_latest_versions('flor.plate_demo'))
     # input()
     timestamps = [xp_state.gc.get_node_version(x).get_tags()['timestamp']['value'] for x in latest_experiment_node_versions]
-    latest_experiment_node = latest_experiment_node_versions[timestamps.index(min(timestamps))]
+    latest_experiment_nodev = latest_experiment_node_versions[timestamps.index(min(timestamps))]
     #you are at the latest_experiment_node
 
     forkedNodev = None
@@ -238,7 +246,7 @@ def fork(xp_state : State, inputCH):
     #TODO: fix all the stuff below, which contains a lot of speculation
     #get specnodev corresponding to forkedNode?
     if forkedNodev is None:
-        raise Error("Cannot fork to node that already exists")
+        raise Error("Cannot fork to node that does not exist")
     # How does fork affect latest_experiment_node_versions?
         # Don't worry about it: managed by fork
         # Relying on valid pre-condition, we can always just get the latest node version
@@ -266,7 +274,7 @@ def fork(xp_state : State, inputCH):
             {
                 'key' : 'prepostExec',
                 'value' : xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'],
-                'type' : 'BOOLEAN',
+                'type' : 'STRING',
             }
     }, parent_ids=forkedNodev) #changed this from original
 
@@ -275,23 +283,37 @@ def fork(xp_state : State, inputCH):
 
     #checkout previous version and nab experiment_graph.pkl
     original = os.getcwd()
-    os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
     util.runProc('git checkout ' + inputCH)
+    os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
     os.chdir("0/")
     with open('experiment_graph.pkl', 'rb') as f:
         experimentg = dill.load(f)
+    for each in experimentg.d.keys():
+        temp = experimentg.d[each]
+        for x in temp:
+            if type(x) is not set and type(x) is not Action:
+                print(x.getLocation())
+                input()
 
     #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
-    lineage = safeCreateGetEdge(sourcekeySpec, "null", latest_experiment_node, specnodev.get_id())
-    xp_state.gc.create_edge_version(lineage.get_id(), latest_experiment_node, specnodev.get_id())
+    #make sure it is node, not node version
+    # lineage = safeCreateGetEdge(sourcekeySpec, "null", latest_experiment_nodev, forkedNodev)
+    # print(latest_experiment_nodev)
+    # print(forkedNodev)
+    # print(history)
+    # print(lineage)
+    # input()
+    # xp_state.gc.create_edge_version(lineage.get_id(), latest_experiment_nodev, specnode.get_id())
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
     print(starts)
+    print(specnodev)
      #lineage is none right now
-    print(lineage)
-    input()
+    # print(lineage)
+    # input()
 
     for node in starts:
-        print(node.loc)
+        # node.plot()
+        # input()
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
             litnode = safeCreateGetNode(sourcekeyLit, "null")

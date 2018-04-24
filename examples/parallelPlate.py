@@ -22,10 +22,7 @@ product = ex.artifact('product.txt', doMultiply)
 product.parallelPull()
 import os
 import subprocess
-#(borrowed from stack overflow lmao)
-def get_sha(repo):
-	sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo).decode('ascii').strip()
-	return sha
+
 
 original = os.getcwd()
 repo = ex.xp_state.versioningDirectory + '/plate_demo'
