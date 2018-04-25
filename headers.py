@@ -153,7 +153,6 @@ def fork(experimentName, commitHash, outputDir, xp_state : State):
 	shutil.copytree(os.getcwd(), outputDir, True)  
 	util.runProc("git checkout master")
 	os.chdir(original_dir)
-	#should we checkout to the new outputDir? (I think not, but idk)
 
 
 def run(experimentName : str, artifactLoc : str,

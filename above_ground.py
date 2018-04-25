@@ -8,11 +8,8 @@ import datetime
 import flor.util as util
 from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
-import dill
-import os
-import subprocess
 
-#TODO: inputCH does not belong - how do we get hash information into commit?
+
 def commit(xp_state : State):
 
     def safeCreateGetNode(sourceKey, name, tags=None):
@@ -53,10 +50,6 @@ def commit(xp_state : State):
     def stringify(v):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
-
-    def get_sha(versioningDirectory):
-        sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
-        return sha
 
     # Begin
 
@@ -161,9 +154,6 @@ def commit(xp_state : State):
         else:
             raise TypeError(
                 "Action cannot be in set: starts")
-
-    inputCH = get_sha(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
-    
 
 def fork(xp_state : State, inputCH):
     def safeCreateGetNode(sourceKey, name, tags=None):
@@ -376,7 +366,6 @@ def fork(xp_state : State, inputCH):
                 "Action cannot be in set: starts")
 
 
-
 def __tags_equal__(groundtag, mytag):
     groundtagprime = {}
     for kee in groundtag:
@@ -512,5 +501,4 @@ def newActionArtifactEdgeVersion(xp_state : State, fromNv, toNv):
 def __newEdgeVersion__(xp_state : State, fromNv, toNv, edgeKey):
     return xp_state.gc.createEdgeVersion(xp_state.gc.getEdge(edgeKey).get_id(),
                                          fromNv.get_id(),
-                                         toNv.get_id())
-
+toNv.get_id())
