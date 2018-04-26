@@ -8,9 +8,12 @@ import datetime
 import flor.util as util
 from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
+import os
+import subprocess
 
 
 def commit(xp_state : State):
+    #TODO: Use grit/gizzard.py functions to get commit hash for the source key spec
 
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -51,6 +54,36 @@ def commit(xp_state : State):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
+    # def get_sha(versioningDirectory):
+    #     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
+    #     return sha
+
+    def gitlog(sourceKey, typ):
+        #FIXME: use subprocess to log and then process the output as raw text
+        typ = typ.lower()
+        ld = []
+        with chinto(globals.GRIT_D):
+            p1 = subprocess.Popen(['git', 'log', '--follow', '--', typ+'/'+sourceKey+'.json'], stdout=subprocess.PIPE,  stderr=subprocess.DEVNULL)
+            rawgitlog = str(p1.stdout.read(), 'UTF-8').split('\n')
+            p1.stdout.close()
+            p1.terminate()
+            p1.wait()
+            d = {}
+            for line in rawgitlog:
+                if 'commit' in line[0:6]:
+                    d['commit'] = line.split(' ')[1]
+                elif 'Author' in line[0:6]:
+                    d['Author'] = ' '.join(line.split()[1:])
+                elif 'Date' in line[0:4]:
+                    d['Date'] = ' '.join(line.split()[1:])
+                elif 'id:' in line and 'class:' in line:
+                    line = line.split()
+                    d['id'] = int(line[1].split(',')[0])
+                    d['class'] = line[3]
+                    ld.append(d)
+                    d = {}
+        return ld
+
     # Begin
 
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
@@ -75,14 +108,14 @@ def commit(xp_state : State):
         'commitHash':
             {
                 'key' : 'commitHash',
-                'value' : None,
+                'value' : "None",
                 'type' : 'STRING',
             },
         'sequenceNumber':
             {
-                'key' : 'sequenceNumber', #? 
-                'value' : 0, #fixme given a commit hash we'll have to search through for existing CH
-                'type' : 'INTEGER',
+                'key' : 'sequenceNumber', 
+                'value' : "0", #fixme given a commit hash we'll have to search through for existing CH
+                'type' : 'STRING',
             },
         'prepostExec':
             {
@@ -156,6 +189,10 @@ def commit(xp_state : State):
                 "Action cannot be in set: starts")
 
 def fork(xp_state : State, inputCH):
+
+    #FIXME: figure out alternative way to get hash (see gitlog in commit above)
+    #verify the lineage edge code below
+
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -191,9 +228,38 @@ def fork(xp_state : State, inputCH):
 
         return n
 
+    def safeCreateGetLineage(sourceKey, name, tags=None):
+        try:
+            n = xp_state.gc.get_lineage_edge(sourcekey, name, tags)
+            if n is None:
+                n = xp_state.gc.create_lineage_edge(sourcekey, name, tags)
+        except:
+            n = xp_state.gc.create_lineage_edge(sourcekey, name, tags)
+
+        return n
+
     def stringify(v):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
+
+    # def get_sha(versioningDirectory):
+    #     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
+    #     return sha
+
+    def geteg(inputCH):
+        original = os.getcwd()
+        util.runProc('git checkout ' + inputCH)
+        os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
+        os.chdir("0/")
+        with open('experiment_graph.pkl', 'rb') as f:
+            experimentg = dill.load(f)
+        # for each in experimentg.d.keys():
+        #     temp = experimentg.d[each]
+        #     for x in temp:
+        #         if type(x) is not set and type(x) is not Action:
+        #             print(x.getLocation())
+        #             input()
+        return experimentg
 
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
@@ -272,31 +338,17 @@ def fork(xp_state : State, inputCH):
     #TODO: specify lineage edges?
 
     #checkout previous version and nab experiment_graph.pkl
-    original = os.getcwd()
-    util.runProc('git checkout ' + inputCH)
-    os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
-    os.chdir("0/")
-    with open('experiment_graph.pkl', 'rb') as f:
-        experimentg = dill.load(f)
-    for each in experimentg.d.keys():
-        temp = experimentg.d[each]
-        for x in temp:
-            if type(x) is not set and type(x) is not Action:
-                print(x.getLocation())
-                input()
+    experimentg = geteg(inputCH)
 
     #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
     #make sure it is node, not node version
-    # lineage = safeCreateGetEdge(sourcekeySpec, "null", latest_experiment_nodev, forkedNodev)
-    # print(latest_experiment_nodev)
-    # print(forkedNodev)
-    # print(history)
-    # print(lineage)
-    # input()
-    # xp_state.gc.create_edge_version(lineage.get_id(), latest_experiment_nodev, specnode.get_id())
+    lineage = safeCreateGetLineage(sourcekeySpec, 'null')
+    #i think we use version id
+    #what is rich version id?
+    xp_state.gc.create_lineage_edge_version(lineage.get_id(), latest_experiment_nodev, forkedNodev)
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
-    print(starts)
-    print(specnodev)
+    # print(starts)
+    # print(specnodev)
      #lineage is none right now
     # print(lineage)
     # input()
