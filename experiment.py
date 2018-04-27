@@ -47,9 +47,15 @@ class Experiment(object):
         self.xp_state.gc = GroundClient()
 
     def literal(self, v, name=None):
-        lit =  Literal(v, name, self.xp_state)
+        lit = Literal(v, name, self.xp_state)
         self.xp_state.eg.node(lit)
 
+        return lit
+
+    def literalForEach(self, v, name=None, default = None):
+        lit = Literal(v, name, self.xp_state, default)
+        self.xp_state.eg.node(lit)
+        lit.__forEach__()
         return lit
 
     def artifact(self, loc, parent=None, manifest=False):
@@ -67,7 +73,7 @@ class Experiment(object):
                 if not util.isFlorClass(in_art):
                     if util.isIterable(in_art):
                         in_art = self.literal(in_art)
-                        in_art.forEach()
+                        in_art.__forEach__()
                     else:
                         in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
