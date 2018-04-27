@@ -139,8 +139,13 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     os.chdir(original_dir)
     return res
 
-def fork(experimentName, commitHash, outputDir, xp_state : State):
+def fork(experimentName, commitHash, outputDir = None, xp_state : State):
 	original_dir = os.getcwd()
+	if os.path.abspath(outputDir) == original_dir or outputDir is None:
+		print("HELLO!!!")
+		input()
+	print("GOODBYE")
+	input()
 	outputDir = os.path.expanduser('~/temp')
 	print(State().versioningDirectory)
 	#TODO: fix filepathing
