@@ -223,8 +223,8 @@ def fork(xp_state : State, inputCH):
 
     def get_sha(directory):
         output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
-        
-        
+
+
     def geteg(inputCH):
         original = os.getcwd()
         util.runProc('git checkout ' + inputCH)

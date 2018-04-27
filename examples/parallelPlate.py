@@ -3,7 +3,7 @@ import flor
 with flor.Experiment('plate_demo') as ex:
 	ex.groundClient('ground')
 
-	ones = ex.literal([4, 5, 6], "ones")
+	ones = ex.literal([1, 2], "ones")
 	ones.forEach()
 
 	tens = ex.literal([10, 100], "tens")

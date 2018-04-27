@@ -15,6 +15,7 @@ from . import util
 from flor.stateful import State
 from flor.object_model.artifact import Artifact
 import flor.above_ground as ag
+import subprocess
 
 def setNotebookName(name):
     global_state.nb_name = name
@@ -139,13 +140,13 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     os.chdir(original_dir)
     return res
 
-def fork(experimentName, commitHash, outputDir = None, xp_state : State):
+def fork(experimentName, commitHash, xp_state : State, outputDir = None):
 	original_dir = os.getcwd()
 	if os.path.abspath(outputDir) == original_dir or outputDir is None:
-		print("HELLO!!!")
-		input()
-	print("GOODBYE")
-	input()
+		output = subprocess.check_output('git status'.split()).decode().splitlines()
+		if output[1] != 'nothing to commit, working directory clean':
+			raise Error("Cannot fork from a dirty working directory")
+			#are we assuming that the user's directory is using git at the time?
 	outputDir = os.path.expanduser('~/temp')
 	print(State().versioningDirectory)
 	#TODO: fix filepathing
