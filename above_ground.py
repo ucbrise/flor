@@ -13,8 +13,6 @@ import subprocess
 
 
 def commit(xp_state : State):
-    #TODO: Use grit/gizzard.py functions to get commit hash for the source key spec
-
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -58,31 +56,9 @@ def commit(xp_state : State):
     #     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
     #     return sha
 
-    def gitlog(sourceKey, typ):
-        #FIXME: use subprocess to log and then process the output as raw text
-        typ = typ.lower()
-        ld = []
-        with chinto(globals.GRIT_D):
-            p1 = subprocess.Popen(['git', 'log', '--follow', '--', typ+'/'+sourceKey+'.json'], stdout=subprocess.PIPE,  stderr=subprocess.DEVNULL)
-            rawgitlog = str(p1.stdout.read(), 'UTF-8').split('\n')
-            p1.stdout.close()
-            p1.terminate()
-            p1.wait()
-            d = {}
-            for line in rawgitlog:
-                if 'commit' in line[0:6]:
-                    d['commit'] = line.split(' ')[1]
-                elif 'Author' in line[0:6]:
-                    d['Author'] = ' '.join(line.split()[1:])
-                elif 'Date' in line[0:4]:
-                    d['Date'] = ' '.join(line.split()[1:])
-                elif 'id:' in line and 'class:' in line:
-                    line = line.split()
-                    d['id'] = int(line[1].split(',')[0])
-                    d['class'] = line[3]
-                    ld.append(d)
-                    d = {}
-        return ld
+    def get_sha(directory):
+        #FIXME: output contains the correct thing, but there is no version directory yet...
+        output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
 
     # Begin
 
@@ -188,6 +164,9 @@ def commit(xp_state : State):
             raise TypeError(
                 "Action cannot be in set: starts")
 
+    print("CHECK GIT LOG FOR NEW COMMIT")
+    input()
+
 def fork(xp_state : State, inputCH):
 
     #FIXME: figure out alternative way to get hash (see gitlog in commit above)
@@ -242,10 +221,10 @@ def fork(xp_state : State, inputCH):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
-    # def get_sha(versioningDirectory):
-    #     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
-    #     return sha
-
+    def get_sha(directory):
+        output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
+        
+        
     def geteg(inputCH):
         original = os.getcwd()
         util.runProc('git checkout ' + inputCH)
