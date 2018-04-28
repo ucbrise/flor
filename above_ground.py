@@ -4,6 +4,7 @@ from typing import Set, Union
 import hashlib
 import json
 import datetime
+import dill
 
 import flor.util as util
 from flor.stateful import State
@@ -12,7 +13,7 @@ import os
 import subprocess
 
 
-def commit(xp_state : State):
+def commit(xp_state : State, prepost='Post'):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -58,10 +59,13 @@ def commit(xp_state : State):
 
     def get_sha(directory):
         #FIXME: output contains the correct thing, but there is no version directory yet...
+        original = os.getcwd()
+        os.chdir(directory)
         output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
+        os.chdir(original)
+        return output
 
     # Begin
-
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
 
@@ -84,10 +88,10 @@ def commit(xp_state : State):
         'commitHash':
             {
                 'key' : 'commitHash',
-                'value' : "None",
+                'value' : get_sha(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME),
                 'type' : 'STRING',
             },
-        'sequenceNumber':
+        'sequenceNumber': #potentially unneeded...can't find a good way to get sequence number
             {
                 'key' : 'sequenceNumber', 
                 'value' : "0", #fixme given a commit hash we'll have to search through for existing CH
@@ -96,7 +100,7 @@ def commit(xp_state : State):
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : 'Pre', #change to 'Post' after exec
+                'value' : prepost, #change to 'Post' after exec
                 'type' : 'STRING',
             }
     }, parent_ids=latest_experiment_node_versions)
@@ -164,8 +168,6 @@ def commit(xp_state : State):
             raise TypeError(
                 "Action cannot be in set: starts")
 
-    print("CHECK GIT LOG FOR NEW COMMIT")
-    input()
 
 def fork(xp_state : State, inputCH):
 
@@ -207,13 +209,11 @@ def fork(xp_state : State, inputCH):
 
         return n
 
-    def safeCreateGetLineage(sourceKey, name, tags=None):
+    def safeCreateLineage(sourceKey, name, tags=None):
         try:
-            n = xp_state.gc.get_lineage_edge(sourcekey, name, tags)
-            if n is None:
-                n = xp_state.gc.create_lineage_edge(sourcekey, name, tags)
+            n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
         except:
-            n = xp_state.gc.create_lineage_edge(sourcekey, name, tags)
+            n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
 
         return n
 
@@ -225,10 +225,10 @@ def fork(xp_state : State, inputCH):
         output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
 
 
-    def geteg(inputCH):
+    def geteg(xp_state, inputCH):
         original = os.getcwd()
+        os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
         util.runProc('git checkout ' + inputCH)
-        os.chdir(State().versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
         os.chdir("0/")
         with open('experiment_graph.pkl', 'rb') as f:
             experimentg = dill.load(f)
@@ -238,6 +238,8 @@ def fork(xp_state : State, inputCH):
         #         if type(x) is not set and type(x) is not Action:
         #             print(x.getLocation())
         #             input()
+        util.runProc('git checkout master')
+        os.chdir(original)
         return experimentg
 
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
@@ -272,6 +274,7 @@ def fork(xp_state : State, inputCH):
     history = xp_state.gc.get_node_history(sourcekeySpec)
     for each in history.keys():
         tags = xp_state.gc.get_node_version(history[each]).get_tags()
+        print(tags)
         if 'commitHash' in tags.keys():
             if tags['commitHash']['value'] == inputCH:
                 forkedNodev = history[each]
@@ -281,10 +284,12 @@ def fork(xp_state : State, inputCH):
     #TODO: fix all the stuff below, which contains a lot of speculation
     #get specnodev corresponding to forkedNode?
     if forkedNodev is None:
-        raise Error("Cannot fork to node that does not exist")
+        raise Exception("Cannot fork to node that does not exist.")
     # How does fork affect latest_experiment_node_versions?
         # Don't worry about it: managed by fork
         # Relying on valid pre-condition, we can always just get the latest node version
+    if xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'] == 'Post':
+        raise Exception("Connot fork from a Post-Execution State.")
 
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
         'timestamp':
@@ -301,14 +306,14 @@ def fork(xp_state : State, inputCH):
             },
         'sequenceNumber':
             {
-                'key' : 'sequenceNumber', #? 
-                'value' : xp_state.gc.get_node_version(forkedNodev).get_tags()['sequenceNumber']['value'] + 1,
-                'type' : 'INTEGER',
+                'key' : 'sequenceNumber', #useless currently
+                'value' : str(int(xp_state.gc.get_node_version(forkedNodev).get_tags()['sequenceNumber']['value']) + 1),
+                'type' : 'STRING',
             },
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'],
+                'value' : 'Pre', #can only fork from pre state
                 'type' : 'STRING',
             }
     }, parent_ids=forkedNodev) #changed this from original
@@ -317,11 +322,11 @@ def fork(xp_state : State, inputCH):
     #TODO: specify lineage edges?
 
     #checkout previous version and nab experiment_graph.pkl
-    experimentg = geteg(inputCH)
+    experimentg = geteg(xp_state, inputCH)
 
     #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
     #make sure it is node, not node version
-    lineage = safeCreateGetLineage(sourcekeySpec, 'null')
+    lineage = safeCreateLineage(sourcekeySpec, 'null')
     #i think we use version id
     #what is rich version id?
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), latest_experiment_nodev, forkedNodev)
@@ -332,8 +337,8 @@ def fork(xp_state : State, inputCH):
     # print(lineage)
     # input()
 
+    print(starts)
     for node in starts:
-        # node.plot()
         # input()
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name

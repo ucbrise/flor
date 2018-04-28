@@ -142,20 +142,20 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
 
 def fork(experimentName, commitHash, xp_state : State, outputDir = None):
 	original_dir = os.getcwd()
-	if os.path.abspath(outputDir) == original_dir or outputDir is None:
+	if outputDir is None:
+		outputDir = original_dir
+	outputDir = os.path.abspath(outputDir)
+	if outputDir == original_dir:
 		output = subprocess.check_output('git status'.split()).decode().splitlines()
 		if output[1] != 'nothing to commit, working directory clean':
 			raise Error("Cannot fork from a dirty working directory")
 			#are we assuming that the user's directory is using git at the time?
-	outputDir = os.path.expanduser('~/temp')
-	print(State().versioningDirectory)
 	#TODO: fix filepathing
-	os.chdir(State().versioningDirectory + '/' + experimentName)
-	util.runProc('git checkout ' + commitHash)
 	#TODO: load experiment graph, call above_ground fork()
 	ag.fork(xp_state, commitHash)
-	input()
 	#move files into outputDir
+	os.chdir(xp_state.versioningDirectory + '/' + experimentName)
+	util.runProc('git checkout ' + commitHash)
 	shutil.copytree(os.getcwd(), outputDir, True)  
 	util.runProc("git checkout master")
 	os.chdir(original_dir)
