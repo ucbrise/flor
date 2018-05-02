@@ -14,6 +14,8 @@ from . import global_state
 from . import util
 from flor.stateful import State
 from flor.object_model.artifact import Artifact
+import flor.above_ground as ag
+import subprocess
 
 def setNotebookName(name):
     global_state.nb_name = name
@@ -137,6 +139,27 @@ def checkoutArtifact(experimentName, trialNum, commitHash, fileName):
     util.runProc('git checkout master')
     os.chdir(original_dir)
     return res
+
+def fork(experimentName, commitHash, xp_state : State, outputDir = None):
+	original_dir = os.getcwd()
+	if outputDir is None:
+		outputDir = original_dir
+	outputDir = os.path.abspath(outputDir)
+	if outputDir == original_dir:
+		output = subprocess.check_output('git status'.split()).decode().splitlines()
+		if output[1] != 'nothing to commit, working directory clean':
+			raise Error("Cannot fork from a dirty working directory")
+			#are we assuming that the user's directory is using git at the time?
+	#TODO: fix filepathing
+	#TODO: load experiment graph, call above_ground fork()
+	ag.fork(xp_state, commitHash)
+	#move files into outputDir
+	os.chdir(xp_state.versioningDirectory + '/' + experimentName)
+	util.runProc('git checkout ' + commitHash)
+	shutil.copytree(os.getcwd(), outputDir, True)  
+	util.runProc("git checkout master")
+	os.chdir(original_dir)
+
 
 def run(experimentName : str, artifactLoc : str,
         squashMap : Dict[str, List[str]], commitHash : Optional[Union[List[str], str]] = None):
