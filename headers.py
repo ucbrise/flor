@@ -149,11 +149,7 @@ def fork(experimentName, commitHash, xp_state : State, outputDir = None):
 		output = subprocess.check_output('git status'.split()).decode().splitlines()
 		if output[1] != 'nothing to commit, working directory clean':
 			raise Error("Cannot fork from a dirty working directory")
-			#are we assuming that the user's directory is using git at the time?
-	#TODO: fix filepathing
-	#TODO: load experiment graph, call above_ground fork()
 	ag.fork(xp_state, commitHash)
-	#move files into outputDir
 	os.chdir(xp_state.versioningDirectory + '/' + experimentName)
 	util.runProc('git checkout ' + commitHash)
 	shutil.copytree(os.getcwd(), outputDir, True)  

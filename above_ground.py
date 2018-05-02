@@ -170,10 +170,6 @@ def commit(xp_state : State, prepost='Post'):
 
 
 def fork(xp_state : State, inputCH):
-
-    #FIXME: figure out alternative way to get hash (see gitlog in commit above)
-    #verify the lineage edge code below
-
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -232,12 +228,6 @@ def fork(xp_state : State, inputCH):
         os.chdir("0/")
         with open('experiment_graph.pkl', 'rb') as f:
             experimentg = dill.load(f)
-        # for each in experimentg.d.keys():
-        #     temp = experimentg.d[each]
-        #     for x in temp:
-        #         if type(x) is not set and type(x) is not Action:
-        #             print(x.getLocation())
-        #             input()
         util.runProc('git checkout master')
         os.chdir(original)
         return experimentg
@@ -250,26 +240,11 @@ def fork(xp_state : State, inputCH):
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
 
-    # print(sourcekeySpec)
-    # print(xp_state.gc.get_node_history(sourcekeySpec))
-    # print(xp_state.gc.get_node_latest_versions('flor.plate_demo'))
-    # input()
     timestamps = [xp_state.gc.get_node_version(x).get_tags()['timestamp']['value'] for x in latest_experiment_node_versions]
     latest_experiment_nodev = latest_experiment_node_versions[timestamps.index(min(timestamps))]
     #you are at the latest_experiment_node
 
     forkedNodev = None
-    # for each in latest_experiment_node_versions:
-    #     if flag:
-    #         break
-    #     history = xp_state.gc.get_node_version_adjacent_lineage(each)
-    #     for node in history:
-    #         #does this return tags d for every node?
-    #         #assume history returns a list of nodeIds
-    #         d = xp_state.gc.getNodeVersion(node)
-    #         if d['commitHash'] == inputCH and d['prepostExec']:
-    #             forkedNodev = node
-    #             flag = True
 
     history = xp_state.gc.get_node_history(sourcekeySpec)
     for each in history.keys():
@@ -281,13 +256,8 @@ def fork(xp_state : State, inputCH):
                 break;
 
 
-    #TODO: fix all the stuff below, which contains a lot of speculation
-    #get specnodev corresponding to forkedNode?
     if forkedNodev is None:
         raise Exception("Cannot fork to node that does not exist.")
-    # How does fork affect latest_experiment_node_versions?
-        # Don't worry about it: managed by fork
-        # Relying on valid pre-condition, we can always just get the latest node version
     if xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'] == 'Post':
         raise Exception("Connot fork from a Post-Execution State.")
 
@@ -318,29 +288,12 @@ def fork(xp_state : State, inputCH):
             }
     }, parent_ids=forkedNodev) #changed this from original
 
-    #TODO: increment seq #, add lineage edges to everything
-    #TODO: specify lineage edges?
-
     #checkout previous version and nab experiment_graph.pkl
     experimentg = geteg(xp_state, inputCH)
-
-    #TODO: lineage is returning None. Check what ground does and if its erroring out and returning None
-    #make sure it is node, not node version
     lineage = safeCreateLineage(sourcekeySpec, 'null')
-    #i think we use version id
-    #what is rich version id?
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), latest_experiment_nodev, forkedNodev)
-    print(lineage)
     starts : Set[Union[Artifact, Literal]] = experimentg.starts
-    # print(starts)
-    # print(specnodev)
-     #lineage is none right now
-    # print(lineage)
-    # input()
-
-    print(starts)
     for node in starts:
-        # input()
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
             litnode = safeCreateGetNode(sourcekeyLit, "null")
@@ -386,9 +339,6 @@ def fork(xp_state : State, inputCH):
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
-
-            # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
-            # TODO: node.loc here is tweets.csv....why is tweets showing up here?
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
                     'key': 'checksum',
