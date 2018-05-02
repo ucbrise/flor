@@ -17,12 +17,10 @@ class Literal:
         self.i = 0
         self.n = 1
 
-        # If no default passed in, set default to the first item in the literal.
+        # If no default passed in, set default to the entire literal.
+        # Note that if the literal is of for each type, we will change the default in for each.
         if default is None:
-            if self.__oneByOne__:
-                self.default = self.v[0]
-            else:
-                self.default = self.v
+            self.default = self.v
         else:
             self.default = default
 
@@ -46,6 +44,11 @@ class Literal:
         if not util.isIterable(self.v):
             raise TypeError("Cannot iterate over literal {}".format(self.v))
         self.__oneByOne__ = True
+
+        # Check if they did not set their own default.
+        # Note that if there is no default set, then we make it self.v
+        if self.default == self.v:
+            self.default = self.v[0]
         self.n = len(self.v)
         return self
 

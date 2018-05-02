@@ -19,6 +19,7 @@ from .. import util
 from .. import viz
 from .recursivesizeof import total_size
 import time
+import tempfile
 
 import ray
 
@@ -371,33 +372,32 @@ class Artifact:
         self.xp_state.versioningDirectory = os.path.expanduser('~') + '/' + 'flor.d'
 
         # Recreate the tmpexperiment directory
-        tmpexperiment = self.xp_state.tmpexperiment
-        if os.path.exists(tmpexperiment):
-            rmtree(tmpexperiment)
-            os.mkdir(tmpexperiment)
-        else:
-            os.mkdir(tmpexperiment)
+        with tempfile.TemporaryDirectory() as tmpexperiment:
+            if os.path.exists(tmpexperiment):
+                rmtree(tmpexperiment)
+                os.mkdir(tmpexperiment)
+            else:
+                os.mkdir(tmpexperiment)
 
-        self.xp_state.visited = []
-        util.activate(self)
-        userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
-        experimentName = self.xp_state.EXPERIMENT_NAME
+            self.xp_state.visited = []
+            util.activate(self)
+            userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
+            experimentName = self.xp_state.EXPERIMENT_NAME
 
-        try:
-            old_literal_bindings = {}
+            try:
+                old_literal_bindings = {}
 
-            # Iterate through bindings, store old bindings and reset to new bindings for pull
-            for literal, binding in bindings.items():
-                if literal.__oneByOne__:
-                    old_literal_bindings[literal] = literal.v[0]
-                    literal.v[0] = binding
-                else:
-                    old_literal_bindings[literal] = literal.v
-                    literal.v = binding
+                # Pre-processing the Literals
+                # Iterate through bindings, store old bindings and reset to new bindings for pull
+                for literal, binding in bindings.items():
+                    if literal.__oneByOne__:
+                        old_literal_bindings[literal] = literal.v[0]
+                        literal.v[0] = binding
+                    else:
+                        old_literal_bindings[literal] = literal.v
+                        literal.v = binding
 
-
-            # If there are literals that are unbound, then set them to default.
-            if len(bindings) != len(self.__getLiteralsAttached__()):
+                # Go through all unbound literals and set them to their default values
                 unbound_literals = [literal for literal in self.xp_state.literals if literal not in bindings.keys()]
                 for literal in unbound_literals:
                     if literal.__oneByOne__:
@@ -407,97 +407,100 @@ class Artifact:
                         old_literal_bindings[literal] = literal.v
                         literal.v = literal.getDefault()
 
-            util.activate(self)
+                # This activate pops the first combination of literals.
+                util.activate(self)
 
-            # Pull appropriate literal and create trial directory
-            self.__pull__()
+                # Pull appropriate literal and create trial directory
+                self.__pull__()
 
-            # Write the config file
-            config = {}
-            for litName in self.literalNamesAddendum:
-                config[litName] = util.unpickle(self.literalNamesAddendum[litName])
-            with open('.' + experimentName + '.flor', 'w') as fp:
-                json.dump(config, fp)
+                # Write the config file
+                config = {}
+                for litName in self.literalNamesAddendum:
+                    config[litName] = util.unpickle(self.literalNamesAddendum[litName])
+                with open('.' + experimentName + '.flor', 'w') as fp:
+                    json.dump(config, fp)
 
-            dst = tmpexperiment + '/' + "0"
-            copytree(os.getcwd(), dst, True)
-            subtreeMaxed = util.master_pop(self.xp_state.literals)
+                dst = tmpexperiment + '/' + "0"
+                copytree(os.getcwd(), dst, True)
 
-            # Post processing: restore all the literals back to original state
-            for literal, old_binding in old_literal_bindings.items():
-                if literal.__oneByOne__:
-                    literal.v[0] = old_binding
+                # Post processing: restore all the literals back to original state
+                for literal, old_binding in old_literal_bindings.items():
+                    if literal.__oneByOne__:
+                        literal.v[0] = old_binding
+                    else:
+                        literal.v = old_binding
+                    # Set literals index back to base state of 0.
+                    literal.i = 0
+
+                # Unpickle and read the file to output.
+                if util.isPickle(dst + "/" + self.loc):
+                    out = func(util.unpickle(dst + '/' + self.loc))
                 else:
-                    literal.v = old_binding
-            self.i = 0
+                    out = []
+                    with open(dst + '/' + self.loc, 'r') as f:
+                        for i in range(head):
+                            out.append(f.readline())
+                    out = func(out)
 
-            # Unpickle and read the file to output.
-            if util.isPickle(dst + "/" + self.loc):
-                out = func(util.unpickle(dst + '/' + self.loc))
-            else:
-                out = []
-                with open(dst + '/' + self.loc, 'r') as f:
-                    for i in range(head):
-                        out.append(f.readline())
-                out = func(out)
+            except Exception as e:
+                try:
+                    intermediateFiles = set(self.loclist) - userDefFiles
+                    for file in intermediateFiles:
+                        if os.path.exists(file):
+                            os.remove(file)
+                except Exception as ee:
+                    print(ee)
+                self.xp_state.literals = []
+                self.xp_state.ghostFiles = set([])
+                raise e
 
-        except Exception as e:
-            try:
-                intermediateFiles = set(self.loclist) - userDefFiles
-                for file in intermediateFiles:
-                    if os.path.exists(file):
-                        os.remove(file)
-            except Exception as ee:
-                print(ee)
+            intermediateFiles = set(self.loclist) - userDefFiles
+            for file in intermediateFiles:
+                os.remove(file)
+            os.remove('.' + experimentName + '.flor')
+            original_dir = os.getcwd()
+
+            # Create versioning directory flor.d
+            if not os.path.isdir(self.xp_state.versioningDirectory):
+                os.mkdir(self.xp_state.versioningDirectory)
+
+            # Copy all relevant files into the versioning directory.
+            # for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
+            #     copyfile(file, self.xp_state.versioningDirectory + '/' + file)
+
+            os.chdir(self.xp_state.versioningDirectory)
+
+            # Reset literals and files after pulling
             self.xp_state.literals = []
             self.xp_state.ghostFiles = set([])
-            raise e
 
-        intermediateFiles = set(self.loclist) - userDefFiles
-        for file in intermediateFiles:
-            os.remove(file)
-        os.remove('.' + experimentName + '.flor')
-        original_dir = os.getcwd()
+            moveBackFlag = False
 
-        # Create versioning directory flor.d
-        if not os.path.isdir(self.xp_state.versioningDirectory):
-            os.mkdir(self.xp_state.versioningDirectory)
+            # Move back  .git file in the versioning directory to the /tmp folder.
+            # Delete experiment folder in versioning directory.
+            if os.path.exists(self.xp_state.versioningDirectory + '/' + experimentName):
+                move(self.xp_state.versioningDirectory + '/' + experimentName + '/.git', '/tmp/')
+                rmtree(self.xp_state.versioningDirectory + '/' + experimentName)
+                moveBackFlag = True
 
-        # Copy all relevant files into the versioning directory.
-        # for file in (userDefFiles & (set(self.loclist) | set(self.scriptNames))):
-        #     copyfile(file, self.xp_state.versioningDirectory + '/' + file)
+            # Copy the tmpexperiment directory to the versioning flor.d directory and change to that directory.
+            copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + experimentName)
+            os.chdir(self.xp_state.versioningDirectory + '/' + experimentName)
 
-        os.chdir(self.xp_state.versioningDirectory)
+            # Be sure to move back the .git file into new folder.
+            if moveBackFlag:
+                move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
+                repo = git.Repo(os.getcwd())
+                repo.git.add(A=True)
+                repo.index.commit('incremental commit')
+            else:
+                repo = git.Repo.init(os.getcwd())
+                repo.git.add(A=True)
+                repo.index.commit('initial commit')
+            os.chdir(original_dir)
 
-        self.xp_state.literals = []
-        self.xp_state.ghostFiles = set([])
-
-        moveBackFlag = False
-
-        # Move back  .git file in the versioning directory to the /tmp folder.
-        # Delete experiment folder in versioning directory.
-        if os.path.exists(self.xp_state.versioningDirectory + '/' + experimentName):
-            move(self.xp_state.versioningDirectory + '/' + experimentName + '/.git', '/tmp/')
-            rmtree(self.xp_state.versioningDirectory + '/' + experimentName)
-            moveBackFlag = True
-
-        # Copy the tmpexperiment directory to the versioning flor.d directory and change to that directory.
-        copytree(tmpexperiment, self.xp_state.versioningDirectory + '/' + experimentName)
-        os.chdir(self.xp_state.versioningDirectory + '/' + experimentName)
-
-        if moveBackFlag:
-            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            repo = git.Repo(os.getcwd())
-            repo.git.add(A=True)
-            repo.index.commit('incremental commit')
-        else:
-            repo = git.Repo.init(os.getcwd())
-            repo.git.add(A=True)
-            repo.index.commit('initial commit')
-        os.chdir(original_dir)
-
-        self.__commit__()
-        return out
+            self.__commit__()
+            return out
 
 
     def plot(self, rankdir=None):

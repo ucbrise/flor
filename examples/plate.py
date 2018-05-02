@@ -22,4 +22,4 @@ product = ex.artifact('product.txt', doMultiply)
 
 product.plot()
 #product.pull()
-product.peek(bindings = {ones: 2, tens: 100})
+product.peek(bindings = {ones: 2, tens:100})
