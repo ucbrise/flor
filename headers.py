@@ -148,7 +148,7 @@ def fork(experimentName, commitHash, xp_state : State, outputDir = None):
 	if outputDir == original_dir:
 		output = subprocess.check_output('git status'.split()).decode().splitlines()
 		if output[1] != 'nothing to commit, working directory clean':
-			raise Error("Cannot fork from a dirty working directory")
+			raise Exception("Cannot fork from a dirty working directory")
 	ag.fork(xp_state, commitHash)
 	os.chdir(xp_state.versioningDirectory + '/' + experimentName)
 	util.runProc('git checkout ' + commitHash)

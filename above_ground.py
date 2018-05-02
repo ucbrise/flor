@@ -13,7 +13,7 @@ import os
 import subprocess
 
 
-def commit(xp_state : State, prepost='Post'):
+def commit(xp_state : State):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -100,7 +100,7 @@ def commit(xp_state : State, prepost='Post'):
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : prepost, #change to 'Post' after exec
+                'value' : 'Post', #change to 'Post' after exec
                 'type' : 'STRING',
             }
     }, parent_ids=latest_experiment_node_versions)
@@ -634,5 +634,4 @@ def newActionArtifactEdgeVersion(xp_state : State, fromNv, toNv):
 
 def __newEdgeVersion__(xp_state : State, fromNv, toNv, edgeKey):
     return xp_state.gc.createEdgeVersion(xp_state.gc.getEdge(edgeKey).get_id(),
-                                         fromNv.get_id(),
-toNv.get_id())
+                                         fromNv.get_id(), toNv.get_id())
