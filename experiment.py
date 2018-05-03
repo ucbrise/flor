@@ -47,8 +47,8 @@ class Experiment(object):
         if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME):
             move(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git', '/tmp/')
             rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git')
             copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
+            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git')
             os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             repo = git.Repo(os.getcwd())
             repo.git.add(A=True)
@@ -60,7 +60,7 @@ class Experiment(object):
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original)
-        ag.commit(self.xp_state, 'Pre')
+        ag.commit(self.xp_state)
 
 
     def groundClient(self, backend):
