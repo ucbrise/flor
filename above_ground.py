@@ -53,10 +53,6 @@ def commit(xp_state : State):
          # https://stackoverflow.com/a/22505259/9420936
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
-    # def get_sha(versioningDirectory):
-    #     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=versioningDirectory).decode('ascii').strip()
-    #     return sha
-
     def get_sha(directory):
         #FIXME: output contains the correct thing, but there is no version directory yet...
         original = os.getcwd()
@@ -73,10 +69,6 @@ def commit(xp_state : State):
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
     assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
-
-    # How does fork affect latest_experiment_node_versions?
-        # Don't worry about it: managed by fork
-        # Relying on valid pre-condition, we can always just get the latest node version
 
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
         'timestamp':
@@ -225,7 +217,6 @@ def fork(xp_state : State, inputCH):
         original = os.getcwd()
         os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
         util.runProc('git checkout ' + inputCH)
-        os.chdir("0/")
         with open('experiment_graph.pkl', 'rb') as f:
             experimentg = dill.load(f)
         util.runProc('git checkout master')
