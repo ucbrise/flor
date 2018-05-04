@@ -101,7 +101,7 @@ def commit(xp_state : State):
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
-            litnode = safeCreateGetNode(sourcekeyLit, "null")
+            litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
 
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
@@ -110,7 +110,7 @@ def commit(xp_state : State):
             if node.__oneByOne__:
                 for i, v in enumerate(node.v):
                     sourcekeyBind = sourcekeyLit + '.' + stringify(v)
-                    bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
+                    bindnode = safeCreateGetNode(sourcekeyBind, sourcekeyLit, tags={
                         'value':
                             {
                                 'key': 'value',
@@ -287,7 +287,7 @@ def fork(xp_state : State, inputCH):
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
-            litnode = safeCreateGetNode(sourcekeyLit, "null")
+            litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
 
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
@@ -296,7 +296,7 @@ def fork(xp_state : State, inputCH):
             if node.__oneByOne__:
                 for i, v in enumerate(node.v):
                     sourcekeyBind = sourcekeyLit + '.' + stringify(v)
-                    bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
+                    bindnode = safeCreateGetNode(sourcekeyBind, sourcekeyLit, tags={
                         'value':
                             {
                                 'key': 'value',
@@ -343,6 +343,7 @@ def fork(xp_state : State, inputCH):
             raise TypeError(
                 "Action cannot be in set: starts")
 
+
 def pull(xp_state : State):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -352,7 +353,6 @@ def pull(xp_state : State):
                 n = xp_state.gc.create_node(sourceKey, name, tags)
         except:
             n = xp_state.gc.create_node(sourceKey, name, tags)
-
         return n
 
     def safeCreateGetEdge(sourceKey, name, fromNodeId, toNodeId, tags=None):
@@ -428,10 +428,13 @@ def pull(xp_state : State):
     }, parent_ids=latest_experiment_node_versions)
 
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
+    ghosts = {}
+    literalsOrder = []
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
-            litnode = safeCreateGetNode(sourcekeyLit, "null")
+            literalsOrder.append(sourcekeyLit)
+            litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
 
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
@@ -440,7 +443,7 @@ def pull(xp_state : State):
             if node.__oneByOne__:
                 for i, v in enumerate(node.v):
                     sourcekeyBind = sourcekeyLit + '.' + stringify(v)
-                    bindnode = safeCreateGetNode(sourcekeyBind, "null", tags={
+                    bindnode = safeCreateGetNode(sourcekeyBind, sourcekeyLit, tags={
                         'value':
                             {
                                 'key': 'value',
@@ -448,11 +451,10 @@ def pull(xp_state : State):
                                 'type' : 'STRING'
                             }})
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-
                     # Bindings are singleton node versions
                     #   Facilitates backward lookup (All trials with alpha=0.0)
-
                     bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                    ghosts[bindnodev.get_id()] = (bindnode.get_name(), str(v))
                     xp_state.gc.create_edge_version(e3.get_id(), litnodev.get_id(), bindnodev.get_id())
             else:
                 sourcekeyBind = sourcekeyLit + '.' + stringify(node.v)
@@ -464,10 +466,10 @@ def pull(xp_state : State):
                             'type': 'STRING'
                         }})
                 e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
+                ghost[bindnodev] = (bindnode.get_name(), str(v))
                 xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
 
         elif type(node) == Artifact:
@@ -489,6 +491,72 @@ def pull(xp_state : State):
                 "Action cannot be in set: starts")
 
     #TODO: add a loop for non starts stuff. Please figure this out. 
+    #TODO: figure out what to name the specnode please
+
+    #switch to versioning directory
+    original = os.getcwd()
+    os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
+
+    #creates a new node and version representing pull
+    pullkey = 'flor.' + specnode.get_name() + '.pull'
+    pullnode = safeCreateGetNode(pullkey, pullkey)
+    pullnodev = xp_state.gc.create_node_version(pullnode.get_id(), tags = {
+        'timestamp': {
+            'key' : 'timestamp',
+            'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+            'type' : 'STRING'
+        }
+    }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids?
+
+    pullEdge = safeCreateGetEdge(pullkey, 'null', specnode.get_id(), pullnode.get_id())
+    xp_state.gc.create_edge_version(pullEdge.get_id(), specnodev.get_id(), pullnodev.get_id())
+
+    #creates a new node representing trials. Does each trial have its own node, or is it node versions?
+    trialkey = 'flor.' + specnode.get_name() + '.trials'
+    trialnode = safeCreateGetNode(trialkey, trialkey)
+    trialEdge = safeCreateGetEdge(trialkey, 'null', pullnode.get_id(), trialnode.get_id())
+
+    #creates a new node representing output
+    outputkey = 'flor.' + specnode.get_name() + '.output'
+    outputnode = safeCreateGetNode(outputkey, outputkey)
+    outputEdge = safeCreateGetEdge(outputkey, 'null', trialnode.get_id(), outputnode.get_id())
+
+    #created trial, now need to link each of the trials to the output
+    #TODO: how to get the name of the output file? i.e. product.txt or model_accuracy.txt
+
+    #iterates through all files in current directory 
+    filetemp = 'ghost_literal_'
+    for each in os.listdir("."):
+        if each == '.git':
+            continue
+        os.chdir(each)
+        files = [x for x in os.listdir('.')]
+        num = 0
+        file = 'ghost_literal_' + str(num) + '.pkl'
+        while file in files:
+            with open(file, 'rb') as f:
+                value = dill.load(f)
+                files.remove(file)
+            for each in ghosts:
+                if ghosts[each] == (literalsOrder[num], value):
+                    continue #replace
+                    #these are the values associated with the trial now
+
+            num += 1
+            file = 'ghost_literal_' + str(num) + '.pkl'
+                
+
+        os.chdir('..')
+        input()
+            
+
+    os.chdir(original)
+
+
+    for node in starts:
+        if type(node) == Literal:
+            print(xp_state.gc.get_node_version_adjacent_lineage(node))
+    input('pausing')
 
 
 def __tags_equal__(groundtag, mytag):

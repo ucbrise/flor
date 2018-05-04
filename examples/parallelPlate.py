@@ -3,11 +3,11 @@ import flor
 with flor.Experiment('plate_demo') as ex:
 	ex.groundClient('ground')
 
-	ones = ex.literal([1, 2, 3], "ones")
-	ones.forEach()
-
 	tens = ex.literal([10, 100], "tens")
 	tens.forEach()
+	
+	ones = ex.literal([1, 2, 3], "ones")
+	ones.forEach()
 
 	@flor.func
 	def multiply(x, y):

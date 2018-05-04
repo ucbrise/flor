@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 import flor
 
-ex = flor.Experiment('plate_demo')
+with flor.Experiment('plate_demo') as ex:
 
-ex.groundClient('ground')
+	ex.groundClient('ground')
 
-ones = ex.literal([1, 2, 3], "ones")
-ones.forEach()
+	tens = ex.literal([10, 100], "tens")
+	tens.forEach()
 
-tens = ex.literal([10, 100], "tens")
-tens.forEach()
+	ones = ex.literal([1, 2, 3], "ones")
+	ones.forEach()
 
-@flor.func
-def multiply(x, y):
-    z = x*y
-    print(z)
-    return z
+	@flor.func
+	def multiply(x, y):
+	    z = x*y
+	    print(z)
+	    return z
 
-doMultiply = ex.action(multiply, [ones, tens])
-product = ex.artifact('product.txt', doMultiply)
+	doMultiply = ex.action(multiply, [ones, tens])
+	product = ex.artifact('product.txt', doMultiply)
 
 product.plot()
 product.pull()
