@@ -458,7 +458,7 @@ def pull(xp_state : State, loc):
     literalsOrder = []
     for node in starts:
         if type(node) == Literal:
-            sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+            sourcekeyLit = pullspec + '.literal.' + node.name
             literalsOrder.append(sourcekeyLit)
             litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
@@ -477,7 +477,7 @@ def pull(xp_state : State, loc):
                                 'type' : 'STRING'
                             }})
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-                    startslineage = safeCreateLineage(dummykey + '.edge.' + str(v), 'null')
+                    startslineage = safeCreateLineage(sourcekeyLit, 'null')
                     xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
                     # Bindings are singleton node versions
                     #   Facilitates backward lookup (All trials with alpha=0.0)
@@ -494,7 +494,7 @@ def pull(xp_state : State, loc):
                             'type': 'STRING'
                         }})
                 e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-                startslineage = safeCreateLineage(dummykey + '.edge.' + str(node.v), 'null')
+                startslineage = safeCreateLineage(sourcekeyBind, 'null')
                 xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
                 # Bindings are singleton node versions
 
@@ -506,7 +506,7 @@ def pull(xp_state : State, loc):
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
-            startslineage = safeCreateLineage(dummykey + '.edge.art.' + , 'null')
+            startslineage = safeCreateLineage(sourcekeyArt, 'null')
             xp_state.gc.create_lineage_edge_version(startslineage.get_id(), artnode.get_id(), dummynode.get_id())
             
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
@@ -548,7 +548,7 @@ def pull(xp_state : State, loc):
     trialnode = safeCreateGetNode(trialkey, trialkey)
     trialEdge = safeCreateGetEdge(trialkey, 'null', pullnode.get_id(), trialnode.get_id())
     lineage = xp_state.gc.create_lineage_edge(sourcekeySpec, 'null')
-    xp_State.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
+    xp_state.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
 
     #creates a new node representing output
     outputkey = 'flor.' + specnode.get_name() + '.output'
