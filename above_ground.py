@@ -344,7 +344,7 @@ def fork(xp_state : State, inputCH):
                 "Action cannot be in set: starts")
 
 
-def pull(xp_state : State):
+def pull(xp_state : State, loc):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -377,6 +377,14 @@ def pull(xp_state : State):
         except:
             n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
 
+        return n
+
+    def safeCreateLineage(sourceKey, name, tags=None):
+        print(sourceKey)
+        try:
+            n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
+        except:
+            n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
         return n
 
     def stringify(v):
@@ -427,6 +435,21 @@ def pull(xp_state : State):
             }
     }, parent_ids=latest_experiment_node_versions)
 
+    #creates a dummy node
+    pullspec = 'flor.' + specnode.get_name()
+    dummykey = pullspec + '.dummy'
+    dummynode = safeCreateGetNode(dummykey, dummykey)
+
+    #creates a new node for the model.pkl
+    modelkey = pullspec + '.model'
+    modelnode = safeCreateGetNode(modelkey, modelkey)
+
+    #can't create a lineage edge here???
+    lineage = safeCreateLineage(sourcekeySpec, 'null')
+    print(lineage)
+    xp_state.gc.create_lineage_edge_version(lineage.get_id(), dummynode.get_id(), modelnode.get_id())
+
+
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
     ghosts = {}
     literalsOrder = []
@@ -451,6 +474,8 @@ def pull(xp_state : State):
                                 'type' : 'STRING'
                             }})
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+                    lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
+                    xp_state.gc.create_lineage_edge_version(lineage.get_id(), bindnode.get_id(), dummynode.get_id())
                     # Bindings are singleton node versions
                     #   Facilitates backward lookup (All trials with alpha=0.0)
                     bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -466,6 +491,8 @@ def pull(xp_state : State):
                             'type': 'STRING'
                         }})
                 e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+                lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
+                xp_state.gc.create_lineage_edge_version(lineage.get_id(), bindnode.get_id(), dummynode.get_id())
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -476,7 +503,9 @@ def pull(xp_state : State):
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
-
+            lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
+            xp_state.gc.create_lineage_edge_version(lineage.get_id(), artnode.get_id(), dummynode.get_id())
+            
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
                     'key': 'checksum',
@@ -506,7 +535,7 @@ def pull(xp_state : State):
             'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
             'type' : 'STRING'
         }
-    }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids?
+    }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids? does this need to exist?
 
     pullEdge = safeCreateGetEdge(pullkey, 'null', specnode.get_id(), pullnode.get_id())
     xp_state.gc.create_edge_version(pullEdge.get_id(), specnodev.get_id(), pullnodev.get_id())
@@ -515,11 +544,15 @@ def pull(xp_state : State):
     trialkey = 'flor.' + specnode.get_name() + '.trials'
     trialnode = safeCreateGetNode(trialkey, trialkey)
     trialEdge = safeCreateGetEdge(trialkey, 'null', pullnode.get_id(), trialnode.get_id())
+    lineage = xp_state.gc.create_lineage_edge(sourcekeySpec, 'null')
+    xp_State.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
 
     #creates a new node representing output
     outputkey = 'flor.' + specnode.get_name() + '.output'
     outputnode = safeCreateGetNode(outputkey, outputkey)
     outputEdge = safeCreateGetEdge(outputkey, 'null', trialnode.get_id(), outputnode.get_id())
+
+    input("pausing")
 
     #created trial, now need to link each of the trials to the output
     #TODO: how to get the name of the output file? i.e. product.txt or model_accuracy.txt
@@ -530,6 +563,25 @@ def pull(xp_state : State):
         if each == '.git':
             continue
         os.chdir(each)
+        trialnodev = xp_state.gc.create_node_version(trialnode.get_id(), tags = {
+            'trial': {
+                'key': 'trialnumber',
+                'value' : each,
+                'type' : 'STRING'
+            }
+        }, parents_ids = pullnode.get_name())
+
+        outputnodev = xp_state.gc.create_node_version(outputnode.get_id(), tags = {
+            'value' : {
+                'key' : 'output',
+                'value' : loc,
+                'type' : 'STRING'
+            }
+        }) #no parent ids? 
+
+        lineage = xp_state.gc.safeCreateLineage(sourcekeySpec, 'null')
+        xp_state.gc.create_lineage_edge_version(lineage.get_id(), trialnodev.get_id(), outputnodev.get_id())
+
         files = [x for x in os.listdir('.')]
         num = 0
         file = 'ghost_literal_' + str(num) + '.pkl'
@@ -539,24 +591,16 @@ def pull(xp_state : State):
                 files.remove(file)
             for each in ghosts:
                 if ghosts[each] == (literalsOrder[num], value):
-                    continue #replace
-                    #these are the values associated with the trial now
+                    lineage = xp_state.gc.safeCreateLineage(sourcekeySpec, 'null')
+                    xp_state.gc.create_lineage_edge_version(lineage.get_id(), trialnodev.get_id(), each)
 
             num += 1
             file = 'ghost_literal_' + str(num) + '.pkl'
                 
-
         os.chdir('..')
-        input()
             
 
     os.chdir(original)
-
-
-    for node in starts:
-        if type(node) == Literal:
-            print(xp_state.gc.get_node_version_adjacent_lineage(node))
-    input('pausing')
 
 
 def __tags_equal__(groundtag, mytag):

@@ -363,7 +363,8 @@ class Artifact:
             repo.index.commit('initial commit')
         os.chdir(original_dir)
 
-        flor.above_ground.pull(self.xp_state)
+        flor.above_ground.pull(self.xp_state, self.loc) #TODO: change this back potentially
+
         self.__commit__()
 
     def peek(self, head=25, taip='default', func = lambda x: x):
