@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # flor documentation build configuration file, created by
-# sphinx-quickstart on Sat May  5 10:39:34 2018.
+# sphinx-quickstart on Sat May  5 11:30:33 2018.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -17,10 +17,12 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
 
+
+import sphinx_rtd_theme
 
 # -- General configuration ------------------------------------------------
 
@@ -48,7 +50,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'flor'
 copyright = '2018, UC Berkeley, RISE Lab'
-author = 'Rolando Garcia, Vikram Sreekanti, Daniel Crankshaw, Neeraja Yadwadkar, Joseph Gonzalez, Joseph Hellerstein'
+author = 'UC Berkeley, RISE Lab'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -65,6 +67,7 @@ release = '0.0'
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
 language = None
+highlight_language = 'python'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -83,8 +86,8 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
-html_style = '_Templates/default.css'
+html_theme = 'sphinx_rtd_theme'
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -144,7 +147,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'flor.tex', 'flor Documentation',
-     'Rolando Garcia, Vikram Sreekanti, Daniel Crankshaw, Neeraja Yadwadkar, Joseph Gonzalez, Joseph Hellerstein', 'manual'),
+     'UC Berkeley, RISE Lab', 'manual'),
 ]
 
 
@@ -168,6 +171,5 @@ texinfo_documents = [
      author, 'flor', 'One line description of project.',
      'Miscellaneous'),
 ]
-
 
 
