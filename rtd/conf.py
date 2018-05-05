@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'flor'
-copyright = '2018, Rolando Garcia, Vikram Sreekanti, Daniel Crankshaw, Neeraja Yadwadkar, Joseph Gonzalez, Joseph Hellerstein'
+copyright = '2018, UC Berkeley, RISE Lab'
 author = 'Rolando Garcia, Vikram Sreekanti, Daniel Crankshaw, Neeraja Yadwadkar, Joseph Gonzalez, Joseph Hellerstein'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -84,6 +84,7 @@ todo_include_todos = False
 # a list of builtin themes.
 #
 html_theme = 'alabaster'
+html_style = '_Templates/default.css'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
