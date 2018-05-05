@@ -38,6 +38,48 @@ Next, we will install RAY, a Flor dependency:
 
 Next, **Add the directory containing this flor package (repo) to your PYTHONPATH.**
 
+Quickstart
+----------
+
+Create a Python file named `plate.py`::
+
+	import flor
+
+	with flor.Experiment('plate_demo') as ex:
+
+		ex.groundClient('git')
+
+		ones = ex.literalForEach([1, 2, 3], "ones")
+		tens = ex.literalForEach([10, 100], "tens")
+
+		@flor.func
+		def multiply(x, y):
+			print(x*y)
+			return x*y
+
+		doMultiply = ex.action(multiply, [ones, tens])
+		product = ex.artifact('product.txt', doMultiply)
+
+	product.plot()
+	product.pull()
+
+To run the file::bash
+
+	# Within a Python3.6 Anaconda environment
+	$ python plate.py
+
+The expected output is as follows::bash
+
+	10
+	20
+	30
+	100
+	200
+	300
+
+
+
+
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
 
