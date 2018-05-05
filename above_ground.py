@@ -530,7 +530,7 @@ def pull(xp_state : State, loc):
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
 
     #creates a new node and version representing pull
-    pullkey = 'flor.' + specnode.get_name() + '.pull'
+    pullkey = pullspec + '.pull'
     pullnode = safeCreateGetNode(pullkey, pullkey)
     pullnodev = xp_state.gc.create_node_version(pullnode.get_id(), tags = {
         'timestamp': {
@@ -538,20 +538,20 @@ def pull(xp_state : State, loc):
             'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
             'type' : 'STRING'
         }
-    }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids? does this need to exist?
+    }, parent_ids = specnode.get_name());
 
     pullEdge = safeCreateGetEdge(pullkey, 'null', specnode.get_id(), pullnode.get_id())
     xp_state.gc.create_edge_version(pullEdge.get_id(), specnodev.get_id(), pullnodev.get_id())
 
     #creates a new node representing trials. Does each trial have its own node, or is it node versions?
-    trialkey = 'flor.' + specnode.get_name() + '.trials'
+    trialkey = pullkey + '.trials'
     trialnode = safeCreateGetNode(trialkey, trialkey)
     trialEdge = safeCreateGetEdge(trialkey, 'null', pullnode.get_id(), trialnode.get_id())
-    lineage = xp_state.gc.create_lineage_edge(sourcekeySpec, 'null')
+    lineage = safeCreateLineage(trialkey, 'null')
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
 
     #creates a new node representing output
-    outputkey = 'flor.' + specnode.get_name() + '.output'
+    outputkey = pullkey + '.output'
     outputnode = safeCreateGetNode(outputkey, outputkey)
     outputEdge = safeCreateGetEdge(outputkey, 'null', trialnode.get_id(), outputnode.get_id())
 
@@ -572,18 +572,19 @@ def pull(xp_state : State, loc):
                 'value' : each,
                 'type' : 'STRING'
             }
-        }, parents_ids = pullnode.get_name())
+        }, parent_ids = pullnode.get_name())
 
         outputnodev = xp_state.gc.create_node_version(outputnode.get_id(), tags = {
             'value' : {
                 'key' : 'output',
-                'value' : loc,
+                'value' : loc, #should i get the actual output value?
                 'type' : 'STRING'
             }
-        }) #no parent ids? 
+        }) #no parents? FIXME
 
-        lineage = xp_state.gc.safeCreateLineage(sourcekeySpec, 'null')
-        xp_state.gc.create_lineage_edge_version(lineage.get_id(), trialnodev.get_id(), outputnodev.get_id())
+
+        lineagetrial = safeCreateLineage(trialkey + '.' + each, 'null')
+        xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
 
         files = [x for x in os.listdir('.')]
         num = 0
@@ -592,10 +593,10 @@ def pull(xp_state : State, loc):
             with open(file, 'rb') as f:
                 value = dill.load(f)
                 files.remove(file)
-            for each in ghosts:
-                if ghosts[each] == (literalsOrder[num], value):
-                    lineage = xp_state.gc.safeCreateLineage(sourcekeySpec, 'null')
-                    xp_state.gc.create_lineage_edge_version(lineage.get_id(), trialnodev.get_id(), each)
+            for g in ghosts:
+                if ghosts[g] == (literalsOrder[num], value):
+                    lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g]), 'null')
+                    xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
 
             num += 1
             file = 'ghost_literal_' + str(num) + '.pkl'
