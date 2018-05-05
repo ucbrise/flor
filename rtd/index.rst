@@ -18,7 +18,9 @@ Please read `this guide`__ to set up a Python 3.6 environment inside Anaconda. *
 __ https://conda.io/docs/user-guide/tasks/manage-environments.html
 
 Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this__ repo):
+
 __ _Flor
+
 .. code-block: shell
 	pip install -r requirements.txt
 
