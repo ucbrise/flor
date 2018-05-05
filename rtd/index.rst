@@ -6,6 +6,18 @@ Flor_ (formerly known as Jarvis_) is a system with a declarative DSL embedded in
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
 
+Install Flor
+------------
+
+Clone or download the Flor_ repository.
+
+You'll need Anaconda, preferably version 4.4+
+
+Please read `this guide`__ to set up a Python 3.6 environment inside Anaconda. **Whenever you work with Flor, make sure the Python 3.6 environment is active**.
+
+__ https://conda.io/docs/user-guide/tasks/manage-environments.html
+
+
 Table of Contents
 ^^^^^^^^^^^^^^^^^
 
