@@ -382,7 +382,9 @@ def pull(xp_state : State, loc):
     def safeCreateLineage(sourceKey, name, tags=None):
         print(sourceKey)
         try:
-            n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
+            n = xp_state.gc.get_lineage_edge(sourceKey)
+            if n is None or n == []:
+                n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
         except:
             n = xp_state.gc.create_lineage_edge(sourceKey, name, tags)
         return n
@@ -392,7 +394,6 @@ def pull(xp_state : State, loc):
         return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
 
     def get_sha(directory):
-        #FIXME: output contains the correct thing, but there is no version directory yet...
         original = os.getcwd()
         os.chdir(directory)
         output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
@@ -436,7 +437,7 @@ def pull(xp_state : State, loc):
     }, parent_ids=latest_experiment_node_versions)
 
     #creates a dummy node
-    pullspec = 'flor.' + specnode.get_name()
+    pullspec = sourcekeySpec + '.' + specnode.get_name()
     dummykey = pullspec + '.dummy'
     dummynode = safeCreateGetNode(dummykey, dummykey)
 
@@ -445,9 +446,11 @@ def pull(xp_state : State, loc):
     modelnode = safeCreateGetNode(modelkey, modelkey)
 
     #can't create a lineage edge here???
-    lineage = safeCreateLineage(sourcekeySpec, 'null')
+    lineage = safeCreateLineage(pullspec, 'null')
     print(lineage)
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), dummynode.get_id(), modelnode.get_id())
+
+    input("made it?")
 
 
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
@@ -474,8 +477,8 @@ def pull(xp_state : State, loc):
                                 'type' : 'STRING'
                             }})
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-                    lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
-                    xp_state.gc.create_lineage_edge_version(lineage.get_id(), bindnode.get_id(), dummynode.get_id())
+                    startslineage = safeCreateLineage(dummykey + '.edge.' + str(v), 'null')
+                    xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
                     # Bindings are singleton node versions
                     #   Facilitates backward lookup (All trials with alpha=0.0)
                     bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -491,8 +494,8 @@ def pull(xp_state : State, loc):
                             'type': 'STRING'
                         }})
                 e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
-                lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
-                xp_state.gc.create_lineage_edge_version(lineage.get_id(), bindnode.get_id(), dummynode.get_id())
+                startslineage = safeCreateLineage(dummykey + '.edge.' + str(node.v), 'null')
+                xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -503,8 +506,8 @@ def pull(xp_state : State, loc):
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
-            lineage = safeCreateLineage(pullspec + '.dummyedge', 'null')
-            xp_state.gc.create_lineage_edge_version(lineage.get_id(), artnode.get_id(), dummynode.get_id())
+            startslineage = safeCreateLineage(dummykey + '.edge.art.' + , 'null')
+            xp_state.gc.create_lineage_edge_version(startslineage.get_id(), artnode.get_id(), dummynode.get_id())
             
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
