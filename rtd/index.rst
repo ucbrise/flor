@@ -17,15 +17,31 @@ Please read `this guide`__ to set up a Python 3.6 environment inside Anaconda. *
 __ https://conda.io/docs/user-guide/tasks/manage-environments.html
 
 Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this__ repo):
+
 .. code-block:: bash
 
 	pip install -r requirements.txt
 
-
 __ https://github.com/ucbrise/flor
+
+Next, we will install RAY, a Flor dependency:
+
+.. code-block:: bash
+
+	brew update
+	brew install cmake pkg-config automake autoconf libtool boost wget
+
+	pip install numpy funcsigs click colorama psutil redis flatbuffers cython --ignore-installed six
+	conda install libgcc
+
+	pip install git+https://github.com/ray-project/ray.git#subdirectory=python
+
+Next, **Add the directory containing this flor package (repo) to your :bash:`PYTHONPATH`.**
 
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
+.. role:: bash(code)
+	:language: bash
 
 
 
