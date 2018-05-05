@@ -40,7 +40,8 @@ Next, **Add the directory containing this flor package (repo) to your :bash:`PYT
 
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
-.. role:: bash(code)
+.. role:: bash
+	:class: code
 	:language: bash
 
 
