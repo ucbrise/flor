@@ -36,22 +36,10 @@ Next, we will install RAY, a Flor dependency:
 
 	pip install git+https://github.com/ray-project/ray.git#subdirectory=python
 
-Next, **Add the directory containing this flor package (repo) to your :bash:`PYTHONPATH`.**
+Next, **Add the directory containing this flor package (repo) to your PYTHONPATH.**
 
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
-.. role:: bash
-	:class: code
-	:language: bash
-
-
-
-
-
-
-
-
-
 
 Table of Contents
 ^^^^^^^^^^^^^^^^^
