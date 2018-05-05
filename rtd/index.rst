@@ -41,7 +41,9 @@ Next, **Add the directory containing this flor package (repo) to your PYTHONPATH
 Quickstart
 ----------
 
-Create a Python file named `plate.py`::
+Create a Python file named `plate.py`:
+
+.. code-block::python
 
 	import flor
 
@@ -63,12 +65,16 @@ Create a Python file named `plate.py`::
 	product.plot()
 	product.pull()
 
-To run the file::bash
+To run the file:
+
+.. code-block::bash
 
 	# Within a Python3.6 Anaconda environment
 	$ python plate.py
 
-The expected output is as follows::bash
+The expected output is as follows:
+
+.. code-block::bash
 
 	10
 	20
