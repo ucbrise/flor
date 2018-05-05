@@ -20,6 +20,7 @@ from ground.client import GroundClient
 from shutil import copytree
 from shutil import rmtree
 from shutil import move
+import requests
 
 class Experiment(object):
 
@@ -65,6 +66,16 @@ class Experiment(object):
 
     def groundClient(self, backend):
         # self.xp_state.gc = GroundClient(backend)
+        if backend == "ground":
+            ######################### GROUND GROUND GROUND ###################################################
+            # Is Ground Server initialized?
+            # Localhost hardcoded into the url
+            try:
+                requests.get('http://localhost:9000')
+            except:
+                # No, Ground not initialized
+                raise requests.exceptions.ConnectionError('Please start Ground first')
+            ######################### </> GROUND GROUND GROUND ###################################################
         self.xp_state.gc = GroundClient()
 
     def literal(self, v, name=None):
