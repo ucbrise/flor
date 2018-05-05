@@ -17,15 +17,22 @@ Contributors
 
 Flor is developed and maintained by the RISE_ Lab:
 
-    Rolando Garcia
-    Vikram Sreekanti
-    Daniel Crankshaw
-    Neeraja Yadwadkar
-    Sona Jeswani
-    Eric Liu
-    Malhar Patel
-    Joseph Gonzalez
-    Joseph Hellerstein
+    * Rolando Garcia
+    * Vikram Sreekanti
+    * Daniel Crankshaw
+    * Neeraja Yadwadkar
+    * Sona Jeswani
+    * Eric Liu
+    * Malhar Patel
+    * Joseph Gonzalez
+    * Joseph Hellerstein
+
+License
+-------
+
+Flor is Licensed under the `Apache V2 License`__.
+
+__ https://www.apache.org/licenses/LICENSE-2.0
 
 .. _Ground: http://www.ground-context.org/
 .. _Ray: https://github.com/ray-project/ray
