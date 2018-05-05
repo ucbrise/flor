@@ -48,9 +48,12 @@ Create a Python file named `plate.py`:
     import flor
 
     with flor.Experiment('plate_demo') as ex:
+
         ex.groundClient('git')
+
         ones = ex.literalForEach([1, 2, 3], "ones")
         tens = ex.literalForEach([10, 100], "tens")
+        
         @flor.func
         def multiply(x, y):
             print(x*y)
