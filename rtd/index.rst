@@ -43,7 +43,7 @@ Quickstart
 
 Create a Python file named `plate.py`:
 
-.. code-block::python
+.. code-block:: python
 
 	import flor
 
@@ -67,14 +67,14 @@ Create a Python file named `plate.py`:
 
 To run the file:
 
-.. code-block::bash
+.. code-block:: bash
 
 	# Within a Python3.6 Anaconda environment
 	$ python plate.py
 
 The expected output is as follows:
 
-.. code-block::bash
+.. code-block:: bash
 
 	10
 	20
