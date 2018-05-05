@@ -19,13 +19,15 @@ __ https://conda.io/docs/user-guide/tasks/manage-environments.html
 Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this__ repo):
 
 .. code-block:: bash
+
 	pip install -r requirements.txt
 
 
+__ https://github.com/ucbrise/flor
 
 .. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
-__ _Flor
+
 
 
 
