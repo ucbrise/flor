@@ -500,6 +500,7 @@ class Artifact:
             os.chdir(original_dir)
 
             self.__commit__()
+            flor.above_ground.peek(self.xp_state, self.loc)
             return out
 
 
