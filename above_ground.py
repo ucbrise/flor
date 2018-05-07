@@ -380,7 +380,6 @@ def pull(xp_state : State, loc):
         return n
 
     def safeCreateLineage(sourceKey, name, tags=None):
-        print(sourceKey)
         try:
             n = xp_state.gc.get_lineage_edge(sourceKey)
             if n is None or n == []:
@@ -447,11 +446,7 @@ def pull(xp_state : State, loc):
 
     #can't create a lineage edge here???
     lineage = safeCreateLineage(pullspec, 'null')
-    print(lineage)
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), dummynode.get_id(), modelnode.get_id())
-
-    input("made it?")
-
 
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
     ghosts = {}
@@ -524,7 +519,6 @@ def pull(xp_state : State, loc):
 
     #TODO: add a loop for non starts stuff. Please figure this out. 
     #TODO: figure out what to name the specnode please
-
     #switch to versioning directory
     original = os.getcwd()
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
@@ -554,8 +548,6 @@ def pull(xp_state : State, loc):
     outputkey = pullkey + '.output'
     outputnode = safeCreateGetNode(outputkey, outputkey)
     outputEdge = safeCreateGetEdge(outputkey, 'null', trialnode.get_id(), outputnode.get_id())
-
-    input("pausing")
 
     #created trial, now need to link each of the trials to the output
     #TODO: how to get the name of the output file? i.e. product.txt or model_accuracy.txt
