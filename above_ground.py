@@ -240,7 +240,6 @@ def fork(xp_state : State, inputCH):
     history = xp_state.gc.get_node_history(sourcekeySpec)
     for each in history.keys():
         tags = xp_state.gc.get_node_version(history[each]).get_tags()
-        print(tags)
         if 'commitHash' in tags.keys():
             if tags['commitHash']['value'] == inputCH:
                 forkedNodev = history[each]
@@ -399,6 +398,30 @@ def pull(xp_state : State, loc):
         os.chdir(original)
         return output
 
+    def find_outputs2(ends):
+        ins = []
+        outs = []
+        for each in ends:
+            if type(each) == Action:
+                for item in each.in_artifacts:
+                    if item not in ins:
+                        ins.append(item)
+                for item in each.out_artifacts:
+                    if item not in outs:
+                        outs.append(item)
+
+        for each in ins:
+            if each in outs:
+                outs.remove(each)
+        return outs
+
+    def find_outputs(end):
+        to_list = []
+
+        for child in end.out_artifacts:
+            to_list.append(child.loc)
+        return to_list
+
     # Begin
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
@@ -435,12 +458,21 @@ def pull(xp_state : State, loc):
             }
     }, parent_ids=latest_experiment_node_versions)
 
+    arts = xp_state.eg.d.keys() - xp_state.eg.starts
+    for each in arts:
+        if type(each) == Artifact:
+            if each.loc == loc:
+                outputs = find_outputs(each.parent)
+    print(outputs)
+    input("check outputs")
+
     #creates a dummy node
     pullspec = sourcekeySpec + '.' + specnode.get_name()
     dummykey = pullspec + '.dummy'
     dummynode = safeCreateGetNode(dummykey, dummykey)
 
     #creates a new node for the model.pkl
+    #do we want a model for everything? Or just the ones that have model?
     modelkey = pullspec + '.model'
     modelnode = safeCreateGetNode(modelkey, modelkey)
 
@@ -494,7 +526,7 @@ def pull(xp_state : State, loc):
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
-                ghost[bindnodev] = (bindnode.get_name(), str(v))
+                ghosts[bindnodev] = (bindnode.get_name(), str(v))
                 xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
 
         elif type(node) == Artifact:
