@@ -463,23 +463,15 @@ def pull(xp_state : State, loc):
         if type(each) == Artifact:
             if each.loc == loc:
                 outputs = find_outputs(each.parent)
-    print(outputs)
-    input("check outputs")
+    #outputs is your list of final artifacts
+
 
     #creates a dummy node
     pullspec = sourcekeySpec + '.' + specnode.get_name()
     dummykey = pullspec + '.dummy'
     dummynode = safeCreateGetNode(dummykey, dummykey)
 
-    #creates a new node for the model.pkl
-    #do we want a model for everything? Or just the ones that have model?
-    modelkey = pullspec + '.model'
-    modelnode = safeCreateGetNode(modelkey, modelkey)
-
-    #can't create a lineage edge here???
-    lineage = safeCreateLineage(pullspec, 'null')
-    xp_state.gc.create_lineage_edge_version(lineage.get_id(), dummynode.get_id(), modelnode.get_id())
-
+    #links everything to the dummy node
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
     ghosts = {}
     literalsOrder = []
@@ -548,6 +540,11 @@ def pull(xp_state : State, loc):
         else:
             raise TypeError(
                 "Action cannot be in set: starts")
+    #for each in arts:
+        #version the dummy node and make a lineage edge from in artifacts to dummy node
+        #all out artifacts will have a lineage edge from dummy node.
+
+
 
     #TODO: add a loop for non starts stuff. Please figure this out. 
     #TODO: figure out what to name the specnode please
@@ -576,11 +573,6 @@ def pull(xp_state : State, loc):
     lineage = safeCreateLineage(trialkey, 'null')
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
 
-    #creates a new node representing output
-    outputkey = pullkey + '.output'
-    outputnode = safeCreateGetNode(outputkey, outputkey)
-    outputEdge = safeCreateGetEdge(outputkey, 'null', trialnode.get_id(), outputnode.get_id())
-
     #created trial, now need to link each of the trials to the output
     #TODO: how to get the name of the output file? i.e. product.txt or model_accuracy.txt
 
@@ -598,17 +590,18 @@ def pull(xp_state : State, loc):
             }
         }, parent_ids = pullnode.get_name())
 
-        outputnodev = xp_state.gc.create_node_version(outputnode.get_id(), tags = {
-            'value' : {
-                'key' : 'output',
-                'value' : loc, #should i get the actual output value?
-                'type' : 'STRING'
-            }
-        }) #no parents? FIXME
+        output_nodes = []
+        for out in outputs:
+            outputnodev = xp_state.gc.create_node_version(out.get_id(), tags = {
+                'value' : {
+                    'key' : 'output',
+                    'value' : out.loc, #should i get the actual output value?
+                    'type' : 'STRING'
+                }
+            }) #no parents? FIXME
 
-
-        lineagetrial = safeCreateLineage(trialkey + '.' + each, 'null')
-        xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
+            lineagetrial = safeCreateLineage(trialkey + '.' + each + out.loc, 'null')
+            xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
 
         files = [x for x in os.listdir('.')]
         num = 0
