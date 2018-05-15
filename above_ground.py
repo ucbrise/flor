@@ -459,10 +459,10 @@ def pull(xp_state : State, loc):
     }, parent_ids=latest_experiment_node_versions)
 
     arts = xp_state.eg.d.keys() - xp_state.eg.starts
-    for each in arts:
-        if type(each) == Artifact:
-            if each.loc == loc:
-                outputs = find_outputs(each.parent)
+    # for each in arts:
+    #     if type(each) == Artifact:
+    #         if each.loc == loc:
+    #             outputs = find_outputs(each.parent)
     #outputs is your list of final artifacts
 
 
@@ -518,7 +518,7 @@ def pull(xp_state : State, loc):
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
-                ghosts[bindnodev] = (bindnode.get_name(), str(v))
+                ghosts[bindnodev.get_id()] = (bindnode.get_name(), str(v))
                 xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
 
         elif type(node) == Artifact:
@@ -543,11 +543,20 @@ def pull(xp_state : State, loc):
     #for each in arts:
         #version the dummy node and make a lineage edge from in artifacts to dummy node
         #all out artifacts will have a lineage edge from dummy node.
+    for each in arts:
+        if type(each) == Action:
+            #make a dummy node version
+            dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
+            actionkey = sourcekeySpec + each.funcName
+            for ins in each.in_artifacts:
+                inkey = actionkey + ins.loc
+                dummylineage = safeCreateLineage(inkey, 'null')
+                xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), xp_state.eg.d[ins].get_id(), dummyversion.get_id())
+            for outs in each.out_artifacts:
+                outkey = actionkey + outs.loc
+                dummylineage = safeCreateLineage(outkey, 'null')
+                xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), xp_state.eg.d[outs].get_id())
 
-
-
-    #TODO: add a loop for non starts stuff. Please figure this out. 
-    #TODO: figure out what to name the specnode please
     #switch to versioning directory
     original = os.getcwd()
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
