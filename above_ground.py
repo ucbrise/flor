@@ -518,7 +518,7 @@ def pull(xp_state : State, loc):
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
-                ghosts[bindnodev.get_id()] = (bindnode.get_name(), str(v))
+                ghosts[bindnodev.get_id()] = (bindnode.get_name(), str(node.v))
                 xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
 
         elif type(node) == Artifact:
@@ -552,22 +552,24 @@ def pull(xp_state : State, loc):
             #make a dummy node version
             dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
             actionkey = sourcekeySpec + each.funcName
-            print(each.in_artifacts)
-            print(each.out_artifacts)
+            print("in")
             for ins in each.in_artifacts:
                 print(ins)
                 if type(ins) == Literal:
                     sourcekeyLit = sourcekeySpec + '.literal.' + node.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
-                    inkey = actionkey + ins.loc
+                    inkey = actionkey + '.literal.' + node.name
+                    print(inkey)
                     dummylineage = safeCreateLineage(inkey, 'null')
+                    print(dummylineage)
+                    print(litnode)
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnode.get_id(), dummyversion.get_id())
                 if type(ins) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
-                    inkey = actionkey + ins.loc
+                    inkey = actionkey + '.artifact.' + stringify(node.loc)
                     dummylineage = safeCreateLineage(inkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnode.get_id(), dummyversion.get_id())
 
@@ -578,15 +580,17 @@ def pull(xp_state : State, loc):
                     sourcekeyLit = sourcekeySpec + '.literal.' + node.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
-                    outkey = actionkey + outs.loc
+                    outkey = actionkey + '.literal.' + node.name
                     dummylineage = safeCreateLineage(outkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnode.get_id())
                 if type(outs) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
-                    outkey = actionkey + outs.loc
+                    outkey = actionkey + '.artifact.' + stringify(node.loc)
                     dummylineage = safeCreateLineage(outkey, 'null')
+                    print(artnode)
+                    print(dummylineage)
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), artnode.get_id())
                 
     #switch to versioning directory
@@ -595,6 +599,7 @@ def pull(xp_state : State, loc):
 
     #creates a new node and version representing pull
     pullkey = pullspec + '.pull'
+    print("PULLNAME")
     print(pullkey)
     pullnode = safeCreateGetNode(pullkey, pullkey)
     pullnodev = xp_state.gc.create_node_version(pullnode.get_id(), tags = {
@@ -633,6 +638,7 @@ def pull(xp_state : State, loc):
                 'type' : 'STRING'
             }
         }, parent_ids = pullnode.get_name())
+        print("trials")
         print(each)
 
         output_nodes = []
@@ -642,6 +648,7 @@ def pull(xp_state : State, loc):
         for s in starts:
             if type(s) == Artifact:
                 sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(s.loc)
+                print("input artifacts")
                 print(sourcekeyArt)
                 artnode = safeCreateGetNode(sourcekeyArt, "null")
                 lineageart = safeCreateLineage(trialkey + ".artifact" + stringify(s.loc))
@@ -665,11 +672,9 @@ def pull(xp_state : State, loc):
             xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
 
         files = [x for x in os.listdir('.')]
-        print(files)
         num_ = 0
         file = 'ghost_literal_' + str(num_) + '.pkl'
         while file in files:
-            print("ghost files?")
             with open(file, 'rb') as f:
                 value = dill.load(f)
                 files.remove(file)
@@ -677,15 +682,10 @@ def pull(xp_state : State, loc):
             flag = False
             for num in range(len(literalsOrder)):
                 for g in ghosts:
-                    print(g)
-                    print(ghosts[g])
-                    print(literalsOrder)
-                    print(literalsOrder[num], value)
                     if ghosts[g] == (literalsOrder[num], str(value)):
-                        print("ghost!!!")
+                        print("GHOST")
+                        print(ghosts[g])
                         lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g][1]), 'null')
-                        print("ghosts")
-                        print(lineagetrial)
                         #fix get_id() g is correct
                         xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
                         flag = True
