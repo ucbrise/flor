@@ -169,7 +169,7 @@ def commit(xp_state : State, prepost='Post'):
                 "Action cannot be in set: starts")
 
 
-def peek(xp_state : State):
+def peek(xp_state : State, loc):
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -226,6 +226,11 @@ def peek(xp_state : State):
         os.chdir(original)
         return output
 
+    def find_outputs(end):
+        to_list = []
+        for child in end.out_artifacts:
+            to_list.append(child)
+        return to_list
 
     # Begin
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
@@ -263,6 +268,13 @@ def peek(xp_state : State):
             }
     }, parent_ids=latest_experiment_node_versions)
 
+    # Get output artifacts
+    arts = xp_state.eg.d.keys() - xp_state.eg.starts
+    for each in arts:
+        if type(each) == Artifact:
+            if each.loc == loc:
+                outputs = find_outputs(each.parent)
+
     #creates a dummy node
     peekSpec = sourcekeySpec + '.' + specnode.get_name()
     dummykey = peekSpec + '.dummy'
@@ -276,12 +288,12 @@ def peek(xp_state : State):
     lineage = safeCreateLineage(peekSpec, 'null')
     xp_state.gc.create_lineage_edge_version(lineage.get_id(), dummynode.get_id(), modelnode.get_id())
 
-
+    # Initialize sets before peeking
     starts: Set[Union[Artifact, Literal]] = xp_state.eg.starts
     ghosts = {}
     literalsOrder = []
 
-    # Create literal nodes and bindings
+    # Create literal nodes and bindings for initial artifacts/literals.
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
@@ -292,6 +304,7 @@ def peek(xp_state : State):
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
             xp_state.gc.create_edge_version(e1.get_id(), specnodev.get_id(), litnodev.get_id())
 
+            #Create binding nodes and edges to dummy node
             if node.__oneByOne__:
                 for i, v in enumerate(node.v):
                     sourcekeyBind = sourcekeyLit + '.' + stringify(v)
@@ -349,12 +362,55 @@ def peek(xp_state : State):
                 "Action cannot be in set: starts")
 
 
+    for each in arts:
+        if type(each) == Action:
+            #make a dummy node version
+            dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
+            actionkey = sourcekeySpec + each.funcName
+            print(each.in_artifacts)
+            print(each.out_artifacts)
+            for ins in each.in_artifacts:
+                print(ins)
+                if type(ins) == Literal:
+                    sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+                    print(sourcekeyLit)
+                    litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
+                    inkey = actionkey + ins.loc
+                    dummylineage = safeCreateLineage(inkey, 'null')
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnode.get_id(), dummyversion.get_id())
+                if type(ins) == Artifact:
+                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
+                    print(sourcekeyArt)
+                    artnode = safeCreateGetNode(sourcekeyArt, "null")
+                    inkey = actionkey + ins.loc
+                    dummylineage = safeCreateLineage(inkey, 'null')
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnode.get_id(), dummyversion.get_id())
+
+            print("out")
+            for outs in each.out_artifacts:
+                print(outs)
+                if type(outs) == Literal:
+                    sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+                    print(sourcekeyLit)
+                    litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
+                    outkey = actionkey + outs.loc
+                    dummylineage = safeCreateLineage(outkey, 'null')
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnode.get_id())
+                if type(outs) == Artifact:
+                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
+                    print(sourcekeyArt)
+                    artnode = safeCreateGetNode(sourcekeyArt, "null")
+                    outkey = actionkey + outs.loc
+                    dummylineage = safeCreateLineage(outkey, 'null')
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), artnode.get_id())
+
+
     #switch to versioning directory
     original_dir = os.getcwd()
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
 
-    #creates a new node and version representing pull
-    peekKey = 'flor.' + specnode.get_name() + '.pull'
+    #creates a new node and version representing peek
+    peekKey = peekSpec + '.peek'
     peekNode = safeCreateGetNode(peekKey, peekKey)
     peekNodev = xp_state.gc.create_node_version(peekNode.get_id(), tags = {
         'timestamp': {
@@ -364,16 +420,54 @@ def peek(xp_state : State):
         }
     }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids? does this need to exist?
 
-    pullEdge = safeCreateGetEdge(peekKey, 'null', specnode.get_id(), peekNode.get_id())
-    xp_state.gc.create_edge_version(pullEdge.get_id(), specnodev.get_id(), peekNodev.get_id())
+    peekEdge = safeCreateGetEdge(peekKey, 'null', specnode.get_id(), peekNode.get_id())
+    xp_state.gc.create_edge_version(peekEdge.get_id(), specnodev.get_id(), peekNodev.get_id())
 
-    #creates a new node representing trials.
-    trialkey = 'flor.' + specnode.get_name() + '.trials'
+    # Creates a new node representing trials.
+    trialkey = peekKey + '.trials'
     trialnode = safeCreateGetNode(trialkey, trialkey)
-    trialEdge = safeCreateGetEdge(trialkey, 'null', peekNode.get_id(), trialnode.get_id())
-    lineage = xp_state.gc.create_lineage_edge(sourcekeySpec, 'null')
-    xp_state.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
+    trialEdge = safeCreateGetEdge(trialkey, 'null', peekNodev.get_id(), trialnode.get_id())
+    lineage = safeCreateLineage(trialkey, 'null')
 
+
+    #creating a trial node version for the peeked trial
+    trialnodev = xp_state.gc.create_node_version(trialnode.get_id(), tags = {
+        'trial': {
+            'key': 'trialnumber',
+            'value' : 1,
+            'type' : 'STRING'
+        }
+    }, parent_ids = peekNode.get_name())
+
+
+    output_nodes = []
+
+    #link every trial to starting artifacts
+    #Im not super sure about this part? Linking all starts nodes to the trial node
+    for s in starts:
+        if type(s) == Artifact:
+            sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(s.loc)
+            print(sourcekeyArt)
+            artnode = safeCreateGetNode(sourcekeyArt, "null")
+            lineageart = safeCreateLineage(trialkey + ".artifact" + stringify(s.loc))
+            xp_state.gc.create_lineage_edge_version(lineageart.get_id(), trialnodev.get_id(), artnode.get_id())
+
+    #link trial to output node
+    for out in outputs:
+        sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
+        sourcekey = sourcekeySpec + '.artifact.' + stringify(out.loc)
+        print("outs")
+        print(sourcekey)
+        outnode = safeCreateGetNode(sourcekey, sourcekey)
+        outputnodev = xp_state.gc.create_node_version(outnode.get_id(), tags = {
+            'value' : {
+                'key' : 'output',
+                'value' : out.loc, #should i get the actual output value?
+                'type' : 'STRING'
+            }
+        })
+        lineagetrial = safeCreateLineage(trialkey + '.' + each + out.loc, 'null')
+        xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
 
 
 def fork(xp_state : State, inputCH):
