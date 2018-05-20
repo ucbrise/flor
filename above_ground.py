@@ -683,10 +683,10 @@ def pull(xp_state : State, loc):
                     print(literalsOrder[num], value)
                     if ghosts[g] == (literalsOrder[num], str(value)):
                         print("ghost!!!")
-                        lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g]), 'null')
+                        lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g][1]), 'null')
                         print("ghosts")
                         print(lineagetrial)
-                        #fix get_id() and g ; both should not work
+                        #fix get_id() g is correct
                         xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
                         flag = True
                         break
