@@ -666,25 +666,34 @@ def pull(xp_state : State, loc):
 
         files = [x for x in os.listdir('.')]
         print(files)
-        num = 0
-        file = 'ghost_literal_' + str(num) + '.pkl'
+        num_ = 0
+        file = 'ghost_literal_' + str(num_) + '.pkl'
         while file in files:
             print("ghost files?")
             with open(file, 'rb') as f:
                 value = dill.load(f)
                 files.remove(file)
-            for g in ghosts:
-                print(g)
-                print(literalsOrder)
-                if ghosts[g] == (literalsOrder[num], value):
-                    print("ghost!!!")
-                    lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g]), 'null')
-                    print("ghosts")
-                    print(lineagetrial)
-                    xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
 
-            num += 1
-            file = 'ghost_literal_' + str(num) + '.pkl'
+            flag = False
+            for num in range(len(literalsOrder)):
+                for g in ghosts:
+                    print(g)
+                    print(ghosts[g])
+                    print(literalsOrder)
+                    print(literalsOrder[num], value)
+                    if ghosts[g] == (literalsOrder[num], str(value)):
+                        print("ghost!!!")
+                        lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g]), 'null')
+                        print("ghosts")
+                        print(lineagetrial)
+                        #fix get_id() and g ; both should not work
+                        xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
+                        flag = True
+                        break
+                if flag:
+                    break
+            num_ += 1
+            file = 'ghost_literal_' + str(num_) + '.pkl'
                 
         os.chdir('..')
 
