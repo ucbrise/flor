@@ -549,27 +549,31 @@ def pull(xp_state : State, loc):
     print("more stuff")
     for each in arts:
         if type(each) == Action:
+            print("NAME HERE")
+            print(each.funcName)
             #make a dummy node version
             dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
-            actionkey = sourcekeySpec + each.funcName
+            actionkey = sourcekeySpec + "." + each.funcName
             print("in")
             for ins in each.in_artifacts:
                 print(ins)
                 if type(ins) == Literal:
-                    sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+                    print(ins.name)
+                    sourcekeyLit = sourcekeySpec + '.literal.in.' + ins.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
-                    inkey = actionkey + '.literal.' + node.name
+                    inkey = actionkey + '.literal.in.' + ins.name
                     print(inkey)
                     dummylineage = safeCreateLineage(inkey, 'null')
                     print(dummylineage)
                     print(litnode)
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnode.get_id(), dummyversion.get_id())
                 if type(ins) == Artifact:
-                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
+                    print(ins.loc)
+                    sourcekeyArt = sourcekeySpec + '.artifact.in.' + stringify(ins.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
-                    inkey = actionkey + '.artifact.' + stringify(node.loc)
+                    inkey = actionkey + '.artifact.in.' + stringify(ins.loc)
                     dummylineage = safeCreateLineage(inkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnode.get_id(), dummyversion.get_id())
 
@@ -577,17 +581,19 @@ def pull(xp_state : State, loc):
             for outs in each.out_artifacts:
                 print(outs)
                 if type(outs) == Literal:
-                    sourcekeyLit = sourcekeySpec + '.literal.' + node.name
+                    print(outs.name)
+                    sourcekeyLit = sourcekeySpec + '.literal.out.' + outs.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
-                    outkey = actionkey + '.literal.' + node.name
+                    outkey = actionkey + '.literal.out.' + outs.name
                     dummylineage = safeCreateLineage(outkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnode.get_id())
                 if type(outs) == Artifact:
-                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
+                    print(outs.loc)
+                    sourcekeyArt = sourcekeySpec + '.artifact.out.' + stringify(outs.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
-                    outkey = actionkey + '.artifact.' + stringify(node.loc)
+                    outkey = actionkey + '.artifact.out.' + stringify(outs.loc)
                     dummylineage = safeCreateLineage(outkey, 'null')
                     print(artnode)
                     print(dummylineage)
