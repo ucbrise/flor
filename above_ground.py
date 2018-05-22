@@ -469,6 +469,7 @@ def pull(xp_state : State, loc):
     pullspec = sourcekeySpec + '.' + specnode.get_name()
     dummykey = pullspec + '.dummy'
     dummynode = safeCreateGetNode(dummykey, dummykey)
+    dummynodev = safeCreateGetNodeVersion(dummykey)
 
     #links everything to the dummy node
     starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
@@ -495,9 +496,10 @@ def pull(xp_state : State, loc):
                                 'value': str(v),
                                 'type' : 'STRING'
                             }})
+                    bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
                     e3 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
                     startslineage = safeCreateLineage(sourcekeyLit, 'null')
-                    xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
+                    xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnodev.get_id(), dummynodev.get_id())
                     # Bindings are singleton node versions
                     #   Facilitates backward lookup (All trials with alpha=0.0)
                     bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -512,9 +514,10 @@ def pull(xp_state : State, loc):
                             'value': str(node.v),
                             'type': 'STRING'
                         }})
+                bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
                 e4 = safeCreateGetEdge(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
                 startslineage = safeCreateLineage(sourcekeyBind, 'null')
-                xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnode.get_id(), dummynode.get_id())
+                xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnodev.get_id(), dummynodev.get_id())
                 # Bindings are singleton node versions
 
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
@@ -525,9 +528,10 @@ def pull(xp_state : State, loc):
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
             print(sourcekeyArt)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
+            artnodev = safeCreateGetNodeVersion(sourcekeyArt)
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
             startslineage = safeCreateLineage(sourcekeyArt, 'null')
-            xp_state.gc.create_lineage_edge_version(startslineage.get_id(), artnode.get_id(), dummynode.get_id())
+            xp_state.gc.create_lineage_edge_version(startslineage.get_id(), artnodev.get_id(), dummynodev.get_id())
             
             artnodev = xp_state.gc.create_node_version(artnode.get_id(), tags={
                 'checksum': {
@@ -559,45 +563,49 @@ def pull(xp_state : State, loc):
                 print(ins)
                 if type(ins) == Literal:
                     print(ins.name)
-                    sourcekeyLit = sourcekeySpec + '.literal.in.' + ins.name
+                    sourcekeyLit = sourcekeySpec + '.literal.' + ins.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
+                    litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     inkey = actionkey + '.literal.in.' + ins.name
                     print(inkey)
                     dummylineage = safeCreateLineage(inkey, 'null')
                     print(dummylineage)
                     print(litnode)
-                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnode.get_id(), dummyversion.get_id())
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnodev.get_id(), dummyversion.get_id())
                 if type(ins) == Artifact:
                     print(ins.loc)
-                    sourcekeyArt = sourcekeySpec + '.artifact.in.' + stringify(ins.loc)
+                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(ins.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
+                    artnodev = safeCreateGetNodeVersion(sourcekeyArt)
                     inkey = actionkey + '.artifact.in.' + stringify(ins.loc)
                     dummylineage = safeCreateLineage(inkey, 'null')
-                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnode.get_id(), dummyversion.get_id())
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnodev.get_id(), dummyversion.get_id())
 
             print("out")
             for outs in each.out_artifacts:
                 print(outs)
                 if type(outs) == Literal:
                     print(outs.name)
-                    sourcekeyLit = sourcekeySpec + '.literal.out.' + outs.name
+                    sourcekeyLit = sourcekeySpec + '.literal.' + outs.name
                     print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
+                    litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     outkey = actionkey + '.literal.out.' + outs.name
                     dummylineage = safeCreateLineage(outkey, 'null')
-                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnode.get_id())
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnodev.get_id())
                 if type(outs) == Artifact:
                     print(outs.loc)
-                    sourcekeyArt = sourcekeySpec + '.artifact.out.' + stringify(outs.loc)
+                    sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(outs.loc)
                     print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
+                    artnodev = safeCreateGetNodeVersion(sourcekeyArt)
                     outkey = actionkey + '.artifact.out.' + stringify(outs.loc)
                     dummylineage = safeCreateLineage(outkey, 'null')
                     print(artnode)
                     print(dummylineage)
-                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), artnode.get_id())
+                    xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), artnodev.get_id())
                 
     #switch to versioning directory
     original = os.getcwd()
@@ -657,8 +665,9 @@ def pull(xp_state : State, loc):
                 print("input artifacts")
                 print(sourcekeyArt)
                 artnode = safeCreateGetNode(sourcekeyArt, "null")
-                lineageart = safeCreateLineage(trialkey + ".artifact" + stringify(s.loc))
-                xp_state.gc.create_lineage_edge_version(lineageart.get_id(), trialnodev.get_id(), artnode.get_id())
+                artnodev = safeCreateGetNodeVersion(sourcekeyArt)
+                lineageart = safeCreateLineage(trialkey + ".artifact." + stringify(s.loc), 'null')
+                xp_state.gc.create_lineage_edge_version(lineageart.get_id(), trialnodev.get_id(), artnodev.get_id())
 
         #link trials to output node
         for out in outputs:
@@ -674,7 +683,7 @@ def pull(xp_state : State, loc):
                     'type' : 'STRING'
                 }
             })
-            lineagetrial = safeCreateLineage(trialkey + '.' + each + out.loc, 'null')
+            lineagetrial = safeCreateLineage(trialkey + '.' + each + "." + out.loc, 'null')
             xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id())
 
         files = [x for x in os.listdir('.')]
