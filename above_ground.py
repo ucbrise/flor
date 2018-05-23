@@ -273,7 +273,7 @@ def fork(xp_state : State, inputCH):
         'prepostExec':
             {
                 'key' : 'prepostExec',
-                'value' : 'Pre', #can only fork from pre state
+                'value' : 'Pre',
                 'type' : 'STRING',
             }
     }, parent_ids=forkedNodev) #changed this from original
@@ -398,31 +398,12 @@ def pull(xp_state : State, loc):
         os.chdir(original)
         return output
 
-    #This method of finding output nodes may not work
-    # def find_outputs2(ends):
-    #     ins = []
-    #     outs = []
-    #     for each in ends:
-    #         if type(each) == Action:
-    #             for item in each.in_artifacts:
-    #                 if item not in ins:
-    #                     ins.append(item)
-    #             for item in each.out_artifacts:
-    #                 if item not in outs:
-    #                     outs.append(item)
-
-    #     for each in ins:
-    #         if each in outs:
-    #             outs.remove(each)
-    #     return outs
-
     def find_outputs(end):
         to_list = []
         for child in end.out_artifacts:
             to_list.append(child)
         return to_list
 
-    # Begin
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
 
@@ -444,10 +425,10 @@ def pull(xp_state : State, loc):
                 'value' : get_sha(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME),
                 'type' : 'STRING',
             },
-        'sequenceNumber': #potentially unneeded...can't find a good way to get sequence number
+        'sequenceNumber': 
             {
                 'key' : 'sequenceNumber', 
-                'value' : "0", #fixme given a commit hash we'll have to search through for existing CH
+                'value' : "0",
                 'type' : 'STRING',
             },
         'prepostExec':
@@ -483,7 +464,6 @@ def pull(xp_state : State, loc):
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
 
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
-            print(sourcekeyLit)
             xp_state.gc.create_edge_version(e1.get_id(), specnodev.get_id(), litnodev.get_id())
 
             if node.__oneByOne__:
@@ -526,7 +506,6 @@ def pull(xp_state : State, loc):
 
         elif type(node) == Artifact:
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
-            print(node.loc)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             artnodev = safeCreateGetNodeVersion(sourcekeyArt)
             e2 = safeCreateGetEdge(sourcekeyArt, "null", specnode.get_id(), artnode.get_id())
@@ -550,19 +529,13 @@ def pull(xp_state : State, loc):
         #all out artifacts will have a lineage edge from dummy node.
     #NOTE: there may be overlap. Items in the in-artifacts may be present in the starts set, which 
     # was already linked to the dummy node
-    print("more stuff")
     for each in arts:
         if type(each) == Action:
-            print("NAME HERE")
-            print(each.funcName)
             #make a dummy node version
             dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
             actionkey = sourcekeySpec + "." + each.funcName
-            print("in")
             for ins in each.in_artifacts:
-                print(ins)
                 if type(ins) == Literal:
-                    print(ins.name)
                     sourcekeyLit = sourcekeySpec + '.literal.' + ins.name
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
@@ -570,7 +543,6 @@ def pull(xp_state : State, loc):
                     dummylineage = safeCreateLineage(inkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), litnodev.get_id(), dummyversion.get_id())
                 if type(ins) == Artifact:
-                    print(ins.loc)
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(ins.loc)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     artnodev = safeCreateGetNodeVersion(sourcekeyArt)
@@ -582,7 +554,6 @@ def pull(xp_state : State, loc):
             for outs in each.out_artifacts:
                 print(outs)
                 if type(outs) == Literal:
-                    print(outs.name)
                     sourcekeyLit = sourcekeySpec + '.literal.' + outs.name
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
@@ -590,7 +561,6 @@ def pull(xp_state : State, loc):
                     dummylineage = safeCreateLineage(outkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), dummyversion.get_id(), litnodev.get_id())
                 if type(outs) == Artifact:
-                    print(outs.loc)
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(outs.loc)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     artnodev = safeCreateGetNodeVersion(sourcekeyArt)
@@ -604,8 +574,6 @@ def pull(xp_state : State, loc):
 
     #creates a new node and version representing pull
     pullkey = pullspec + '.pull'
-    print("PULLNAME")
-    print(pullkey)
     pullnode = safeCreateGetNode(pullkey, pullkey)
     pullnodev = xp_state.gc.create_node_version(pullnode.get_id(), tags = {
         'timestamp': {
@@ -626,7 +594,6 @@ def pull(xp_state : State, loc):
     # xp_state.gc.create_lineage_edge_version(lineage.get_id(), modelnode.get_id(), trialnode.get_id())
 
     #created trial, now need to link each of the trials to the output
-    #TODO: how to get the name of the output file? i.e. product.txt or model_accuracy.txt
 
     #iterates through all files in current directory 
     filetemp = 'ghost_literal_'
@@ -643,8 +610,6 @@ def pull(xp_state : State, loc):
                 'type' : 'STRING'
             }
         }, parent_ids = pullnode.get_name())
-        print("trials")
-        print(each)
 
         output_nodes = []
 
@@ -653,8 +618,6 @@ def pull(xp_state : State, loc):
         for s in starts:
             if type(s) == Artifact:
                 sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(s.loc)
-                print("input artifacts")
-                print(s.loc)
                 artnode = safeCreateGetNode(sourcekeyArt, "null")
                 artnodev = safeCreateGetNodeVersion(sourcekeyArt)
                 lineageart = safeCreateLineage(trialkey + ".artifact." + stringify(s.loc), 'null')
@@ -664,13 +627,11 @@ def pull(xp_state : State, loc):
         for out in outputs:
             sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
             sourcekey = sourcekeySpec + '.artifact.' + stringify(out.loc)
-            print("outs")
-            print(out.loc)
             outnode = safeCreateGetNode(sourcekey, sourcekey)
             outputnodev = xp_state.gc.create_node_version(outnode.get_id(), tags = {
                 'value' : {
                     'key' : 'output',
-                    'value' : out.loc, #should i get the actual output value?
+                    'value' : out.loc,
                     'type' : 'STRING'
                 }
             })
@@ -692,7 +653,6 @@ def pull(xp_state : State, loc):
                         print("GHOST")
                         print(ghosts[g])
                         lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g][1]), 'null')
-                        #fix get_id() g is correct
                         xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
                         flag = True
                         break
