@@ -7,6 +7,7 @@ import itertools
 import datetime
 import pandas as pd
 import sys
+import flor
 
 from graphviz import Digraph, Source
 from shutil import copyfile
