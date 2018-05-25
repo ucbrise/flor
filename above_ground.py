@@ -337,7 +337,6 @@ def peek(xp_state : State, loc):
                 startslineage = safeCreateLineage(dummykey + '.edge.' + str(node.v), 'null')
                 xp_state.gc.create_lineage_edge_version(startslineage.get_id(), bindnodev.get_id(), dummynodev.get_id())
 
-
                 bindnodev = safeCreateGetNodeVersion(sourcekeyBind)
                 ghosts[bindnodev.get_id()] = (bindnode.get_name(), str(v))
                 xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
@@ -366,17 +365,17 @@ def peek(xp_state : State, loc):
     for each in arts:
         if type(each) == Action:
             #make a dummy node version
-            print(each.funcName)
+            #print(each.funcName)
             dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
             actionkey = sourcekeySpec + "." + each.funcName
-            print(each.in_artifacts)
-            print(each.out_artifacts)
-            print("out")
+            #print(each.in_artifacts)
+            #print(each.out_artifacts)
+            #print("out")
             for ins in each.in_artifacts:
-                print(ins)
+                #print(ins)
                 if type(ins) == Literal:
                     sourcekeyLit = sourcekeySpec + '.literal.' + ins.name
-                    print(sourcekeyLit)
+                    #print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     inkey = actionkey + '.literal.in.' + ins.name
@@ -385,18 +384,18 @@ def peek(xp_state : State, loc):
 
                 if type(ins) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
-                    print(sourcekeyArt)
+                    #print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     inkey = actionkey + ins.loc
                     dummylineage = safeCreateLineage(inkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnodev.get_id(), dummyversion.get_id())
 
-            print("out")
+            #print("out")
             for outs in each.out_artifacts:
-                print(outs)
+                #print(outs)
                 if type(outs) == Literal:
                     sourcekeyLit = sourcekeySpec + '.literal.' + outs.name
-                    print(sourcekeyLit)
+                    #print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     outkey = actionkey + '.literal.out.' + outs.name
@@ -405,7 +404,7 @@ def peek(xp_state : State, loc):
 
                 if type(outs) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(outs.loc)
-                    print(sourcekeyArt)
+                    #print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     artnodev = safeCreateGetNodeVersion(sourcekeyArt)
                     outkey = actionkey + '.artifact.out.' + stringify(outs.loc)
@@ -437,34 +436,34 @@ def peek(xp_state : State, loc):
     trialEdge = safeCreateGetEdge(trialkey, 'null', peekNodev.get_id(), trialnode.get_id())
     lineage = safeCreateLineage(trialkey, 'null')
 
+    # Go into trial directory
+    os.chdir("0")
 
-    #creating a trial node version for the peeked trial
+    # Creating a trial node version for the peeked trial
     trialnodev = xp_state.gc.create_node_version(trialnode.get_id(), tags = {
         'trial': {
             'key': 'trialnumber',
-            'value' : 0,
+            'value' : "0",
             'type' : 'STRING'
         }
     }, parent_ids = peekNode.get_name())
 
-    output_nodes = []
-
-    #link every trial to starting artifacts
-    #Linking all starts nodes to the trial node
+    # Link single trial to starting artifacts
+    # Linking all starts nodes to the trial node
     for s in starts:
         if type(s) == Artifact:
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(s.loc)
-            print(sourcekeyArt)
+            #print(sourcekeyArt)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             lineageart = safeCreateLineage(trialkey + ".artifact." + stringify(s.loc))
             xp_state.gc.create_lineage_edge_version(lineageart.get_id(), trialnodev.get_id(), artnode.get_id())
 
-    #link trial to output node
+    # link trial to output node
     for out in outputs:
         sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
         sourcekey = sourcekeySpec + '.artifact.' + stringify(out.loc)
-        print("outs")
-        print(sourcekey)
+        #print("outs")
+        #print(sourcekey)
         outnode = safeCreateGetNode(sourcekey, sourcekey)
         outputnodev = xp_state.gc.create_node_version(outnode.get_id(), tags = {
             'value' : {
@@ -475,30 +474,35 @@ def peek(xp_state : State, loc):
         })
 
         # Create lineage for the only trial peeked.
-        lineagetrial = safeCreateLineage(trialkey + '.0.' + out.loc, 'null')
-        # print("lineage trial")
-        # print(lineagetrial)
-        # print("trial node")
-        # print(trialnodev)
-       # xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id()) #Fix this
+        lineagetrial = safeCreateLineage(trialkey + '.0' + out.loc, 'null')
 
-    #Go through the pkl files in directory
+        #print("lineage trial")
+        #print(lineagetrial)
+        #print("trial node")
+        #print(trialnodev)
+
+        xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id()) #Fix this
+
+    # Go through the pkl files in directory
     files = [x for x in os.listdir('.')]
+    #print("files {}".format(files))
+
+    # Get the value of the output of the trial
     num_ = 0
     file = 'ghost_literal_' + str(num_) + '.pkl'
     while file in files:
         with open(file, 'rb') as f:
             value = dill.load(f)
+            #print("value {}".format(value))
             files.remove(file)
 
         flag = False
         for num in range(len(literalsOrder)):
             for g in ghosts:
                 if ghosts[g] == (literalsOrder[num], str(value)):
-                    print("GHOST")
-                    print(ghosts[g])
+                    #print("GHOST")
+                    #print(ghosts[g])
                     lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g][1]), 'null')
-                    # fix get_id() g is correct
                     xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
                     flag = True
                     break
@@ -506,6 +510,7 @@ def peek(xp_state : State, loc):
                 break
         num_ += 1
         file = 'ghost_literal_' + str(num_) + '.pkl'
+    #print("FILE {}".format(file))
 
     os.chdir(original)
 
