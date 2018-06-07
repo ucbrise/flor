@@ -20,6 +20,7 @@ from ground.client import GroundClient
 from shutil import copytree
 from shutil import rmtree
 from shutil import move
+import requests
 
 class Experiment(object):
 
@@ -47,24 +48,34 @@ class Experiment(object):
         if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME):
             move(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git', '/tmp/')
             rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
+            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git')
-            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/0')
             os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             repo = git.Repo(os.getcwd())
             repo.git.add(A=True)
             repo.index.commit('incremental commit')
         else:
-            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/0')
+            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
             repo = git.Repo.init(os.getcwd())
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original)
-        ag.commit(self.xp_state, 'Pre')
+        ag.commit(self.xp_state)
 
 
     def groundClient(self, backend):
         # self.xp_state.gc = GroundClient(backend)
+        if backend == "ground":
+            ######################### GROUND GROUND GROUND ###################################################
+            # Is Ground Server initialized?
+            # Localhost hardcoded into the url
+            try:
+                requests.get('http://localhost:9000')
+            except:
+                # No, Ground not initialized
+                raise requests.exceptions.ConnectionError('Please start Ground first')
+            ######################### </> GROUND GROUND GROUND ###################################################
         self.xp_state.gc = GroundClient()
 
     def literal(self, v, name=None):

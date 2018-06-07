@@ -9,17 +9,6 @@ try:
 except:
     pass
 
-
-######################### GROUND GROUND GROUND ###################################################
-# Is Ground Server initialized?
-# Localhost hardcoded into the url
-try:
-    requests.get('http://localhost:9000')
-except:
-    # No, Ground not initialized
-    raise requests.exceptions.ConnectionError('Please start Ground first')
-######################### </> GROUND GROUND GROUND ###################################################
-
 from .decorators import func
 from .headers import setNotebookName
 from .headers import versionSummaries
