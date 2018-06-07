@@ -4,7 +4,7 @@ from .. import util
 
 class Literal:
 
-    def __init__(self, v, name, xp_state):
+    def __init__(self, v, name, xp_state, default=None):
         """
 
         :param v: Literal value
@@ -16,6 +16,13 @@ class Literal:
         self.__oneByOne__ = False
         self.i = 0
         self.n = 1
+
+        # If no default passed in, set default to the entire literal.
+        # Note that if the literal is of for each type, we will change the default in for each.
+        if default is None:
+            self.default = self.v
+        else:
+            self.default = default
 
         # The name is used in the visualization and Ground versioning
         if name is None:
@@ -33,15 +40,23 @@ class Literal:
         self.xp_state.literalNameToObj[self.name] = self
         self.xp_state.ghostFiles |= {self.loc, }
 
-    def forEach(self):
+    def __forEach__(self):
         if not util.isIterable(self.v):
             raise TypeError("Cannot iterate over literal {}".format(self.v))
         self.__oneByOne__ = True
+
+        # Check if they did not set their own default.
+        # Note that if there is no default set, then we make it self.v
+        if self.default == self.v:
+            self.default = self.v[0]
         self.n = len(self.v)
         return self
 
     def getLocation(self):
         return self.loc
+
+    def getDefault(self):
+        return self.default
 
     def __pop__(self):
         if self.i >= self.n:
