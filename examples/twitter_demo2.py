@@ -27,4 +27,5 @@ with flor.Experiment("twitter_demo") as ex:
     do_test = ex.action(test, [model, testing_tweets])
     model_accuracy = ex.artifact('model_accuracy.txt', do_test)
 
+model_accuracy.plot()
 model_accuracy.pull()

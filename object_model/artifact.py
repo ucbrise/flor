@@ -7,6 +7,7 @@ import itertools
 import datetime
 import pandas as pd
 import sys
+import flor
 
 from graphviz import Digraph, Source
 from shutil import copyfile
@@ -15,7 +16,6 @@ from shutil import copytree
 from shutil import move
 
 from .. import util
-# from .. import above_ground as ag
 from .. import viz
 from .recursivesizeof import total_size
 import time
@@ -362,6 +362,8 @@ class Artifact:
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original_dir)
+
+        flor.above_ground.pull(self.xp_state, self.loc) #TODO: change this back potentially
 
         self.__commit__()
 
