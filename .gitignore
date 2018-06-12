@@ -5,6 +5,12 @@
 experiment_graph.pkl
 output.gv
 output.gv.pdf
+grit/.git
+grit/.gitignore
+grit/LICENSE
+grit/README.md
+grit/python/setup.py
+grit/python/tests/
 *.ipynb_checkpoints/
 *__pycache__/
 *.idea/
