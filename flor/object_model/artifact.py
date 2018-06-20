@@ -21,8 +21,6 @@ from .recursivesizeof import total_size
 import time
 import tempfile
 
-import ray
-
 class Artifact:
 
     def __init__(self, loc, parent, manifest, xp_state):
@@ -73,6 +71,7 @@ class Artifact:
         self.scriptNames.sort()
 
     def parallelPull(self, manifest={}):
+        import ray
         try:
             ray.get([])
         except:
