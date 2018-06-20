@@ -17,6 +17,7 @@ from flor.experiment_graph import ExperimentGraph
 from flor.stateful import State
 
 from ground.client import GroundClient
+from grit.client import GroundClient as GritClient
 from shutil import copytree
 from shutil import rmtree
 from shutil import move
@@ -65,7 +66,7 @@ class Experiment(object):
 
 
     def groundClient(self, backend):
-        # self.xp_state.gc = GroundClient(backend)
+        backend = backend.lower().strip()
         if backend == "ground":
             ######################### GROUND GROUND GROUND ###################################################
             # Is Ground Server initialized?
@@ -76,7 +77,11 @@ class Experiment(object):
                 # No, Ground not initialized
                 raise requests.exceptions.ConnectionError('Please start Ground first')
             ######################### </> GROUND GROUND GROUND ###################################################
-        self.xp_state.gc = GroundClient()
+            self.xp_state.gc = GroundClient()
+        elif backend == "git":
+            self.xp_state.gc = GritClient()
+        else:
+            raise ModuleNotFoundError("Only 'git' or 'ground' backends supported, but '{}' entered".format(backend))
 
     def literal(self, v, name=None):
         lit = Literal(v, name, self.xp_state)
