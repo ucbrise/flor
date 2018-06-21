@@ -41,7 +41,9 @@ def commit(xp_state : State):
         try:
             n = xp_state.gc.get_node_latest_versions(sourceKey)
             if n is None or n == []:
-                n = xp_state.gc.create_node_version(xp_state.gc.get_node(sourceKey).get_id())
+                node = xp_state.gc.get_node(sourceKey)
+                nodeid = node.get_id()
+                n = xp_state.gc.create_node_version(nodeid)
             else:
                 assert len(n) == 1
                 return xp_state.gc.get_node_version(n[0])
@@ -62,6 +64,7 @@ def commit(xp_state : State):
         os.chdir(original)
         return output
 
+
     # Begin
     sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
     specnode = safeCreateGetNode(sourcekeySpec, "null")
@@ -69,6 +72,12 @@ def commit(xp_state : State):
     latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
+    elif type(latest_experiment_node_versions) == type([]) and len(latest_experiment_node_versions) > 0:
+        # This code makes GRIT compatible with GroundTable
+        try:
+            [int(i) for i in latest_experiment_node_versions]
+        except:
+            latest_experiment_node_versions = [i.get_id() for i in latest_experiment_node_versions]
     assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
 
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
@@ -98,7 +107,7 @@ def commit(xp_state : State):
             }
     }, parent_ids=latest_experiment_node_versions)
 
-    starts : Set[Union[Artifact, Literal]] = xp_state.eg.starts
+    starts: Set[Union[Artifact, Literal]] = xp_state.eg.starts
     for node in starts:
         if type(node) == Literal:
             sourcekeyLit = sourcekeySpec + '.literal.' + node.name
@@ -408,6 +417,7 @@ def peek(xp_state : State, loc):
     original = os.getcwd()
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
 
+    #FIXME: parent_ids is wrong, should be list of ids
     # Creates a new node and version representing peek
     peekKey = peekSpec + '.peek'
     peekNode = safeCreateGetNode(peekKey, peekKey)
@@ -417,7 +427,7 @@ def peek(xp_state : State, loc):
             'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
             'type' : 'STRING'
         }
-    }, parent_ids = specnode.get_name()); #does this need to be a list of parent ids? does this need to exist?
+    }, parent_ids = specnode.get_name()) #does this need to be a list of parent ids? does this need to exist?
 
     # Create edge and version for peek
     peekEdge = safeCreateGetEdge(peekKey, 'null', specnode.get_id(), peekNode.get_id())
@@ -432,6 +442,7 @@ def peek(xp_state : State, loc):
     # Go into trial directory
     os.chdir("0")
 
+    # FIXME: parent_ids is wrong, should be list of ids
     # Creating a trial node version for the peeked trial
     trialnodev = xp_state.gc.create_node_version(trialnode.get_id(), tags = {
         'trial': {
@@ -598,6 +609,7 @@ def fork(xp_state : State, inputCH):
     if xp_state.gc.get_node_version(forkedNodev).get_tags()['prepostExec']['value'] == 'Post':
         raise Exception("Connot fork from a Post-Execution State.")
 
+    # FIXME: parent_ids is wrong, should be list of ids
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
         'timestamp':
             {
@@ -757,6 +769,13 @@ def pull(xp_state : State, loc):
     latest_experiment_node_versions = xp_state.gc.get_node_latest_versions(sourcekeySpec)
     if latest_experiment_node_versions == []:
         latest_experiment_node_versions = None
+    elif type(latest_experiment_node_versions) == type([]) and len(latest_experiment_node_versions) > 0:
+        # This code makes GRIT compatible with GroundTable
+        try:
+            [int(i) for i in latest_experiment_node_versions]
+        except:
+            latest_experiment_node_versions = [i.get_id() for i in latest_experiment_node_versions]
+
     assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
 
     specnodev = xp_state.gc.create_node_version(specnode.get_id(), tags={
@@ -919,6 +938,7 @@ def pull(xp_state : State, loc):
     original = os.getcwd()
     os.chdir(xp_state.versioningDirectory + '/' + xp_state.EXPERIMENT_NAME)
 
+    #FIXME: parent_ids is wrong
     #creates a new node and version representing pull
     pullkey = pullspec + '.pull'
     pullnode = safeCreateGetNode(pullkey, pullkey)
@@ -928,7 +948,7 @@ def pull(xp_state : State, loc):
             'value' : datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
             'type' : 'STRING'
         }
-    }, parent_ids = specnode.get_name());
+    }, parent_ids = specnode.get_name())
 
     pullEdge = safeCreateGetEdge(pullkey, 'null', specnode.get_id(), pullnode.get_id())
     xp_state.gc.create_edge_version(pullEdge.get_id(), specnodev.get_id(), pullnodev.get_id())
@@ -942,6 +962,7 @@ def pull(xp_state : State, loc):
 
     #created trial, now need to link each of the trials to the output
 
+    #FIXME: parent_ids is wrong
     #iterates through all files in current directory 
     filetemp = 'ghost_literal_'
     for each in os.listdir("."):

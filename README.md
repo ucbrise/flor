@@ -31,6 +31,8 @@ conda install libgcc
 pip install git+https://github.com/ray-project/ray.git#subdirectory=python
 ```
 
+Also, you will need to install graphviz: https://stackoverflow.com/questions/43372723/how-to-open-dot-on-mac
+
 Next, **Add the directory containing this flor package (repo) to your `PYTHONPATH`.**
 
 For examples on how to write your own flor workflow, please have a look at:
