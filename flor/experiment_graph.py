@@ -23,3 +23,9 @@ class ExperimentGraph:
     def serialize(self):
         with open('experiment_graph.pkl', 'wb') as f:
             dill.dump(self, f)
+
+
+def deserialize() -> ExperimentGraph:
+    with open('experiment_graph.pkl', 'rb') as f:
+        out = dill.load(f)
+    return out

@@ -9,9 +9,286 @@ import dill
 import flor.util as util
 from flor.stateful import State
 from flor.object_model import Artifact, Action, Literal
+from flor.experiment_graph import deserialize as eg_deserialize
 
 import os
 import subprocess
+
+
+class ContextTracker(object):
+
+    def __init__(self, xp_state: State):
+        self.xp_state = xp_state
+        self.sourcekeySpec = 'flor.' + self.xp_state.EXPERIMENT_NAME
+        self.specnode = self.__safeCreateGetNode__(self.sourcekeySpec, "null")
+        self.versioning_directory = os.path.join(self.xp_state.versioningDirectory, self.xp_state.EXPERIMENT_NAME)
+
+    def __get_recent_specnodev__(self):
+        latest_experiment_node_versions = self.xp_state.gc.get_node_latest_versions(self.sourcekeySpec)
+        if latest_experiment_node_versions == []:
+            latest_experiment_node_versions = None
+        elif type(latest_experiment_node_versions) == type([]) and len(latest_experiment_node_versions) > 0:
+            # This code makes GRIT compatible with GroundTable
+            try:
+                [int(i) for i in latest_experiment_node_versions]
+            except:
+                latest_experiment_node_versions = [i.get_id() for i in latest_experiment_node_versions]
+        # THIS ASSERTION WILL FAIL ONCE WE SUPPORT FORK, WILL NEED TO EXTEND LOGIC
+        assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
+        return latest_experiment_node_versions
+
+
+    def __new_spec_nodev__(self):
+        latest_experiment_node_versions = self.__get_recent_specnodev__()
+
+        self.specnodev = self.xp_state.gc.create_node_version(self.specnode.get_id(), tags={
+            'timestamp':
+                {
+                    'key': 'timestamp',
+                    'value': datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+                    'type': 'STRING'
+                },
+            'commitHash':
+                {
+                    'key': 'commitHash',
+                    'value': self.__get_sha__(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME),
+                    'type': 'STRING',
+                },
+            'sequenceNumber':  # potentially unneeded...can't find a good way to get sequence number
+                {
+                    'key': 'sequenceNumber',
+                    'value': "0",  # fixme given a commit hash we'll have to search through for existing CH
+                    'type': 'STRING',
+                },
+            'prepostExec':
+                {
+                    'key': 'prepostExec',
+                    'value': 'Post',  # change to 'Post' after exec
+                    'type': 'STRING',
+                }
+        }, parent_ids=latest_experiment_node_versions)
+
+    def __safeCreateGetNode__(self, sourceKey, name, tags=None):
+        # Work around small bug in ground client
+        try:
+            n = self.xp_state.gc.get_node(sourceKey)
+            if n is None:
+                n = self.xp_state.gc.create_node(sourceKey, name, tags)
+        except:
+            n = self.xp_state.gc.create_node(sourceKey, name, tags)
+
+    def __safeCreateGetEdge__(self, sourceKey, name, fromNodeId, toNodeId, tags=None):
+        try:
+            n = self.xp_state.gc.get_edge(sourceKey)
+            if n is None:
+                n = self.xp_state.gc.create_edge(sourceKey, name, fromNodeId, toNodeId, tags)
+        except:
+            n = self.xp_state.gc.create_edge(sourceKey, name, fromNodeId, toNodeId, tags)
+
+        return n
+
+    def __safeCreateGetNodeVersion__(self, sourceKey):
+        # Good for singleton node versions
+        try:
+            n = self.xp_state.gc.get_node_latest_versions(sourceKey)
+            if n is None or n == []:
+                node = self.xp_state.gc.get_node(sourceKey)
+                nodeid = node.get_id()
+                n = self.xp_state.gc.create_node_version(nodeid)
+            else:
+                assert len(n) == 1
+                return self.xp_state.gc.get_node_version(n[0])
+        except:
+            n = self.xp_state.gc.create_node_version(self.xp_state.gc.get_node(sourceKey).get_id())
+
+        return n
+
+    def __safeCreateLineage__(self, sourceKey, name, tags=None):
+        try:
+            n = self.xp_state.gc.get_lineage_edge(sourceKey)
+            if n is None or n == []:
+                n = self.xp_state.gc.create_lineage_edge(sourceKey, name, tags)
+        except:
+            n = self.xp_state.gc.create_lineage_edge(sourceKey, name, tags)
+        return n
+
+    @staticmethod
+    def __stringify__(v):
+         # https://stackoverflow.com/a/22505259/9420936
+        return hashlib.md5(json.dumps(str(v) , sort_keys=True).encode('utf-8')).hexdigest()
+
+    @staticmethod
+    def __get_sha__(directory):
+        # FIXME: output contains the correct thing, but there is no version directory yet...
+        original = os.getcwd()
+        os.chdir(directory)
+        output = subprocess.check_output('git log -1 --format=format:%H'.split()).decode()
+        os.chdir(original)
+        return output
+    @staticmethod
+    def __find_outputs__(end):
+        to_list = []
+        for child in end.out_artifacts:
+            to_list.append(child)
+        return to_list
+
+class CommitTracker(ContextTracker):
+
+    def __init__(self, xp_state):
+        super().__init__(xp_state)
+
+    def commit(self):
+        self.__new_spec_nodev__()
+
+        starts: Set[Union[Artifact, Literal]] = self.xp_state.eg.starts
+        for node in starts:
+            if type(node) == Literal:
+                sourcekeyLit = self.sourcekeySpec + '.literal.' + node.name
+                litnode = self.__safeCreateGetNode__(sourcekeyLit, sourcekeyLit)
+                e1 = self.__safeCreateGetEdge__(sourcekeyLit, "null", self.specnode.get_id(), litnode.get_id())
+
+                litnodev = self.xp_state.gc.create_node_version(litnode.get_id())
+                self.xp_state.gc.create_edge_version(e1.get_id(), self.specnodev.get_id(), litnodev.get_id())
+
+                if node.__oneByOne__:
+                    for i, v in enumerate(node.v):
+                        sourcekeyBind = sourcekeyLit + '.' + self.__stringify__(v)
+                        bindnode = self.__safeCreateGetNode__(sourcekeyBind, sourcekeyLit, tags={
+                            'value':
+                                {
+                                    'key': 'value',
+                                    'value': str(v),
+                                    'type': 'STRING'
+                                }})
+                        e3 = self.__safeCreateGetEdge__(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                        # Bindings are singleton node versions
+                        #   Facilitates backward lookup (All trials with alpha=0.0)
+
+                        bindnodev = self.__safeCreateGetNodeVersion__(sourcekeyBind)
+                        self.xp_state.gc.create_edge_version(e3.get_id(), litnodev.get_id(), bindnodev.get_id())
+                else:
+                    sourcekeyBind = sourcekeyLit + '.' + self.__stringify__(node.v)
+                    bindnode = self.__safeCreateGetNode__(sourcekeyBind, "null", tags={
+                        'value':
+                            {
+                                'key': 'value',
+                                'value': str(node.v),
+                                'type': 'STRING'
+                            }})
+                    e4 = self.__safeCreateGetEdge__(sourcekeyBind, "null", litnode.get_id(), bindnode.get_id())
+
+                    # Bindings are singleton node versions
+
+                    bindnodev = self.__safeCreateGetNodeVersion__(sourcekeyBind)
+                    self.xp_state.gc.create_edge_version(e4.get_id(), litnodev.get_id(), bindnodev.get_id())
+
+            elif type(node) == Artifact:
+                sourcekeyArt = self.sourcekeySpec + '.artifact.' + self.__stringify__(node.loc)
+                artnode = self.__safeCreateGetNode__(sourcekeyArt, "null")
+                e2 = self.__safeCreateGetEdge__(sourcekeyArt, "null", self.specnode.get_id(), artnode.get_id())
+
+                # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
+
+                artnodev = self.xp_state.gc.create_node_version(artnode.get_id(), tags={
+                    'checksum': {
+                        'key': 'checksum',
+                        'value': util.md5(node.loc),
+                        'type': 'STRING'
+                    }
+                })
+                self.xp_state.gc.create_edge_version(e2.get_id(), self.specnodev.get_id(), artnodev.get_id())
+
+            else:
+                raise TypeError(
+                    "Action cannot be in set: starts")
+
+class PullTracker(ContextTracker):
+
+    def __init__(self, xp_state):
+        super().__init__(xp_state)
+
+    def __get_num_trails__(self):
+        return len([each for each in os.listdir(self.versioning_directory) if util.isNumber(each)])
+
+    def pull(self, loc):
+        arts = self.xp_state.eg.d.keys() - self.xp_state.eg.starts
+
+        for art in arts:
+            if type(art) == Artifact and art.loc == loc:
+                outputs = self.__find_outputs__(art.parent)
+        # Outputs is your list of final artifacts
+
+        # PullNode
+        pullspec = self.sourcekeySpec + '.pull'
+        pullnode = self.__safeCreateGetNode__(pullspec, pullspec)
+
+        # SpecNode -> PullNode
+        e1 = self.__safeCreateGetEdge__(pullspec, "null", self.specnode.get_id(), pullnode.get_id())
+
+        # Version: SpecNodev -> PullNodeV
+        specnodev_id = self.__get_recent_specnodev__()[0]   # ASSUME: NO FORK
+        pullnodev = self.xp_state.gc.create_node_version(pullnode.get_id(), tags = {
+            'timestamp':
+                {
+                    'key': 'timestamp',
+                    'value': datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+                    'type': 'STRING'
+                }
+        })
+        self.xp_state.gc.create_edge_version(e1.get_id(), specnodev_id, pullnodev.get_id())
+
+        # TrialNode
+        trialspec = pullspec + '.trial'
+        trialnode = self.__safeCreateGetNode__(trialspec, trialspec)
+
+        # PullNode -> TrialNode
+        e2 = self.__safeCreateGetEdge__(trialspec, "null", pullnode.get_id(), trialnode.get_id())
+
+        # Version: PullNodeV {> TrialNodeV
+        trial_node_versions = []
+        for i in range(self.__get_num_trails__()):
+            trialnodev = self.xp_state.gc.create_node_version(trialnode.get_id())
+            trial_node_versions.append(trialnodev)
+            self.xp_state.gc.create_edge_version(e2.get_id(), pullnodev.get_id(), trialnodev.get_id())
+
+        # Prepare the necessary lineage edges
+        starting_literal = self.__safeCreateLineage__("starting_literal", "starting_literal")
+        starting_artifact = self.__safeCreateLineage__("starting_artifact", "starting_artifact")
+
+        # Lineage-Edge Link Trial to Elements in the Start set (black dashed-lines in whiteboard diagram)
+        for i, trialnodev in enumerate(trial_node_versions):
+            with util.chinto(os.path.join(self.versioning_directory, str(i))):
+                eg = eg_deserialize()
+                for start in eg.starts:
+                    if type(start) == Literal:
+                        if start.__oneByOne__:
+                            for j, v in enumerate(start.v):
+                                sourcekeybind = self.sourcekeySpec + '.literal.' + start.name + \
+                                            '.' + self.__stringify__(v)
+                                lvs = self.xp_state.gc.get_node_latest_versions(sourcekeybind)
+                                assert len(lvs) == 1
+                                lv = lvs[0]
+                                self.xp_state.gc.create_lineage_edge_version(starting_literal.get_id(), lv.get_id(),
+                                                                             trialnodev.get_id())
+                        else:
+                            sourcekeybind = self.sourcekeySpec + '.literal.' + start.name + \
+                                            '.' + self.__stringify__(start.v)
+                            lvs = self.xp_state.gc.get_node_latest_versions(sourcekeybind)
+                            assert len(lvs) == 1
+                            lv = lvs[0]
+                            # GRIT COMPATIBLE
+                            self.xp_state.gc.create_lineage_edge_version(starting_literal.get_id(), lv.get_id(),
+                                                                         trialnodev.get_id())
+                    else:
+                        # TYPE ARTIFACT
+                        # TODO: THIS IMPLEMENTATION IS PENDING A CORRECT CONTEXTUALIZATION OF ARTIFACTS
+                        pass
+
+        # Lineage-Edge Link Resources and Artifacts (FlorPlan Dag in Ground).
+
+        # DEFER LINKING PULL TO pulled artifact
+
 
 
 def commit(xp_state : State):
@@ -1032,140 +1309,3 @@ def pull(xp_state : State, loc):
         os.chdir('..')
 
     os.chdir(original)
-
-
-def __tags_equal__(groundtag, mytag):
-    groundtagprime = {}
-    for kee in groundtag:
-        groundtagprime[kee] = {}
-        for kii in groundtag[kee]:
-            if kii != 'id':
-                groundtagprime[kee][kii] = groundtag[kee][kii]
-    return groundtagprime == mytag
-
-def newExperimentVersion(xp_state: State):
-    # -- caution with fixed values like 'florExperiment', allowing for early Ground Ref prototype
-
-    # The name of this experiment is in a tag in the nodeVersion of 'florExperiment'
-    latest_experiment_node_versions = [x for x in xp_state.gc.getNodeLatestVersions('florExperiment')
-                                       if xp_state.gc.getNodeVersion(x).get_tags()['experimentName'][
-                                           'value'] == xp_state.EXPERIMENT_NAME]
-
-    # This experiment may have previous versions, then the most recents are the parents
-    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('florExperiment').get_id(),
-                                       tags={
-                                           'experimentName': {
-                                               'key': 'experimentName',
-                                               'value': xp_state.EXPERIMENT_NAME,
-                                               'type': 'STRING'
-                                           }},
-                                       parentIds=latest_experiment_node_versions)
-
-def newTrialVersion(xp_state : State, literals, artifacts):
-
-    my_tag = {}
-    for i, kee in enumerate(literals):
-        my_tag['literalName' + str(i)] = {
-            'key' : 'literalName' + str(i),
-            'value': kee,
-            'type': 'STRING'
-        }
-        my_tag['literalValue' + str(i)] = {
-            'key' : 'literalValue' + str(i),
-            'value' : str(literals[kee]),
-            'type' : 'STRING'
-        }
-    for i, kee in enumerate(artifacts):
-        my_tag['artifactName' + str(i)] = {
-            'key' : 'artifactName' + str(i),
-            'value': kee,
-            'type': 'STRING'
-        }
-        my_tag['artifactMD5_' + str(i)] = {
-            'key' : 'artifactMD5_' + str(i),
-            'value' : artifacts[kee],
-            'type' : 'STRING'
-        }
-
-    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('florTrial').get_id(),
-                                         tags=my_tag)
-
-def newLiteralVersion(xp_state : State , literalName, literalValue):
-
-    my_tag = {     'literalName' : {
-                         'key' : 'literalName',
-                         'value' : literalName,
-                         'type' : 'STRING'
-                     },
-                     'literalValue' : {
-                         'key': 'literalValue',
-                         'value' : str(literalValue),
-                         'type' : 'STRING'
-                     }
-                 }
-
-    candidate_nvs = [xp_state.gc.getNodeVersion(str(x)) for x in xp_state.gc.getNodeLatestVersions('florLiteral')
-                     if __tags_equal__(xp_state.gc.getNodeVersion(str(x)).get_tags(), my_tag)]
-    assert len(candidate_nvs) <= 1
-
-    if len(candidate_nvs) == 1:
-        return candidate_nvs[0]
-    else:
-        return xp_state.gc.createNodeVersion(xp_state.gc.getNode('florLiteral').get_id(),
-                                         tags = my_tag)
-
-def newArtifactVersion(xp_state : State, artifactName):
-    # Connect artifact versions to parents offline
-    # What's important at this level is the tags
-    # What artifact meta-data do we care about
-
-    my_tag = {
-                   'artifactName': {
-                       'key': 'artifactName',
-                       'value': artifactName,
-                       'type': 'STRING'
-                   }
-               }
-
-    candidate_nvs = [xp_state.gc.getNodeVersion(str(x)) for x in xp_state.gc.getNodeLatestVersions('florArtifact')
-                     if __tags_equal__(xp_state.gc.getNodeVersion(str(x)).get_tags(), my_tag)]
-    assert len(candidate_nvs) <= 1
-
-    if len(candidate_nvs) == 1:
-        return candidate_nvs[0]
-    else:
-        return xp_state.gc.createNodeVersion(xp_state.gc.getNode('florArtifact').get_id(),
-                                       tags=my_tag)
-
-def newActionVersion(xp_state : State, actionName):
-    my_tag = {     'actionName' : {
-                         'key' : 'actionName',
-                         'value' : actionName,
-                         'type' : 'STRING'
-                 }
-    }
-    return xp_state.gc.createNodeVersion(xp_state.gc.getNode('florAction').get_id(),
-                                         tags=my_tag)
-
-
-def newExperimentTrialEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florExperimentflorTrial')
-
-def newTrialLiteralEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florTrialflorLiteral')
-
-def newTrialArtifactEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florTrialflorArtifact')
-
-def newLiteralActionEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florLiteralflorAction')
-
-def newArtifactActionEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florArtifactflorAction')
-
-def newActionArtifactEdgeVersion(xp_state : State, fromNv, toNv):
-    return __newEdgeVersion__(xp_state, fromNv, toNv, 'florActionflorArtifact')
-
-def __newEdgeVersion__(xp_state : State, fromNv, toNv, edgeKey):
-    return xp_state.gc.createEdgeVersion(xp_state.gc.getEdge(edgeKey).get_id(),
-                                         fromNv.get_id(), toNv.get_id())
