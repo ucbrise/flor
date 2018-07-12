@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import dill
+from flor.object_model import *
 
 class ExperimentGraph:
 
@@ -12,7 +13,8 @@ class ExperimentGraph:
     def node(self, v):
         assert v not in self.d
         self.d[v] = set([])
-        self.starts |= {v,}
+        if type(v) != Action:
+            self.starts |= {v,}
 
     def edge(self, u, v):
         assert u in self.d

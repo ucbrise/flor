@@ -32,9 +32,6 @@ class Artifact:
 
         self.xp_state = xp_state
 
-    def __commit__(self):
-         pass
-
     def __getLiteralsAttached__(self):
         # Reset visited for getLiteralsAttached graph traversal
         self.xp_state.visited = []
@@ -227,7 +224,7 @@ class Artifact:
             repo.index.commit('initial commit')
         os.chdir(original_dir)
 
-        self.__commit__()
+        
 
         if manifest:
             return pd.DataFrame(table_full)
@@ -363,9 +360,10 @@ class Artifact:
             repo.index.commit('initial commit')
         os.chdir(original_dir)
 
-        flor.above_ground.pull(self.xp_state, self.loc) #TODO: change this back potentially
+        # TODO: RE-enable context tracking
+        # flor.above_ground.pull(self.xp_state, self.loc) #TODO: change this back potentially
 
-        self.__commit__()
+        
 
 
     def peek(self, head=25, manifest={}, bindings = {}, func = lambda x: x):
@@ -500,7 +498,6 @@ class Artifact:
                 repo.index.commit('initial commit')
             os.chdir(original_dir)
 
-            self.__commit__()
             flor.above_ground.peek(self.xp_state, self.loc)
             return out
 

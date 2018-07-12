@@ -23,7 +23,34 @@ class ContextTracker(object):
         self.specnode = self.__safeCreateGetNode__(self.sourcekeySpec, "null")
         self.versioning_directory = os.path.join(self.xp_state.versioningDirectory, self.xp_state.EXPERIMENT_NAME)
 
+    def __get_artifact_version_parent__(self, this_spec_version, artifact_loc):
+        """
+        WARNING: This method may need more work
+        This method will play important role in Artifact version consolidation, backward provenance tracking
+        :param this_spec_version:
+        :return:
+        """
+        # WE DO NOT CURRENTLY SUPPORT MERGING (ONLY FORK) SO CAN HAVE AT MOST ONE PARENT
+        parentIds = this_spec_version.get_parent_ids()
+        if not parentIds:
+            return None
+        assert len(parentIds) == 1, "Too many candidate parents for the artifact version: {}".format(parentIds)
+        parentSpecNodeVId = parentIds[0]
+        result = self.xp_state.gc.get_node_version_adjacent_edge_versions(
+            parentSpecNodeVId, self.sourcekeySpec + '.artifact.' + self.__stringify__(artifact_loc))
+        result = result['outward']
+        assert len(result) == 1, "A spec node version can't have many outward edge versions to a {} artifact version.".format(artifact_loc)
+        result = result[0]
+        result.get_to_node_version_start_id()
+        return self.xp_state.gc.get_node_version(result.get_to_node_version_start_id())
+
     def __get_recent_specnodev__(self):
+        latest_experiment_node_versions = self.xp_state.gc.get_node_latest_versions(self.sourcekeySpec)
+        if latest_experiment_node_versions == []:
+            latest_experiment_node_versions = None
+        return latest_experiment_node_versions
+
+    def __get_recent_specnodev_id__(self):
         latest_experiment_node_versions = self.xp_state.gc.get_node_latest_versions(self.sourcekeySpec)
         if latest_experiment_node_versions == []:
             latest_experiment_node_versions = None
@@ -33,13 +60,16 @@ class ContextTracker(object):
                 [int(i) for i in latest_experiment_node_versions]
             except:
                 latest_experiment_node_versions = [i.get_id() for i in latest_experiment_node_versions]
-        # THIS ASSERTION WILL FAIL ONCE WE SUPPORT FORK, WILL NEED TO EXTEND LOGIC
-        assert latest_experiment_node_versions is None or len(latest_experiment_node_versions) == 1
         return latest_experiment_node_versions
 
 
     def __new_spec_nodev__(self):
         latest_experiment_node_versions = self.__get_recent_specnodev__()
+        if latest_experiment_node_versions and len(latest_experiment_node_versions) > 1:
+            maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in latest_experiment_node_versions])
+            latest_experiment_node_versions = list(filter(lambda x: x.get_tags()['timestamp'].get_value() == maxtstamp, latest_experiment_node_versions))
+        assert len(latest_experiment_node_versions) == 1, "Error, multiple latest specnode versions have equal timestamps"
+        parent_ids = [latest_experiment_node_versions[0].get_id()]
 
         self.specnodev = self.xp_state.gc.create_node_version(self.specnode.get_id(), tags={
             'timestamp':
@@ -66,7 +96,7 @@ class ContextTracker(object):
                     'value': 'Post',  # change to 'Post' after exec
                     'type': 'STRING',
                 }
-        }, parent_ids=latest_experiment_node_versions)
+        }, parent_ids=parent_ids)
 
     def __safeCreateGetNode__(self, sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -223,11 +253,17 @@ class PullTracker(ContextTracker):
         pullspec = self.sourcekeySpec + '.pull'
         pullnode = self.__safeCreateGetNode__(pullspec, pullspec)
 
-        # SpecNode -> PullNode
-        e1 = self.__safeCreateGetEdge__(pullspec, "null", self.specnode.get_id(), pullnode.get_id())
+        # PullNode -> SpecNode
+        e1 = self.__safeCreateGetEdge__(pullspec, "null", pullnode.get_id(), self.specnode.get_id())
 
-        # Version: SpecNodev -> PullNodeV
-        specnodev_id = self.__get_recent_specnodev__()[0]   # ASSUME: NO FORK
+        # Version: PullNodeV -> SpecNodeV
+        specnodev = self.__get_recent_specnodev__()
+        if specnodev and len(specnodev) > 1:
+            maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in specnodev])
+            specnodev = list(filter(lambda x: x.get_tags()['timestamp'].get_value() == maxtstamp, specnodev))
+        assert len(specnodev) == 1, "Error, multiple latest specnode versions have equal timestamps"
+        specnodev = specnodev[0]
+        specnodev_id = specnodev.get_id()
         pullnodev = self.xp_state.gc.create_node_version(pullnode.get_id(), tags = {
             'timestamp':
                 {
@@ -236,7 +272,7 @@ class PullTracker(ContextTracker):
                     'type': 'STRING'
                 }
         })
-        self.xp_state.gc.create_edge_version(e1.get_id(), specnodev_id, pullnodev.get_id())
+        self.xp_state.gc.create_edge_version(e1.get_id(), pullnodev.get_id(), specnodev_id)
 
         # TrialNode
         trialspec = pullspec + '.trial'
@@ -254,7 +290,6 @@ class PullTracker(ContextTracker):
 
         # Prepare the necessary lineage edges
         starting_literal = self.__safeCreateLineage__("starting_literal", "starting_literal")
-        starting_artifact = self.__safeCreateLineage__("starting_artifact", "starting_artifact")
 
         # Lineage-Edge Link Trial to Elements in the Start set (black dashed-lines in whiteboard diagram)
         for i, trialnodev in enumerate(trial_node_versions):
@@ -262,6 +297,7 @@ class PullTracker(ContextTracker):
                 eg = eg_deserialize()
                 for start in eg.starts:
                     if type(start) == Literal:
+                        # WRONG: Don't bind a trial version to every binding; only to ITS bindings!!
                         if start.__oneByOne__:
                             for j, v in enumerate(start.v):
                                 sourcekeybind = self.sourcekeySpec + '.literal.' + start.name + \
@@ -281,9 +317,9 @@ class PullTracker(ContextTracker):
                             self.xp_state.gc.create_lineage_edge_version(starting_literal.get_id(), lv.get_id(),
                                                                          trialnodev.get_id())
                     else:
-                        # TYPE ARTIFACT
-                        # TODO: THIS IMPLEMENTATION IS PENDING A CORRECT CONTEXTUALIZATION OF ARTIFACTS
+                        # NOTHING TO DO, we know which artifacts are resources because pull-node-version -> spec-node-version -> artifact_name-version
                         pass
+
 
         # Lineage-Edge Link Resources and Artifacts (FlorPlan Dag in Ground).
 
