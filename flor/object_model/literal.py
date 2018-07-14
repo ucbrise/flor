@@ -17,6 +17,9 @@ class Literal:
         self.i = 0
         self.n = 1
 
+        # TODO
+        self.parent = None
+
         # If no default passed in, set default to the entire literal.
         # Note that if the literal is of for each type, we will change the default in for each.
         if default is None:

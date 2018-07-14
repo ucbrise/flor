@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
 
-from typing import List
-from .. import util
-from .literal import Literal
-from .artifact import Artifact
+from typing import List, Union
+from flor import util
+from flor.object_model import *
 
-from ..viz import VizNode, VizGraph
+from flor.viz import VizNode, VizGraph
 
 class Action:
 
     def __init__(self, func, in_artifacts, xp_state):
         self.filenameWithFunc, self.funcName, self.func = func
-        self.out_artifacts : List[Artifact] = []
+        self.out_artifacts : List[Union[Artifact, Literal]] = []
         self.in_artifacts = in_artifacts
         self.xp_state = xp_state
 
-    def __run__(self, loclist, scriptNames, literalNames={}):
+    def __get_output_names__(self):
         outNames = ''
         for out_artifact in self.out_artifacts:
-            outNames += out_artifact.loc
+            if type(out_artifact) == Artifact:
+                outNames += out_artifact.loc
+            elif type(out_artifact) == Literal:
+                outNames += out_artifact.name
+            else:
+                raise TypeError("{} is invalid, must be Artifact or Literal".format(type(out_artifact)))
+
+    def __run__(self, loclist, scriptNames, literalNames={}):
+        # TODO: update after Literal change semantics
+        outNames = self.__get_output_names__()
         if self.funcName + outNames in self.xp_state.visited:
             return
         scriptNames.append(self.filenameWithFunc)
@@ -33,9 +41,8 @@ class Action:
         self.xp_state.visited.append(self.funcName + outNames)
 
     def __getLiteralsAttached__(self, literalsAttachedNames):
-        outNames = ''
-        for out_artifact in self.out_artifacts:
-            outNames += out_artifact.loc
+        # Updated
+        outNames = self.__get_output_names__()
         if self.funcName + outNames in self.xp_state.visited:
             return
         if self.in_artifacts:
@@ -46,16 +53,16 @@ class Action:
                     literalsAttachedNames.append(artifact.name)
 
     def __serialize__(self, lambdas, loclist, scriptNames):
-        outNames = ''
+        # TODO
+        outNames = self.__get_output_names__()
         namedLiterals = []
-        for out_artifact in self.out_artifacts:
-            outNames += out_artifact.loc
         if self.funcName + outNames in self.xp_state.visited:
             return
         scriptNames.append(self.filenameWithFunc)
         if self.in_artifacts:
             for artifact in self.in_artifacts:
-                loclist.append(artifact.loc)
+                if type(artifact) == Artifact:
+                    loclist.append(artifact.loc)
                 if not util.isOrphan(artifact):
                     artifact.parent.__serialize__(lambdas, loclist, scriptNames)
                 elif type(artifact) == Literal:

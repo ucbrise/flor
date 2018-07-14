@@ -115,7 +115,7 @@ class Experiment(object):
                         in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
             in_artifacts = temp_artifacts
-        act =  Action(func, in_artifacts, self.xp_state)
+        act = Action(func, in_artifacts, self.xp_state)
         self.xp_state.eg.node(act)
         if in_artifacts:
             for in_art in in_artifacts:

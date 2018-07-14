@@ -243,7 +243,7 @@ class Artifact:
             os.mkdir(tmpexperiment)
 
         self.xp_state.visited = []
-        util.activate(self)
+        util.activate(self)ƒ
         userDefFiles = set(os.listdir()) - self.xp_state.ghostFiles
         experimentName = self.xp_state.EXPERIMENT_NAME
         try:

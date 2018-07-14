@@ -7,7 +7,33 @@ from flor import global_state
 from sklearn.externals import joblib
 
 
-def func(lambdah):
+def func(foo: function):
+    if global_state.interactive:
+        if global_state.nb_name is None:
+            raise ValueError("Please call flor.setNotebookName")
+        filename = global_state.nb_name
+    else:
+        filename = inspect.getsourcefile(foo).split('/')[-1]
+
+    def wrapped_func(inputs, out_paths, cnt_out_literals):
+        if inputs is None:
+            inputs = []
+        if out_paths is None:
+            out_paths = []
+        out_values = foo(*inputs, *out_paths)
+
+        if ((util.isIterable(out_values) and cnt_out_literals == 1)
+                or (not util.isIterable(out_values) and out_values is not None)):
+            out_values = [out_values, ]
+        elif out_values is None:
+            out_values = []
+
+        return out_values
+
+    return filename, foo.__name__, wrapped_func
+
+
+def deprecated_func(lambdah):
     if global_state.interactive:
         if global_state.nb_name is None:
             raise ValueError("Please call flor.setNotebookName")

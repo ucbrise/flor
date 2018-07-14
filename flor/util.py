@@ -57,7 +57,7 @@ def unpickle(loc):
     return x
 
 def isOrphan(obj):
-    return type(obj) == Literal or (type(obj) == Artifact and obj.parent is None)
+    return Literal.parent is None
 
 def isNumber(s):
     if type(s) == int or type(s) == float:
