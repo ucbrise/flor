@@ -3,10 +3,9 @@ import flor
 
 with flor.Experiment('plate_demo') as ex:
 
-    ex.groundClient('git')
-    ones = ex.literalForEach([1, 2, 3], "ones", default=3)
+    ones = ex.literalForEach(v=[1, 2, 3], name="ones", default=3)
 
-    tens = ex.literalForEach([10, 100], "tens", default=10)
+    tens = ex.literalForEach(v=[10, 100], name="tens", default=10)
 
     @flor.func
     def multiply(x, y):
@@ -15,7 +14,7 @@ with flor.Experiment('plate_demo') as ex:
         return z
 
     doMultiply = ex.action(multiply, [ones, tens])
-    product = ex.artifact('product.txt', doMultiply)
+    product = ex.literal(name="product", parent=doMultiply)
 
 product.plot()
 

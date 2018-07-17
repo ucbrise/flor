@@ -66,8 +66,6 @@ class MyDigraph:
             f.write('}\n')
 
 
-
-
 class VizNode:
     def __init__(self, id: str, name : str,
                  shape: str, next : List['VizNode'],
@@ -112,7 +110,7 @@ class VizGraph:
 
     def __init__(self):
         # Start is a list of orphan Literal and Artifacts
-        self.start : List[VizNode] = []
+        self.start: List[VizNode] = []
         self.dot = MyDigraph(name='source')
         self.counter = 0
         self.plate_heads = {}
@@ -123,7 +121,7 @@ class VizGraph:
     def bfs(self):
         explored = []
         queue = [i for i in self.start]
-        visited = lambda : explored + queue
+        visited = lambda: explored + queue
 
         while queue:
             node = queue.pop(0)
@@ -133,10 +131,9 @@ class VizGraph:
                 pls = node.plate_label_source
                 self.clusters[(pl, pls)] = MyDigraph(name='cluster' + pl+pls, node_attr={'shape': 'box'}, label=node.plate_label)
 
-            if node.shape == 'underline':
+            if node.shape == 'underline' and node in self.start:
                 node.plate_label = None
                 node.plate_label_source = None
-
 
             explored.append(node)
 
