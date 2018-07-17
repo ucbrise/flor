@@ -4,7 +4,6 @@ import subprocess
 import pickle
 import hashlib
 import os
-from flor.object_model import *
 
 from typing import List
 
@@ -16,15 +15,14 @@ def isLoc(loc):
     except:
         return False
 
+
 def isFlorClass(obj):
-    from flor.object_model.artifact import Artifact
-    from flor.object_model.action import Action
-    from flor.object_model.literal import Literal
-    return type(obj) == Artifact or type(obj) == Action or type(obj) == Literal
+    return type(obj).__name__ == "Artifact" or type(obj).__name__ == "Action" or type(obj).__name__ == "Literal"
+
 
 def isLiteral(obj):
-    from flor.object_model.literal import Literal
-    return type(obj) == Literal
+    return type(obj).__name__ == "Literal"
+
 
 def isPickle(loc):
     try:
@@ -32,17 +30,21 @@ def isPickle(loc):
     except:
         return False
 
+
 def isCsv(loc):
     try:
         return loc.split('.')[1] == 'csv'
     except:
         return False
 
+
 def isIpynb(loc):
     return loc.split('.')[1] == 'ipynb'
 
+
 def isIterable(obj):
     return type(obj) == list or type(obj) == tuple
+
 
 def runProc(bashCommand):
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
@@ -52,17 +54,21 @@ def runProc(bashCommand):
     except:
         return output
 
+
 def pickleTo(obj, loc):
     with open(loc, 'wb') as f:
         pickle.dump(obj, f)
+
 
 def unpickle(loc):
     with open(loc, 'rb') as f:
         x = pickle.load(f)
     return x
 
+
 def isOrphan(obj):
     return obj.parent is None
+
 
 def isNumber(s):
     if type(s) == int or type(s) == float:
@@ -72,6 +78,7 @@ def isNumber(s):
         return True
     except:
         return False
+
 
 def loadArtifact(loc):
     if isPickle(loc):
@@ -85,6 +92,7 @@ def loadArtifact(loc):
         raise NotImplementedError("Don't know how to load that file.")
     return x
 
+
 def master_pop(literals):
     if not literals:
         return True
@@ -96,6 +104,7 @@ def master_pop(literals):
         [literal.__reset__() for literal in literals[0:-1]]
     return False
 
+
 def activate(pseudoArtifact):
     from flor.object_model.literal import Literal
     if type(pseudoArtifact) == Literal:
@@ -104,6 +113,7 @@ def activate(pseudoArtifact):
         for in_art in pseudoArtifact.parent.in_artifacts:
             activate(in_art)
 
+
 def md5(fname):
     # Credit: https://stackoverflow.com/a/3431838
     hash_md5 = hashlib.md5()
@@ -111,6 +121,7 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def plating(in_artifacts):
     multiplier = []
@@ -123,6 +134,7 @@ def plating(in_artifacts):
     if plate_label:
         return plate_label
     return None
+
 
 class chinto(object):
     def __init__(self, target):
