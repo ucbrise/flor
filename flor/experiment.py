@@ -23,9 +23,10 @@ from shutil import rmtree
 from shutil import move
 import requests
 
+
 class Experiment(object):
 
-    def __init__(self, name):
+    def __init__(self, name, backend="git"):
         self.xp_state = State()
         self.xp_state.EXPERIMENT_NAME = name
         self.xp_state.eg = ExperimentGraph()
@@ -39,6 +40,9 @@ class Experiment(object):
                 target_dir = '/'.join(filename.split('/')[0:-1])
                 if target_dir:
                     os.chdir(target_dir)
+
+        if backend:
+            self.groundClient(backend)
 
     def __enter__(self):
         return self
@@ -64,7 +68,6 @@ class Experiment(object):
         os.chdir(original)
         ag.commit(self.xp_state)
 
-
     def groundClient(self, backend):
         backend = backend.lower().strip()
         if backend == "ground":
@@ -83,23 +86,41 @@ class Experiment(object):
         else:
             raise ModuleNotFoundError("Only 'git' or 'ground' backends supported, but '{}' entered".format(backend))
 
-    def literal(self, v, name=None):
-        lit = Literal(v, name, self.xp_state)
+    def literal(self, v=None, name=None, parent=None):
+        # TODO: consistency verification value and parent
+        if v is None and parent is None:
+            raise ValueError("The value or the parent of the literal must be set")
+        if v is not None and parent is not None:
+            raise ValueError("A literal with a value may not have a parent")
+        lit = Literal(v, name, parent, self.xp_state, default=None)
         self.xp_state.eg.node(lit)
+
+        if parent:
+            self.xp_state.eg.edge(parent, lit)
 
         return lit
 
-    def literalForEach(self, v, name=None, default = None):
-        lit = Literal(v, name, self.xp_state, default)
+    def literalForEach(self, v=None, name=None, parent=None, default=None):
+        #TODO
+        if v is None and parent is None:
+            raise ValueError("The value or the parent of the literal must be set")
+        if v is not None and parent is not None:
+            raise ValueError("A literal with a value may not have a parent")
+        lit = Literal(v, name, parent, self.xp_state, default)
         self.xp_state.eg.node(lit)
         lit.__forEach__()
+
+        if parent:
+            self.xp_state.eg.edge(parent, lit)
+
         return lit
 
     def artifact(self, loc, parent=None, manifest=False):
         art = Artifact(loc, parent, manifest, self.xp_state)
         self.xp_state.eg.node(art)
+
         if parent:
-           self.xp_state.eg.edge(parent, art)
+            self.xp_state.eg.edge(parent, art)
 
         return art
 
@@ -123,66 +144,66 @@ class Experiment(object):
 
         return act
 
-    def plate(self, name):
-        return Plate(self, name)
+    # def plate(self, name):
+    #     return Plate(self, name)
 
-class Plate:
-
-    def __init__(self, experiment, name):
-        self.experiment = experiment
-        self.name = name + '.pkl'
-        self.artifacts = []
-
-    def artifact(self, loc, parent=None, manifest=False):
-        artifact = self.experiment.artifact(loc, parent, manifest)
-        self.artifacts.append(artifact)
-        return artifact
-
-    def action(self, func, in_artifacts=None):
-        return self.experiment.action(func, in_artifacts)
-
-    def exit(self):
-
-        @func
-        def plate_aggregate(*args):
-            original_dir = os.getcwd()
-            os.chdir(self.experiment.xp_state.tmpexperiment)
-            dirs = [x for x in os.listdir() if util.isNumber(x)]
-            table = []
-
-            # NOTE: Use the flor.Experiment experimentName in the future
-            experimentName = self.experiment.xp_state.florFile.split('.')[0]
-
-            literalNames = self.experiment.xp_state.ray['literalNames']
-
-            for trial in dirs:
-                os.chdir(trial)
-                with open('.' + experimentName + '.flor', 'r') as fp:
-                    config = json.load(fp)
-                record = {}
-                for literalName in literalNames:
-                    record[literalName] = config[literalName]
-                for artifact in self.artifacts:
-                    while True:
-                        try:
-                            # I need to wait for every to finish. not just this one.
-                            record[artifact.loc.split('.')[0]] = util.loadArtifact(artifact.loc)
-                            break
-                        except:
-                            time.sleep(5)
-                    if util.isNumber(record[artifact.loc.split('.')[0]]):
-                        record[artifact.loc.split('.')[0]] = eval(record[artifact.loc.split('.')[0]])
-                table.append(record)
-                os.chdir('../')
-
-            os.chdir(original_dir)
-
-            return pd.DataFrame(table)
-
-        plate_aggregate = (self.experiment.xp_state.florFile, plate_aggregate[1], plate_aggregate[2])
-
-        do_action = self.experiment.action(plate_aggregate, self.artifacts)
-        artifact_df = self.experiment.artifact(self.name, do_action)
-
-        return artifact_df
-
+# class Plate:
+#
+#     def __init__(self, experiment, name):
+#         self.experiment = experiment
+#         self.name = name + '.pkl'
+#         self.artifacts = []
+#
+#     def artifact(self, loc, parent=None, manifest=False):
+#         artifact = self.experiment.artifact(loc, parent, manifest)
+#         self.artifacts.append(artifact)
+#         return artifact
+#
+#     def action(self, func, in_artifacts=None):
+#         return self.experiment.action(func, in_artifacts)
+#
+#     def exit(self):
+#
+#         @func
+#         def plate_aggregate(*args):
+#             original_dir = os.getcwd()
+#             os.chdir(self.experiment.xp_state.tmpexperiment)
+#             dirs = [x for x in os.listdir() if util.isNumber(x)]
+#             table = []
+#
+#             # NOTE: Use the flor.Experiment experimentName in the future
+#             experimentName = self.experiment.xp_state.florFile.split('.')[0]
+#
+#             literalNames = self.experiment.xp_state.ray['literalNames']
+#
+#             for trial in dirs:
+#                 os.chdir(trial)
+#                 with open('.' + experimentName + '.flor', 'r') as fp:
+#                     config = json.load(fp)
+#                 record = {}
+#                 for literalName in literalNames:
+#                     record[literalName] = config[literalName]
+#                 for artifact in self.artifacts:
+#                     while True:
+#                         try:
+#                             # I need to wait for every to finish. not just this one.
+#                             record[artifact.loc.split('.')[0]] = util.loadArtifact(artifact.loc)
+#                             break
+#                         except:
+#                             time.sleep(5)
+#                     if util.isNumber(record[artifact.loc.split('.')[0]]):
+#                         record[artifact.loc.split('.')[0]] = eval(record[artifact.loc.split('.')[0]])
+#                 table.append(record)
+#                 os.chdir('../')
+#
+#             os.chdir(original_dir)
+#
+#             return pd.DataFrame(table)
+#
+#         plate_aggregate = (self.experiment.xp_state.florFile, plate_aggregate[1], plate_aggregate[2])
+#
+#         do_action = self.experiment.action(plate_aggregate, self.artifacts)
+#         artifact_df = self.experiment.artifact(self.name, do_action)
+#
+#         return artifact_df
+#

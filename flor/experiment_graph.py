@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import dill
-from flor.object_model import *
+from flor.object_model.action import Action
 
 class ExperimentGraph:
 

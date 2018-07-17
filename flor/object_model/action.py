@@ -1,47 +1,43 @@
 #!/usr/bin/env python3
 
-from typing import List, Union
+from typing import List, Union, Tuple
 from flor import util
-from flor.object_model import *
 
 from flor.viz import VizNode, VizGraph
 
+
 class Action:
 
-    def __init__(self, func, in_artifacts, xp_state):
+    def __init__(self, func,
+                 in_artifacts,
+                 xp_state):
+        """
+        Initialize the action
+        :param func: flor decoracted function
+        :param in_artifacts: see type hints
+        :param xp_state: see type hints
+        """
         self.filenameWithFunc, self.funcName, self.func = func
-        self.out_artifacts : List[Union[Artifact, Literal]] = []
+        self.out_artifacts = []
         self.in_artifacts = in_artifacts
         self.xp_state = xp_state
 
     def __get_output_names__(self):
+        """
+        Get Output Artifact Loc / Literal Names as concat string
+        :return: see above
+        """
         outNames = ''
         for out_artifact in self.out_artifacts:
-            if type(out_artifact) == Artifact:
-                outNames += out_artifact.loc
-            elif type(out_artifact) == Literal:
-                outNames += out_artifact.name
-            else:
-                raise TypeError("{} is invalid, must be Artifact or Literal".format(type(out_artifact)))
-
-    def __run__(self, loclist, scriptNames, literalNames={}):
-        # TODO: update after Literal change semantics
-        outNames = self.__get_output_names__()
-        if self.funcName + outNames in self.xp_state.visited:
-            return
-        scriptNames.append(self.filenameWithFunc)
-        if self.in_artifacts:
-            for artifact in self.in_artifacts:
-                loclist.append(artifact.loc)
-                if type(artifact) == Literal:
-                    literalNames[artifact.name] = artifact.loc
-                if not util.isOrphan(artifact):
-                    artifact.parent.__run__(loclist, scriptNames, literalNames)
-        self.func(self.in_artifacts, self.out_artifacts)
-        self.xp_state.visited.append(self.funcName + outNames)
+            outNames += out_artifact.getLocation()
 
     def __getLiteralsAttached__(self, literalsAttachedNames):
-        # Updated
+        """
+        Gets the names of all the literals attached (with leaf at this action) and puts them in literalsAttachedNames
+        Not front-facing interface, see Artifact.
+        :param literalsAttachedNames: An empty list to be populated with the names of (orphan) literals attached
+        :return: None, output is written to literalsAttachedNames
+        """
         outNames = self.__get_output_names__()
         if self.funcName + outNames in self.xp_state.visited:
             return
@@ -49,46 +45,16 @@ class Action:
             for artifact in self.in_artifacts:
                 if not util.isOrphan(artifact):
                     artifact.parent.__getLiteralsAttached__(literalsAttachedNames)
-                elif type(artifact) == Literal:
+                elif type(artifact).__name__ == "Literal":
                     literalsAttachedNames.append(artifact.name)
 
-    def __serialize__(self, lambdas, loclist, scriptNames):
-        # TODO
-        outNames = self.__get_output_names__()
-        namedLiterals = []
-        if self.funcName + outNames in self.xp_state.visited:
-            return
-        scriptNames.append(self.filenameWithFunc)
-        if self.in_artifacts:
-            for artifact in self.in_artifacts:
-                if type(artifact) == Artifact:
-                    loclist.append(artifact.loc)
-                if not util.isOrphan(artifact):
-                    artifact.parent.__serialize__(lambdas, loclist, scriptNames)
-                elif type(artifact) == Literal:
-                    namedLiterals.append(artifact.name)
-
-        def _lambda(literals=[]):
-            i = 0
-            args = []
-            for in_art in self.in_artifacts:
-                if type(in_art) == Literal:
-                    args.append(literals[i])
-                    i += 1
-                else:
-                    args.append(in_art)
-            self.func(args, self.out_artifacts)
-
-        lambdas.append((_lambda, namedLiterals))
-        self.xp_state.visited.append(self.funcName + outNames)
-
     def __plotWalk__(self, graph: VizGraph) -> List[VizNode]:
-
+        # TODO: Code artifacts should be shared in Diagram.
         to_list = []
 
         for child in self.out_artifacts:
-            node = graph.newNode(child.loc, 'box', [])
-            self.xp_state.nodes[child.loc] = node
+            node = graph.newNode(child.getLocation(), child.get_shape(), [])
+            self.xp_state.nodes[child.getLocation] = node
             to_list.append(node)
 
         this = graph.newNode(self.funcName, 'ellipse', [i for i in to_list])
@@ -101,102 +67,22 @@ class Action:
             for artifact in self.in_artifacts:
                 if artifact.getLocation() in self.xp_state.nodes:
                     from_node = self.xp_state.nodes[artifact.getLocation()]
-                    if from_node.name in [art.getLocation() if type(art) == Artifact else art.name
-                                                  for art in self.in_artifacts]:
+                    if from_node.getLocation() in [art.getLocation() for art in self.in_artifacts]:
                         if this not in from_node.next:
                             from_node.next.append(this)
                 else:
                     if not util.isOrphan(artifact):
-                        from_nodes : List[VizNode] = artifact.parent.__plotWalk__(graph)
+                        from_nodes: List[VizNode] = artifact.parent.__plotWalk__(graph)
                         for from_node in from_nodes:
-                            interim = [art.getLocation() if type(art) == Artifact else art.name
-                                                  for art in self.in_artifacts]
+                            interim = [art.getLocation() for art in self.in_artifacts]
                             if from_node.name in interim:
                                 if this not in from_node.next:
                                     from_node.next.append(this)
                     else:
-                        if type(artifact) == Literal and artifact.name:
-                            node = graph.newNode(artifact.name, 'underline', [this,], util.plating([artifact]))
-                            graph.regis_orphan(node)
-                            self.xp_state.nodes[artifact.loc] = node
-                        elif type(artifact) == Literal :
-                            node = graph.newNode(artifact.loc, 'underline', [this,], util.plating([artifact]))
-                            graph.regis_orphan(node)
-                            self.xp_state.nodes[artifact.loc] = node
+                        if type(artifact).__name__ == "Literal":
+                            node = graph.newNode(artifact.getLocation(), artifact.get_shape(), [this,], util.plating([artifact]))
                         else:
-                            node = graph.newNode(artifact.loc, 'box', [this,])
-                            graph.regis_orphan(node)
-                            self.xp_state.nodes[artifact.loc] = node
-        return to_list
-
-
-    def __plotWalkOld__(self, diagram):
-        dot = diagram["dot"]
-
-        # Create nodes for the children
-        to_list = []
-
-
-        clust_i = str(diagram['counter'])
-        diagram['counter'] += 1
-        with dot.subgraph(name='cluster' + clust_i) as cluster:
-            # Prepare the children nodes
-            for child in self.out_artifacts:
-                node_diagram_id = str(diagram["counter"])
-                cluster.node(node_diagram_id, child.loc, shape="box")
-                self.xp_state.nodes[child.loc] = node_diagram_id
-                to_list.append((node_diagram_id, child.loc))
-                diagram["counter"] += 1
-
-            # Prepare this node
-            node_diagram_id = str(diagram["counter"])
-            cluster.node(node_diagram_id, self.funcName, shape="ellipse")
-            self.xp_state.nodes[self.funcName] = node_diagram_id
-            diagram["counter"] += 1
-
-            print(self.funcName, ' plating ', util.plating(self.in_artifacts))
-
-            # Add the script artifact
-            node_diagram_id_script = str(diagram["counter"])
-            dot.node(node_diagram_id_script, self.filenameWithFunc, shape="box")
-            diagram["counter"] += 1
-            dot.edge(node_diagram_id_script, node_diagram_id)
-            self.xp_state.edges.append((node_diagram_id_script, node_diagram_id))
-
-            for to_node, loc in to_list:
-                cluster.edge(node_diagram_id, to_node)
-                self.xp_state.edges.append((node_diagram_id, to_node))
-
-        if self.in_artifacts:
-            for artifact in self.in_artifacts:
-                if artifact.getLocation() in self.xp_state.nodes:
-                    if (self.xp_state.nodes[artifact.getLocation()], node_diagram_id) not in self.xp_state.edges:
-                        dot.edge(self.xp_state.nodes[artifact.getLocation()], node_diagram_id)
-                        self.xp_state.edges.append((self.xp_state.nodes[artifact.getLocation()], node_diagram_id))
-                else:
-                    # Never seen this artifact before
-                    if not util.isOrphan(artifact):
-                        from_nodes = artifact.parent.__plotWalk__(diagram)
-                        for from_node, loc in from_nodes:
-                            if loc in [art.getLocation() for art in self.in_artifacts]:
-                                if (from_node, node_diagram_id) not in self.xp_state.edges:
-                                    dot.edge(from_node, node_diagram_id)
-                                    self.xp_state.edges.append((from_node, node_diagram_id))
-                    else:
-                        node_diagram_id2 = str(diagram["counter"])
-                        if type(artifact) == Literal and artifact.name:
-                            dot.node(node_diagram_id2, artifact.name,
-                                     shape="underline")
-                        elif type(artifact) == Literal :
-                            dot.node(node_diagram_id2, artifact.loc,
-                                     shape="underline")
-                        else:
-                            dot.node(node_diagram_id2, artifact.loc,
-                                     shape="box")
-                        self.xp_state.nodes[artifact.loc] = node_diagram_id2
-                        diagram["counter"] += 1
-                        if (node_diagram_id2, node_diagram_id) not in self.xp_state.edges:
-                            dot.edge(node_diagram_id2, node_diagram_id)
-                            self.xp_state.edges.append((node_diagram_id2, node_diagram_id))
-
+                            node = graph.newNode(artifact.getLocation(), artifact.get_shape(), [this,])
+                        graph.regis_orphan(node)
+                        self.xp_state.nodes[artifact.getLocation()] = node
         return to_list

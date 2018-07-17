@@ -7,7 +7,11 @@ from flor import global_state
 from sklearn.externals import joblib
 
 
-def func(foo: function):
+def func(foo):
+    """
+    Function decorator
+    :param foo: Function
+    """
     if global_state.interactive:
         if global_state.nb_name is None:
             raise ValueError("Please call flor.setNotebookName")

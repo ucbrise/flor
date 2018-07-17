@@ -4,9 +4,10 @@ import subprocess
 import pickle
 import hashlib
 import os
+from flor.object_model import *
+
 from typing import List
 
-from .object_model import *
 
 def isLoc(loc):
     try:
@@ -16,9 +17,13 @@ def isLoc(loc):
         return False
 
 def isFlorClass(obj):
+    from flor.object_model.artifact import Artifact
+    from flor.object_model.action import Action
+    from flor.object_model.literal import Literal
     return type(obj) == Artifact or type(obj) == Action or type(obj) == Literal
 
 def isLiteral(obj):
+    from flor.object_model.literal import Literal
     return type(obj) == Literal
 
 def isPickle(loc):
@@ -57,7 +62,7 @@ def unpickle(loc):
     return x
 
 def isOrphan(obj):
-    return Literal.parent is None
+    return obj.parent is None
 
 def isNumber(s):
     if type(s) == int or type(s) == float:
@@ -92,6 +97,7 @@ def master_pop(literals):
     return False
 
 def activate(pseudoArtifact):
+    from flor.object_model.literal import Literal
     if type(pseudoArtifact) == Literal:
         pseudoArtifact.__enable__()
     elif not isOrphan(pseudoArtifact) and pseudoArtifact.parent.in_artifacts:
@@ -106,7 +112,7 @@ def md5(fname):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def plating(in_artifacts: List[Artifact]):
+def plating(in_artifacts):
     multiplier = []
     for _in in in_artifacts:
         if isLiteral(_in) and _in.__oneByOne__:
