@@ -3,14 +3,13 @@
 
 from typing import Dict
 
-from flor.object_model.action import Action
-from flor.object_model.resource import Resource
+from flor.shared_object_model.resource import Resource
 
 
 class Artifact(Resource):
 
     def __init__(self, loc: str,
-                 parent: Action,
+                 parent,
                  manifest: Dict[str, "Artifact"],
                  xp_state):
         """

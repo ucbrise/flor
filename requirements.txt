@@ -9,3 +9,4 @@ tqdm==4.19.5
 tensorflow==1.4.0
 msgpack==0.5.6
 msgpack-python==0.5.6
+cloudpickle==0.5.3

@@ -54,20 +54,20 @@ class Action:
 
         for child in self.out_artifacts:
             node = graph.newNode(child.getLocation(), child.get_shape(), [])
-            self.xp_state.nodes[child.getLocation] = node
+            self.xp_state.nodes[child.getLocation()] = node
             to_list.append(node)
 
         this = graph.newNode(self.funcName, 'ellipse', [i for i in to_list])
         self.xp_state.nodes[self.funcName] = this
 
-        scriptNode = graph.newNode(self.filenameWithFunc, 'box', [this,])
-        graph.regis_orphan(scriptNode)
+        # scriptNode = graph.newNode(self.filenameWithFunc, 'box', [this,])
+        # graph.regis_orphan(scriptNode)
 
         if self.in_artifacts:
             for artifact in self.in_artifacts:
                 if artifact.getLocation() in self.xp_state.nodes:
                     from_node = self.xp_state.nodes[artifact.getLocation()]
-                    if from_node.getLocation() in [art.getLocation() for art in self.in_artifacts]:
+                    if artifact.getLocation() in [art.getLocation() for art in self.in_artifacts]: #TODO: CLEAN UP
                         if this not in from_node.next:
                             from_node.next.append(this)
                 else:

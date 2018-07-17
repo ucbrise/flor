@@ -18,10 +18,10 @@ class Resource(object):
     def getLocation(self):
         raise NotImplementedError("Abstract method Resource.getLocation must be overridden")
 
-    def pull(self, manifest={}):
+    def pull(self, manifest=None):
         pass
 
-    def peek(self, head=25, manifest={}, bindings={}, func = lambda x: x):
+    def peek(self, head=25, manifest=None, bindings=None, func = lambda x: x):
         pass
 
     def __plot__(self, nodename: str, shape: str, rankdir=None):

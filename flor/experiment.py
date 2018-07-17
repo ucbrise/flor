@@ -87,7 +87,13 @@ class Experiment(object):
             raise ModuleNotFoundError("Only 'git' or 'ground' backends supported, but '{}' entered".format(backend))
 
     def literal(self, v=None, name=None, parent=None):
-        # TODO: consistency verification value and parent
+        """
+
+        :param v:
+        :param name:
+        :param parent:
+        :return:
+        """
         if v is None and parent is None:
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
@@ -101,7 +107,14 @@ class Experiment(object):
         return lit
 
     def literalForEach(self, v=None, name=None, parent=None, default=None):
-        #TODO
+        """
+
+        :param v:
+        :param name:
+        :param parent:
+        :param default:
+        :return:
+        """
         if v is None and parent is None:
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
@@ -115,7 +128,14 @@ class Experiment(object):
 
         return lit
 
-    def artifact(self, loc, parent=None, manifest=False):
+    def artifact(self, loc, parent=None, manifest=None):
+        """
+
+        :param loc:
+        :param parent:
+        :param manifest:
+        :return:
+        """
         art = Artifact(loc, parent, manifest, self.xp_state)
         self.xp_state.eg.node(art)
 
@@ -125,6 +145,19 @@ class Experiment(object):
         return art
 
     def action(self, func, in_artifacts=None):
+        """
+
+        :param func:
+        :param in_artifacts:
+        :return:
+        """
+        filenameWithFunc, _, _ = func
+
+        if filenameWithFunc in self.xp_state.eg.name_map:
+            code_artifact = self.xp_state.eg.name_map[filenameWithFunc]
+        else:
+            code_artifact = self.artifact(filenameWithFunc)
+
         if in_artifacts:
             temp_artifacts = []
             for in_art in in_artifacts:
@@ -136,8 +169,9 @@ class Experiment(object):
                         in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
             in_artifacts = temp_artifacts
-        act = Action(func, in_artifacts, self.xp_state)
+        act = Action(func, [code_artifact,] + in_artifacts, self.xp_state)
         self.xp_state.eg.node(act)
+        self.xp_state.eg.edge(code_artifact, act)
         if in_artifacts:
             for in_art in in_artifacts:
                 self.xp_state.eg.edge(in_art, act)

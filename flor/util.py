@@ -5,8 +5,6 @@ import pickle
 import hashlib
 import os
 
-from typing import List
-
 
 def isLoc(loc):
     try:

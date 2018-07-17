@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from flor import util
-from flor.object_model.resource import Resource
+from flor.shared_object_model.resource import Resource
+from flor.engine.expander import Expander
 
 from uuid import uuid4
 
@@ -78,3 +79,6 @@ class Literal(Resource):
 
     def plot(self, rankdir=None):
         super().__plot__(self.name, "underline", rankdir)
+
+    def pull(self, manifest=None):
+        Expander.expand(self.xp_state.eg, self)
