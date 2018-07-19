@@ -24,19 +24,7 @@ class Artifact(Resource):
         self.manifest = manifest
 
         self.xp_state.artifactNameToObj[self.loc] = self
-
-    def __getLiteralsAttached__(self):
-        """
-        Front-facing interface
-        :return:
-        """
-        # Reset visited for getLiteralsAttached graph traversal
-        self.xp_state.visited = []
-        literalsAttachedNames = []
-        if not self.parent:
-            return literalsAttachedNames
-        self.parent.__getLiteralsAttached__(literalsAttachedNames)
-        return literalsAttachedNames
+        self.max_depth = 0
 
     def getLocation(self):
         return self.loc

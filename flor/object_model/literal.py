@@ -3,6 +3,7 @@
 from flor import util
 from flor.shared_object_model.resource import Resource
 from flor.engine.expander import Expander
+from flor.engine.consolidator import Consolidator
 
 from uuid import uuid4
 
@@ -45,6 +46,7 @@ class Literal(Resource):
         self.xp_state.literalNames |= {self.name}
 
         self.xp_state.literalNameToObj[self.name] = self
+        self.max_depth = 0
 
     def __forEach__(self):
         """
@@ -81,4 +83,8 @@ class Literal(Resource):
         super().__plot__(self.name, "underline", rankdir)
 
     def pull(self, manifest=None):
-        Expander.expand(self.xp_state.eg, self)
+        experiment_graphs = Expander.expand(self.xp_state.eg, self)
+        consolidated_graph = Consolidator.consolidate(experiment_graphs)
+        import cloudpickle
+        with open('debugging_medium.pkl', 'wb') as f:
+            cloudpickle.dump(consolidated_graph, f)

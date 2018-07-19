@@ -21,32 +21,7 @@ class Action:
         self.out_artifacts = []
         self.in_artifacts = in_artifacts
         self.xp_state = xp_state
-
-    def __get_output_names__(self):
-        """
-        Get Output Artifact Loc / Literal Names as concat string
-        :return: see above
-        """
-        outNames = ''
-        for out_artifact in self.out_artifacts:
-            outNames += out_artifact.getLocation()
-
-    def __getLiteralsAttached__(self, literalsAttachedNames):
-        """
-        Gets the names of all the literals attached (with leaf at this action) and puts them in literalsAttachedNames
-        Not front-facing interface, see Artifact.
-        :param literalsAttachedNames: An empty list to be populated with the names of (orphan) literals attached
-        :return: None, output is written to literalsAttachedNames
-        """
-        outNames = self.__get_output_names__()
-        if self.funcName + outNames in self.xp_state.visited:
-            return
-        if self.in_artifacts:
-            for artifact in self.in_artifacts:
-                if not util.isOrphan(artifact):
-                    artifact.parent.__getLiteralsAttached__(literalsAttachedNames)
-                elif type(artifact).__name__ == "Literal":
-                    literalsAttachedNames.append(artifact.name)
+        self.max_depth = 0
 
     def __plotWalk__(self, graph: VizGraph) -> List[VizNode]:
         # TODO: Code artifacts should be shared in Diagram.

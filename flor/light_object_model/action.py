@@ -8,4 +8,14 @@ class ActionLight:
         self.func = func
 
         self.resourceType = False
+        self.ready = False
+        self.max_depth = 0
+
+    def set_ready(self):
+        self.ready = True
+
+    def equals(self, other):
+        # TODO: should we compare func?
+        return (type(self) == type(other)
+                and self.funcName == other.funcName)
 

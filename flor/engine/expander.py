@@ -2,12 +2,37 @@
 
 import itertools
 
-from flor import util
 from flor.experiment_graph import ExperimentGraph
 from flor.light_object_model import *
 
 
 class Expander:
+    """
+    See expand
+    """
+
+    @staticmethod
+    def expand(eg: ExperimentGraph, pulled_resource):
+        """
+        Expands an experiment graph into a set of independent experiment graphs: one per trial.
+        The Flor Objects are converted into specialized "Light" Flor Objects more suitable for execution
+            and further processing.
+        :param eg: The experiment graph constructed and populated by the Flor Plan
+        :param pulled_resource: The Artifact or Literal object that was pulled
+        :return: LIST[ExperimentGraph], where the nodes of ExperimentGraph are in light_object_model rather
+            than object_model
+        """
+        starts_subset = eg.connected_starts[pulled_resource]
+        col_store, num_trials = Expander.__cross_prod_literals__(starts_subset)
+
+        experiment_graphs = []
+
+        for i in range(num_trials):
+            new_eg = ExperimentGraph()
+            Expander.__bfs__(starts_subset, eg, new_eg, col_store, i)
+            experiment_graphs.append(new_eg)
+
+        return experiment_graphs
 
     @staticmethod
     def __const_literal_col_store__(literals, literal_names):
@@ -62,7 +87,20 @@ class Expander:
     def __bfs__(starts, src_eg: ExperimentGraph,
                 dest_eg: ExperimentGraph, col_store,
                 trial_index: int):
-
+        """
+        By traversing every node of the source experiment graph twice, with graph-traversal,
+        populates the new experiment graph with the corresponding Light Flor Objects
+        And draws edges between the nodes, respecting the original structure of the source exp. graph
+        :param starts: The starts set of the source experiment graph
+        :param src_eg: The source experiment graph (containing Flor Objects)
+        :param dest_eg: The destination experiment graph, corresponds to one trial of the experiment,
+            contains Light Flor Objects.
+        :param col_store: A dictionary mapping literal name to array of values. The length of the array
+            corresponds to the number of trials, col_store is indexed to determine what value to initialize
+            the light flor literal with.
+        :param trial_index: The index of the trial to which this call of __bfs__ corresponds
+        :return: None. But outcome is the populated dest_eg
+        """
         # Make the nodes
         explored = []
         queue = [i for i in starts]
@@ -108,23 +146,3 @@ class Expander:
             for child in src_eg.d[node]:
                 if child not in (explored + queue):
                     queue.append(child)
-
-
-    @staticmethod
-    def expand(eg: ExperimentGraph, pulled_resource):
-        starts_subset = eg.connected_starts[pulled_resource]
-        col_store, num_trials = Expander.__cross_prod_literals__(starts_subset)
-
-        experiment_graphs = []
-
-        for i in range(num_trials):
-            new_eg = ExperimentGraph()
-            Expander.__bfs__(starts_subset, eg, new_eg, col_store, i)
-            experiment_graphs.append(new_eg)
-
-        return experiment_graphs
-
-
-
-
-
