@@ -9,7 +9,7 @@ from flor.shared_object_model.resource import Resource
 class Artifact(Resource):
 
     def __init__(self, loc: str,
-                 parent,
+                 parent, name,
                  manifest: Dict[str, "Artifact"],
                  xp_state):
         """
@@ -22,12 +22,16 @@ class Artifact(Resource):
         super().__init__(parent, xp_state)
         self.loc = loc
         self.manifest = manifest
+        self.name = name
 
         self.xp_state.artifactNameToObj[self.loc] = self
         self.max_depth = 0
 
     def getLocation(self):
         return self.loc
+
+    def get_name(self):
+        return self.name
 
     def get_shape(self):
         return "box"

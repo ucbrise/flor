@@ -128,15 +128,16 @@ class Experiment(object):
 
         return lit
 
-    def artifact(self, loc, parent=None, manifest=None):
+    def artifact(self, loc, name, parent=None, manifest=None):
         """
 
         :param loc:
+        :param name:
         :param parent:
         :param manifest:
         :return:
         """
-        art = Artifact(loc, parent, manifest, self.xp_state)
+        art = Artifact(loc, parent, name, manifest, self.xp_state)
         self.xp_state.eg.node(art)
 
         if parent:
@@ -153,10 +154,10 @@ class Experiment(object):
         """
         filenameWithFunc, _, _ = func
 
-        if filenameWithFunc in self.xp_state.eg.name_map:
-            code_artifact = self.xp_state.eg.name_map[filenameWithFunc]
+        if filenameWithFunc in self.xp_state.eg.loc_map:
+            code_artifact = self.xp_state.eg.loc_map[filenameWithFunc]
         else:
-            code_artifact = self.artifact(filenameWithFunc)
+            code_artifact = self.artifact(filenameWithFunc, filenameWithFunc.split('.')[0])
 
         if in_artifacts:
             temp_artifacts = []
@@ -169,7 +170,7 @@ class Experiment(object):
                         in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
             in_artifacts = temp_artifacts
-        act = Action(func, [code_artifact,] + in_artifacts, self.xp_state)
+        act = Action(func, [code_artifact, ] + in_artifacts, self.xp_state)
         self.xp_state.eg.node(act)
         self.xp_state.eg.edge(code_artifact, act)
         if in_artifacts:

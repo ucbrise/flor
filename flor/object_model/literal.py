@@ -4,6 +4,7 @@ from flor import util
 from flor.shared_object_model.resource import Resource
 from flor.engine.expander import Expander
 from flor.engine.consolidator import Consolidator
+from flor.engine.executor import Executor
 
 from uuid import uuid4
 
@@ -34,6 +35,7 @@ class Literal(Resource):
         self.default = default
 
         # The name is used in the visualization and Ground versioning
+        # TODO: Also used for arg-passing, so if not provided should fail
         if name is None:
             candidate_name = uuid4().hex[0:7]
             while candidate_name in self.xp_state.literalNames:
@@ -71,6 +73,9 @@ class Literal(Resource):
         """
         return self.name
 
+    def get_name(self):
+        return self.name
+
     def get_shape(self):
         return "underline"
 
@@ -85,6 +90,4 @@ class Literal(Resource):
     def pull(self, manifest=None):
         experiment_graphs = Expander.expand(self.xp_state.eg, self)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
-        import cloudpickle
-        with open('debugging_medium.pkl', 'wb') as f:
-            cloudpickle.dump(consolidated_graph, f)
+        Executor.execute(consolidated_graph)

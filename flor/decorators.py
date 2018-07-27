@@ -34,7 +34,7 @@ def func(foo):
 
         return out_values
 
-    return filename, foo.__name__, wrapped_func
+    return filename, foo.__name__, foo
 
 
 def deprecated_func(lambdah):

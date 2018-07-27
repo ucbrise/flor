@@ -13,7 +13,9 @@ class ExperimentGraph:
         self.b = {}
         # a start is a Resource which has no incoming edge
         self.starts = set([])
-        # Name_map only contains resources
+        # Loc_map only contains resources
+        self.loc_map = {}
+        # Maps string to the object itself
         self.name_map = {}
         # Given a Flor Object, returns the relevant starts subset
         self.connected_starts = {}
@@ -33,7 +35,8 @@ class ExperimentGraph:
         self.b[v] = set([])
         if issubclass(type(v), Resource):
             self.starts |= {v,}
-            self.name_map[v.getLocation()] = v
+            self.loc_map[v.getLocation()] = v
+            self.name_map[v.name] = v
             if v.parent is not None:
                 self.connected_starts[v] = self.connected_starts[v.parent]
             else:
@@ -62,6 +65,8 @@ class ExperimentGraph:
                 self.actions_at_depth[v.max_depth] |= {v, }
             else:
                 self.actions_at_depth[v.max_depth] = {v, }
+        else:
+            self.name_map["{}{}".format(v.name, id(v))] = v
 
     def edge(self, u, v):
         assert u in self.d
@@ -85,8 +90,25 @@ class ExperimentGraph:
         self.pre_absorb_d = self.d.copy()
         self.pre_absorb_b = self.b.copy()
 
+        self.name_map.update(other_eg.name_map)
+
         self.d.update(other_eg.d)
         self.b.update(other_eg.b)
+
+    def is_none_pending(self):
+        action_set = set([])
+        for depth in self.actions_at_depth:
+            action_set |= self.actions_at_depth[depth]
+        return all(map(lambda x: not x.pending, action_set))
+
+    def update_value(self, name, id_num, value):
+        obj = self.name_map["{}{}".format(name, id_num)]
+        if "Artifact" in type(obj).__name__:
+            obj.loc = value
+        elif "Literal" in type(obj).__name__:
+            obj.v = value
+        else:
+            raise TypeError("Uknown type: {}".format(type(obj)))
 
 
 def deserialize() -> ExperimentGraph:
