@@ -5,7 +5,7 @@ from flor.light_object_model import *
 from typing import List
 
 import time
-import os.path
+import os
 
 EPOCH = 0.01
 
@@ -20,7 +20,10 @@ class Executor:
         kwargs = {}
 
         for i in inputs:
-            if type(i) == ArtifactLight:
+            if type(i) == ArtifactLight and not i.parent:
+                _, location = i.get_location()
+                kwargs[i.name] = location
+            elif type(i) == ArtifactLight:
                 kwargs[i.name] = Executor.__isolate_location__(*i.get_location())
             elif type(i) == LiteralLight:
                 kwargs[i.name] = i.v
@@ -33,7 +36,7 @@ class Executor:
             else:
                 output_ids[o.name] = id(o)
 
-        response = action.func(**kwargs)
+        response = action.func(**kwargs) or []
 
         for kee in response:
             eg.update_value(kee, output_ids[kee], response[kee])
@@ -52,7 +55,7 @@ class Executor:
             if type(x) == LiteralLight:
                 return x.v is not None
             elif type(x) == ArtifactLight:
-                return os.path.exists(x.loc)
+                return os.path.exists(Executor.__isolate_location__(*x.get_location()))
 
         return all(map(helper, outputs))
 

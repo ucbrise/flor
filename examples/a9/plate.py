@@ -3,22 +3,22 @@ import flor
 
 with flor.Experiment('plate_demo') as ex:
     @flor.func
-    def double(x):
-        return 2*x
+    def double(ones, **kwargs):
+        return {'twice': 2*ones}
 
     @flor.func
-    def triple(x):
-        return 3*x
+    def triple(tens, **kwargs):
+        return {'thrice': 3*tens}
 
     @flor.func
-    def multiply(x, y):
-        z = x*y
+    def multiply(twice, thrice, **kwargs):
+        z = twice * thrice
         print(z)
-        return z
+        return {'product': z}
 
 
-    ones = ex.literalForEach(v=[i for i in range(1000)], name="ones", default=2)
-    tens = ex.literalForEach(v=[i for i in range(1000)], name="tens", default=10)
+    ones = ex.literalForEach(v=[1,2,3], name="ones", default=2)
+    tens = ex.literalForEach(v=[10, 100], name="tens", default=10)
 
     doDouble = ex.action(double, [ones, ])
     twice = ex.literal(name="twice", parent=doDouble)
@@ -29,6 +29,6 @@ with flor.Experiment('plate_demo') as ex:
     doMultiply = ex.action(multiply, [twice, thrice])
     product = ex.literal(name="product", parent=doMultiply)
 
-# product.plot()
+product.plot()
 product.pull()
 

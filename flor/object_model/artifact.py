@@ -4,7 +4,9 @@
 from typing import Dict
 
 from flor.shared_object_model.resource import Resource
-
+from flor.engine.expander import Expander
+from flor.engine.consolidator import Consolidator
+from flor.engine.executor import Executor
 
 class Artifact(Resource):
 
@@ -38,3 +40,8 @@ class Artifact(Resource):
 
     def plot(self, rankdir=None):
         super().__plot__(self.loc, "box", rankdir)
+
+    def pull(self, manifest=None):
+        experiment_graphs = Expander.expand(self.xp_state.eg, self)
+        consolidated_graph = Consolidator.consolidate(experiment_graphs)
+        Executor.execute(consolidated_graph)

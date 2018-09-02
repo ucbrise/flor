@@ -8,11 +8,11 @@ class ArtifactLight:
         self.name = name
 
         self.resourceType = True
-        self.produced = False
+        self.parent = False
         self.max_depth = 0
 
     def set_produced(self):
-        self.produced = True
+        self.parent = True
 
     def get_location(self):
         # TODO: S3 case, API call
