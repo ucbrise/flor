@@ -2,7 +2,7 @@
 
 import cloudpickle as dill
 from flor.shared_object_model.resource import Resource
-
+import os
 
 class ExperimentGraph:
 
@@ -85,6 +85,11 @@ class ExperimentGraph:
     def serialize(self):
         with open('experiment_graph.pkl', 'wb') as f:
             dill.dump(self, f)
+
+    def clean(self):
+        # Safe to remove only when experiment graph has been copied to flor.d
+        os.remove('experiment_graph.pkl')
+
 
     def absorb(self, other_eg):
         self.pre_absorb_d = self.d.copy()

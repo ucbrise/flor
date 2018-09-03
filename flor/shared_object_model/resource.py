@@ -4,6 +4,7 @@ from flor import util
 from flor import viz
 
 
+
 class Resource(object):
 
     def __init__(self, parent, xp_state):
@@ -31,6 +32,8 @@ class Resource(object):
         """
         # Prep globals, passed through arguments
 
+        self.xp_state.eg.serialize()
+
         self.xp_state.nodes = {}
         self.xp_state.edges = []
 
@@ -53,3 +56,5 @@ class Resource(object):
             if rankdir == 'LR':
                 dot.attr(rankdir='LR')
             dot.render('driver.gv', view=True)
+
+        self.xp_state.eg.clean()

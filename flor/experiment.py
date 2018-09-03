@@ -66,7 +66,8 @@ class Experiment(object):
             repo.git.add(A=True)
             repo.index.commit('initial commit')
         os.chdir(original)
-        ag.commit(self.xp_state)
+        ag.CommitTracker(self.xp_state).commit()
+        self.xp_state.eg.clean()
 
     def groundClient(self, backend):
         backend = backend.lower().strip()

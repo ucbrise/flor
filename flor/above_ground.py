@@ -65,11 +65,19 @@ class ContextTracker(object):
 
     def __new_spec_nodev__(self):
         latest_experiment_node_versions = self.__get_recent_specnodev__()
-        if latest_experiment_node_versions and len(latest_experiment_node_versions) > 1:
+        if latest_experiment_node_versions and len(latest_experiment_node_versions) > 0:
             maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in latest_experiment_node_versions])
             latest_experiment_node_versions = list(filter(lambda x: x.get_tags()['timestamp'].get_value() == maxtstamp, latest_experiment_node_versions))
-        assert len(latest_experiment_node_versions) == 1, "Error, multiple latest specnode versions have equal timestamps"
-        parent_ids = [latest_experiment_node_versions[0].get_id()]
+            assert len(latest_experiment_node_versions) == 1, "Error, multiple latest specnode versions have equal timestamps"
+            parent_ids = [latest_experiment_node_versions[0].get_id()]
+        else:
+            parent_ids = None
+
+        if parent_ids:
+            parent = parent_ids[0]
+            seq_num = str(int(parent.get_tags()['sequenceNumber'].get_value()) + 1)
+        else:
+            seq_num = "0"
 
         self.specnodev = self.xp_state.gc.create_node_version(self.specnode.get_id(), tags={
             'timestamp':
@@ -78,7 +86,7 @@ class ContextTracker(object):
                     'value': datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
                     'type': 'STRING'
                 },
-            'commitHash':
+            'commitHash': # this commit; not parent commit
                 {
                     'key': 'commitHash',
                     'value': self.__get_sha__(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME),
@@ -87,13 +95,7 @@ class ContextTracker(object):
             'sequenceNumber':  # potentially unneeded...can't find a good way to get sequence number
                 {
                     'key': 'sequenceNumber',
-                    'value': "0",  # fixme given a commit hash we'll have to search through for existing CH
-                    'type': 'STRING',
-                },
-            'prepostExec':
-                {
-                    'key': 'prepostExec',
-                    'value': 'Post',  # change to 'Post' after exec
+                    'value': seq_num,
                     'type': 'STRING',
                 }
         }, parent_ids=parent_ids)
@@ -106,6 +108,8 @@ class ContextTracker(object):
                 n = self.xp_state.gc.create_node(sourceKey, name, tags)
         except:
             n = self.xp_state.gc.create_node(sourceKey, name, tags)
+
+        return n
 
     def __safeCreateGetEdge__(self, sourceKey, name, fromNodeId, toNodeId, tags=None):
         try:
@@ -177,13 +181,16 @@ class CommitTracker(ContextTracker):
                 litnode = self.__safeCreateGetNode__(sourcekeyLit, sourcekeyLit)
                 e1 = self.__safeCreateGetEdge__(sourcekeyLit, "null", self.specnode.get_id(), litnode.get_id())
 
+                # TODO: add Literal versioning here.
+                # TODO: serialize literal for referencing. Change literal tag. Point to serialized file rather than save value.
+
                 litnodev = self.xp_state.gc.create_node_version(litnode.get_id())
                 self.xp_state.gc.create_edge_version(e1.get_id(), self.specnodev.get_id(), litnodev.get_id())
 
                 if node.__oneByOne__:
                     for i, v in enumerate(node.v):
                         sourcekeyBind = sourcekeyLit + '.' + self.__stringify__(v)
-                        bindnode = self.__safeCreateGetNode__(sourcekeyBind, sourcekeyLit, tags={
+                        bindnode = self.__safeCreateGetNode__(sourcekeyBind, "null", tags={
                             'value':
                                 {
                                     'key': 'value',
@@ -219,11 +226,17 @@ class CommitTracker(ContextTracker):
                 e2 = self.__safeCreateGetEdge__(sourcekeyArt, "null", self.specnode.get_id(), artnode.get_id())
 
                 # TODO: Get parent Verion of Spec, forward traverse to artifact versions. Find artifact version that is parent.
+                # TODO: Extend support to non-local artifacts, e.g. s3
 
                 artnodev = self.xp_state.gc.create_node_version(artnode.get_id(), tags={
                     'checksum': {
                         'key': 'checksum',
                         'value': util.md5(node.loc),
+                        'type': 'STRING'
+                    },
+                    'location': {
+                        'key': 'location',
+                        'value': node.loc,
                         'type': 'STRING'
                     }
                 })
@@ -328,6 +341,7 @@ class PullTracker(ContextTracker):
 
 
 def commit(xp_state : State):
+    assert False, "Deprecated Above Ground Commit: Do not call this method"
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -485,6 +499,7 @@ def commit(xp_state : State):
 
 
 def peek(xp_state : State, loc):
+    assert False, "Deprecated above ground peek: Do not call this method"
 
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
@@ -833,6 +848,7 @@ def peek(xp_state : State, loc):
 
 
 def fork(xp_state : State, inputCH):
+    assert False, "Deprecated Above Groubnd Fork: Do not call this method"
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
@@ -1016,6 +1032,7 @@ def fork(xp_state : State, inputCH):
 
 
 def pull(xp_state : State, loc):
+    assert False, "Deprecated Above Ground Pull, do not call this method."
     def safeCreateGetNode(sourceKey, name, tags=None):
         # Work around small bug in ground client
         try:
