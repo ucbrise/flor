@@ -74,7 +74,7 @@ class ContextTracker(object):
             parent_ids = None
 
         if parent_ids:
-            parent = parent_ids[0]
+            parent = latest_experiment_node_versions[0]
             seq_num = str(int(parent.get_tags()['sequenceNumber'].get_value()) + 1)
         else:
             seq_num = "0"
