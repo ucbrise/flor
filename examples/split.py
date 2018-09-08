@@ -7,6 +7,7 @@ import flor
 
 
 @flor.func
+# this needs to be updated
 def split(tweets_loc, frac, seed):
     tweet_df = pd.read_csv(tweets_loc, **params)
     tweet_count = len(tweet_df)
