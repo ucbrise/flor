@@ -38,8 +38,9 @@ class Executor:
 
         response = action.func(**kwargs) or []
 
-        for kee in response:
-            eg.update_value(kee, output_ids[kee], response[kee])
+        if response:
+            for kee in response:
+                eg.update_value(kee, output_ids[kee], response[kee])
 
     @staticmethod
     def __isolate_location__(id_num, location):
