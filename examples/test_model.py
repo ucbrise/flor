@@ -20,8 +20,9 @@ import flor
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 @flor.func
-def test(intermediary, test_df):
-    test_df = pd.read_csv(test_df, ',')
+def test(intermediary, test_df, **kwargs):
+    test_df = pd.read_pickle(test_df)
+    intermediary = pickle.load(intermediary, 'rb')
     country_dict = intermediary["country_dict"]
     count_vect = intermediary["vectorizer"]
     clf = intermediary["classifier"]

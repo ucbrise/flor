@@ -4,7 +4,7 @@ import numpy as np
 
 
 with flor.Experiment("twitter_demo") as ex:
-    ex.groundClient('ground')
+    ex.groundClient('git')
 
     tweets = ex.artifact('tweets.csv', 'tweets_loc')
 
