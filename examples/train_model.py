@@ -27,6 +27,7 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 
 @flor.func
 def train(tweet_df, alpha):
+    tweet_df = pd.read_csv(tweet_df, ',')
     intermediary = {}
 
     tweet_df = tweet_df.loc[:, relevant_attributes]

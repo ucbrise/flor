@@ -21,6 +21,7 @@ abspath = os.path.dirname(os.path.abspath(__file__))
 
 @flor.func
 def test(intermediary, test_df):
+    test_df = pd.read_csv(test_df, ',')
     country_dict = intermediary["country_dict"]
     count_vect = intermediary["vectorizer"]
     clf = intermediary["classifier"]
