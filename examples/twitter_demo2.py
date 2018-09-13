@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import flor
 import numpy as np
-
+import time
 
 with flor.Experiment("twitter_demo") as ex:
-    ex.groundClient('git')
+    ex.groundClient('ground') #use "git" for grit
 
     tweets = ex.artifact('tweets.csv', 'tweets_loc')
 

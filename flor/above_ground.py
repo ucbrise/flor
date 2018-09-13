@@ -66,6 +66,7 @@ class ContextTracker(object):
     def __new_spec_nodev__(self):
         latest_experiment_node_versions = self.__get_recent_specnodev__()
         if latest_experiment_node_versions and len(latest_experiment_node_versions) > 0:
+            print(latest_experiment_node_versions)
             maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in latest_experiment_node_versions])
             latest_experiment_node_versions = list(filter(lambda x: x.get_tags()['timestamp'].get_value() == maxtstamp, latest_experiment_node_versions))
             assert len(latest_experiment_node_versions) == 1, "Error, multiple latest specnode versions have equal timestamps"
