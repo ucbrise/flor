@@ -76,7 +76,7 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
  * Open your bash profile using the following MacOS command:
 
  `vim  ~/.bash_profile`
- 
+
  *Note: linux machines should use `vim ~/.bashrc`*
 
   * Add the following command to your Bash Profile:
