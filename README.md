@@ -6,34 +6,98 @@ Build, configure, run, and reproduce experiments with Flor.
 ## What is Flor?
 Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Flor enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Flor serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
 
-## How do I run it?
+## How do I install it?
 
-Clone or download this repository.
+1. **Clone or download this repository.**
+2. **Create a Virtual Environment.**
+ * Download anaconda [here](https://www.anaconda.com/download/).
+ * Create a new environment using the following command:
 
-You'll need Anaconda, preferably version 4.4+
+ `conda create --name [env_name]`
 
-Please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a Python 3.6 environment inside Anaconda. **Whenever you work with Flor, make sure the Python 3.6 environment is active**.
+ * Activate your new environment using: 
+ `source activate [env_name]`
 
-Once the Python 3.6 environment in Anaconda is active, please run the following command (use the requirements.txt file in this repo):
-```
-pip install -r requirements.txt
-```
+ * Once you have activated your environment, run the command: 
 
-Next, we will install RAY, a Flor dependency:
+ `pip install -r requirements.txt`
 
-```
-brew update
-brew install cmake pkg-config automake autoconf libtool boost wget
+ * Be sure that you have GraphViz by running the following command:
 
-pip install numpy funcsigs click colorama psutil redis flatbuffers cython --ignore-installed six
-conda install libgcc
+ `brew install graphviz`
 
-pip install git+https://github.com/ray-project/ray.git#subdirectory=python
-```
+ *Note: Whenever you work with Flor, make sure that this environment is active. For more information about environments, please read [this guide](https://conda.io/docs/user-guide/tasks/manage-environments.html).*
 
-Also, you will need to install graphviz: https://stackoverflow.com/questions/43372723/how-to-open-dot-on-mac
+3. **Installing Ray (Flor Dependency)**
 
-Next, **Add the directory containing this flor package (repo) to your `PYTHONPATH`.**
+ * Run the following Brew Commands:
+
+ `brew update`
+ `brew install cmake pkg-config automake autoconf libtool boost wget`
+
+ * Run the following Pip Commands:
+
+ `pip install numpy funcsigs click colorama psutil redis flatbuffers cython --ignore-installed six`
+`conda install libgcc`
+ `pip install git+https://github.com/ray-project/ray.git#subdirectory=python`
+
+ * If the command above fails, then run the following instead:
+`pip3 install ray`
+
+4. **Add Flor to Bash Profile**
+ * Open Bash Profile using the following MacOS command:
+`vim  ~/.bash_profile`
+
+ * Add the path to your flor directory in your Bash Profile. Here is an example of a command to add:
+
+ `export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/flor"`
+
+5. **Installing Ground**
+
+ * Download the zip file containing the latest version of Ground [here](https://github.com/ground-context/ground/releases) and unzip it.
+ 
+ * Create a file called `script.sh` within the unzipped *ground-0.1.2/db* folder. 
+
+ * Inside `script.sh`, add a path to the *ground-0.1.2/db/postgres_setup.py* file followed by `ground ground drop`. Here is an example of the lines to add to `script.sh`:
+
+ `
+ #!/bin/bash 
+ `
+ `
+ python3 /Users/Sona/ground-0.1.2/db/postgres_setup.py 
+ ground ground drop
+ `
+
+ * Open your bash profile using the following MacOS command:
+
+ `vim  ~/.bash_profile`
+
+  * Add the following command to your Bash Profile:
+	`alias startground='bash /Users/Sona/ground-0.1.2/db/myscript.sh && bash /Users/Sona/ground-0.1.2/bin/ground-postgres'`
+
+ * To update your Bash Profile, run the following command:
+`source ~/.bash_profile`
+
+* **Installing Grit and Client**
+
+ * Flor requires ground-context in order to operate properly. Go to [Ground Context Repo](https://github.com/ground-context) and download/install the Grit and Client repos. Downloading the zip files and unzipping them is sufficient. 
+
+ * Open Bash Profile using the following MacOS command:
+`vim  ~/.bash_profile`
+
+ * Modify the bash_profile to include paths to these directories like the following commands:
+
+ `export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/grit-master/python/"`
+`export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/client-master/python/"`
+
+ * To update your Bash Profile, run the following command:
+`source ~/.bash_profile`
+
+* **Starting Ground**
+
+ * In order to use Flor, you will need to start Ground. In your environment, run the following command:
+ `startground`
+
 
 For examples on how to write your own flor workflow, please have a look at:
 ```
