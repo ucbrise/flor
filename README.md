@@ -108,7 +108,7 @@ examples/plate.py -- multi-trial example
 Make sure you:
 1. Import `flor`
 2. Initialize a `flor.Experiment`
-2. set the experiment's `groundClient` to 'ground'.
+2. set the experiment's `groundClient` to 'git'.
 
 Once you build the workflow, call `pull()` on the artifact you want to produce. You can find it in `~/flor.d/`.
 
