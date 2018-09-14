@@ -171,6 +171,9 @@ class Experiment(object):
                         in_art = self.literal(in_art)
                 temp_artifacts.append(in_art)
             in_artifacts = temp_artifacts
+
+        in_artifacts = in_artifacts or []
+
         act = Action(func, [code_artifact, ] + in_artifacts, self.xp_state)
         self.xp_state.eg.node(act)
         self.xp_state.eg.edge(code_artifact, act)

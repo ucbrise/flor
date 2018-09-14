@@ -19,21 +19,6 @@ def func(foo):
     else:
         filename = inspect.getsourcefile(foo).split('/')[-1]
 
-    def wrapped_func(inputs, out_paths, cnt_out_literals):
-        if inputs is None:
-            inputs = []
-        if out_paths is None:
-            out_paths = []
-        out_values = foo(*inputs, *out_paths)
-
-        if ((util.isIterable(out_values) and cnt_out_literals == 1)
-                or (not util.isIterable(out_values) and out_values is not None)):
-            out_values = [out_values, ]
-        elif out_values is None:
-            out_values = []
-
-        return out_values
-
     return filename, foo.__name__, foo
 
 
