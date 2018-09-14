@@ -76,8 +76,8 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
  * Open your bash profile using the following MacOS command:
 
  `vim  ~/.bash_profile`
-
- 	*Note: linux machiens should use `vim ~/.bashrc`*
+ 
+ *Note: linux machines should use `vim ~/.bashrc`*
 
   * Add the following command to your Bash Profile:
 	`alias startground='bash /Users/Sona/ground-0.1.2/db/myscript.sh && bash /Users/Sona/ground-0.1.2/bin/ground-postgres'`
@@ -129,7 +129,7 @@ If you pass in a non-empty `dict` to `pull` (see `lifted_twitter.py`), the call 
  	* Use the command:
  		`sudo apt install linuxbrew-wrapper`
  	* After installation, follow the additional steps to make sure dependencies are installed and brew is added to path.
- 	
+
  		`Sudo apt-get install build-essential
 		Echo ‘export PATH=”/home/linuxbrew/.linuxbrew/bin:$PATH”’ >>~/.bash_profile
 		Echo ‘export MANPATH=”/home/linuxbrew/.linuxbrew/share/man:$MANPATH”’ >>~/.bash_profile
