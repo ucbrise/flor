@@ -85,7 +85,7 @@ class Literal(Resource):
         return self.default
 
     def plot(self, rankdir=None):
-        super().__plot__(self.name, "underline", rankdir)
+        return super().__plot__(self.name, "underline", rankdir)
 
     def pull(self, manifest=None):
         self.xp_state.eg.serialize()

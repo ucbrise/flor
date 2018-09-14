@@ -28,4 +28,4 @@ with flor.Experiment("twitter_demo") as ex:
     model_accuracy = ex.artifact('model_accuracy.txt', 'model_accuracy', do_test)
 
 model_accuracy.plot()
-model_accuracy.pull()
+# model_accuracy.pull()

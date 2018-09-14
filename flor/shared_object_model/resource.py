@@ -2,7 +2,7 @@ from graphviz import Digraph, Source
 
 from flor import util
 from flor import viz
-
+from flor.global_state import interactive
 
 
 class Resource(object):
@@ -38,6 +38,7 @@ class Resource(object):
         self.xp_state.edges = []
 
         dot = Digraph()
+        output_image = None
         # diagram = {"dot": dot, "counter": 0, "sha": {}}
 
         if not util.isOrphan(self):
@@ -46,7 +47,10 @@ class Resource(object):
             self.parent.__plotWalk__(vg)
             # vg.bft()
             vg.to_graphViz()
-            Source.from_file('output.gv').view()
+            if not interactive:
+                Source.from_file('output.gv').view()
+            else:
+                output_image = Source.from_file('output.gv')
         else:
             node_diagram_id = '0'
 
@@ -58,3 +62,4 @@ class Resource(object):
             dot.render('driver.gv', view=True)
 
         self.xp_state.eg.clean()
+        return output_image
