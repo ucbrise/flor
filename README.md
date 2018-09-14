@@ -35,7 +35,7 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
  `brew update`
  `brew install cmake pkg-config automake autoconf libtool boost wget`
 
- Note: Linux users should use linuxbrew. See installation details in the **Additional Linux Instructions**section.
+ *Note: Linux users should use linuxbrew. See installation details in the **Additional Linux Instructions** section.*
 
  * Run the following Pip Commands:
 
@@ -50,7 +50,7 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
  * Open Bash Profile using the following MacOS command:
 `vim  ~/.bash_profile`
 
-	Note: linux machines should use `vim ~/.bashrc`
+	*Note: linux machines should use `vim ~/.bashrc`*
 
  * Add the path to your flor directory in your Bash Profile. Here is an example of a command to add:
 
@@ -77,7 +77,7 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
 
  `vim  ~/.bash_profile`
 
- 	Note: linux machiens should use `vim ~/.bashrc`
+ 	*Note: linux machiens should use `vim ~/.bashrc`*
 
   * Add the following command to your Bash Profile:
 	`alias startground='bash /Users/Sona/ground-0.1.2/db/myscript.sh && bash /Users/Sona/ground-0.1.2/bin/ground-postgres'`
@@ -85,7 +85,7 @@ Flor (formerly known as [Jarvis](https://github.com/ucbrise/jarvis)) is a system
  * To update your Bash Profile, run the following command:
 `source ~/.bash_profile`
 
-	Note: linux users should use `source ~/.bashrc`
+	*Note: linux users should use `source ~/.bashrc`*
  * Linux machines may require several more steps to get ground working. See **Additional Linux Instructions**.
 
 * **Installing Grit and Client**
@@ -129,6 +129,7 @@ If you pass in a non-empty `dict` to `pull` (see `lifted_twitter.py`), the call 
  	* Use the command:
  		`sudo apt install linuxbrew-wrapper`
  	* After installation, follow the additional steps to make sure dependencies are installed and brew is added to path.
+ 	
  		`Sudo apt-get install build-essential
 		Echo ‘export PATH=”/home/linuxbrew/.linuxbrew/bin:$PATH”’ >>~/.bash_profile
 		Echo ‘export MANPATH=”/home/linuxbrew/.linuxbrew/share/man:$MANPATH”’ >>~/.bash_profile
