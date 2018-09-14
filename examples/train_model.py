@@ -26,8 +26,9 @@ import flor
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 @flor.func
-def train(tweet_df, alpha):
-    intermediary = {}
+def train(tweet_df, alpha, intermediary, **kwargs):
+    tweet_df = pd.read_pickle(tweet_df)
+    model = {} #intermediary object
 
     tweet_df = tweet_df.loc[:, relevant_attributes]
 
@@ -37,7 +38,7 @@ def train(tweet_df, alpha):
     for idx, code in enumerate(country_codes):
         country_dict[code] = idx
 
-    intermediary["country_dict"] = country_dict
+    model["country_dict"] = country_dict
 
     def convert_to_int(country_string):
         return country_dict[country_string]
@@ -52,17 +53,16 @@ def train(tweet_df, alpha):
 
     X_train = vectorizer.fit_transform(tweet_df["tweet"])
 
-    intermediary["vectorizer"] = vectorizer
+    model["vectorizer"] = vectorizer
 
     X_train_label = np.array(tweet_df["code"])
 
     # Train a classifier
     clf = MultinomialNB(alpha=alpha).fit(X_train, X_train_label)
 
-    intermediary["classifier"] = clf
+    model["classifier"] = clf
 
-    return intermediary
-
+    pickle.dump(model, open(intermediary, 'wb'))
 
 def oldtrain(in_artifacts, out_artifacts):
     intermediary = {}

@@ -20,7 +20,9 @@ import flor
 abspath = os.path.dirname(os.path.abspath(__file__))
 
 @flor.func
-def test(intermediary, test_df):
+def test(intermediary, test_df, model_accuracy, **kwargs):
+    test_df = pd.read_pickle(test_df)
+    intermediary = pickle.load(open(intermediary, 'rb'))
     country_dict = intermediary["country_dict"]
     count_vect = intermediary["vectorizer"]
     clf = intermediary["classifier"]
@@ -44,8 +46,12 @@ def test(intermediary, test_df):
     X_test_label = np.array(test_df["code"])
 
     score = clf.score(X_test, X_test_label)
+    # "%.5f" % 
+    result = score*1.0
 
-    return ("%.5f" % score,)
+    output = open(model_accuracy, 'w')
+    output.write(str(result))
+    output.close()
 
 def oldtest(in_artifacts, out_artifacts):
     out_artifact = out_artifacts[0]
