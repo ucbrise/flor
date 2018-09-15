@@ -16,7 +16,11 @@ class ArtifactLight:
 
     def get_location(self):
         # TODO: S3 case, API call
-        return id(self), self.loc
+        return self.loc
+
+    def get_isolated_location(self):
+        location_array = self.loc.split('.')
+        return "{}_{}.{}".format('.'.join(location_array[0:-1]), id(self), location_array[-1])
 
     def equals(self, other):
         return (type(self) == type(other)

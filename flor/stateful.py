@@ -36,6 +36,7 @@ class State:
         self.nodes = {}
         self.tmpexperiment = '/tmp/de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3'
         self.versioningDirectory = os.path.expanduser('~') + '/' + 'flor.d' #please check; maybe redundant with overriding in pulls
+        self.outputDirectory = 'out.d'
         self.visited = []
         self.ray = {}
 

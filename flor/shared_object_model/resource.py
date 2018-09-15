@@ -4,6 +4,11 @@ from flor import util
 from flor import viz
 from flor.global_state import interactive
 
+from flor.engine.executor import Executor
+from flor.engine.expander import Expander
+from flor.engine.consolidator import Consolidator
+from flor.data_controller.organizer import Organizer
+
 
 class Resource(object):
 
@@ -20,10 +25,19 @@ class Resource(object):
         raise NotImplementedError("Abstract method Resource.getLocation must be overridden")
 
     def pull(self, manifest=None):
-        pass
+        raise NotImplementedError("Abstract method Resource.pull must be overridden")
 
     def peek(self, head=25, manifest=None, bindings=None, func = lambda x: x):
-        pass
+        raise NotImplementedError("Abstract method Resource.peek must be overridden")
+
+    def __pull__(self, pulled_object, manifest=None):
+
+        pulled_object.xp_state.eg.serialize()
+        experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
+        consolidated_graph = Consolidator.consolidate(experiment_graphs)
+        Executor.execute(consolidated_graph)
+        Organizer(consolidated_graph, pulled_object.xp_state).run()
+
 
     def __plot__(self, nodename: str, shape: str, rankdir=None):
         """

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-from flor.experiment_graph import ExperimentGraph
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from flor.experiment_graph import ExperimentGraph
 from flor.light_object_model import *
 from typing import List
 
@@ -13,7 +15,7 @@ EPOCH = 0.01
 class Executor:
 
     @staticmethod
-    def __run__(eg: ExperimentGraph, action: ActionLight):
+    def __run__(eg: 'ExperimentGraph', action: ActionLight):
         inputs = eg.b[action]
         outputs = eg.d[action]
         output_ids = {}
@@ -21,10 +23,9 @@ class Executor:
 
         for i in inputs:
             if type(i) == ArtifactLight and not i.parent:
-                _, location = i.get_location()
-                kwargs[i.name] = location
+                kwargs[i.name] = i.get_location()
             elif type(i) == ArtifactLight:
-                kwargs[i.name] = Executor.__isolate_location__(*i.get_location())
+                kwargs[i.name] = i.get_isolated_location()
             elif type(i) == LiteralLight:
                 kwargs[i.name] = i.v
             else:
@@ -32,7 +33,7 @@ class Executor:
 
         for o in outputs:
             if type(o) == ArtifactLight:
-                kwargs[o.name] = Executor.__isolate_location__(*o.get_location())
+                kwargs[o.name] = o.get_isolated_location()
             else:
                 output_ids[o.name] = id(o)
 
@@ -48,24 +49,24 @@ class Executor:
         return "{}_{}.{}".format('.'.join(location_array[0:-1]), id_num, location_array[-1])
 
     @staticmethod
-    def __is_finished__(eg: ExperimentGraph, action: ActionLight):
+    def __is_finished__(eg: 'ExperimentGraph', action: ActionLight):
         outputs = eg.d[action]
 
         def helper(x):
             if type(x) == LiteralLight:
                 return x.v is not None
             elif type(x) == ArtifactLight:
-                return os.path.exists(Executor.__isolate_location__(*x.get_location()))
+                return os.path.exists(x.get_isolated_location())
 
         return all(map(helper, outputs))
 
     @staticmethod
-    def __is_ready__(eg: ExperimentGraph, action: ActionLight):
+    def __is_ready__(eg: 'ExperimentGraph', action: ActionLight):
         producing_actions = Executor.__get_producing_actions__(eg, action)
         return all(map(lambda x: not x.pending, producing_actions))
 
     @staticmethod
-    def __get_consuming_actions__(eg: ExperimentGraph, action: ActionLight):
+    def __get_consuming_actions__(eg: 'ExperimentGraph', action: ActionLight):
         outputs = eg.d[action]
         consuming_actions = set([])
 
@@ -75,7 +76,7 @@ class Executor:
         return consuming_actions
 
     @staticmethod
-    def __get_producing_actions__(eg: ExperimentGraph, action: ActionLight):
+    def __get_producing_actions__(eg: 'ExperimentGraph', action: ActionLight):
         inputs = eg.b[action]
         producing_actions = set([])
 
@@ -85,12 +86,12 @@ class Executor:
         return producing_actions
 
     @staticmethod
-    def __no_child_is_pending__(eg: ExperimentGraph, action: ActionLight):
+    def __no_child_is_pending__(eg: 'ExperimentGraph', action: ActionLight):
         consuming_actions = Executor.__get_consuming_actions__(eg, action)
         return all(map(lambda x: not x.pending, consuming_actions))
 
     @staticmethod
-    def execute(eg: ExperimentGraph):
+    def execute(eg: 'ExperimentGraph'):
         # Initialize empty lists
         ready: List[ActionLight] = []
         running: List[ActionLight] = []

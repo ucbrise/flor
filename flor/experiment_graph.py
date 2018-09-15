@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import cloudpickle as dill
-from flor.shared_object_model.resource import Resource
 import os
 
 class ExperimentGraph:
@@ -24,6 +23,32 @@ class ExperimentGraph:
         self.pre_absorb_d = None
         self.pre_absorb_b = None
 
+    def __graph_traverse__(self):
+
+        response = {'Action': set([]),
+                    'Artifact': set([]),
+                    'Literal': set([])}
+
+        explored = []
+        queue = [i for i in self.starts]
+        visited = lambda: explored + queue
+
+        while queue:
+            node = queue.pop(0)
+
+            for type_prefix in response.keys():
+                if type(node).__name__[0:len(type_prefix)] == type_prefix:
+                    response[type_prefix] |= {node, }
+                    break
+
+            explored.append(node)
+
+            for child in self.d[node]:
+                if child not in visited():
+                    queue.append(child)
+
+        return response
+
     def node(self, v):
         """
         Experiment facing method
@@ -33,7 +58,7 @@ class ExperimentGraph:
         assert v not in self.d
         self.d[v] = set([])
         self.b[v] = set([])
-        if issubclass(type(v), Resource):
+        if type(v).__name__ == "Artifact" or type(v).__name__ == "Literal":
             self.starts |= {v,}
             self.loc_map[v.getLocation()] = v
             self.name_map[v.name] = v
@@ -114,6 +139,14 @@ class ExperimentGraph:
             obj.v = value
         else:
             raise TypeError("Uknown type: {}".format(type(obj)))
+
+    def get_artifacts_reachable_from_starts(self):
+        return self.__graph_traverse__()['Artifact']
+
+    def get_literals_reachable_from_starts(self):
+        return self.__graph_traverse__()['Literal']
+
+
 
 
 def deserialize() -> ExperimentGraph:

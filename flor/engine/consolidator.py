@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-from flor.experiment_graph import ExperimentGraph
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from flor.experiment_graph import ExperimentGraph
 from typing import List
 
 
@@ -10,7 +13,7 @@ class Consolidator:
     """
 
     @staticmethod
-    def consolidate(experiment_graphs: List[ExperimentGraph]) -> ExperimentGraph:
+    def consolidate(experiment_graphs: List['ExperimentGraph']) -> 'ExperimentGraph':
         """
         Takes a list of independent experiment graphs and consolidates them into a single
         graph (in place). The consolidation removes redundancies and enables artifact sharing
@@ -36,10 +39,10 @@ class Aligner:
     Helper class for Consolidator
     """
 
-    def __init__(self, seed_eg: ExperimentGraph):
+    def __init__(self, seed_eg: 'ExperimentGraph'):
         self.eg = seed_eg
 
-    def put(self, other_eg: ExperimentGraph):
+    def put(self, other_eg: 'ExperimentGraph'):
         """
         Merges, by consolidation, other_eg with self.eg
         :param other_eg: Another experiment graph
@@ -85,7 +88,7 @@ class Aligner:
                         self.eg.b[consuming_action] |= {seed_start, }
                     del self.eg.d[other_start]
 
-    def __consolidate_actions_at_depth__(self, other_eg: ExperimentGraph, depth: int):
+    def __consolidate_actions_at_depth__(self, other_eg: 'ExperimentGraph', depth: int):
         """
         Consolidates the ActionLights at the specified depth
         Consolidation entails removal of duplicates, preservation of distincts, and updating of pointers

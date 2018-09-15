@@ -12,7 +12,7 @@ class Expander:
     """
 
     @staticmethod
-    def expand(eg: ExperimentGraph, pulled_resource):
+    def expand(eg: 'ExperimentGraph', pulled_resource):
         """
         Expands an experiment graph into a set of independent experiment graphs: one per trial.
         The Flor Objects are converted into specialized "Light" Flor Objects more suitable for execution
@@ -84,8 +84,8 @@ class Expander:
         return Expander.__const_literal_col_store__(literals, literal_names), num_trials
 
     @staticmethod
-    def __bfs__(starts, src_eg: ExperimentGraph,
-                dest_eg: ExperimentGraph, col_store,
+    def __bfs__(starts, src_eg: 'ExperimentGraph',
+                dest_eg: 'ExperimentGraph', col_store,
                 trial_index: int):
         """
         By traversing every node of the source experiment graph twice, with graph-traversal,
