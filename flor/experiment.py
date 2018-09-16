@@ -2,25 +2,18 @@
 
 import os
 import inspect
-import json
-import pandas as pd
-import time
-import git
 
 import flor.global_state as global_state
 import flor.util as util
 import flor.above_ground as ag
 from flor.jground import GroundClient
 from flor.object_model import *
-from flor.decorators import func
 from flor.experiment_graph import ExperimentGraph
 from flor.stateful import State
+from flor.data_controller.versioner import Versioner
 
 from ground.client import GroundClient
 from grit.client import GroundClient as GritClient
-from shutil import copytree
-from shutil import rmtree
-from shutil import move
 import requests
 
 
@@ -49,23 +42,7 @@ class Experiment(object):
 
     def __exit__(self, typ=None, value=None, traceback=None):
         self.xp_state.eg.serialize()
-        original = os.getcwd()
-        if os.path.exists(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME):
-            move(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git', '/tmp/')
-            rmtree(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            move('/tmp/.git', self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME + '/.git')
-            os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            repo = git.Repo(os.getcwd())
-            repo.git.add(A=True)
-            repo.index.commit('incremental commit')
-        else:
-            copytree(os.getcwd(), self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            os.chdir(self.xp_state.versioningDirectory + '/' + self.xp_state.EXPERIMENT_NAME)
-            repo = git.Repo.init(os.getcwd())
-            repo.git.add(A=True)
-            repo.index.commit('initial commit')
-        os.chdir(original)
+        Versioner(self.xp_state.eg, self.xp_state).save_commit_evnet()
         ag.CommitTracker(self.xp_state).commit()
         self.xp_state.eg.clean()
 

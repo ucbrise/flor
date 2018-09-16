@@ -66,7 +66,6 @@ class ContextTracker(object):
     def __new_spec_nodev__(self):
         latest_experiment_node_versions = self.__get_recent_specnodev__()
         if latest_experiment_node_versions and len(latest_experiment_node_versions) > 0:
-            print(latest_experiment_node_versions)
             maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in latest_experiment_node_versions])
             latest_experiment_node_versions = list(filter(lambda x: x.get_tags()['timestamp'].get_value() == maxtstamp, latest_experiment_node_versions))
             assert len(latest_experiment_node_versions) == 1, "Error, multiple latest specnode versions have equal timestamps"
@@ -538,7 +537,7 @@ def peek(xp_state : State, loc):
         return n
 
     def safeCreateLineage(sourceKey, name, tags=None):
-        print(sourceKey)
+        # print(sourceKey)
         try:
             n = xp_state.gc.get_lineage_edge(sourceKey)
             if n is None or n == []:
@@ -630,7 +629,6 @@ def peek(xp_state : State, loc):
             e1 = safeCreateGetEdge(sourcekeyLit, "null", specnode.get_id(), litnode.get_id())
 
             litnodev = xp_state.gc.create_node_version(litnode.get_id())
-            print(sourcekeyLit)
             xp_state.gc.create_edge_version(e1.get_id(), specnodev.get_id(), litnodev.get_id())
 
             # Create binding nodes and edges to dummy node
@@ -696,17 +694,11 @@ def peek(xp_state : State, loc):
     for each in arts:
         if type(each) == Action:
             #make a dummy node version
-            #print(each.funcName)
             dummyversion = xp_state.gc.create_node_version(dummynode.get_id())
             actionkey = sourcekeySpec + "." + each.funcName
-            #print(each.in_artifacts)
-            #print(each.out_artifacts)
-            #print("out")
             for ins in each.in_artifacts:
-                #print(ins)
                 if type(ins) == Literal:
                     sourcekeyLit = sourcekeySpec + '.literal.' + ins.name
-                    #print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     inkey = actionkey + '.literal.in.' + ins.name
@@ -715,7 +707,6 @@ def peek(xp_state : State, loc):
 
                 if type(ins) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(node.loc)
-                    #print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     inkey = actionkey + ins.loc
                     dummylineage = safeCreateLineage(inkey, 'null')
@@ -726,7 +717,6 @@ def peek(xp_state : State, loc):
                 #print(outs)
                 if type(outs) == Literal:
                     sourcekeyLit = sourcekeySpec + '.literal.' + outs.name
-                    #print(sourcekeyLit)
                     litnode = safeCreateGetNode(sourcekeyLit, sourcekeyLit)
                     litnodev = safeCreateGetNodeVersion(sourcekeyLit)
                     outkey = actionkey + '.literal.out.' + outs.name
@@ -735,7 +725,6 @@ def peek(xp_state : State, loc):
 
                 if type(outs) == Artifact:
                     sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(outs.loc)
-                    #print(sourcekeyArt)
                     artnode = safeCreateGetNode(sourcekeyArt, "null")
                     artnodev = safeCreateGetNodeVersion(sourcekeyArt)
                     outkey = actionkey + '.artifact.out.' + stringify(outs.loc)
@@ -786,7 +775,6 @@ def peek(xp_state : State, loc):
     for s in starts:
         if type(s) == Artifact:
             sourcekeyArt = sourcekeySpec + '.artifact.' + stringify(s.loc)
-            #print(sourcekeyArt)
             artnode = safeCreateGetNode(sourcekeyArt, "null")
             lineageart = safeCreateLineage(trialkey + ".artifact." + stringify(s.loc))
             xp_state.gc.create_lineage_edge_version(lineageart.get_id(), trialnodev.get_id(), artnode.get_id())
@@ -795,8 +783,6 @@ def peek(xp_state : State, loc):
     for out in outputs:
         sourcekeySpec = 'flor.' + xp_state.EXPERIMENT_NAME
         sourcekey = sourcekeySpec + '.artifact.' + stringify(out.loc)
-        #print("outs")
-        #print(sourcekey)
         outnode = safeCreateGetNode(sourcekey, sourcekey)
         outputnodev = xp_state.gc.create_node_version(outnode.get_id(), tags = {
             'value' : {
@@ -808,11 +794,6 @@ def peek(xp_state : State, loc):
 
         # Create lineage for the only trial peeked.
         lineagetrial = safeCreateLineage(trialkey + '.0' + out.loc, 'null')
-
-        #print("lineage trial")
-        #print(lineagetrial)
-        #print("trial node")
-        #print(trialnodev)
 
         xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), outputnodev.get_id()) #Fix this
 
@@ -826,15 +807,12 @@ def peek(xp_state : State, loc):
     while file in files:
         with open(file, 'rb') as f:
             value = dill.load(f)
-            #print("value {}".format(value))
             files.remove(file)
 
         flag = False
         for num in range(len(literalsOrder)):
             for g in ghosts:
                 if ghosts[g] == (literalsOrder[num], str(value)):
-                    #print("GHOST")
-                    #print(ghosts[g])
                     lineagetrial = safeCreateLineage(trialkey + '.lit.' + str(ghosts[g][1]), 'null')
                     xp_state.gc.create_lineage_edge_version(lineagetrial.get_id(), trialnodev.get_id(), g)
                     flag = True
@@ -843,7 +821,6 @@ def peek(xp_state : State, loc):
                 break
         num_ += 1
         file = 'ghost_literal_' + str(num_) + '.pkl'
-    #print("FILE {}".format(file))
 
     os.chdir(original)
 
@@ -1247,7 +1224,6 @@ def pull(xp_state : State, loc):
                     dummylineage = safeCreateLineage(inkey, 'null')
                     xp_state.gc.create_lineage_edge_version(dummylineage.get_id(), artnodev.get_id(), dummyversion.get_id())
 
-            print("out")
             for outs in each.out_artifacts:
                 print(outs)
                 if type(outs) == Literal:
