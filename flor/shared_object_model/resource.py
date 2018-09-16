@@ -8,6 +8,7 @@ from flor.engine.executor import Executor
 from flor.engine.expander import Expander
 from flor.engine.consolidator import Consolidator
 from flor.data_controller.organizer import Organizer
+from flor.data_controller.versioner import Versioner
 
 
 class Resource(object):
@@ -31,12 +32,13 @@ class Resource(object):
         raise NotImplementedError("Abstract method Resource.peek must be overridden")
 
     def __pull__(self, pulled_object, manifest=None):
-
-        pulled_object.xp_state.eg.serialize()
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
+        consolidated_graph.serialize()
         Executor.execute(consolidated_graph)
         Organizer(consolidated_graph, pulled_object.xp_state).run()
+        Versioner(consolidated_graph, pulled_object.xp_state).save_pull_event()
+        consolidated_graph.clean()
 
 
     def __plot__(self, nodename: str, shape: str, rankdir=None):

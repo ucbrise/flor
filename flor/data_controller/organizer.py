@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
 import os
 from datetime import datetime
+from shutil import copy2 as copy
+
 
 class Organizer:
     """
@@ -32,7 +34,7 @@ class Organizer:
 
         for art in intermediary_artifacts:
             os.rename(art.get_isolated_location(), os.path.join(self.nested_dir, art.get_isolated_location()))
-        os.rename('experiment_graph.pkl', os.path.join(self.nested_dir, 'experiment_graph.pkl'))
+        copy('experiment_graph.pkl', os.path.join(self.nested_dir, 'experiment_graph.pkl'))
         if os.path.exists('output.gv'):
             os.rename('output.gv', os.path.join(self.nested_dir, 'output.gv'))
         if os.path.exists('output.gv.pdf'):

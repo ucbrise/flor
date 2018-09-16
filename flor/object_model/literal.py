@@ -8,6 +8,8 @@ from uuid import uuid4
 
 class Literal(Resource):
 
+    #TODO: Add support for non-primitive values such as DataFrames
+
     def __init__(self, v,
                  name: str,
                  parent,

@@ -42,7 +42,7 @@ class Experiment(object):
 
     def __exit__(self, typ=None, value=None, traceback=None):
         self.xp_state.eg.serialize()
-        Versioner(self.xp_state.eg, self.xp_state).save_commit_evnet()
+        Versioner(self.xp_state.eg, self.xp_state).save_commit_event()
         ag.CommitTracker(self.xp_state).commit()
         self.xp_state.eg.clean()
 

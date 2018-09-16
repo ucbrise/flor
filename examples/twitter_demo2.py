@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import flor
 import numpy as np
-import time
 
 with flor.Experiment("twitter_demo") as ex:
     ex.groundClient('git') #use "git" for grit
@@ -16,8 +15,7 @@ with flor.Experiment("twitter_demo") as ex:
     training_tweets = ex.artifact('training_tweets.pkl', 'tweet_df', do_split)
     testing_tweets = ex.artifact('testing_tweets.pkl', 'test_df', do_split)
 
-    alpha = ex.literalForEach(np.linspace(0.0, 1.0, 2).tolist(), 'alpha')
-    # alpha.forEach()
+    alpha = ex.literalForEach(np.linspace(0.2, 1.0, 2).tolist(), 'alpha')
 
     from train_model import train
     do_train = ex.action(train, [training_tweets, alpha])
