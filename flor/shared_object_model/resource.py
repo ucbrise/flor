@@ -9,7 +9,7 @@ from flor.engine.expander import Expander
 from flor.engine.consolidator import Consolidator
 from flor.data_controller.organizer import Organizer
 from flor.data_controller.versioner import Versioner
-
+from above_ground import PullTracker
 
 class Resource(object):
 
@@ -36,8 +36,9 @@ class Resource(object):
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
         consolidated_graph.serialize()
         Executor.execute(consolidated_graph)
-        Organizer(consolidated_graph, pulled_object.xp_state).run()
         Versioner(consolidated_graph, pulled_object.xp_state).save_pull_event()
+        PullTracker(pulled_object.xp_state).pull(consolidated_graph)
+        Organizer(consolidated_graph, pulled_object.xp_state).run()
         consolidated_graph.clean()
 
 
