@@ -9,7 +9,7 @@ from flor.engine.expander import Expander
 from flor.engine.consolidator import Consolidator
 from flor.data_controller.organizer import Organizer
 from flor.data_controller.versioner import Versioner
-from above_ground import PullTracker
+from flor.above_ground import PullTracker
 
 class Resource(object):
 
