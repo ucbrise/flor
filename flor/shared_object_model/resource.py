@@ -11,6 +11,8 @@ from flor.data_controller.organizer import Organizer
 from flor.data_controller.versioner import Versioner
 from flor.above_ground import PullTracker
 
+from datetime import datetime
+
 class Resource(object):
 
     def __init__(self, parent, xp_state):
@@ -31,16 +33,22 @@ class Resource(object):
     def peek(self, head=25, manifest=None, bindings=None, func = lambda x: x):
         raise NotImplementedError("Abstract method Resource.peek must be overridden")
 
-    def __pull__(self, pulled_object, manifest=None):
+    def __pull__(self, pulled_object, version=None):
+        version = str(version)
+        assert Organizer.is_valid_version(pulled_object.xp_state, version), \
+            "Version Tag '{}' already exists, please choose a different name"
+        if version is None:
+            self.write_version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        else:
+            self.write_version = version
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
         consolidated_graph.serialize()
         Executor.execute(consolidated_graph)
-        Versioner(consolidated_graph, pulled_object.xp_state).save_pull_event()
-        PullTracker(pulled_object.xp_state).pull(consolidated_graph)
-        Organizer(consolidated_graph, pulled_object.xp_state).run()
+        Versioner(self.write_version, consolidated_graph, pulled_object.xp_state).save_pull_event()
+        PullTracker(self.write_version, pulled_object.xp_state).pull(consolidated_graph)
+        Organizer(self.write_version, consolidated_graph, pulled_object.xp_state).run()
         consolidated_graph.clean()
-
 
     def __plot__(self, nodename: str, shape: str, rankdir=None):
         """

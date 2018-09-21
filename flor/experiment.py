@@ -12,6 +12,7 @@ from flor.experiment_graph import ExperimentGraph
 from flor.stateful import State
 from flor.data_controller.versioner import Versioner
 
+from datetime import datetime
 from ground.client import GroundClient
 from grit.client import GroundClient as GritClient
 import requests
@@ -34,19 +35,6 @@ class Experiment(object):
                 if target_dir:
                     os.chdir(target_dir)
 
-        if backend:
-            self.groundClient(backend)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, typ=None, value=None, traceback=None):
-        self.xp_state.eg.serialize()
-        Versioner(self.xp_state.eg, self.xp_state).save_commit_event()
-        ag.CommitTracker(self.xp_state).commit()
-        self.xp_state.eg.clean()
-
-    def groundClient(self, backend):
         backend = backend.lower().strip()
         if backend == "ground":
             ######################### GROUND GROUND GROUND ###################################################
@@ -64,9 +52,27 @@ class Experiment(object):
         else:
             raise ModuleNotFoundError("Only 'git' or 'ground' backends supported, but '{}' entered".format(backend))
 
-    def literal(self, v=None, name=None, parent=None):
-        """
+    def __enter__(self):
+        return self
 
+    def __exit__(self, typ=None, value=None, traceback=None):
+        self.xp_state.eg.serialize()
+        version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        Versioner(version, self.xp_state.eg, self.xp_state).save_commit_event()
+        ag.CommitTracker(self.xp_state).commit()
+        self.xp_state.eg.clean()
+
+    def groundClient(self, backend):
+        """
+        Keeping for backward compatibility. Will clean up.
+        :param backend:
+        :return:
+        """
+        pass
+
+    def literal(self, v=None, name=None, parent=None, version=None):
+        """
+        TODO: support version
         :param v:
         :param name:
         :param parent:
@@ -76,7 +82,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default=None)
+        lit = Literal(v, name, parent, self.xp_state, default=None, version=version)
         self.xp_state.eg.node(lit)
 
         if parent:
@@ -84,9 +90,9 @@ class Experiment(object):
 
         return lit
 
-    def literalForEach(self, v=None, name=None, parent=None, default=None):
+    def literalForEach(self, v=None, name=None, parent=None, default=None, version=None):
         """
-
+        TODO: Support version
         :param v:
         :param name:
         :param parent:
@@ -97,7 +103,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default)
+        lit = Literal(v, name, parent, self.xp_state, default, version=version)
         self.xp_state.eg.node(lit)
         lit.__forEach__()
 
@@ -106,16 +112,16 @@ class Experiment(object):
 
         return lit
 
-    def artifact(self, loc, name, parent=None, manifest=None):
+    def artifact(self, loc, name, parent=None, version=None):
         """
 
         :param loc:
         :param name:
         :param parent:
-        :param manifest:
+        :param version:
         :return:
         """
-        art = Artifact(loc, parent, name, manifest, self.xp_state)
+        art = Artifact(loc, parent, name, version, self.xp_state)
         self.xp_state.eg.node(art)
 
         if parent:
@@ -125,6 +131,7 @@ class Experiment(object):
 
     def action(self, func, in_artifacts=None):
         """
+        # TODO: What's the equivalent of re-using code from a previous experiment version?
 
         :param func:
         :param in_artifacts:

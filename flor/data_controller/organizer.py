@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from flor.stateful import State
 
 import os
-from datetime import datetime
 from shutil import copy2 as copy
 
 
@@ -14,11 +13,11 @@ class Organizer:
     """
     Responsible for organizing some Artifacts and all Literals
     """
-    def __init__(self, eg: 'ExperimentGraph', xp_state: 'State'):
+    def __init__(self, version, eg: 'ExperimentGraph', xp_state: 'State'):
         self.eg = eg
         self.xp_state = xp_state
         self.output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
-        self.nested_dir = os.path.join(self.output_dir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        self.nested_dir = os.path.join(self.output_dir, version)
 
     def __create_output_directory__(self):
         if not os.path.exists(self.output_dir):
@@ -46,3 +45,10 @@ class Organizer:
         self.__move_artifacts__()
 
 
+    @staticmethod
+    def is_valid_version(xp_state, version):
+        if version is None:
+            return True
+        output_dir = "{}_{}".format(xp_state.EXPERIMENT_NAME, xp_state.outputDirectory)
+        nested_dir = os.path.join(output_dir, version)
+        return not os.path.exists(nested_dir)

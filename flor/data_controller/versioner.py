@@ -15,16 +15,19 @@ from shutil import rmtree
 from shutil import move
 from shutil import copy2 as copy
 
+#
+
 class Versioner:
     """
     Responsible for putting Literal and Code artifacts in ~/flor.d
     """
 
-    def __init__(self, eg: 'ExperimentGraph', xp_state: 'State'):
+    def __init__(self, version, eg: 'ExperimentGraph', xp_state: 'State'):
         self.eg = eg
         self.xp_state = xp_state
         self.original = os.getcwd()
         self.versioning_dir = os.path.join(self.xp_state.versioningDirectory, self.xp_state.EXPERIMENT_NAME)
+        self.version = version
 
     @staticmethod
     def __is_git_repo__(path):
@@ -110,6 +113,7 @@ class Versioner:
         Literals: Serializable in str() put in GROUND; Else go in cloudPickle Git, and GROUND
           Links to it
         """
+        #TODO: Return commit hash after most recent commit
         assert self.__is_git_repo__(self.versioning_dir), "Invariant Violation: Pull event without prior commit event"
         # self.versioning_dir exists
         with tempfile.TemporaryDirectory() as tempdir:

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 from typing import Set, Union
 import hashlib
 import json
-import datetime
+from datetime import datetime
 import dill
 
 import flor.util as util
@@ -67,7 +67,7 @@ class ContextTracker(object):
         return latest_experiment_node_versions
 
 
-    def __new_spec_nodev__(self):
+    def __new_spec_nodev__(self, write_tag=None):
         latest_experiment_node_versions = self.__get_recent_specnodev__()
         if latest_experiment_node_versions and len(latest_experiment_node_versions) > 0:
             maxtstamp = max([each.get_tags()['timestamp'].get_value() for each in latest_experiment_node_versions])
@@ -87,7 +87,7 @@ class ContextTracker(object):
             'timestamp':
                 {
                     'key': 'timestamp',
-                    'value': datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
+                    'value': datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
                     'type': 'STRING'
                 },
             'commitHash': # this commit; not parent commit
@@ -101,6 +101,12 @@ class ContextTracker(object):
                     'key': 'sequenceNumber',
                     'value': seq_num,
                     'type': 'STRING',
+                },
+            'write_tag':
+                {
+                    'key': 'write_tag',
+                    'value': write_tag,
+                    'type': 'STRING'
                 }
         }, parent_ids=parent_ids)
 
@@ -231,7 +237,8 @@ class ContextTracker(object):
 
 
     def __create_artifact__(self, node, location):
-        sourcekeyArt = self.sourcekeySpec + '.artifact.' + self.__stringify__(node.loc)
+        # sourcekeyArt = self.sourcekeySpec + '.artifact.' + self.__stringify__(node.loc)
+        sourcekeyArt = self.sourcekeySpec + '.artifact.' + node.name
         artnode = self.__safeCreateGetNode__(sourcekeyArt, "null")
         e2 = self.__safeCreateGetEdge__(sourcekeyArt, "null", self.specnode.get_id(), artnode.get_id())
 
@@ -248,7 +255,7 @@ class ContextTracker(object):
                 'key': 'location',
                 'value': location,
                 'type': 'STRING'
-            }
+            },
         })
         self.xp_state.gc.create_edge_version(e2.get_id(), self.specnodev.get_id(), artnodev.get_id())
 
@@ -278,9 +285,10 @@ class CommitTracker(ContextTracker):
 
     def __init__(self, xp_state):
         super().__init__(xp_state)
+        self.version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     def commit(self):
-        self.__new_spec_nodev__()
+        self.__new_spec_nodev__(self.version)
 
         starts: Set[Union['Artifact', 'Literal']] = self.xp_state.eg.starts
         for node in starts:
@@ -294,8 +302,9 @@ class CommitTracker(ContextTracker):
 
 class PullTracker(ContextTracker):
 
-    def __init__(self, xp_state: 'State'):
+    def __init__(self, version, xp_state: 'State'):
         super().__init__(xp_state)
+        self.version = version
         # Maps a id(light_node) to the corresponding ground node_version
         self.object_node_version_map ={}
         self.action_node = self.__safeCreateGetNode__('flor.{}.action'.format(xp_state.EXPERIMENT_NAME), 'null')
@@ -354,7 +363,7 @@ class PullTracker(ContextTracker):
 
     def pull(self, eg: 'ExperimentGraph'):
         self.eg = eg
-        self.event_timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        self.event_timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
         arts = self.xp_state.eg.d.keys() - self.xp_state.eg.starts
 
@@ -385,6 +394,12 @@ class PullTracker(ContextTracker):
                 {
                     'key': 'timestamp',
                     'value': self.event_timestamp,
+                    'type': 'STRING'
+                },
+            'write_tag':
+                {
+                    'key': 'write_tag',
+                    'value': self.version,
                     'type': 'STRING'
                 }
         })

@@ -9,7 +9,7 @@ class Artifact(Resource):
 
     def __init__(self, loc: str,
                  parent, name,
-                 manifest: Dict[str, "Artifact"],
+                 version: str,
                  xp_state):
         """
         Initialize an Artifact
@@ -20,7 +20,7 @@ class Artifact(Resource):
         """
         super().__init__(parent, xp_state)
         self.loc = loc
-        self.manifest = manifest
+        self.version = version
         self.name = name
 
         self.xp_state.artifactNameToObj[self.loc] = self
@@ -38,5 +38,5 @@ class Artifact(Resource):
     def plot(self, rankdir=None):
         return super().__plot__(self.loc, "box", rankdir)
 
-    def pull(self, manifest=None):
-        super().__pull__(self, manifest)
+    def pull(self, version=None):
+        super().__pull__(self, version)

@@ -14,8 +14,10 @@ class Literal(Resource):
                  name: str,
                  parent,
                  xp_state,
-                 default):
+                 default,
+                 version):
         """
+        TODO: Support version
         Initialize a Literal. Literals are versioned in Ground
         :param v: Any memory-resident object
         :param name: The name of the literal, give it one or we'll name it ourselves
@@ -32,6 +34,7 @@ class Literal(Resource):
         self.n = 1
 
         self.default = default
+        self.version = version
 
         # The name is used in the visualization and Ground versioning
         # TODO: Also used for arg-passing, so if not provided should fail
@@ -86,5 +89,5 @@ class Literal(Resource):
     def plot(self, rankdir=None):
         return super().__plot__(self.name, "underline", rankdir)
 
-    def pull(self, manifest=None):
-        super().__pull__(self, manifest)
+    def pull(self, version=None):
+        super().__pull__(self, version)
