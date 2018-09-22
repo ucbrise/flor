@@ -295,7 +295,10 @@ class CommitTracker(ContextTracker):
             if type(node).__name__ == 'Literal':
                 self.__create_literal__(node)
             elif type(node).__name__ == 'Artifact':
-                self.__create_artifact__(node, node.loc)
+                if node.parent:
+                    self.__create_artifact__(node, node.loc)
+                else:
+                    self.__create_artifact__(node, node.resolve_location())
             else:
                 raise TypeError(
                     "Action cannot be in set: starts")

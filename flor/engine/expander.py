@@ -112,9 +112,11 @@ class Expander:
                 light = ActionLight(node.funcName, node.func)
                 dest_eg.light_node(light)
             elif type(node).__name__ == "Artifact":
-                light = ArtifactLight(node.loc, node.name)
                 if node.parent:
+                    light = ArtifactLight(node.loc, node.name)
                     light.set_produced()
+                else:
+                    light = ArtifactLight(node.resolve_location(), node.name)
                 dest_eg.light_node(light)
             elif type(node).__name__ == "Literal":
                 if node.name in col_store:

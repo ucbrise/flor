@@ -89,5 +89,5 @@ class Literal(Resource):
     def plot(self, rankdir=None):
         return super().__plot__(self.name, "underline", rankdir)
 
-    def pull(self, version=None):
-        super().__pull__(self, version)
+    def pull(self, utag=None):
+        super().__pull__(self, utag)

@@ -70,7 +70,7 @@ class Experiment(object):
         """
         pass
 
-    def literal(self, v=None, name=None, parent=None, version=None):
+    def literal(self, v=None, name=None, parent=None, utag=None):
         """
         TODO: support version
         :param v:
@@ -82,7 +82,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default=None, version=version)
+        lit = Literal(v, name, parent, self.xp_state, default=None, version=utag)
         self.xp_state.eg.node(lit)
 
         if parent:
@@ -90,7 +90,7 @@ class Experiment(object):
 
         return lit
 
-    def literalForEach(self, v=None, name=None, parent=None, default=None, version=None):
+    def literalForEach(self, v=None, name=None, parent=None, default=None, utag=None):
         """
         TODO: Support version
         :param v:
@@ -103,7 +103,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default, version=version)
+        lit = Literal(v, name, parent, self.xp_state, default, version=utag)
         self.xp_state.eg.node(lit)
         lit.__forEach__()
 
@@ -112,7 +112,7 @@ class Experiment(object):
 
         return lit
 
-    def artifact(self, loc, name, parent=None, version=None):
+    def artifact(self, loc, name, parent=None, utag=None, identifier=None):
         """
 
         :param loc:
@@ -121,7 +121,9 @@ class Experiment(object):
         :param version:
         :return:
         """
-        art = Artifact(loc, parent, name, version, self.xp_state)
+        if parent is not None and utag is not None:
+            raise ValueError("Can't set a utag for a derived artifact")
+        art = Artifact(loc, parent, name, utag, identifier, self.xp_state)
         self.xp_state.eg.node(art)
 
         if parent:

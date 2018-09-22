@@ -10,7 +10,6 @@ import tempfile
 import os
 import cloudpickle
 
-from shutil import copytree
 from shutil import rmtree
 from shutil import move
 from shutil import copy2 as copy
