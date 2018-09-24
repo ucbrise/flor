@@ -24,4 +24,4 @@ with flor.Experiment("twitter_demo") as ex:
     model_accuracy = ex.literal(name='model_accuracy', parent=do_test)
 
 model_accuracy.plot()
-model_accuracy.pull(version='my_first_pull')
+model_accuracy.pull(utag='my_third_pull')
