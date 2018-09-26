@@ -72,16 +72,16 @@ class Versioner:
                 cloudpickle.dump(lit.v, f)
 
 
-    def __git_commit__(self, mode):
+    def __git_commit__(self, mode, msg):
         os.chdir(self.versioning_dir)
         if mode == 'initial':
             repo = git.Repo.init(os.getcwd())
             repo.git.add(A=True)
-            repo.index.commit('initial commit')
+            repo.index.commit(msg)
         else:
             repo = git.Repo(os.getcwd())
             repo.git.add(A=True)
-            repo.index.commit('incremental commit')
+            repo.index.commit(msg)
         os.chdir(self.original)
 
 
@@ -97,13 +97,13 @@ class Versioner:
                 os.mkdir(self.versioning_dir)
                 self.__move_starts__()
                 move(os.path.join(tempdir, '.git'), os.path.join(self.versioning_dir, '.git'))
-            self.__git_commit__('incremental')
+            self.__git_commit__('incremental', "commit:{}".format(self.version))
         else:
             if not os.path.exists(self.xp_state.versioningDirectory):
                 os.mkdir(self.xp_state.versioningDirectory)
             os.mkdir(self.versioning_dir)
             self.__move_starts__()
-            self.__git_commit__('initial')
+            self.__git_commit__('initial', "commit:{}".format(self.version))
 
     def save_pull_event(self):
         """
@@ -123,4 +123,4 @@ class Versioner:
             self.__move_starts__()
             self.__serialize_literals__()
             move(os.path.join(tempdir, '.git'), os.path.join(self.versioning_dir, '.git'))
-        self.__git_commit__('incremental')
+        self.__git_commit__('incremental', "pull:{}".format(self.version))

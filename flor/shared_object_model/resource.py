@@ -43,8 +43,8 @@ class Resource(object):
             self.write_version = version
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
-        consolidated_graph.serialize()
         Executor.execute(consolidated_graph)
+        consolidated_graph.serialize()
         Versioner(self.write_version, consolidated_graph, pulled_object.xp_state).save_pull_event()
         PullTracker(self.write_version, pulled_object.xp_state).pull(consolidated_graph)
         Organizer(self.write_version, consolidated_graph, pulled_object.xp_state).run()

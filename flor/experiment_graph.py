@@ -108,8 +108,26 @@ class ExperimentGraph:
                 self.actions_at_depth[v.max_depth] = {v, }
 
     def serialize(self):
+        # Vikram's Patch
+        foos = {}
+
+        for depth in self.actions_at_depth:
+            for action in self.actions_at_depth[depth]:
+                if type(action).__name__ == "Action" or type(action).__name__ == "ActionLight":
+                    foos[action] = action.func
+                    action.func = None
+                else:
+                    raise ValueError("Invalid action type: {}".format(type(action)))
+
         with open('experiment_graph.pkl', 'wb') as f:
             dill.dump(self, f)
+
+        for depth in self.actions_at_depth:
+            for action in self.actions_at_depth[depth]:
+                if type(action).__name__ == "Action" or type(action).__name__ == "ActionLight":
+                    action.func = foos[action]
+                else:
+                    raise ValueError("Invalid action type: {}".format(type(action)))
 
     def clean(self):
         # Safe to remove only when experiment graph has been copied to flor.d

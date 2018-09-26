@@ -47,6 +47,7 @@ class Organizer:
 
     @staticmethod
     def is_valid_version(xp_state, version):
+        # TODO: Check git instead, more reliable
         if version is None:
             return True
         output_dir = "{}_{}".format(xp_state.EXPERIMENT_NAME, xp_state.outputDirectory)
