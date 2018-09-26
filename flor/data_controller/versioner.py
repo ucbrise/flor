@@ -97,13 +97,13 @@ class Versioner:
                 os.mkdir(self.versioning_dir)
                 self.__move_starts__()
                 move(os.path.join(tempdir, '.git'), os.path.join(self.versioning_dir, '.git'))
-            self.__git_commit__('incremental', "commit:{}".format(self.version))
+            self.__git_commit__('incremental', "msg:commit:{}".format(self.version))
         else:
             if not os.path.exists(self.xp_state.versioningDirectory):
                 os.mkdir(self.xp_state.versioningDirectory)
             os.mkdir(self.versioning_dir)
             self.__move_starts__()
-            self.__git_commit__('initial', "commit:{}".format(self.version))
+            self.__git_commit__('initial', "msg:commit:{}".format(self.version))
 
     def save_pull_event(self):
         """
@@ -123,4 +123,4 @@ class Versioner:
             self.__move_starts__()
             self.__serialize_literals__()
             move(os.path.join(tempdir, '.git'), os.path.join(self.versioning_dir, '.git'))
-        self.__git_commit__('incremental', "pull:{}".format(self.version))
+        self.__git_commit__('incremental', "msg:pull:{}".format(self.version))

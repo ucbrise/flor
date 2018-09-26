@@ -49,6 +49,42 @@ class ExperimentGraph:
 
         return response
 
+    @property
+    def sinks(self):
+        d = self.__graph_traverse__()
+        out = set([])
+        for v in d['Artifact'] | d['Literal']:
+            if not self.d[v]:
+                out |= {v,}
+
+        return out
+
+    def summary_back_traverse(self, sink):
+
+        response = {'Action': set([]),
+                    'Artifact': set([]),
+                    'Literal': set([])}
+
+        explored = []
+        queue = [sink, ]
+        visited = lambda: explored + queue
+
+        while queue:
+            node = queue.pop(0)
+
+            for type_prefix in response.keys():
+                if type(node).__name__[0:len(type_prefix)] == type_prefix:
+                    response[type_prefix] |= {node, }
+                    break
+
+            explored.append(node)
+
+            for child in self.b[node]:
+                if child not in visited():
+                    queue.append(child)
+
+        return response
+
     def node(self, v):
         """
         Experiment facing method
@@ -164,6 +200,9 @@ class ExperimentGraph:
     def get_literals_reachable_from_starts(self):
         return self.__graph_traverse__()['Literal']
 
+    @staticmethod
+    def deserialize():
+        return deserialize()
 
 
 

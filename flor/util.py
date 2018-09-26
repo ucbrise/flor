@@ -5,6 +5,7 @@ import pickle
 import hashlib
 import os
 
+from typing import  List
 
 def isLoc(loc):
     try:
@@ -145,4 +146,30 @@ class chinto(object):
     def __exit__(self, type, value, traceback):
         os.chdir(self.original_dir)
 
+def git_log():
+    ld = []
+    rawgitlog = __readProc__(['git', 'log', '--all'])
+    d = {}
+    for line in rawgitlog:
+        if 'commit' in line[0:6]:
+            d['commit'] = line.split(' ')[1]
+        elif 'Author' in line[0:6]:
+            d['Author'] = ' '.join(line.split()[1:])
+        elif 'Date' in line[0:4]:
+            d['Date'] = ' '.join(line.split()[1:])
+        elif 'msg:' in line.strip()[0:len('msg:')]:
+            line = line.strip()
+            d['message'] = ':'.join(line.split(':')[1:])
+        if d:
+            ld.append(d)
+        d = {}
+    return ld
 
+def __runProc__(commands: List):
+    subprocess.run(commands, stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL)
+
+def __readProc__(commands: List):
+    p1 = subprocess.run(commands, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    rawgitlog = str(p1.stdout, 'UTF-8').split('\n')
+    return rawgitlog

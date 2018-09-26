@@ -3,6 +3,8 @@
 import os
 import inspect
 
+import pandas as pd
+
 import flor.global_state as global_state
 import flor.util as util
 import flor.above_ground as ag
@@ -139,12 +141,12 @@ class Experiment(object):
         :param in_artifacts:
         :return:
         """
-        filenameWithFunc, _, _ = func
+        filenameWithFunc, funcName, _ = func
 
         if filenameWithFunc in self.xp_state.eg.loc_map:
             code_artifact = self.xp_state.eg.loc_map[filenameWithFunc]
         else:
-            code_artifact = self.artifact(filenameWithFunc, filenameWithFunc.split('.')[0])
+            code_artifact = self.artifact(filenameWithFunc, funcName)
 
         if in_artifacts:
             temp_artifacts = []
@@ -169,66 +171,62 @@ class Experiment(object):
 
         return act
 
-    # def plate(self, name):
-    #     return Plate(self, name)
+    def summarize(self):
+        # For now summarizes everything
+        # TODO: get_next_block access method (history may be very long)
 
-# class Plate:
-#
-#     def __init__(self, experiment, name):
-#         self.experiment = experiment
-#         self.name = name + '.pkl'
-#         self.artifacts = []
-#
-#     def artifact(self, loc, parent=None, manifest=False):
-#         artifact = self.experiment.artifact(loc, parent, manifest)
-#         self.artifacts.append(artifact)
-#         return artifact
-#
-#     def action(self, func, in_artifacts=None):
-#         return self.experiment.action(func, in_artifacts)
-#
-#     def exit(self):
-#
-#         @func
-#         def plate_aggregate(*args):
-#             original_dir = os.getcwd()
-#             os.chdir(self.experiment.xp_state.tmpexperiment)
-#             dirs = [x for x in os.listdir() if util.isNumber(x)]
-#             table = []
-#
-#             # NOTE: Use the flor.Experiment experimentName in the future
-#             experimentName = self.experiment.xp_state.florFile.split('.')[0]
-#
-#             literalNames = self.experiment.xp_state.ray['literalNames']
-#
-#             for trial in dirs:
-#                 os.chdir(trial)
-#                 with open('.' + experimentName + '.flor', 'r') as fp:
-#                     config = json.load(fp)
-#                 record = {}
-#                 for literalName in literalNames:
-#                     record[literalName] = config[literalName]
-#                 for artifact in self.artifacts:
-#                     while True:
-#                         try:
-#                             # I need to wait for every to finish. not just this one.
-#                             record[artifact.loc.split('.')[0]] = util.loadArtifact(artifact.loc)
-#                             break
-#                         except:
-#                             time.sleep(5)
-#                     if util.isNumber(record[artifact.loc.split('.')[0]]):
-#                         record[artifact.loc.split('.')[0]] = eval(record[artifact.loc.split('.')[0]])
-#                 table.append(record)
-#                 os.chdir('../')
-#
-#             os.chdir(original_dir)
-#
-#             return pd.DataFrame(table)
-#
-#         plate_aggregate = (self.experiment.xp_state.florFile, plate_aggregate[1], plate_aggregate[2])
-#
-#         do_action = self.experiment.action(plate_aggregate, self.artifacts)
-#         artifact_df = self.experiment.artifact(self.name, do_action)
-#
-#         return artifact_df
-#
+        repo_path = os.path.join(self.xp_state.versioningDirectory,self.xp_state.EXPERIMENT_NAME)
+
+        with util.chinto(repo_path):
+            ld = util.git_log()
+
+        ld4 =[]
+        d4 = {}
+        for i, d in enumerate(ld):
+            if ((i % 4) == 0):
+               if i > 0:
+                   ld4.append(d4)
+                   d4 = {}
+            d4.update(d)
+        ld4.append(d4)
+
+        pulls = filter(lambda x: 'pull' == x['message'].split(':')[0], ld4)
+
+        semistructured_rep = []
+        columns = ['utag',]
+
+        with util.chinto(repo_path):
+            for i, pull_d in enumerate(pulls):
+                util.__runProc__(['git', 'checkout', pull_d['commit']])
+                eg = ExperimentGraph.deserialize()
+
+                semistructured_rep.append({})
+                for sink in eg.sinks:
+                    response = eg.summary_back_traverse(sink)
+                    if sink.name not in columns:
+                        columns.append(sink.name)
+                    for v in response['Literal']:
+                        if v.name not in columns:
+                            columns.append(v.name)
+                    for v in response['Artifact']:
+                        if v.name not in columns:
+                            columns.append(v.name)
+                    semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
+                    semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
+            util.__runProc__(['git', 'checkout', 'master'])
+
+        ltuples = []
+
+        for pull_container in semistructured_rep:
+            for kee in pull_container:
+                tuple = {}
+                tuple['utag'] = kee.split(':')[1]
+                for name, value in pull_container[kee]:
+                    tuple[name] = value
+                ltuples.append(tuple)
+
+        return pd.DataFrame(ltuples, columns=columns)
+
+
+
+

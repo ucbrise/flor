@@ -5,6 +5,10 @@ class ArtifactLight:
 
     def __init__(self, loc, name):
         self.loc = loc
+
+        location_array = self.loc.split('.')
+        self.isolated_loc = "{}_{}.{}".format('.'.join(location_array[0:-1]), id(self), location_array[-1])
+
         self.name = name
 
         self.resourceType = True
@@ -19,8 +23,7 @@ class ArtifactLight:
         return self.loc
 
     def get_isolated_location(self):
-        location_array = self.loc.split('.')
-        return "{}_{}.{}".format('.'.join(location_array[0:-1]), id(self), location_array[-1])
+        return self.isolated_loc
 
     def equals(self, other):
         return (type(self) == type(other)
