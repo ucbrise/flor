@@ -55,7 +55,7 @@ class Versioner:
             #TODO: Will need to generalize by typing flor Artifacts, propagate to ArtifactLight
             if type(start).__name__[0:len('Artifact')] == 'Artifact':
                 start = start.loc
-                if 'py' == start.split('.')[-1]:
+                if start.split('.')[-1] in ('py', 'ipynb'):
                     copy(start, os.path.join(self.versioning_dir, start))
         copy('experiment_graph.pkl', os.path.join(self.versioning_dir, 'experiment_graph.pkl'))
         copy(self.xp_state.florFile, os.path.join(self.versioning_dir, self.xp_state.florFile))
