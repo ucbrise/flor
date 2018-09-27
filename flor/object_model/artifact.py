@@ -83,7 +83,7 @@ class Artifact(Resource):
         """
 
         if self.version is None or self.parent is not None:
-            return self.loc
+            return os.path.abspath(self.loc)
         output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
         nested_dir = os.path.join(output_dir, self.version)
         file_names = list(filter(lambda s: (self.loc.split('.')[0].split('_')
@@ -96,7 +96,7 @@ class Artifact(Resource):
 
         file_name = file_names[0]
 
-        return os.path.join(nested_dir, file_name)
+        return os.path.abspath(os.path.join(nested_dir, file_name))
 
 
 

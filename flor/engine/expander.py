@@ -5,6 +5,7 @@ import itertools
 from flor.experiment_graph import ExperimentGraph
 from flor.light_object_model import *
 
+import os
 
 class Expander:
     """
@@ -116,7 +117,7 @@ class Expander:
                     light = ArtifactLight(node.loc, node.name)
                     light.set_produced()
                 else:
-                    light = ArtifactLight(node.resolve_location(), node.name)
+                    light = ArtifactLight(os.path.basename(node.resolve_location()), node.name)
                 dest_eg.light_node(light)
             elif type(node).__name__ == "Literal":
                 if node.name in col_store:
