@@ -34,12 +34,12 @@ class Resource(object):
         raise NotImplementedError("Abstract method Resource.peek must be overridden")
 
     def __pull__(self, pulled_object, version=None):
-        version = str(version)
         assert Organizer.is_valid_version(pulled_object.xp_state, version), \
             "Version Tag '{}' already exists, please choose a different name"
         if version is None:
             self.write_version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         else:
+            version = str(version)
             self.write_version = version
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
