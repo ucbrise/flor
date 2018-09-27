@@ -148,7 +148,7 @@ class chinto(object):
 
 def git_log():
     ld = []
-    rawgitlog = __readProc__(['git', 'log', '--all'])
+    rawgitlog = __readProc__(['git', 'log', '--all']).split('\n')
     d = {}
     for line in rawgitlog:
         if 'commit' in line[0:6]:
@@ -171,5 +171,5 @@ def __runProc__(commands: List):
 
 def __readProc__(commands: List):
     p1 = subprocess.run(commands, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    rawgitlog = str(p1.stdout, 'UTF-8').split('\n')
+    rawgitlog = str(p1.stdout, 'UTF-8')
     return rawgitlog

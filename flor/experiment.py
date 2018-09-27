@@ -27,6 +27,8 @@ class Experiment(object):
         self.xp_state.EXPERIMENT_NAME = name
         self.xp_state.eg = ExperimentGraph()
 
+        self.repo_path = os.path.join(self.xp_state.versioningDirectory, self.xp_state.EXPERIMENT_NAME)
+
         if not global_state.interactive:
             # https://stackoverflow.com/a/13699329/9420936
             frame = inspect.stack()[1]
@@ -171,13 +173,8 @@ class Experiment(object):
 
         return act
 
-    def summarize(self):
-        # For now summarizes everything
-        # TODO: get_next_block access method (history may be very long)
-
-        repo_path = os.path.join(self.xp_state.versioningDirectory,self.xp_state.EXPERIMENT_NAME)
-
-        with util.chinto(repo_path):
+    def __get_pulls__(self):
+        with util.chinto(self.repo_path):
             ld = util.git_log()
 
         ld4 =[]
@@ -191,11 +188,18 @@ class Experiment(object):
         ld4.append(d4)
 
         pulls = filter(lambda x: 'pull' == x['message'].split(':')[0], ld4)
+        return pulls
+
+    def summarize(self):
+        # For now summarizes everything
+        # TODO: get_next_block access method (history may be very long)
+
+        pulls = self.__get_pulls__()
 
         semistructured_rep = []
         columns = ['utag',]
 
-        with util.chinto(repo_path):
+        with util.chinto(self.repo_path):
             for i, pull_d in enumerate(pulls):
                 util.__runProc__(['git', 'checkout', pull_d['commit']])
                 eg = ExperimentGraph.deserialize()
@@ -226,6 +230,17 @@ class Experiment(object):
                 ltuples.append(tuple)
 
         return pd.DataFrame(ltuples, columns=columns)
+
+    def diff(self, utag, vtag):
+        pulls = list(self.__get_pulls__())
+
+        ud, = filter(lambda x: utag == x['message'].split(':')[1], pulls)
+        vd, = filter(lambda x: vtag == x['message'].split(':')[1], pulls)
+
+        with util.chinto(self.repo_path):
+            res = util.__readProc__(['git', 'diff', '--color', ud['commit'], vd['commit']])
+
+        print(res)
 
 
 
