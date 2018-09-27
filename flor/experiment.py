@@ -18,6 +18,9 @@ from datetime import datetime
 from ground.client import GroundClient
 from grit.client import GroundClient as GritClient
 import requests
+import warnings
+import itertools
+from functools import reduce
 
 
 class Experiment(object):
@@ -198,6 +201,7 @@ class Experiment(object):
 
         semistructured_rep = []
         columns = ['utag',]
+        artifacts = []
 
         with util.chinto(self.repo_path):
             for i, pull_d in enumerate(pulls):
@@ -215,6 +219,7 @@ class Experiment(object):
                     for v in response['Artifact']:
                         if v.name not in columns:
                             columns.append(v.name)
+                            artifacts.append(v.name)
                     semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
                     semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
             util.__runProc__(['git', 'checkout', 'master'])
@@ -229,7 +234,8 @@ class Experiment(object):
                     tuple[name] = value
                 ltuples.append(tuple)
 
-        return pd.DataFrame(ltuples, columns=columns)
+        # return pd.DataFrame(ltuples, columns=columns)
+        return FlorFrame(data=ltuples, columns=columns, artifacts=artifacts)
 
     def diff(self, utag, vtag):
         pulls = list(self.__get_pulls__())
@@ -242,6 +248,32 @@ class Experiment(object):
 
         print(res)
 
+class FlorFrame(pd.DataFrame):
 
+    def __init__(self, artifacts, **kwargs):
+        warnings.filterwarnings('ignore')
+        super().__init__(**kwargs)
+        self.___columns = kwargs['columns']
+        self.___artifacts = artifacts
+        warnings.filterwarnings('default')
+
+
+    def cube(self):
+        cube_columns = [i for i in self.___columns if i not in self.___artifacts]
+        utag, pulled_art = cube_columns[0:2]
+
+        combinations = []
+        for i in range(len(cube_columns[2:])):
+            combinations += list(itertools.combinations(cube_columns[2:], i+1))
+
+        dataframes = []
+
+        for element in combinations:
+            dataframes.append(self.groupby([utag] + list(element))[pulled_art].mean().to_frame().reset_index())
+
+        # reduce(lambda x, y: x.append(y).reset_index(drop=True), dataframes)
+
+        # print("cube_columns: {}".format(cube_columns))
+        return reduce(lambda x, y: x.append(y).reset_index(drop=True), dataframes)[[pulled_art, utag] + cube_columns[2:]].fillna(value='ALL')
 
 
