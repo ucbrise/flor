@@ -51,5 +51,5 @@ class Organizer:
         if version is None:
             return True
         output_dir = "{}_{}".format(xp_state.EXPERIMENT_NAME, xp_state.outputDirectory)
-        nested_dir = os.path.join(output_dir, version)
+        nested_dir = os.path.join(output_dir, str(version))
         return not os.path.exists(nested_dir)
