@@ -211,8 +211,8 @@ class Experiment(object):
                 semistructured_rep.append({})
                 for sink in eg.sinks:
                     response = eg.summary_back_traverse(sink)
-                    if sink.name not in columns:
-                        columns.append(sink.name)
+                    if sink.name not in columns and type(sink).__name__[0:len('Literal')] == "Literal":
+                        columns.insert(1, sink.name)
                     for v in response['Literal']:
                         if v.name not in columns:
                             columns.append(v.name)
@@ -220,8 +220,11 @@ class Experiment(object):
                         if v.name not in columns:
                             columns.append(v.name)
                             artifacts.append(v.name)
-                    semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
-                    semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
+                    try:
+                        semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
+                        semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
+                    except:
+                        continue
             util.__runProc__(['git', 'checkout', 'master'])
 
         ltuples = []
