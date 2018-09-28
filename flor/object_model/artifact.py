@@ -99,7 +99,7 @@ class Artifact(Resource):
                 raise FileNotFoundError("Invalid Artifact utag {} for artifact {}".format(self.version, self.name))
 
             file_name = file_names[0]
-
+            print("filename: {}".format(file_name))
             return file_name
         else:
             if self.xp_state.pull_write_version is None:
