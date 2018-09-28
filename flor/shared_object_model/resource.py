@@ -41,6 +41,7 @@ class Resource(object):
         else:
             version = str(version)
             self.write_version = version
+        self.xp_state.pull_write_version = self.write_version
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
         Executor.execute(consolidated_graph)

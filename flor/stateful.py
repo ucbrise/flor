@@ -40,6 +40,11 @@ class State:
         self.visited = []
         self.ray = {}
 
+        # Fall 2018
+
+        self.in_experiment_scope = False
+        self.pull_write_version = None
+
     def literalFilenamesAndIncr(self):
         x = self.literalFilenames
         self.literalFilenames += 1

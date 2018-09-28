@@ -27,6 +27,7 @@ class Experiment(object):
 
     def __init__(self, name, backend="git"):
         self.xp_state = State()
+        self.xp_state.in_experiment_scope = True
         self.xp_state.EXPERIMENT_NAME = name
         self.xp_state.eg = ExperimentGraph()
 
@@ -68,6 +69,7 @@ class Experiment(object):
         Versioner(version, self.xp_state.eg, self.xp_state).save_commit_event()
         ag.CommitTracker(self.xp_state).commit()
         self.xp_state.eg.clean()
+        self.xp_state.in_experiment_scope = False
 
     def groundClient(self, backend):
         """

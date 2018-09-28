@@ -53,3 +53,13 @@ class Organizer:
         output_dir = "{}_{}".format(xp_state.EXPERIMENT_NAME, xp_state.outputDirectory)
         nested_dir = os.path.join(output_dir, str(version))
         return not os.path.exists(nested_dir)
+
+    @staticmethod
+    def resolve_location(xp_state, version, loc):
+        if version is None:
+            raise ValueError("Must have valid version/utag")
+        output_dir = "{}_{}".format(xp_state.EXPERIMENT_NAME, xp_state.outputDirectory)
+        nested_dir = os.path.join(output_dir, str(version))
+        file_names = filter(lambda s: (loc.split('.')[0].split('_')
+                                            == s.split('.')[0].split('_')[0:-1]), os.listdir(nested_dir))
+        return [os.path.abspath(os.path.join(nested_dir, f)) for f in file_names]

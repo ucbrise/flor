@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from flor.stateful import State
+
 import os
 import pandas as pd
 import cloudpickle
 
 from flor.shared_object_model.resource import Resource
+from flor.data_controller.organizer import Organizer
 
 class Artifact(Resource):
 
@@ -13,7 +18,7 @@ class Artifact(Resource):
                  parent, name,
                  version: str,
                  identifier: str,
-                 xp_state):
+                 xp_state: 'State'):
         """
         Initialize an Artifact
         :param loc: the path of the artifact
@@ -81,22 +86,27 @@ class Artifact(Resource):
         Case: Run 1: Derived artifact; Run 2: Source Artifact
         :return:
         """
+        if self.xp_state.in_experiment_scope:
+            if self.version is None or self.parent is not None:
+                return os.path.abspath(self.loc)
 
-        if self.version is None or self.parent is not None:
-            return os.path.abspath(self.loc)
-        output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
-        nested_dir = os.path.join(output_dir, self.version)
-        file_names = list(filter(lambda s: (self.loc.split('.')[0].split('_')
-                          == s.split('.')[0].split('_')[0:-1]), os.listdir(nested_dir)))
-        if len(file_names) > 1:
-            raise NameError("Ambiguous specification: Which item do you want? Specify via Artifact.identifier: {}"
-                            .format(file_names))
-        elif len(file_names) < 1:
-            raise FileNotFoundError("Invalid Artifact utag {} for artifact {}".format(self.version, self.name))
+            file_names = Organizer.resolve_location(self.xp_state, self.xp_state.pull_write_version, self.loc)
 
-        file_name = file_names[0]
+            if len(file_names) > 1:
+                raise NameError("Ambiguous specification: Which item do you want? Specify via Artifact.identifier: {}"
+                                .format(file_names))
+            elif len(file_names) < 1:
+                raise FileNotFoundError("Invalid Artifact utag {} for artifact {}".format(self.version, self.name))
 
-        return os.path.abspath(os.path.join(nested_dir, file_name))
+            file_name = file_names[0]
+
+            return file_name
+        else:
+            if self.xp_state.pull_write_version is None:
+                raise RuntimeError("Must derive Artifact '{}' before locating it".format(self.name))
+            file_names = Organizer.resolve_location(self.xp_state, self.xp_state.pull_write_version, self.loc)
+
+            return file_names
 
 
 
