@@ -50,6 +50,7 @@ class Resource(object):
         PullTracker(self.write_version, pulled_object.xp_state).pull(consolidated_graph)
         Organizer(self.write_version, consolidated_graph, pulled_object.xp_state).run()
         consolidated_graph.clean()
+        self.xp_state.pre_pull = False
 
     def __plot__(self, nodename: str, shape: str, rankdir=None):
         """

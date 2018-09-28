@@ -42,7 +42,7 @@ class State:
 
         # Fall 2018
 
-        self.in_experiment_scope = False
+        self.pre_pull = False
         self.pull_write_version = None
 
     def literalFilenamesAndIncr(self):

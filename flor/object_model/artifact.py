@@ -86,11 +86,11 @@ class Artifact(Resource):
         Case: Run 1: Derived artifact; Run 2: Source Artifact
         :return:
         """
-        if self.xp_state.in_experiment_scope:
+        if self.xp_state.pre_pull:
             if self.version is None or self.parent is not None:
                 return os.path.abspath(self.loc)
 
-            file_names = Organizer.resolve_location(self.xp_state, self.xp_state.pull_write_version, self.loc)
+            file_names = Organizer.resolve_location(self.xp_state, self.version, self.loc)
 
             if len(file_names) > 1:
                 raise NameError("Ambiguous specification: Which item do you want? Specify via Artifact.identifier: {}"
