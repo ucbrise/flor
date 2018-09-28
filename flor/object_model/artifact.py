@@ -64,7 +64,7 @@ class Artifact(Resource):
         if self.parent is not None:
             raise NotImplementedError("Peek not currently available for derived artifacts.")
         file_path = self.resolve_location()
-        file_name = os.path.basename(file_path)
+        file_name = os.path.relpath(file_path)
         extension = file_name.split('.')[-1]
         if extension == 'csv':
             return pd.read_csv(file_path, nrows=100)
@@ -88,7 +88,7 @@ class Artifact(Resource):
         """
         if self.xp_state.pre_pull:
             if self.version is None or self.parent is not None:
-                return os.path.abspath(self.loc)
+                return self.loc
 
             file_names = Organizer.resolve_location(self.xp_state, self.version, self.loc)
 
@@ -99,14 +99,13 @@ class Artifact(Resource):
                 raise FileNotFoundError("Invalid Artifact utag {} for artifact {}".format(self.version, self.name))
 
             file_name = file_names[0]
-            print("filename: {}".format(file_name))
             return file_name
         else:
             if self.xp_state.pull_write_version is None:
                 raise RuntimeError("Must derive Artifact '{}' before locating it".format(self.name))
             file_names = Organizer.resolve_location(self.xp_state, self.xp_state.pull_write_version, self.loc)
 
-            return file_names
+            return [os.path.abspath(f) for f in file_names]
 
 
 

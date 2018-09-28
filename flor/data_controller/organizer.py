@@ -62,4 +62,4 @@ class Organizer:
         nested_dir = os.path.join(output_dir, str(version))
         file_names = filter(lambda s: (loc.split('.')[0].split('_')
                                             == s.split('.')[0].split('_')[0:-1]), os.listdir(nested_dir))
-        return [os.path.abspath(os.path.join(nested_dir, f)) for f in file_names]
+        return [os.path.join(nested_dir, f) for f in file_names]
