@@ -52,7 +52,7 @@ class Resource(object):
         consolidated_graph.clean()
         self.xp_state.pre_pull = False
 
-    def __plot__(self, nodename: str, shape: str, rankdir=None):
+    def __plot__(self, nodename: str, shape: str, rankdir=None, view_now=True):
         """
         Acceptable to leave here
         :param rankdir: The visual direction of the DAG
@@ -74,10 +74,11 @@ class Resource(object):
             self.parent.__plotWalk__(vg)
             # vg.bft()
             vg.to_graphViz()
-            if not interactive:
-                Source.from_file('output.gv').view()
-            else:
-                output_image = Source.from_file('output.gv')
+            if view_now:
+                if not interactive:
+                    Source.from_file('output.gv').view()
+                else:
+                    output_image = Source.from_file('output.gv')
         else:
             node_diagram_id = '0'
 
@@ -86,7 +87,12 @@ class Resource(object):
             dot.format = 'png'
             if rankdir == 'LR':
                 dot.attr(rankdir='LR')
-            dot.render('driver.gv', view=True)
+            if not interactive:
+                dot.render('output.gv', view=view_now)
+            else:
+                dot.render('output.gv', view=False)
+                if view_now:
+                    output_image = Source.from_file('output.gv')
 
         self.xp_state.eg.clean()
         return output_image
