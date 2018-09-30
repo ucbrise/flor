@@ -210,10 +210,17 @@ class Experiment(object):
                 eg = ExperimentGraph.deserialize()
 
                 semistructured_rep.append({})
-                for sink in eg.sinks:
-                    response = eg.summary_back_traverse(sink)
-                    if sink.name not in columns and type(sink).__name__[0:len('Literal')] == "Literal":
-                        columns.insert(1, sink.name)
+                for sink_action in eg.actions_at_depth[max(eg.actions_at_depth.keys())]:
+                    response = eg.summary_back_traverse(sink_action)
+
+                    for sink in eg.d[sink_action]:
+                        if type(sink).__name__[0:len('Literal')] == "Literal":
+                            if sink.name not in columns:
+                                columns.insert(1, sink.name)
+                            response['Literal'] |= {sink,}
+                        else:
+                            response['Artifact'] |= {sink,}
+
                     for v in response['Literal']:
                         if v.name not in columns:
                             columns.append(v.name)
