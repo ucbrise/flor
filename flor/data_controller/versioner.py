@@ -58,6 +58,10 @@ class Versioner:
                 if start.split('.')[-1] in ('py', 'ipynb'):
                     copy(start, os.path.join(self.versioning_dir, start))
         copy('experiment_graph.pkl', os.path.join(self.versioning_dir, 'experiment_graph.pkl'))
+        if os.path.exists('output.gv'):
+            copy('output.gv', os.path.join(self.versioning_dir, 'output.gv'))
+        if os.path.exists('output.gv.pdf'):
+            copy('output.gv.pdf', os.path.join(self.versioning_dir, 'output.gv.pdf'))
         copy(self.xp_state.florFile, os.path.join(self.versioning_dir, self.xp_state.florFile))
 
     def __serialize_literals__(self):

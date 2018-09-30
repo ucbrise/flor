@@ -45,6 +45,9 @@ class Resource(object):
         experiment_graphs = Expander.expand(pulled_object.xp_state.eg, pulled_object)
         consolidated_graph = Consolidator.consolidate(experiment_graphs)
         Executor.execute(consolidated_graph)
+        self.__plot__(pulled_object.name,
+                      {'Art': 'box', 'Lit': 'underline'}[type(pulled_object).__name__[0:3]],
+                      None, False)
         consolidated_graph.serialize()
         Versioner(self.write_version, consolidated_graph, pulled_object.xp_state).save_pull_event()
         PullTracker(self.write_version, pulled_object.xp_state).pull(consolidated_graph)

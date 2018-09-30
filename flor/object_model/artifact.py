@@ -45,7 +45,7 @@ class Artifact(Resource):
         return "box"
 
     def plot(self, rankdir=None):
-        return super().__plot__(self.loc, "box", rankdir)
+        return super().__plot__(self.name, "box", rankdir)
 
     def pull(self, utag=None):
         super().__pull__(self, utag)
