@@ -263,7 +263,7 @@ class Experiment(object):
         with util.chinto(self.repo_path):
             for i, pull_d in enumerate(pulls):
                 if utag == pull_d['message'].split(':')[1]:
-                    util.__runProc__('git', 'checkout', pull_d['commit'])
+                    util.__runProc__(['git', 'checkout', pull_d['commit']])
                     if not interactive:
                         Source.from_file('output.gv').view()
                     else:
