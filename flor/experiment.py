@@ -13,6 +13,8 @@ from flor.object_model import *
 from flor.experiment_graph import ExperimentGraph
 from flor.stateful import State
 from flor.data_controller.versioner import Versioner
+from flor import viz
+from flor.global_state import interactive
 
 from datetime import datetime
 from ground.client import GroundClient
@@ -21,6 +23,7 @@ import requests
 import warnings
 import itertools
 from functools import reduce
+from graphviz import Source
 
 
 class Experiment(object):
@@ -204,35 +207,40 @@ class Experiment(object):
         columns = ['utag',]
         artifacts = []
 
+
+
         with util.chinto(self.repo_path):
             for i, pull_d in enumerate(pulls):
                 util.__runProc__(['git', 'checkout', pull_d['commit']])
                 eg = ExperimentGraph.deserialize()
 
+                sinks = eg.sinks
+
                 semistructured_rep.append({})
                 for sink_action in eg.actions_at_depth[max(eg.actions_at_depth.keys())]:
-                    response = eg.summary_back_traverse(sink_action)
+                    if eg.d[sink_action].issubset(sinks):
+                        response = eg.summary_back_traverse(sink_action)
 
-                    for sink in eg.d[sink_action]:
-                        if type(sink).__name__[0:len('Literal')] == "Literal":
-                            if sink.name not in columns:
-                                columns.insert(1, sink.name)
-                            response['Literal'] |= {sink,}
-                        else:
-                            response['Artifact'] |= {sink,}
+                        for sink in eg.d[sink_action]:
+                            if type(sink).__name__[0:len('Literal')] == "Literal":
+                                if sink.name not in columns:
+                                    columns.insert(1, sink.name)
+                                response['Literal'] |= {sink,}
+                            else:
+                                response['Artifact'] |= {sink,}
 
-                    for v in response['Literal']:
-                        if v.name not in columns:
-                            columns.append(v.name)
-                    for v in response['Artifact']:
-                        if v.name not in columns:
-                            columns.append(v.name)
-                            artifacts.append(v.name)
-                    try:
-                        semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
-                        semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
-                    except:
-                        continue
+                        for v in response['Literal']:
+                            if v.name not in columns:
+                                columns.append(v.name)
+                        for v in response['Artifact']:
+                            if v.name not in columns:
+                                columns.append(v.name)
+                                artifacts.append(v.name)
+                        try:
+                            semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
+                            semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
+                        except:
+                            continue
             util.__runProc__(['git', 'checkout', 'master'])
 
         ltuples = []
@@ -247,6 +255,24 @@ class Experiment(object):
 
         # return pd.DataFrame(ltuples, columns=columns)
         return FlorFrame(data=ltuples, columns=columns, artifacts=artifacts)
+
+    def plot(self, utag):
+
+        pulls = self.__get_pulls__()
+
+        with util.chinto(self.repo_path):
+            for i, pull_d in enumerate(pulls):
+                if utag == pull_d['message'].split(':')[1]:
+                    util.__runProc__('git', 'checkout', pull_d['commit'])
+                    if not interactive:
+                        Source.from_file('output.gv').view()
+                    else:
+                        output_image = Source.from_file('output.gv')
+                    break
+            util.__runProc__(['git', 'checkout', 'master'])
+
+        return output_image
+
 
     def diff(self, utag, vtag):
         pulls = list(self.__get_pulls__())
