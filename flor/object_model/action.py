@@ -28,7 +28,7 @@ class Action:
         to_list = []
 
         for child in self.out_artifacts:
-            node = graph.newNode(child.getLocation(), child.get_shape(), [])
+            node = graph.newNode(child.name, child.get_shape(), [])
             self.xp_state.nodes[child.getLocation()] = node
             to_list.append(node)
 
@@ -49,15 +49,15 @@ class Action:
                     if not util.isOrphan(artifact):
                         from_nodes: List[VizNode] = artifact.parent.__plotWalk__(graph)
                         for from_node in from_nodes:
-                            interim = [art.getLocation() for art in self.in_artifacts]
+                            interim = [art.name for art in self.in_artifacts]
                             if from_node.name in interim:
                                 if this not in from_node.next:
                                     from_node.next.append(this)
                     else:
                         if type(artifact).__name__ == "Literal":
-                            node = graph.newNode(artifact.getLocation(), artifact.get_shape(), [this,], util.plating([artifact]))
+                            node = graph.newNode(artifact.name, artifact.get_shape(), [this,], util.plating([artifact]))
                         else:
-                            node = graph.newNode(artifact.getLocation(), artifact.get_shape(), [this,])
+                            node = graph.newNode(artifact.name, artifact.get_shape(), [this,])
                         graph.regis_orphan(node)
                         self.xp_state.nodes[artifact.getLocation()] = node
         return to_list
