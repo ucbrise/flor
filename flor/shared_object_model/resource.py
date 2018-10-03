@@ -34,6 +34,9 @@ class Resource(object):
         raise NotImplementedError("Abstract method Resource.peek must be overridden")
 
     def __pull__(self, pulled_object, version=None):
+        #Important: allows re-pulling without re-defining experiment
+        self.xp_state.pre_pull = True
+
         assert Organizer.is_valid_version(pulled_object.xp_state, version), \
             "Version Tag '{}' already exists, please choose a different name"
         if version is None:
@@ -54,6 +57,8 @@ class Resource(object):
         Organizer(self.write_version, consolidated_graph, pulled_object.xp_state).run()
         consolidated_graph.clean()
         self.xp_state.pre_pull = False
+
+
 
     def __plot__(self, nodename: str, shape: str, rankdir=None, view_now=True):
         """

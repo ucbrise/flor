@@ -59,6 +59,17 @@ class ExperimentGraph:
 
         return out
 
+    def copy(self):
+        new_eg = ExperimentGraph()
+        new_eg.starts.update(self.starts)
+        new_eg.absorb(self)
+        new_eg.loc_map.update(self.loc_map)
+        new_eg.connected_starts.update(self.connected_starts)
+        new_eg.actions_at_depth.update(self.actions_at_depth)
+
+        return new_eg
+
+
     def summary_back_traverse(self, sink):
 
         response = {'Action': set([]),
