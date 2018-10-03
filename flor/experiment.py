@@ -155,7 +155,7 @@ class Experiment(object):
         if filenameWithFunc in self.xp_state.eg.loc_map:
             code_artifact = self.xp_state.eg.loc_map[filenameWithFunc]
         else:
-            code_artifact = self.artifact(filenameWithFunc, funcName)
+            code_artifact = self.artifact(filenameWithFunc, '.'.join(filenameWithFunc.split('.')[0:-1]))
 
         if in_artifacts:
             temp_artifacts = []
