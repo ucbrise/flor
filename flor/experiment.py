@@ -238,7 +238,7 @@ class Experiment(object):
                                 artifacts.append(v.name)
                         try:
                             semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] = set(map(lambda x: (x.name, x.v), response['Literal']))
-                            semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, x.isolated_loc), response['Artifact']))
+                            semistructured_rep[i][pull_d['message'] + ':' + str(id(sink))] |= set(map(lambda x: (x.name, os.path.basename(x.isolated_loc)), response['Artifact']))
                         except:
                             continue
             util.__runProc__(['git', 'checkout', 'master'])
