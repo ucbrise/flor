@@ -70,7 +70,7 @@ class Experiment(object):
         self.xp_state.eg.serialize()
         version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         Versioner(version, self.xp_state.eg, self.xp_state).save_commit_event()
-        ag.CommitTracker(self.xp_state).commit()
+        # ag.CommitTracker(self.xp_state).commit()
         self.xp_state.eg.clean()
 
     def groundClient(self, backend):
