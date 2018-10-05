@@ -3,11 +3,14 @@
 
 class ArtifactLight:
 
-    def __init__(self, loc, name):
+    def __init__(self, loc, name, utagged=False):
         self.loc = loc
 
         location_array = self.loc.split('.')
-        self.isolated_loc = "{}_{}.{}".format('.'.join(location_array[0:-1]), id(self), location_array[-1])
+        if not utagged:
+            self.isolated_loc = "{}_{}.{}".format('.'.join(location_array[0:-1]), id(self), location_array[-1])
+        else:
+            self.isolated_loc = self.loc
 
         self.name = name
 

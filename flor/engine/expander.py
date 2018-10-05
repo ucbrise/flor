@@ -117,7 +117,7 @@ class Expander:
                     light = ArtifactLight(node.loc, node.name)
                     light.set_produced()
                 else:
-                    light = ArtifactLight(os.path.relpath(node.resolve_location()), node.name)
+                    light = ArtifactLight(os.path.relpath(node.resolve_location()), node.name, node.version is not None)
                 dest_eg.light_node(light)
             elif type(node).__name__ == "Literal":
                 if node.name in col_store:
