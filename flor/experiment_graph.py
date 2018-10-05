@@ -142,8 +142,10 @@ class ExperimentGraph:
 
     def edge(self, u, v):
         # Composition code
-        self.absorb(u.xp_state.eg)
-        self.absorb(v.xp_state.eg)
+        if type(u).__name__[-len('Light'):] != "Light":
+            self.absorb(u.xp_state.eg)
+        if type(v).__name__[-len('Light'):] != "Light":
+            self.absorb(v.xp_state.eg)
 
         assert u in self.d
         assert v in self.d
