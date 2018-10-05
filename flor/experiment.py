@@ -296,7 +296,8 @@ class FlorFrame(pd.DataFrame):
 
 
     def cube(self):
-        cube_columns = [i for i in self.___columns if i not in self.___artifacts]
+        # cube_columns = [i for i in self.___columns if i not in self.___artifacts]
+        cube_columns = [i for i in self.___columns]
         utag, pulled_art = cube_columns[0:2]
 
         combinations = []
