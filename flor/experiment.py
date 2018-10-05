@@ -291,18 +291,37 @@ class Experiment(object):
         u_nested_dir = os.path.join(output_dir, str(utag))
         v_nested_dir = os.path.join(output_dir, str(vtag))
 
-        u_files = os.listdir(u_nested_dir)
-        v_files = os.listdir(v_nested_dir)
+        u_files = {}
+        v_files = {}
 
-        and_files = set(u_files) & set(v_files)
+
+        for u_file in os.listdir(u_nested_dir):
+            x = u_file.split('.')
+            name = '.'.join(x[0:-1])
+            ext = str(x[-1])
+
+            parts = name.split('_')
+
+            u_files['_'.join(parts[0:-1]) + ext] = u_file
+
+        for v_file in os.listdir(v_nested_dir):
+            x = v_file.split('.')
+            name = '.'.join(x[0:-1])
+            ext = str(x[-1])
+
+            parts = name.split('_')
+
+            v_files['_'.join(parts[0:-1]) + ext] = v_file
+
+        and_files = set(u_files.keys()) & set(v_files.keys())
 
         print()
 
         print("BINARY DIFF")
-        print("\n".join(["{} in {} but not in {}".format(each, utag, vtag) for each in u_files if each not in v_files]))
-        print("\n".join(["{} in {} but not in {}".format(each, vtag, utag) for each in v_files if each not in u_files]))
+        print("\n".join(["{} in {} but not in {}".format(u_files[each], utag, vtag) for each in u_files if each not in v_files]))
+        print("\n".join(["{} in {} but not in {}".format(v_files[each], vtag, utag) for each in v_files if each not in u_files]))
         for f in and_files:
-            print(util.__readProc__(['diff', os.path.join(u_nested_dir, f), os.path.join(v_nested_dir, f)]))
+            print(util.__readProc__(['diff', os.path.join(u_nested_dir, u_files[f]), os.path.join(v_nested_dir, v_files[f])]))
 
 
 
