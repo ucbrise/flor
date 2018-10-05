@@ -110,7 +110,7 @@ class ExperimentGraph:
             self.loc_map[v.getLocation()] = v
             self.name_map[v.name] = v
             if v.parent is not None:
-                self.connected_starts[v] = self.connected_starts[v.parent]
+                self.connected_starts[v] = v.xp_state.eg.connected_starts[v.parent]
             else:
                 self.connected_starts[v] = {v, }
         else:
@@ -120,7 +120,7 @@ class ExperimentGraph:
                 self.actions_at_depth[v.max_depth] = {v, }
             self.connected_starts[v] = set([])
             for each in v.in_artifacts:
-                self.connected_starts[v] |= self.connected_starts[each]
+                self.connected_starts[v] |= v.xp_state.eg.connected_starts[each]
 
     def light_node(self, v):
         """
