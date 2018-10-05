@@ -2,6 +2,7 @@
 
 import os
 import inspect
+from typing import Dict
 
 import pandas as pd
 
@@ -295,23 +296,31 @@ class FlorFrame(pd.DataFrame):
         warnings.filterwarnings('default')
 
 
-    def cube(self):
+    def cube(self, aggregation_dict: Dict):
         # cube_columns = [i for i in self.___columns if i not in self.___artifacts]
-        cube_columns = [i for i in self.___columns]
-        utag, pulled_art = cube_columns[0:2]
+
+        for kee in aggregation_dict:
+            assert kee not in self.___artifacts, "Cannot aggregate an artifact"
+
+        utag = self.___columns[0]
+
+        cube_columns = [i for i in self.___columns[1:] if i not in aggregation_dict.keys()]
 
         combinations = []
-        for i in range(len(cube_columns[2:])):
-            combinations += list(itertools.combinations(cube_columns[2:], i+1))
+        for i in range(len(cube_columns)):
+            combinations += list(itertools.combinations(cube_columns, i+1))
 
         dataframes = []
 
         for element in combinations:
-            dataframes.append(self.groupby([utag] + list(element))[pulled_art].mean().to_frame().reset_index())
+            # dataframes.append(self.groupby([utag] + list(element))[pulled_art].mean().to_frame().reset_index())
+            dataframes.append(self.groupby([utag] + list(element)).agg(aggregation_dict).reset_index())
 
         # reduce(lambda x, y: x.append(y).reset_index(drop=True), dataframes)
 
         # print("cube_columns: {}".format(cube_columns))
-        return reduce(lambda x, y: x.append(y).reset_index(drop=True), dataframes)[[pulled_art, utag] + cube_columns[2:]].fillna(value='ALL')
+        out_df = reduce(lambda x, y: x.append(y).reset_index(drop=True), dataframes)[list(aggregation_dict.keys()) + [utag,] + cube_columns]
+        out_df[cube_columns] = out_df[cube_columns].fillna(value='ALL')
+        return out_df
 
 
