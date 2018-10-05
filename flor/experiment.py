@@ -275,16 +275,36 @@ class Experiment(object):
         return output_image
 
 
-    def diff(self, utag, vtag):
+    def diff(self, utag, vtag, flags=['--name-only']):
         pulls = list(self.__get_pulls__())
 
         ud, = filter(lambda x: utag == x['message'].split(':')[1], pulls)
         vd, = filter(lambda x: vtag == x['message'].split(':')[1], pulls)
 
         with util.chinto(self.repo_path):
-            res = util.__readProc__(['git', 'diff', '--color', ud['commit'], vd['commit']])
+            res = util.__readProc__(['git', 'diff', '--color']  + flags + [ud['commit'], vd['commit']])
 
+        print("CODE DIFF")
         print(res)
+
+        output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
+        u_nested_dir = os.path.join(output_dir, str(utag))
+        v_nested_dir = os.path.join(output_dir, str(vtag))
+
+        u_files = os.listdir(u_nested_dir)
+        v_files = os.listdir(v_nested_dir)
+
+        and_files = set(u_files) & set(v_files)
+
+        print()
+
+        print("BINARY DIFF")
+        print("\n".join(["{} in {} but not in {}".format(each, utag, vtag) for each in u_files if each not in v_files]))
+        print("\n".join(["{} in {} but not in {}".format(each, vtag, utag) for each in v_files if each not in u_files]))
+        for f in and_files:
+            print(util.__readProc__(['diff', os.path.join(u_nested_dir, f), os.path.join(v_nested_dir, f)]))
+
+
 
 class FlorFrame(pd.DataFrame):
 
