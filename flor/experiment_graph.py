@@ -120,7 +120,7 @@ class ExperimentGraph:
                 self.actions_at_depth[v.max_depth] = {v, }
             self.connected_starts[v] = set([])
             for each in v.in_artifacts:
-                self.connected_starts[v] |= v.xp_state.eg.connected_starts[each]
+                self.connected_starts[v] |= each.xp_state.eg.connected_starts[each]
 
     def light_node(self, v):
         """
