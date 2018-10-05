@@ -317,11 +317,11 @@ class Experiment(object):
 
         print()
 
-        print("BINARY DIFF")
-        print("\n".join(["{} in {} but not in {}".format(u_files[each], utag, vtag) for each in u_files if each not in v_files]))
-        print("\n".join(["{} in {} but not in {}".format(v_files[each], vtag, utag) for each in v_files if each not in u_files]))
-        for f in and_files:
-            print(util.__readProc__(['diff', os.path.join(u_nested_dir, u_files[f]), os.path.join(v_nested_dir, v_files[f])]))
+        # print("BINARY DIFF")
+        # print("\n".join(["{} in {} but not in {}".format(u_files[each], utag, vtag) for each in u_files if each not in v_files]))
+        # print("\n".join(["{} in {} but not in {}".format(v_files[each], vtag, utag) for each in v_files if each not in u_files]))
+        # for f in and_files:
+        #     print(util.__readProc__(['diff', os.path.join(u_nested_dir, u_files[f]), os.path.join(v_nested_dir, v_files[f])]))
 
 
 
