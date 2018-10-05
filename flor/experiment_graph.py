@@ -141,8 +141,13 @@ class ExperimentGraph:
             self.name_map["{}{}".format(v.name, id(v))] = v
 
     def edge(self, u, v):
+        # Composition code
+        self.absorb(u.xp_state.eg)
+        self.absorb(v.xp_state.eg)
+
         assert u in self.d
         assert v in self.d
+
         self.d[u] |= {v, }
         self.b[v] |= {u, }
         self.starts -= {v, }
