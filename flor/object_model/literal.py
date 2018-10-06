@@ -4,6 +4,7 @@ from flor import util
 from flor.shared_object_model.resource import Resource
 
 from uuid import uuid4
+from sys import exit
 
 
 class Literal(Resource):
@@ -90,4 +91,8 @@ class Literal(Resource):
         return super().__plot__(self.name, "underline", rankdir)
 
     def pull(self, utag=None):
-        super().__pull__(self, utag)
+        try:
+            super().__pull__(self, utag)
+        except AssertionError as e:
+            print(e)
+            exit(0)

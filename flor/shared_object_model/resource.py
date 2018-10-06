@@ -38,7 +38,7 @@ class Resource(object):
         self.xp_state.pre_pull = True
 
         assert Organizer.is_valid_version(pulled_object.xp_state, version), \
-            "Version Tag '{}' already exists, please choose a different name"
+            "An experiment with the name '{}' exists".format(version)
         if version is None:
             self.write_version = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         else:
