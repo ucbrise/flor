@@ -9,8 +9,8 @@ try:
 except:
     pass
 
-from .decorators import func
+from .decorators import func, track_action
 from .headers import setNotebookName
 from .experiment import Experiment
 
-__all__ = ["func", "setNotebookName", "Experiment"]
+__all__ = ["func", "track_action", "setNotebookName", "Experiment"]
