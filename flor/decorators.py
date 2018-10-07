@@ -71,8 +71,9 @@ def track_action(xp_name):
                     output_lits.append(ex.literal(name=kee, parent=do_action))
 
             pullable_lit = output_lits[0]
-            pullable_lit.plot()
+            plot = pullable_lit.plot()
             pullable_lit.pull()
+            return plot
 
         return callable_function
 
