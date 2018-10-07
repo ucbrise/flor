@@ -8,7 +8,6 @@ if TYPE_CHECKING:
 import os
 import pandas as pd
 import cloudpickle
-from sys import exit
 
 from flor.shared_object_model.resource import Resource
 from flor.data_controller.organizer import Organizer
@@ -53,7 +52,6 @@ class Artifact(Resource):
             super().__pull__(self, utag)
         except AssertionError as e:
             print(e)
-            exit(0)
 
     def peek(self):
         """

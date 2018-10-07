@@ -4,7 +4,6 @@ from flor import util
 from flor.shared_object_model.resource import Resource
 
 from uuid import uuid4
-from sys import exit
 
 
 class Literal(Resource):
@@ -95,4 +94,3 @@ class Literal(Resource):
             super().__pull__(self, utag)
         except AssertionError as e:
             print(e)
-            exit(0)
