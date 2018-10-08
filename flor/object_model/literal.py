@@ -87,10 +87,14 @@ class Literal(Resource):
         return self.default
 
     def plot(self, rankdir=None):
+        # Depcrecated: saving for backward compatibility
         return super().__plot__(self.name, "underline", rankdir)
 
-    def pull(self, utag=None):
+    def flor_plan(self, rankdir=None):
+        return super().__plot__(self.name, "underline", rankdir)
+
+    def pull(self, label=None):
         try:
-            super().__pull__(self, utag)
+            super().__pull__(self, label)
         except AssertionError as e:
             print(e)

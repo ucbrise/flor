@@ -45,11 +45,15 @@ class Artifact(Resource):
         return "box"
 
     def plot(self, rankdir=None):
+        """Deprecated: Saving for backward compatability"""
         return super().__plot__(self.name, "box", rankdir)
 
-    def pull(self, utag=None):
+    def flor_plan(self, rankdir=None):
+        return super().__plot__(self.name, "box", rankdir)
+
+    def pull(self, label=None):
         try:
-            super().__pull__(self, utag)
+            super().__pull__(self, label)
         except AssertionError as e:
             print(e)
 

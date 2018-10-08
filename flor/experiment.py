@@ -82,7 +82,7 @@ class Experiment(object):
         """
         pass
 
-    def literal(self, v=None, name=None, parent=None, utag=None):
+    def literal(self, v=None, name=None, parent=None, label=None):
         """
         TODO: support version
         :param v:
@@ -94,7 +94,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default=None, version=utag)
+        lit = Literal(v, name, parent, self.xp_state, default=None, version=label)
         self.xp_state.eg.node(lit)
 
         if parent:
@@ -102,7 +102,7 @@ class Experiment(object):
 
         return lit
 
-    def literalForEach(self, v=None, name=None, parent=None, default=None, utag=None):
+    def literalForEach(self, v=None, name=None, parent=None, default=None, label=None):
         """
         TODO: Support version
         :param v:
@@ -115,7 +115,7 @@ class Experiment(object):
             raise ValueError("The value or the parent of the literal must be set")
         if v is not None and parent is not None:
             raise ValueError("A literal with a value may not have a parent")
-        lit = Literal(v, name, parent, self.xp_state, default, version=utag)
+        lit = Literal(v, name, parent, self.xp_state, default, version=label)
         self.xp_state.eg.node(lit)
         lit.__forEach__()
 
@@ -124,7 +124,7 @@ class Experiment(object):
 
         return lit
 
-    def artifact(self, loc, name, parent=None, utag=None, identifier=None):
+    def artifact(self, loc, name, parent=None, label=None, identifier=None):
         """
 
         :param loc:
@@ -133,9 +133,9 @@ class Experiment(object):
         :param version:
         :return:
         """
-        if parent is not None and utag is not None:
+        if parent is not None and label is not None:
             raise ValueError("Can't set a utag for a derived artifact")
-        art = Artifact(loc, parent, name, utag, identifier, self.xp_state)
+        art = Artifact(loc, parent, name, label, identifier, self.xp_state)
         self.xp_state.eg.node(art)
 
         if parent:
@@ -257,13 +257,30 @@ class Experiment(object):
         # return pd.DataFrame(ltuples, columns=columns)
         return FlorFrame(data=ltuples, columns=columns, artifacts=artifacts)
 
-    def plot(self, utag):
-
+    def plot(self, label):
+        # Deprecated: keeping for backward compatibility
         pulls = self.__get_pulls__()
 
         with util.chinto(self.repo_path):
             for i, pull_d in enumerate(pulls):
-                if utag == pull_d['message'].split(':')[1]:
+                if label == pull_d['message'].split(':')[1]:
+                    util.__runProc__(['git', 'checkout', pull_d['commit']])
+                    if not interactive:
+                        Source.from_file('output.gv').view()
+                    else:
+                        output_image = Source.from_file('output.gv')
+                    break
+            util.__runProc__(['git', 'checkout', 'master'])
+
+        return output_image
+
+    def flor_plan(self, label):
+        # Deprecated: keeping for backward compatibility
+        pulls = self.__get_pulls__()
+
+        with util.chinto(self.repo_path):
+            for i, pull_d in enumerate(pulls):
+                if label == pull_d['message'].split(':')[1]:
                     util.__runProc__(['git', 'checkout', pull_d['commit']])
                     if not interactive:
                         Source.from_file('output.gv').view()
@@ -275,47 +292,47 @@ class Experiment(object):
         return output_image
 
 
-    def diff(self, utag, vtag, flags=['--name-only']):
+    def diff(self, ulabel, vlabel, flags=['--name-only']):
         pulls = list(self.__get_pulls__())
 
-        ud, = filter(lambda x: utag == x['message'].split(':')[1], pulls)
-        vd, = filter(lambda x: vtag == x['message'].split(':')[1], pulls)
+        ud, = filter(lambda x: ulabel == x['message'].split(':')[1], pulls)
+        vd, = filter(lambda x: vlabel == x['message'].split(':')[1], pulls)
 
         with util.chinto(self.repo_path):
             res = util.__readProc__(['git', 'diff', '--color']  + flags + [ud['commit'], vd['commit']])
 
-        print("CODE DIFF")
+        print("These files are different:")
         print(res)
 
-        output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
-        u_nested_dir = os.path.join(output_dir, str(utag))
-        v_nested_dir = os.path.join(output_dir, str(vtag))
-
-        u_files = {}
-        v_files = {}
-
-
-        for u_file in os.listdir(u_nested_dir):
-            x = u_file.split('.')
-            name = '.'.join(x[0:-1])
-            ext = str(x[-1])
-
-            parts = name.split('_')
-
-            u_files['_'.join(parts[0:-1]) + ext] = u_file
-
-        for v_file in os.listdir(v_nested_dir):
-            x = v_file.split('.')
-            name = '.'.join(x[0:-1])
-            ext = str(x[-1])
-
-            parts = name.split('_')
-
-            v_files['_'.join(parts[0:-1]) + ext] = v_file
-
-        and_files = set(u_files.keys()) & set(v_files.keys())
-
-        print()
+        # output_dir = "{}_{}".format(self.xp_state.EXPERIMENT_NAME, self.xp_state.outputDirectory)
+        # u_nested_dir = os.path.join(output_dir, str(utag))
+        # v_nested_dir = os.path.join(output_dir, str(vtag))
+        #
+        # u_files = {}
+        # v_files = {}
+        #
+        #
+        # for u_file in os.listdir(u_nested_dir):
+        #     x = u_file.split('.')
+        #     name = '.'.join(x[0:-1])
+        #     ext = str(x[-1])
+        #
+        #     parts = name.split('_')
+        #
+        #     u_files['_'.join(parts[0:-1]) + ext] = u_file
+        #
+        # for v_file in os.listdir(v_nested_dir):
+        #     x = v_file.split('.')
+        #     name = '.'.join(x[0:-1])
+        #     ext = str(x[-1])
+        #
+        #     parts = name.split('_')
+        #
+        #     v_files['_'.join(parts[0:-1]) + ext] = v_file
+        #
+        # and_files = set(u_files.keys()) & set(v_files.keys())
+        #
+        # print()
 
         # print("BINARY DIFF")
         # print("\n".join(["{} in {} but not in {}".format(u_files[each], utag, vtag) for each in u_files if each not in v_files]))
