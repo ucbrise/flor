@@ -205,7 +205,7 @@ class Experiment(object):
         pulls = self.__get_pulls__()
 
         semistructured_rep = []
-        columns = ['utag',]
+        columns = ['label',]
         artifacts = []
 
 
@@ -249,7 +249,7 @@ class Experiment(object):
         for pull_container in semistructured_rep:
             for kee in pull_container:
                 tuple = {}
-                tuple['utag'] = kee.split(':')[1]
+                tuple['label'] = kee.split(':')[1]
                 for name, value in pull_container[kee]:
                     tuple[name] = value
                 ltuples.append(tuple)
