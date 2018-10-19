@@ -9,8 +9,8 @@ import os
 import pandas as pd
 import cloudpickle
 
-from flor.shared_object_model.resource import Resource
-from flor.data_controller.organizer import Organizer
+from flor.object_model.shared.resource import Resource
+from flor.controller.organizer import Organizer
 
 class Artifact(Resource):
 

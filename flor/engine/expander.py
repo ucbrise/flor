@@ -2,8 +2,8 @@
 
 import itertools
 
-from flor.experiment_graph import ExperimentGraph
-from flor.light_object_model import *
+from flor.object_model.experiment_graph import ExperimentGraph
+from flor.object_model.light import *
 
 import os
 
@@ -20,7 +20,7 @@ class Expander:
             and further processing.
         :param eg: The experiment graph constructed and populated by the Flor Plan
         :param pulled_resource: The Artifact or Literal object that was pulled
-        :return: LIST[ExperimentGraph], where the nodes of ExperimentGraph are in light_object_model rather
+        :return: LIST[ExperimentGraph], where the nodes of ExperimentGraph are in light rather
             than object_model
         """
         starts_subset = eg.connected_starts[pulled_resource]

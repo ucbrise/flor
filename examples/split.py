@@ -4,7 +4,6 @@ import pandas as pd
 from shared import params
 
 import flor
-import pickle
 
 
 @flor.func

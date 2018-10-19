@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from flor import util
-from flor.shared_object_model.resource import Resource
+from flor.object_model.shared.resource import Resource
 
 from uuid import uuid4
 

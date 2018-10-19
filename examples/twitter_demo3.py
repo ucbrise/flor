@@ -23,5 +23,4 @@ with flor.Experiment("twitter_demo") as ex:
     do_test = ex.action(test, [model, testing_tweets])
     model_accuracy = ex.literal(name='model_accuracy', parent=do_test)
 
-model_accuracy.plot()
 model_accuracy.pull()

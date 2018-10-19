@@ -11,10 +11,8 @@ Output:
 """
 import pandas as pd
 import numpy as np
-import os, pickle, sys
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from shared import params, relevant_attributes
+import os, pickle
+from shared import relevant_attributes
 import flor
 
 abspath = os.path.dirname(os.path.abspath(__file__))

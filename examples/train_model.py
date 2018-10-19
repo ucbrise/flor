@@ -20,7 +20,7 @@ import numpy as np
 import os, pickle
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from shared import params, relevant_attributes
+from shared import relevant_attributes
 import flor
 
 abspath = os.path.dirname(os.path.abspath(__file__))

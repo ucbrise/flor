@@ -3,9 +3,8 @@
 """
 import pandas as pd
 import html.parser
-import preprocessor as twpre
-import os, pickle, sys
-from shared import params
+import os, pickle
+from object_model.shared import params
 import flor
 
 abspath = os.path.dirname(os.path.abspath(__file__))

@@ -8,19 +8,13 @@ import pandas as pd
 
 import flor.global_state as global_state
 import flor.util as util
-import flor.above_ground as ag
-from flor.jground import GroundClient
 from flor.object_model import *
-from flor.experiment_graph import ExperimentGraph
+from flor.object_model.experiment_graph import ExperimentGraph
 from flor.stateful import State
-from flor.data_controller.versioner import Versioner
-from flor import viz
+from flor.controller.versioner import Versioner
 from flor.global_state import interactive
 
 from datetime import datetime
-from ground.client import GroundClient
-from grit.client import GroundClient as GritClient
-import requests
 import warnings
 import itertools
 from functools import reduce
@@ -29,7 +23,7 @@ from graphviz import Source
 
 class Experiment(object):
 
-    def __init__(self, name, backend="git"):
+    def __init__(self, name):
         self.xp_state = State()
         self.xp_state.pre_pull = True
         self.xp_state.EXPERIMENT_NAME = name
@@ -46,23 +40,6 @@ class Experiment(object):
                 target_dir = '/'.join(filename.split('/')[0:-1])
                 if target_dir:
                     os.chdir(target_dir)
-
-        backend = backend.lower().strip()
-        if backend == "ground":
-            ######################### GROUND GROUND GROUND ###################################################
-            # Is Ground Server initialized?
-            # Localhost hardcoded into the url
-            try:
-                requests.get('http://localhost:9000')
-            except:
-                # No, Ground not initialized
-                raise requests.exceptions.ConnectionError('Please start Ground first')
-            ######################### </> GROUND GROUND GROUND ###################################################
-            self.xp_state.gc = GroundClient()
-        elif backend == "git":
-            self.xp_state.gc = GritClient()
-        else:
-            raise ModuleNotFoundError("Only 'git' or 'ground' backends supported, but '{}' entered".format(backend))
 
     def __enter__(self):
         return self

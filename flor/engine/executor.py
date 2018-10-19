@@ -2,8 +2,8 @@
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from flor.experiment_graph import ExperimentGraph
-from flor.light_object_model import *
+    from flor.object_model.experiment_graph import ExperimentGraph
+from flor.object_model.light import *
 from typing import List
 
 import time

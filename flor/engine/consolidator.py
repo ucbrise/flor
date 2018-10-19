@@ -3,7 +3,7 @@
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from flor.experiment_graph import ExperimentGraph
+    from flor.object_model.experiment_graph import ExperimentGraph
 from typing import List
 
 

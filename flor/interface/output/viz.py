@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import List, Dict
+from typing import List
 
 """
 Should optimize with an all-pairs longest path algorithm.

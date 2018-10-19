@@ -4,7 +4,7 @@ import os
 
 from typing import Union
 
-from flor.experiment_graph import ExperimentGraph
+from flor.object_model.experiment_graph import ExperimentGraph
 import flor.global_state as global_state
 
 from grit.client import GroundClient as GritClient

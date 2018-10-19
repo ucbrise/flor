@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from typing import List, Union, Tuple
+from typing import List
 from flor import util
 
-from flor.viz import VizNode, VizGraph
+from flor.interface.output.viz import VizNode, VizGraph
 
 
 class Action:
