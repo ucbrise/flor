@@ -224,7 +224,7 @@ class ExperimentGraph:
 
 
 
-def deserialize() -> ExperimentGraph:
-    with open('experiment_graph.pkl', 'rb') as f:
+def deserialize() -> 'ExperimentGraph':
+    with open("experiment_graph.pkl", 'rb') as f:
         out = dill.load(f)
     return out
