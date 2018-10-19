@@ -220,11 +220,6 @@ class ExperimentGraph:
 
     @staticmethod
     def deserialize():
-        return deserialize()
-
-
-
-def deserialize() -> 'ExperimentGraph':
-    with open("experiment_graph.pkl", 'rb') as f:
-        out = dill.load(f)
-    return out
+        with open("experiment_graph.pkl", 'rb') as f:
+            out = dill.load(f)
+        return out
