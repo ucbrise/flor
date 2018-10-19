@@ -7,7 +7,7 @@ import ast
 from flor import util
 from flor import global_state
 
-from interface.input.experiment import Experiment
+from flor.interface.input.experiment import Experiment
 
 
 def func(foo):
