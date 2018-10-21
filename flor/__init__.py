@@ -3,9 +3,11 @@ from flor import global_state
 
 # Am I running from an interactive environment?
 try:
+    from IPython import get_ipython
     get_ipython
     global_state.interactive = True
 except:
+    print("passing")
     pass
 
 from flor.interface.input.decorators import func, track_action

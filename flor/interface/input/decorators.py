@@ -3,6 +3,7 @@
 import inspect
 
 import ast
+import os
 
 from flor import util
 from flor import global_state
@@ -16,11 +17,12 @@ def func(foo):
     :param foo: Function
     """
     if global_state.interactive:
-        if global_state.nb_name is None:
-            raise ValueError("Please call flor.setNotebookName")
         filename = inspect.getsourcefile(foo).split('/')[-1]
         if '.py' not in filename[-3:]:
-            filename = global_state.nb_name
+            if global_state.nb_name is None:
+                filename =  os.path.basename(util.get_notebook_name())
+            else:
+                filename = global_state.nb_name
     else:
         filename = inspect.getsourcefile(foo).split('/')[-1]
 
