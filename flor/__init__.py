@@ -7,7 +7,6 @@ try:
     get_ipython
     global_state.interactive = True
 except:
-    print("passing")
     pass
 
 from flor.interface.input.decorators import func, track_action
