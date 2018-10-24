@@ -19,6 +19,11 @@ class FlorPlan:
         self.contains: Dict[Execution, Set[Union[Value, Reference]]] = {}
         self.is_contained_in: Dict[Union[Value, Reference], Set[Execution]] = {}
 
+        self.maps = {}
+        self.is_mapped_from = {}
+
+        self.bags = []
+
         # Instance variables
 
         self.starts: Set[Union[Value, Reference]] = set([])

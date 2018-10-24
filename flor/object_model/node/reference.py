@@ -16,3 +16,4 @@ class Reference:
         self.path = path
         self.name = name
         self.stack_scoped = stack_scoped
+        self.instruction_no = -1

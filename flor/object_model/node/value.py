@@ -14,4 +14,5 @@ class Value:
         self.v = v
         self.name = name
         self.stack_scoped = stack_scoped
+        self.instruction_no = -1
 
