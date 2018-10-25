@@ -37,15 +37,33 @@ class Visitor(ast.NodeVisitor):
                 if self.__assign_line_no__ >= 0:
                     # Assign context
                     if attr == 'read':
-                        self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                       value=self.__val__,
-                                                       typ='read',
-                                                       instruction_no=self.__assign_line_no__))
+                        if self.__pruned_names__:
+                            self.__structs__.append(Struct(name=self.__pruned_names__,
+                                                           value=self.__val__,
+                                                           typ='read',
+                                                           instruction_no=self.__assign_line_no__))
+                        else:
+                            assert (type(self.__val__) == ast.Subscript
+                                    or type(self.__val__) == ast.Attribute
+                                    or type(self.__val__) == ast.Name)
+                            self.__structs__.append(Struct(name=self.visit(self.__val__),
+                                                           value=self.__val__,
+                                                           typ='read',
+                                                           instruction_no=self.__assign_line_no__))
                     elif attr == 'write':
-                        self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                       value=self.__val__,
-                                                       typ='write',
-                                                       instruction_no=self.__assign_line_no__))
+                        if self.__pruned_names__:
+                            self.__structs__.append(Struct(name=self.__pruned_names__,
+                                                           value=self.__val__,
+                                                           typ='write',
+                                                           instruction_no=self.__assign_line_no__))
+                        else:
+                            assert (type(self.__val__) == ast.Subscript
+                                    or type(self.__val__) == ast.Attribute
+                                    or type(self.__val__) == ast.Name)
+                            self.__structs__.append(Struct(name=self.visit(self.__val__),
+                                                           value=self.__val__,
+                                                           typ='read',
+                                                           instruction_no=self.__assign_line_no__))
                     else:
                         if self.__keywoard_name__ is not None:
                             if attr == 'parameter':
@@ -70,6 +88,7 @@ class Visitor(ast.NodeVisitor):
                                                                typ='metric',
                                                                instruction_no=self.__assign_line_no__))
                 else:
+                    # EXPR context
                     if attr == 'read':
                         assert (type(self.__val__) == ast.Subscript
                                 or type(self.__val__) == ast.Attribute
@@ -111,10 +130,28 @@ class Visitor(ast.NodeVisitor):
                                                                instruction_no=self.__expr_line_no__))
             return "{}.{}".format(value, attr)
 
+    def visit_withitem(self, node):
+        if node.optional_vars is None:
+            self.__pruned_names__ = None
+        else:
+            self.__pruned_names__ = self.visit(node.optional_vars)
+        self.visit(node.context_expr)
+        self.__pruned_names__ = []
+
+
     def visit_keyword(self, node):
         self.__keywoard_name__ = node.arg
         self.visit(node.value)
         self.__keywoard_name__ = None
+
+    def visit_With(self, node):
+        self.__assign_line_no__ = node.lineno
+        for item in node.items:
+            self.visit(item)
+        self.__assign_line_no__ = -1
+        for each in node.body:
+            self.visit(each)
+
 
     def visit_Expr(self, node):
         self.__expr_line_no__ = node.lineno

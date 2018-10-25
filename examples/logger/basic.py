@@ -5,6 +5,8 @@ from flor import log
 # Import standard libraries
 import pandas as pd
 
+import cloudpickle
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -18,11 +20,7 @@ def main(x, y, z):
     # movie_reviews appears on the LHS... so it's being modified.
     # Record the modifying transformation
     # What if we just record the line itself?
-    log.parameter(z)
-    movie_reviews['rating'] = movie_reviews['rating'].map(lambda x: 0 if x < z else 1)
-
-    z = z + 1
-    log.parameter(z)
+    movie_reviews['rating'] = movie_reviews['rating'].map(lambda x: 0 if x < log.parameter(z) else 1)
 
     # Do train/test split-
     # TODO: With parser, insert code here to get the name of positional args of train_test_split
@@ -43,6 +41,9 @@ def main(x, y, z):
         clf = RandomForestClassifier(n_estimators=log.parameter(i)).fit(X_tr, y_tr)
         #############################
         score = log.metric(clf.score(X_te, y_te))
+
+        with open(log.write('clf.pkl'), 'wb') as classifier:
+            cloudpickle.dump(clf, classifier)
 
     print(score)
 
