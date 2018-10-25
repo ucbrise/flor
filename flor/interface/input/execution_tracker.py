@@ -1,8 +1,12 @@
+import ast
+import astor
+
 import inspect
 import os
 
 from flor import util
 from flor import global_state
+from flor.controller.parser.visitor import Visitor
 
 def track_execution(f):
     if global_state.interactive:
@@ -40,8 +44,15 @@ def track_execution(f):
                     "Missing value for parameter {} in {}".format(parameter_name, func_name)
                 kwargs[parameter_name] = function_parameters[parameter_name].default
 
+        # kwargs ready
 
-        return kwargs
+        tree = ast.parse(inspect.getsource(f))
+        visitor = Visitor()
+        visitor.visit(tree)
+        structs = visitor.__structs__
+        print('hi')
+
+
 
     return callable_function
 

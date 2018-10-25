@@ -12,9 +12,7 @@ from sklearn.ensemble import RandomForestClassifier
 @flor.track_execution
 def main(x, y, z):
     # Load the Data
-    movie_reviews = pd.read_json(log.read('data.json'), axis=log.parameter(1))
-    movie_reviews2 = pd.read_json(log.read('data2.json'), axis=log.parameter(1))
-
+    movie_reviews = pd.read_json(log.read('data.json'))
 
     # Do light preprocessing (see if you can extract the lambda transform)
     # movie_reviews appears on the LHS... so it's being modified.
@@ -27,6 +25,7 @@ def main(x, y, z):
     log.parameter(z)
 
     # Do train/test split-
+    # TODO: With parser, insert code here to get the name of positional args of train_test_split
     X_tr, X_te, y_tr, y_te = train_test_split(movie_reviews['text'], movie_reviews['rating'],
                                               test_size=log.parameter(x),
                                               random_state=log.parameter(y))
@@ -47,4 +46,4 @@ def main(x, y, z):
 
     print(score)
 
-print(main(0.2, 92, 5))
+main(0.2, 92, 5)

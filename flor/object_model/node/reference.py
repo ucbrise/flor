@@ -17,3 +17,7 @@ class Reference:
         self.name = name
         self.stack_scoped = stack_scoped
         self.instruction_no = -1
+
+    @property
+    def v(self):
+        return self.path
