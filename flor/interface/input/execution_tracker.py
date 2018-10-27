@@ -49,6 +49,7 @@ def track_execution(f):
         tree = ast.parse(inspect.getsource(f))
         visitor = Visitor()
         visitor.visit(tree)
+        visitor.consolidate_structs()
         structs = visitor.__structs__
         print('hi')
 

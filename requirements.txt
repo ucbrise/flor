@@ -10,3 +10,5 @@ tensorflow==1.4.0
 msgpack==0.5.6
 msgpack-python==0.5.6
 cloudpickle==0.5.3
+astor==0.6
+astunparse==1.6.1

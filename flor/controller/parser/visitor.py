@@ -24,6 +24,27 @@ class Visitor(ast.NodeVisitor):
         self.__pruned_names__ = []
         self.__keywoard_name__ = None
 
+    def consolidate_structs(self):
+        new = []
+        for struct in self.__structs__:
+            distinct = True
+            match = None
+            for prev_struct in new:
+                if (struct.instruction_no == prev_struct.instruction_no
+                        and struct.type == prev_struct.type
+                        and struct.value == prev_struct.value):
+                    distinct = False
+                    match = prev_struct
+                    break
+            if distinct:
+                new.append(struct)
+            else:
+                if type(match.name) == list:
+                    match.name.append(struct.name)
+                else:
+                    match.name = [match.name, struct.name]
+        self.__structs__ = new
+
     def visit_Attribute(self, node):
         if type(node.ctx) == ast.Store:
             return astunparse.unparse(node)
