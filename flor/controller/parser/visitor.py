@@ -5,12 +5,13 @@ import astunparse
 from typing import List
 
 class Struct:
-    def __init__(self, name=None, value=None, typ=None, instruction_no=None):
+    def __init__(self, assignee=None, value=None, typ=None, instruction_no=None, keyword_name=None):
         # ALERT: value is an AST node, it must be evaluated on transformer
-        self.name = name
+        self.assignee = assignee
         self.value = value
         self.type = typ
         self.instruction_no = instruction_no
+        self.keyword_name = keyword_name
 
 class Visitor(ast.NodeVisitor):
     # TODO: log.write in with clause
@@ -22,7 +23,7 @@ class Visitor(ast.NodeVisitor):
         self.__expr_line_no__ = -1
         self.__val__ = None
         self.__pruned_names__ = []
-        self.__keywoard_name__ = None
+        self.__keyword_name__ = None
 
     def consolidate_structs(self):
         new = []
@@ -55,115 +56,57 @@ class Visitor(ast.NodeVisitor):
                 if attr == 'log':
                     return 'flor.log'
             elif value == 'log' or value == 'flor.log':
+
                 if self.__assign_line_no__ >= 0:
-                    # Assign context
+                    # ASSIGN CONTEXT
+                    assert self.__pruned_names__, "Static Analyzer: Failed to retrieve name of assignee variable"
                     if attr == 'read':
-                        if self.__pruned_names__:
-                            self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                           value=self.__val__,
-                                                           typ='read',
-                                                           instruction_no=self.__assign_line_no__))
-                        else:
-                            assert (type(self.__val__) == ast.Subscript
-                                    or type(self.__val__) == ast.Attribute
-                                    or type(self.__val__) == ast.Name)
-                            self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                           value=self.__val__,
-                                                           typ='read',
-                                                           instruction_no=self.__assign_line_no__))
-                    elif attr == 'write':
-                        if self.__pruned_names__:
-                            self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                           value=self.__val__,
-                                                           typ='write',
-                                                           instruction_no=self.__assign_line_no__))
-                        else:
-                            assert (type(self.__val__) == ast.Subscript
-                                    or type(self.__val__) == ast.Attribute
-                                    or type(self.__val__) == ast.Name)
-                            self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                           value=self.__val__,
-                                                           typ='read',
-                                                           instruction_no=self.__assign_line_no__))
-                    else:
-                        if self.__keywoard_name__ is not None:
-                            if attr == 'parameter':
-                                self.__structs__.append(Struct(name=self.__keywoard_name__,
-                                                               value=self.__val__,
-                                                               typ='parameter',
-                                                               instruction_no=self.__assign_line_no__))
-                            elif attr == 'metric':
-                                self.__structs__.append(Struct(name=self.__keywoard_name__,
-                                                               value=self.__val__,
-                                                               typ='metric',
-                                                               instruction_no=self.__assign_line_no__))
-                        else:
-                            if self.__pruned_names__:
-                                if attr == 'parameter':
-                                    self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                                   value=self.__val__,
-                                                                   typ='parameter',
-                                                                   instruction_no=self.__assign_line_no__))
-                                elif attr == 'metric':
-                                    self.__structs__.append(Struct(name=self.__pruned_names__,
-                                                                   value=self.__val__,
-                                                                   typ='metric',
-                                                                   instruction_no=self.__assign_line_no__))
-                            else:
-                                assert (type(self.__val__) == ast.Subscript
-                                        or type(self.__val__) == ast.Attribute
-                                        or type(self.__val__) == ast.Name)
-                                if attr == 'parameter':
-                                    self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                                   value=self.__val__,
-                                                                   typ='parameter',
-                                                                   instruction_no=self.__assign_line_no__))
-                                elif attr == 'metric':
-                                    self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                                   value=self.__val__,
-                                                                   typ='metric',
-                                                                   instruction_no=self.__assign_line_no__))
-                else:
-                    # EXPR context
-                    if attr == 'read':
-                        assert (type(self.__val__) == ast.Subscript
-                                or type(self.__val__) == ast.Attribute
-                                or type(self.__val__) == ast.Name)
-                        self.__structs__.append(Struct(name=self.visit(self.__val__),
+                        self.__structs__.append(Struct(assignee=self.__pruned_names__,
                                                        value=self.__val__,
                                                        typ='read',
-                                                       instruction_no=self.__expr_line_no__))
+                                                       instruction_no=self.__assign_line_no__,
+                                                       keyword_name=self.__keyword_name__))
                     elif attr == 'write':
-                        assert (type(self.__val__) == ast.Subscript
-                                or type(self.__val__) == ast.Attribute
-                                or type(self.__val__) == ast.Name)
-                        self.__structs__.append(Struct(name=self.visit(self.__val__),
+                        self.__structs__.append(Struct(assignee=self.__pruned_names__,
                                                        value=self.__val__,
                                                        typ='write',
-                                                       instruction_no=self.__expr_line_no__))
-                    else:
-                        if self.__keywoard_name__ is not None:
-                            if attr == 'parameter':
-                                self.__structs__.append(Struct(name=self.__keywoard_name__,
-                                                               value=self.__val__,
-                                                               typ='parameter',
-                                                               instruction_no=self.__expr_line_no__))
-                            elif attr == 'metric':
-                                self.__structs__.append(Struct(name=self.__keywoard_name__,
-                                                               value=self.__val__,
-                                                               typ='metric',
-                                                               instruction_no=self.__expr_line_no__))
-                        else:
-                            if attr == 'parameter':
-                                self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                               value=self.__val__,
-                                                               typ='parameter',
-                                                               instruction_no=self.__expr_line_no__))
-                            elif attr == 'metric':
-                                self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                               value=self.__val__,
-                                                               typ='metric',
-                                                               instruction_no=self.__expr_line_no__))
+                                                       instruction_no=self.__assign_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                    elif attr == 'parameter':
+                        self.__structs__.append(Struct(assignee=self.__pruned_names__,
+                                                       value=self.__val__,
+                                                       typ='parameter',
+                                                       instruction_no=self.__assign_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                    elif attr == 'metric':
+                        self.__structs__.append(Struct(assignee=self.__pruned_names__,
+                                                       value=self.__val__,
+                                                       typ='metric',
+                                                       instruction_no=self.__assign_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                else:
+                    # EXPR CONTEXT
+                    if attr == 'read':
+                        self.__structs__.append(Struct(value=self.__val__,
+                                                       typ='read',
+                                                       instruction_no=self.__expr_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                    elif attr == 'write':
+                        self.__structs__.append(Struct(value=self.__val__,
+                                                       typ='write',
+                                                       instruction_no=self.__expr_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                    elif attr == 'parameter':
+                        self.__structs__.append(Struct(value=self.__val__,
+                                                       typ='parameter',
+                                                       instruction_no=self.__expr_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+                    elif attr == 'metric':
+                        self.__structs__.append(Struct(value=self.__val__,
+                                                       typ='metric',
+                                                       instruction_no=self.__expr_line_no__,
+                                                       keyword_name=self.__keyword_name__))
+
             return "{}.{}".format(value, attr)
 
     def visit_withitem(self, node):
@@ -176,9 +119,9 @@ class Visitor(ast.NodeVisitor):
 
 
     def visit_keyword(self, node):
-        self.__keywoard_name__ = node.arg
+        self.__keyword_name__ = node.arg
         self.visit(node.value)
-        self.__keywoard_name__ = None
+        self.__keyword_name__ = None
 
     def visit_With(self, node):
         self.__assign_line_no__ = node.lineno
