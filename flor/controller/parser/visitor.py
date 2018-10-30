@@ -98,16 +98,31 @@ class Visitor(ast.NodeVisitor):
                                                                typ='metric',
                                                                instruction_no=self.__assign_line_no__))
                         else:
-                            if attr == 'parameter':
-                                self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                               value=self.__val__,
-                                                               typ='parameter',
-                                                               instruction_no=self.__assign_line_no__))
-                            elif attr == 'metric':
-                                self.__structs__.append(Struct(name=self.visit(self.__val__),
-                                                               value=self.__val__,
-                                                               typ='metric',
-                                                               instruction_no=self.__assign_line_no__))
+                            if self.__pruned_names__:
+                                if attr == 'parameter':
+                                    self.__structs__.append(Struct(name=self.__pruned_names__,
+                                                                   value=self.__val__,
+                                                                   typ='parameter',
+                                                                   instruction_no=self.__assign_line_no__))
+                                elif attr == 'metric':
+                                    self.__structs__.append(Struct(name=self.__pruned_names__,
+                                                                   value=self.__val__,
+                                                                   typ='metric',
+                                                                   instruction_no=self.__assign_line_no__))
+                            else:
+                                assert (type(self.__val__) == ast.Subscript
+                                        or type(self.__val__) == ast.Attribute
+                                        or type(self.__val__) == ast.Name)
+                                if attr == 'parameter':
+                                    self.__structs__.append(Struct(name=self.visit(self.__val__),
+                                                                   value=self.__val__,
+                                                                   typ='parameter',
+                                                                   instruction_no=self.__assign_line_no__))
+                                elif attr == 'metric':
+                                    self.__structs__.append(Struct(name=self.visit(self.__val__),
+                                                                   value=self.__val__,
+                                                                   typ='metric',
+                                                                   instruction_no=self.__assign_line_no__))
                 else:
                     # EXPR context
                     if attr == 'read':
