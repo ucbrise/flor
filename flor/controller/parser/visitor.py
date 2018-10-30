@@ -1,22 +1,8 @@
 import ast
-import astor
 import astunparse
 
 from typing import List
-
-class Struct:
-    def __init__(self, assignee=None, value=None, typ=None,
-                 instruction_no=None, keyword_name=None,
-                 caller=None, pos=None):
-        # TODO: Comment
-        # ALERT: value is an AST node, it must be evaluated on transformer
-        self.assignee = assignee
-        self.value = value #
-        self.type = typ #
-        self.instruction_no = instruction_no #
-        self.keyword_name = keyword_name
-        self.caller = caller
-        self.pos = pos
+from flor.context.struct import Struct
 
 class Visitor(ast.NodeVisitor):
     def __init__(self):

@@ -1,0 +1,23 @@
+import inspect
+
+class Struct:
+    def __init__(self, assignee=None, value=None, typ=None,
+                 instruction_no=None, keyword_name=None,
+                 caller=None, pos=None):
+        self.assignee = assignee
+        self.value = value
+        self.typ = typ
+        self.instruction_no = instruction_no
+        self.keyword_name = keyword_name
+        self.caller = caller
+        self.pos = pos
+
+    def to_dict(self):
+        d = {}
+        for attr in [i for i in dir(self) if not inspect.ismethod(getattr(self, i)) and '__' != i[0:2]]:
+            d[attr] = getattr(self, attr, None)
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(**d)
