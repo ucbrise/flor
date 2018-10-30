@@ -11,9 +11,9 @@ class Struct:
         # TODO: Comment
         # ALERT: value is an AST node, it must be evaluated on transformer
         self.assignee = assignee
-        self.value = value
-        self.type = typ
-        self.instruction_no = instruction_no
+        self.value = value #
+        self.type = typ #
+        self.instruction_no = instruction_no #
         self.keyword_name = keyword_name
         self.caller = caller
         self.pos = pos
@@ -39,17 +39,20 @@ class Visitor(ast.NodeVisitor):
             for prev_struct in new:
                 if (struct.instruction_no == prev_struct.instruction_no
                         and struct.type == prev_struct.type
-                        and struct.value == prev_struct.value):
+                        and struct.value == prev_struct.value
+                        and struct.keyword_name == prev_struct.keyword_name
+                        and struct.caller == prev_struct.caller
+                        and struct.pos == prev_struct.pos):
                     distinct = False
                     match = prev_struct
                     break
             if distinct:
                 new.append(struct)
             else:
-                if type(match.name) == list:
-                    match.name.append(struct.name)
+                if type(match.assignee) == list:
+                    match.assignee.append(struct.assignee)
                 else:
-                    match.name = [match.name, struct.name]
+                    match.assignee = [match.assignee, struct.assignee]
         self.__structs__ = new
 
     def visit_Attribute(self, node):
