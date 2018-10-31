@@ -1,7 +1,7 @@
 from typing import Union, Dict, Set
 from flor.object_model.node import *
 
-class FlorPlan:
+class Graph:
 
     def __init__(self):
 
