@@ -24,7 +24,7 @@ class Visitor(ast.NodeVisitor):
             match = None
             for prev_struct in new:
                 if (struct.instruction_no == prev_struct.instruction_no
-                        and struct.type == prev_struct.type
+                        and struct.typ == prev_struct.typ
                         and struct.value == prev_struct.value
                         and struct.keyword_name == prev_struct.keyword_name
                         and struct.caller == prev_struct.caller
