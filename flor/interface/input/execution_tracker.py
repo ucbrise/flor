@@ -53,7 +53,7 @@ def track_execution(f):
         visitor.visit(tree)
         visitor.consolidate_structs()
 
-        transformer = Transformer(visitor.__structs__)
+        transformer = Transformer(visitor.__structs__, kwargs)
         transformer.visit(tree)
         tree.body[0].decorator_list = []
 
@@ -62,6 +62,7 @@ def track_execution(f):
             os.chdir(d)
             with open('run_secret_43174.py', 'w') as g:
                 g.write('import flor; log = flor.log\n')
+                print(astunparse.unparse(tree))
                 g.write(astunparse.unparse(tree))
             sys.path.insert(0, d)
             import run_secret_43174

@@ -4,7 +4,7 @@ import astunparse
 class Struct:
     def __init__(self, assignee=None, value=None, typ=None,
                  instruction_no=None, keyword_name=None,
-                 caller=None, pos=None):
+                 caller=None, pos=None, from_arg=None):
         self.assignee = assignee
         self.value = value
         self.typ = typ
@@ -12,6 +12,7 @@ class Struct:
         self.keyword_name = keyword_name
         self.caller = caller
         self.pos = pos
+        self.from_arg = from_arg
 
     def to_dict(self):
         d = {}

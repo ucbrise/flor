@@ -9,9 +9,10 @@ from flor.controller.parser.flor_log import FlorLog
 
 class Transformer(ast.NodeTransformer):
 
-    def __init__(self, structs: List[Struct]):
+    def __init__(self, structs: List[Struct], args):
         super().__init__()
         self.__structs__ = structs
+        self.__args__ = args
 
     def visit_Attribute(self, node):
         if isinstance(node.ctx, ast.Store):
@@ -27,8 +28,13 @@ class Transformer(ast.NodeTransformer):
     def visit_Call(self, node):
         if self.visit(node.func) is FlorLog:
             struct = self.__structs__.pop(0)
+            from_arg = ' or '.join(["{} is {}".format(struct.value, each) for each in self.__args__])
+            from_arg = ast.parse(from_arg).body[0].value
             interim  = ast.parse("flor.internal_log({}, {})".format(
                 struct.value, struct.to_dict())).body[0].value
+            interim.args[1].keys.append(ast.Str(s='from_arg'))
+            interim.args[1].values.append(from_arg)
+            # print(astor.dump_tree(interim))
             return super().generic_visit(interim)
         return super().generic_visit(node)
 
