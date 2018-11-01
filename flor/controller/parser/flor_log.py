@@ -1,0 +1,2 @@
+class FlorLog:
+    pass

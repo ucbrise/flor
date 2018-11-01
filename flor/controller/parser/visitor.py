@@ -4,10 +4,15 @@ import astunparse
 from typing import List
 from flor.context.struct import Struct
 
+
 class Visitor(ast.NodeVisitor):
+
     def __init__(self):
         super().__init__()
         self.__structs__: List[Struct] = []
+        self.__struct_index__ = []
+        self.__struct_map__ = {}
+
         self.__assign_line_no__ = -1
         self.__expr_line_no__ = -1
         self.__val__ = None
@@ -18,11 +23,15 @@ class Visitor(ast.NodeVisitor):
 
 
     def consolidate_structs(self):
+        if self.__struct_map__:
+            # for idempotency
+            return
         new = []
-        for struct in self.__structs__:
+        for idx, struct in enumerate(self.__structs__):
             distinct = True
             match = None
-            for prev_struct in new:
+            dest_idx = idx
+            for prev_idx, prev_struct in enumerate(new):
                 if (struct.instruction_no == prev_struct.instruction_no
                         and struct.typ == prev_struct.typ
                         and struct.value == prev_struct.value
@@ -31,6 +40,7 @@ class Visitor(ast.NodeVisitor):
                         and struct.pos == prev_struct.pos):
                     distinct = False
                     match = prev_struct
+                    dest_idx = prev_idx
                     break
             if distinct:
                 new.append(struct)
@@ -39,6 +49,7 @@ class Visitor(ast.NodeVisitor):
                     match.assignee.append(struct.assignee)
                 else:
                     match.assignee = [match.assignee, struct.assignee]
+            self.__struct_map__[idx] = dest_idx
         self.__structs__ = new
 
     def visit_Attribute(self, node):
@@ -64,58 +75,65 @@ class Visitor(ast.NodeVisitor):
 
                     if attr == 'read':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
-                                                       value=self.__val__,
+                                                       value=astunparse.unparse(self.__val__).strip(),
                                                        typ='read',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'write':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
-                                                       value=self.__val__,
+                                                       value=astunparse.unparse(self.__val__).strip(),
                                                        typ='write',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'parameter':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
-                                                       value=self.__val__,
+                                                       value=astunparse.unparse(self.__val__).strip(),
                                                        typ='parameter',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'metric':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
-                                                       value=self.__val__,
+                                                       value=astunparse.unparse(self.__val__).strip(),
                                                        typ='metric',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                 else:
                     # EXPR CONTEXT
                     if attr == 'read':
-                        self.__structs__.append(Struct(value=self.__val__,
+                        self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='read',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'write':
-                        self.__structs__.append(Struct(value=self.__val__,
+                        self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='write',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'parameter':
-                        self.__structs__.append(Struct(value=self.__val__,
+                        self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='parameter',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
                     elif attr == 'metric':
-                        self.__structs__.append(Struct(value=self.__val__,
+                        self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='metric',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos))
+                        self.__struct_index__.append(len(self.__struct_index__))
 
             return "{}.{}".format(value, attr)
 
@@ -185,7 +203,8 @@ class Visitor(ast.NodeVisitor):
         elif type(node.ctx) == ast.Load:
             src = self.__pruned_names__
             for idx, each in enumerate(node.elts):
-                self.__pruned_names__ = src[idx]
+                if src:
+                    self.__pruned_names__ = src[idx]
                 self.visit(each)
         else:
             raise TypeError("Invalid context")
@@ -199,7 +218,8 @@ class Visitor(ast.NodeVisitor):
         elif type(node.ctx) == ast.Load:
             src = self.__pruned_names__
             for idx, each in enumerate(node.elts):
-                self.__pruned_names__ = src[idx]
+                if src:
+                    self.__pruned_names__ = src[idx]
                 self.visit(each)
         else:
             raise TypeError("Invalid context")

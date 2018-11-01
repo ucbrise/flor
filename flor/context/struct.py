@@ -1,4 +1,5 @@
 import inspect
+import astunparse
 
 class Struct:
     def __init__(self, assignee=None, value=None, typ=None,
@@ -17,6 +18,9 @@ class Struct:
         for attr in [i for i in dir(self) if not inspect.ismethod(getattr(self, i)) and '__' != i[0:2]]:
             d[attr] = getattr(self, attr, None)
         return d
+
+    def __str__(self):
+        return str(self.to_dict())
 
     @classmethod
     def from_dict(cls, d):

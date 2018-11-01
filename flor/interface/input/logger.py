@@ -8,29 +8,30 @@ class log:
     """
 
     @staticmethod
-    def read(path):
+    def read(path, **kwargs):
         """
         Input reference
         """
         return path
 
     @staticmethod
-    def write(path):
+    def write(path, **kwargs):
         """
         Output reference
         """
         return path
 
     @staticmethod
-    def parameter(value):
+    def parameter(value, **kwargs):
         """
         Input value
         """
         return value
 
     @staticmethod
-    def metric(value):
+    def metric(value, **kwargs):
         """
         Output value
         """
         return value
+

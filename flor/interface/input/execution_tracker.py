@@ -1,12 +1,15 @@
 import ast
-import astor
+import astunparse
+
+import tempfile
 
 import inspect
-import os
+import os, sys
 
 from flor import util
 from flor import global_state
 from flor.controller.parser.visitor import Visitor
+from flor.controller.parser.transformer import Transformer
 
 def track_execution(f):
     if global_state.interactive:
@@ -22,7 +25,6 @@ def track_execution(f):
     func_name = f.__name__
 
     def callable_function(*args, **kwargs):
-
         function_parameters = inspect.signature(f).parameters
 
         for parameter_name in kwargs:
@@ -50,9 +52,23 @@ def track_execution(f):
         visitor = Visitor()
         visitor.visit(tree)
         visitor.consolidate_structs()
-        structs = visitor.__structs__
-        print('hi')
 
+        transformer = Transformer(visitor.__structs__)
+        transformer.visit(tree)
+        tree.body[0].decorator_list = []
+
+        with tempfile.TemporaryDirectory() as d:
+            original_dir = os.getcwd()
+            os.chdir(d)
+            with open('run_secret_43174.py', 'w') as g:
+                g.write('import flor; log = flor.log\n')
+                g.write(astunparse.unparse(tree))
+            sys.path.insert(0, d)
+            import run_secret_43174
+        sys.path.pop(0)
+        os.chdir(original_dir)
+        getattr(run_secret_43174, tree.body[0].name)(**kwargs)
+        del run_secret_43174
 
 
     return callable_function
