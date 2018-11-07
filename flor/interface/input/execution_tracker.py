@@ -6,6 +6,8 @@ import tempfile
 import inspect
 import os, sys
 
+from uuid import uuid4
+
 from flor import util
 from flor import global_state
 from flor.controller.parser.visitor import Visitor
@@ -25,6 +27,8 @@ def track_execution(f):
     func_name = f.__name__
 
     def callable_function(*args, **kwargs):
+        #TODO: PARSE WHETHER OR NOT YOU EXEC
+        nonlocal func_name
         function_parameters = inspect.signature(f).parameters
 
         for parameter_name in kwargs:
@@ -60,19 +64,22 @@ def track_execution(f):
         with tempfile.TemporaryDirectory() as d:
             original_dir = os.getcwd()
             os.chdir(d)
-            with open('run_secret_43174.py', 'w') as g:
+            hex_name = "_{}".format(uuid4().hex)
+            unparsed = astunparse.unparse(tree)
+            global_state.tracked_executions[func_name] = unparsed
+            print(unparsed)
+            with open('{}.py'.format(hex_name), 'w') as g:
                 g.write('import flor; log = flor.log\n')
-                print(astunparse.unparse(tree))
-                g.write(astunparse.unparse(tree))
+                for func_name in global_state.tracked_executions:
+                    g.write(global_state.tracked_executions[func_name])
+                    g.write('\n')
             sys.path.insert(0, d)
-            import run_secret_43174
+            exec('import {}'.format(hex_name))
         sys.path.pop(0)
         os.chdir(original_dir)
-        getattr(run_secret_43174, tree.body[0].name)(**kwargs)
-        del run_secret_43174
-
+        eval('getattr({}, tree.body[0].name)(**kwargs)'.format(hex_name))
+        exec('del {}'.format(hex_name))
 
     return callable_function
-
 
 

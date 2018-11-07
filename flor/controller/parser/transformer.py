@@ -29,11 +29,13 @@ class Transformer(ast.NodeTransformer):
         if self.visit(node.func) is FlorLog:
             struct = self.__structs__.pop(0)
             from_arg = ' or '.join(["{} is {}".format(struct.value, each) for each in self.__args__])
-            from_arg = ast.parse(from_arg).body[0].value
+            if from_arg:
+                from_arg = ast.parse(from_arg).body[0].value
             interim  = ast.parse("flor.internal_log({}, {})".format(
                 struct.value, struct.to_dict())).body[0].value
-            interim.args[1].keys.append(ast.Str(s='from_arg'))
-            interim.args[1].values.append(from_arg)
+            if from_arg:
+                interim.args[1].keys.append(ast.Str(s='from_arg'))
+                interim.args[1].values.append(from_arg)
             # print(astor.dump_tree(interim))
             return super().generic_visit(interim)
         return super().generic_visit(node)

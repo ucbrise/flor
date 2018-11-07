@@ -2,3 +2,5 @@
 
 interactive = False
 nb_name = None
+
+tracked_executions = {}
