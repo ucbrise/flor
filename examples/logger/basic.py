@@ -11,9 +11,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 
 @flor.track_execution
-def measure_error(i):
-    measured_error = log.metric(1/i)
+def train_model(n_estimators, X_tr, y_tr):
+    clf = RandomForestClassifier(n_estimators=log.parameter(n_estimators)).fit(X_tr, y_tr)
+    with open(log.write('clf.pkl'), 'wb') as classifier:
+        cloudpickle.dump(clf, classifier)
+    return clf
 
+@flor.track_execution
+def test_model(clf, X_te, y_te):
+    score = log.metric(clf.score(X_te, y_te))
 
 @flor.track_execution
 def main(x, y, z):
@@ -28,7 +34,6 @@ def main(x, y, z):
                                               test_size=log.parameter(x),
                                               random_state=log.parameter(y))
 
-
     # Vectorize the English sentences
     vectorizer = TfidfVectorizer()
     vectorizer.fit(X_tr)
@@ -37,15 +42,8 @@ def main(x, y, z):
 
     # Fit the model
     for i in [1, 5]:
-        #############################
-        clf = RandomForestClassifier(n_estimators=log.parameter(i)).fit(X_tr, y_tr)
-        #############################
-        score = log.metric(clf.score(X_te, y_te))
-
-        measure_error(i)
-
-        with open(log.write('clf.pkl'), 'wb') as classifier:
-            cloudpickle.dump(clf, classifier)
+        clf = train_model(i, X_tr, y_tr)
+        test_model(clf, X_te, y_te)
 
 with flor.Context('basic'):
     main(0.2, 92, 5)

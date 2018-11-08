@@ -5,7 +5,7 @@ class Struct:
     def __init__(self, assignee=None, value=None, typ=None,
                  instruction_no=None, keyword_name=None,
                  caller=None, pos=None, from_arg=None,
-                 in_execution=None):
+                 in_execution=None, in_file=None):
         self.assignee = assignee
         self.value = value
         self.typ = typ
@@ -15,6 +15,7 @@ class Struct:
         self.pos = pos
         self.from_arg = from_arg
         self.in_execution = in_execution
+        self.in_file = in_file
 
     def to_dict(self):
         d = {}

@@ -7,9 +7,10 @@ from flor.context.struct import Struct
 
 class Visitor(ast.NodeVisitor):
 
-    def __init__(self, in_execution):
+    def __init__(self, in_execution, in_file):
         super().__init__()
         self.__in_execution__ = in_execution
+        self.__in_file__ = in_file
 
         self.__structs__: List[Struct] = []
         self.__struct_index__ = []
@@ -81,7 +82,8 @@ class Visitor(ast.NodeVisitor):
                                                        typ='read',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'write':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
@@ -89,7 +91,8 @@ class Visitor(ast.NodeVisitor):
                                                        typ='write',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'parameter':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
@@ -97,7 +100,8 @@ class Visitor(ast.NodeVisitor):
                                                        typ='parameter',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'metric':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
@@ -105,7 +109,8 @@ class Visitor(ast.NodeVisitor):
                                                        typ='metric',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                 else:
                     # EXPR CONTEXT
@@ -114,30 +119,36 @@ class Visitor(ast.NodeVisitor):
                                                        typ='read',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'write':
                         self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='write',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
                     elif attr == 'parameter':
                         self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='parameter',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                     elif attr == 'metric':
                         self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
                                                        typ='metric',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
-                                                       caller=caller, pos=pos, in_execution=self.__in_execution__))
+                                                       caller=caller, pos=pos, in_execution=self.__in_execution__,
+                                                       in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
 
             return "{}.{}".format(value, attr)
+
+
 
     def visit_withitem(self, node):
         if node.optional_vars is None:
@@ -172,6 +183,9 @@ class Visitor(ast.NodeVisitor):
 
         self.__call_stack__ = []
         self.__pos_arg_stack__ = []
+
+    def visit_Return(self, node):
+        self.visit_Expr(node)
 
     def visit_Call(self, node):
         if len(node.args) > 0:
