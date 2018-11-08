@@ -1,18 +1,22 @@
 import flor
 log = flor.log
 
+# Import standard libraries
+import pandas as pd
+
+import cloudpickle
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+@flor.track_execution
+def measure_error(i):
+    measured_error = log.metric(1/i)
+
 
 @flor.track_execution
 def main(x, y, z):
-    # Import standard libraries
-    import pandas as pd
-
-    import cloudpickle
-
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.model_selection import train_test_split
-    from sklearn.ensemble import RandomForestClassifier
-
     # Load the Data
     movie_reviews = pd.read_json(log.read('data.json'))
 
@@ -38,8 +42,10 @@ def main(x, y, z):
         #############################
         score = log.metric(clf.score(X_te, y_te))
 
+        measure_error(i)
+
         with open(log.write('clf.pkl'), 'wb') as classifier:
             cloudpickle.dump(clf, classifier)
 
-
-main(0.2, 92, 5)
+with flor.Context('basic'):
+    main(0.2, 92, 5)

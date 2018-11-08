@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
+import tempfile
+
 interactive = False
 nb_name = None
 
-tracked_executions = {}
+# Temporary directory for code injection
+ci_temporary_directory = None
+mapper = None
+
