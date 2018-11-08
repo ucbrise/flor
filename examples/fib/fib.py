@@ -5,7 +5,7 @@ log = flor.log
 def fib(idx):
     log.parameter(idx)
     if idx <= 2:
-        return idx
+        return log.metric(idx)
     return log.metric(fib(idx - 1) + fib(idx - 2))
 
 with flor.Context('fib'):

@@ -74,7 +74,9 @@ class Visitor(ast.NodeVisitor):
 
                 if self.__assign_line_no__ >= 0:
                     # ASSIGN CONTEXT
-                    assert self.__pruned_names__, "Static Analyzer: Failed to retrieve name of assignee variable"
+                    # assert self.__pruned_names__, "Static Analyzer: Failed to retrieve name of assignee variable"
+                    if not self.__pruned_names__:
+                        self.__pruned_names__ = None
 
                     if attr == 'read':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
@@ -202,6 +204,7 @@ class Visitor(ast.NodeVisitor):
         self.__call_stack__.pop()
 
     def visit_Subscript(self, node):
+        self.visit(node.slice)
         return astunparse.unparse(node).strip()
 
     def visit_Starred(self, node):
