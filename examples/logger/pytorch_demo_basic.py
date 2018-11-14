@@ -50,7 +50,7 @@ def main():
         
         if (epoch+1) % 5 == 0:
             #evaluate_loss(epoch, loss.item())
-            log.metric(epoch)
+            log.parameter(epoch)
             log.metric(loss.item())
             #print ('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, loss.item()))
 
@@ -63,6 +63,7 @@ def main():
 
     # Save the model checkpoint
     #torch.save(model.state_dict(), 'model.ckpt')
+
 with flor.Context('pytorch_demo'):
     main()
 
