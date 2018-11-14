@@ -16,8 +16,8 @@ setuptools.setup(
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
      packages=setuptools.find_packages(),
-     install_reqs = requirements
-     classifiers=[
+     install_reqs = requirements,
+     classifiers = [
          "Programming Language :: Python :: 3",
          "License :: OSI Approved :: Apache Software License",
          "Operating System :: OS Independent",
