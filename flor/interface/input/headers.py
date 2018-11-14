@@ -12,3 +12,9 @@ def internal_log(v, d):
     print()
 
     return v
+
+def log_enter():
+    print("ENTER")
+
+def log_exit():
+    print("EXIT")
