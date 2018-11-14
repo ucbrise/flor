@@ -7,37 +7,6 @@ import torchvision.transforms as transforms
 import flor
 log = flor.log
 
-
-# Device configuration
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Hyper-parameters 
-input_size = 784
-hidden_size = 500
-num_classes = 10
-num_epochs = 5
-batch_size = 100
-learning_rate = 0.001
-
-# MNIST dataset 
-train_dataset = torchvision.datasets.MNIST(root='../../data', 
-                                           train=True, 
-                                           transform=transforms.ToTensor(),  
-                                           download=True)
-
-test_dataset = torchvision.datasets.MNIST(root='../../data', 
-                                          train=False, 
-                                          transform=transforms.ToTensor())
-
-# Data loader
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset, 
-                                           batch_size=batch_size, 
-                                           shuffle=True)
-
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset, 
-                                          batch_size=batch_size, 
-                                          shuffle=False)
-
 # Fully connected neural network with one hidden layer
 class NeuralNet(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
@@ -54,57 +23,85 @@ class NeuralNet(nn.Module):
 
 @flor.track_execution
 def main():
+    # Device configuration
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-  model = NeuralNet(log.parameter(input_size), log.parameter(hidden_size), log.parameter(num_classes)).to(device)
+    # Hyper-parameters
+    input_size = 784
+    hidden_size = 500
+    num_classes = 10
+    num_epochs = 5
+    batch_size = 100
+    learning_rate = 0.001
 
-  # Loss and optimizer
-  criterion = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=log.parameter(learning_rate))
+    # MNIST dataset
+    train_dataset = torchvision.datasets.MNIST(root='../../data',
+                                               train=True,
+                                               transform=transforms.ToTensor(),
+                                               download=True)
 
-  # Train the model
-  total_step = len(train_loader)
-  for epoch in range(num_epochs):
-      for i, (images, labels) in enumerate(train_loader):  
-          # Move tensors to the configured device
-          images = images.reshape(-1, 28*28).to(device)
-          labels = labels.to(device)
-          
-          # Forward pass
-          outputs = model(images)
-          loss = criterion(outputs, labels)
-          
-          # Backward and optimize
-          optimizer.zero_grad()
-          loss.backward()
-          optimizer.step()
-          
-          if (i+1) % 100 == 0:
-              log.metric(epoch)
-              log.metric(i)
-              log.metric(loss.item())
+    test_dataset = torchvision.datasets.MNIST(root='../../data',
+                                              train=False,
+                                              transform=transforms.ToTensor())
 
-  # Test the model
-  # In test phase, we don't need to compute gradients (for memory efficiency)
-  with torch.no_grad():
-      correct = 0
-      total = 0
-      for images, labels in test_loader:
-          images = images.reshape(-1, 28*28).to(device)
-          labels = labels.to(device)
-          outputs = model(images)
-          _, predicted = torch.max(outputs.data, 1)
-          total += labels.size(0)
-          correct += (predicted == labels).sum().item()
+    # Data loader
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                               batch_size=batch_size,
+                                               shuffle=True)
 
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                              batch_size=batch_size,
+                                              shuffle=False)
 
-      acc = 100 * correct / total)
-      log.metric(acc)
+    model = NeuralNet(log.parameter(input_size), log.parameter(hidden_size), log.parameter(num_classes)).to(device)
 
-      print('Accuracy of the network on the 10000 test images: {} %'.format(acc))
+    # Loss and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=log.parameter(learning_rate))
+
+    # Train the model
+    total_step = len(train_loader)
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(train_loader):
+            # Move tensors to the configured device
+            images = images.reshape(-1, 28*28).to(device)
+            labels = labels.to(device)
+
+            # Forward pass
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i+1) % 100 == 0:
+                log.metric(epoch)
+                log.metric(i)
+                log.metric(loss.item())
+
+    # Test the model
+    # In test phase, we don't need to compute gradients (for memory efficiency)
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in test_loader:
+            images = images.reshape(-1, 28*28).to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+            acc = 100 * (correct / total)
+            log.metric(acc)
+
+    print('Accuracy of the network on the 10000 test images: {} %'.format(acc))
 
 
 with flor.Context('pytorch_demo_nn'):
-  main()
+    main()
 
 
 

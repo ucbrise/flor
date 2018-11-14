@@ -24,7 +24,6 @@ class Visitor(ast.NodeVisitor):
         self.__call_stack__ = []
         self.__pos_arg_stack__ = []
 
-
     def consolidate_structs(self):
         if self.__struct_map__:
             # for idempotency
@@ -220,10 +219,7 @@ class Visitor(ast.NodeVisitor):
                 res.append(self.visit(each))
             return res
         elif type(node.ctx) == ast.Load:
-            src = self.__pruned_names__
             for idx, each in enumerate(node.elts):
-                if src:
-                    self.__pruned_names__ = src[idx]
                 self.visit(each)
         else:
             raise TypeError("Invalid context")
@@ -235,10 +231,7 @@ class Visitor(ast.NodeVisitor):
                 res.append(self.visit(each))
             return tuple(res)
         elif type(node.ctx) == ast.Load:
-            src = self.__pruned_names__
             for idx, each in enumerate(node.elts):
-                if src:
-                    self.__pruned_names__ = src[idx]
                 self.visit(each)
         else:
             raise TypeError("Invalid context")
