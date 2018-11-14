@@ -78,6 +78,7 @@ def track_execution(f):
         # Needs compilation
         with open(tru_path, 'r') as sourcefile:
             tree = ast.parse(sourcefile.read())
+            logger.debug(astor.dump_tree(tree))
         for idx, each in enumerate(tree.body):
             if (type(each) == ast.FunctionDef
                     and each.decorator_list

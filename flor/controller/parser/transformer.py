@@ -40,3 +40,26 @@ class Transformer(ast.NodeTransformer):
             return super().generic_visit(interim)
         return super().generic_visit(node)
 
+    def visit_Return(self, node):
+        node.value = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
+                                       args=[node.value], keywords=[], ctx=ast.Load())
+        ast.fix_missing_locations(node)
+        return super().generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        # insert entry and exit into body
+
+        enter = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_enter', ctx=ast.Load()),
+                         args=[], keywords=[], ctx=ast.Load()))
+
+        exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
+                                        args=[], keywords=[], ctx=ast.Load()))
+
+        node.body.insert(0, enter)
+        node.body.append(exit)
+
+        ast.fix_missing_locations(node)
+
+        return super().generic_visit(node)
+
+

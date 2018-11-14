@@ -5,6 +5,8 @@ from flor.context.struct import Struct
 def setNotebookName(name):
     global_state.nb_name = name
 
+#TODO: Refactor and move the functions below
+
 def internal_log(v, d):
     struct = Struct.from_dict(d)
     print("v: {}".format(v))
@@ -16,5 +18,6 @@ def internal_log(v, d):
 def log_enter():
     print("ENTER")
 
-def log_exit():
+def log_exit(v=None):
     print("EXIT")
+    return v

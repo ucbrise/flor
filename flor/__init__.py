@@ -13,7 +13,7 @@ except:
 logging.basicConfig(format='%(name)-12s: %(levelname)-8s %(message)s',level=logging.WARNING)
 
 from flor.interface.input.decorators import func, track_action
-from flor.interface.input.headers import setNotebookName, internal_log
+from flor.interface.input.headers import setNotebookName, internal_log, log_enter, log_exit
 from flor.interface.input.experiment import Experiment
 from flor.interface.input.logger import log
 from flor.interface.input.execution_tracker import track_execution
@@ -21,4 +21,4 @@ from flor.interface.input.context import Context
 
 __all__ = ["func", "track_action", "setNotebookName",
            "Experiment", "log", "track_execution", 'internal_log',
-           'Context']
+           'Context', 'log_enter', 'log_exit']
