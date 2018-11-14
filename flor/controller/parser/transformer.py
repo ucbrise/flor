@@ -31,6 +31,8 @@ class Transformer(ast.NodeTransformer):
             from_arg = ' or '.join(["{} is {}".format(struct.value, each) for each in self.__args__])
             if from_arg:
                 from_arg = ast.parse(from_arg).body[0].value
+            else:
+                from_arg = ast.parse('False').body[0].value
             interim  = ast.parse("flor.internal_log({}, {})".format(
                 struct.value, struct.to_dict())).body[0].value
             if from_arg:

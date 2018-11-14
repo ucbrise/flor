@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 from flor.context.struct import Struct
 
-def internal_log(v, d):
-    struct = Struct.from_dict(d)
-    print("v: {}".format(v))
-    print("struct: {}".format(struct))
-    print()
+# TODO: OUT-OF-CORE. Log could potentially be very big
+log_sequence = []
 
+class FlorEnter:
+    pass
+
+class FlorExit:
+    pass
+
+def internal_log(v, d):
+    d['runtime_value'] = v
+    struct = Struct.from_dict(d)
+    log_sequence.append(struct)
     return v
 
 def log_enter():
-    print("ENTER")
+    log_sequence.append(FlorEnter)
 
 def log_exit(v=None):
-    print("EXIT")
+    log_sequence.append(FlorExit)
     return v

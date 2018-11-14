@@ -9,7 +9,6 @@ import cloudpickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-# from .empty.nothing import foo
 
 @flor.track_execution
 def train_model(n_estimators, X_tr, y_tr):

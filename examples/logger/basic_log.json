@@ -1,0 +1,141 @@
+[
+  {
+    "assignee": "movie_reviews",
+    "caller": "pd.read_json",
+    "from_arg": false,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+    "instruction_no": 28,
+    "keyword_name": null,
+    "pos": 0,
+    "runtime_value": "data.json",
+    "typ": "read",
+    "value": "'data.json'"
+  },
+  {
+    "assignee": [
+      "X_tr",
+      "X_te",
+      "y_tr",
+      "y_te"
+    ],
+    "caller": "train_test_split",
+    "from_arg": true,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+    "instruction_no": 34,
+    "keyword_name": "test_size",
+    "pos": null,
+    "runtime_value": 0.2,
+    "typ": "parameter",
+    "value": "x"
+  },
+  {
+    "assignee": [
+      "X_tr",
+      "X_te",
+      "y_tr",
+      "y_te"
+    ],
+    "caller": "train_test_split",
+    "from_arg": true,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+    "instruction_no": 34,
+    "keyword_name": "random_state",
+    "pos": null,
+    "runtime_value": 92,
+    "typ": "parameter",
+    "value": "y"
+  },
+  [
+    [
+      {
+        "assignee": "clf",
+        "caller": "RandomForestClassifier",
+        "from_arg": true,
+        "in_execution": "train_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 16,
+        "keyword_name": "n_estimators",
+        "pos": null,
+        "runtime_value": 1,
+        "typ": "parameter",
+        "value": "n_estimators"
+      },
+      {
+        "assignee": "classifier",
+        "caller": "open",
+        "from_arg": false,
+        "in_execution": "train_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 17,
+        "keyword_name": null,
+        "pos": 0,
+        "runtime_value": "clf.pkl",
+        "typ": "write",
+        "value": "'clf.pkl'"
+      }
+    ],
+    [
+      {
+        "assignee": "score",
+        "caller": null,
+        "from_arg": false,
+        "in_execution": "test_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 23,
+        "keyword_name": null,
+        "pos": null,
+        "runtime_value": 0.6337,
+        "typ": "metric",
+        "value": "clf.score(X_te, y_te)"
+      }
+    ]
+  ],
+  [
+    [
+      {
+        "assignee": "clf",
+        "caller": "RandomForestClassifier",
+        "from_arg": true,
+        "in_execution": "train_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 16,
+        "keyword_name": "n_estimators",
+        "pos": null,
+        "runtime_value": 5,
+        "typ": "parameter",
+        "value": "n_estimators"
+      },
+      {
+        "assignee": "classifier",
+        "caller": "open",
+        "from_arg": false,
+        "in_execution": "train_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 17,
+        "keyword_name": null,
+        "pos": 0,
+        "runtime_value": "clf.pkl",
+        "typ": "write",
+        "value": "'clf.pkl'"
+      }
+    ],
+    [
+      {
+        "assignee": "score",
+        "caller": null,
+        "from_arg": false,
+        "in_execution": "test_model",
+        "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+        "instruction_no": 23,
+        "keyword_name": null,
+        "pos": null,
+        "runtime_value": 0.7028,
+        "typ": "metric",
+        "value": "clf.score(X_te, y_te)"
+      }
+    ]
+  ]
+]
