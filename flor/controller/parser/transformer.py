@@ -100,7 +100,7 @@ class Transformer(ast.NodeTransformer):
                          ], keywords=[], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                        args=[], keywords=[], ctx=ast.Load()))
+                                        args=[], keywords=[ast.keyword(arg='func_name', value=ast.Str(s=node.name))], ctx=ast.Load()))
 
         node.body.insert(0, enter)
         node.body.append(exit)
