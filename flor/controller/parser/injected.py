@@ -7,11 +7,9 @@ class StructuredLog:
 
     def __init__(self):
 
-        self.log_sequence = None
+        # self.log_sequence = None
         self.log_tree = None
-
         self.dict_of_returns = {}
-
         self.parents = []
 
 structured_log = StructuredLog()
@@ -25,7 +23,7 @@ class FlorExit:
 def internal_log(v, d):
     d['runtime_value'] = v
     # struct = Struct.from_dict(d)
-    structured_log.log_sequence.append(d)
+    structured_log.log_tree['log_sequence'].append(d)
     return v
 
 def log_enter(locl=None, vararg=None, kwarg=None):
@@ -64,7 +62,7 @@ def log_enter(locl=None, vararg=None, kwarg=None):
         structured_log.log_tree["consumes_from"] = consumes_from
 
     structured_log.log_tree['log_sequence'] = []
-    structured_log.log_sequence = structured_log.log_tree['log_sequence']
+    # structured_log.log_sequence = structured_log.log_tree['log_sequence']
 
     # log_sequence.append(FlorEnter)
 
@@ -92,11 +90,10 @@ def log_exit(v=None, func_name=None):
         original = structured_log.log_tree
         structured_log.log_tree = parent
 
-        if 'children' in structured_log.log_tree:
-            structured_log.log_tree['children'].append(original)
+        if structured_log.log_tree['log_sequence'] and 'children' in structured_log.log_tree['log_sequence'][-1]:
+            structured_log.log_tree['log_sequence'][-1]['children'].append(original)
         else:
-            # structured_log.log_tree['log_sequence'].append({'children': [original, ]})
-            structured_log.log_tree['children'] = [original, ]
+            structured_log.log_tree['log_sequence'].append({'children': [original, ]})
 
 
     # log_sequence.append(FlorExit)

@@ -29,7 +29,6 @@ def main(x, y, z):
     movie_reviews['rating'] = movie_reviews['rating'].map(lambda x: 0 if x < z else 1)
 
     # Do train/test split-
-    # TODO: With parser, insert code here to get the name of positional args of train_test_split
     X_tr, X_te, y_tr, y_te = train_test_split(movie_reviews['text'], movie_reviews['rating'],
                                               test_size=log.param(x),
                                               random_state=log.param(y))
@@ -44,6 +43,9 @@ def main(x, y, z):
     for i in [1, 5]:
         clf = train_model(i, X_tr, y_tr)
         test_model(clf, X_te, y_te)
+
+    the_answer_to_everything = log.param(42)
+
 
 with flor.Context('basic'):
     main(0.2, 92, 5)
