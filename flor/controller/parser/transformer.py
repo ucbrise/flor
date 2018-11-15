@@ -14,6 +14,8 @@ class Transformer(ast.NodeTransformer):
         self.__structs__ = structs
         self.__args__ = args
 
+        self.__func_name__ = None
+
     def visit_Attribute(self, node):
         if isinstance(node.ctx, ast.Store):
             return super().generic_visit(node)
@@ -44,7 +46,7 @@ class Transformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         node.value = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                       args=[node.value], keywords=[], ctx=ast.Load())
+                                       args=[node.value, ast.Str(s=self.__func_name__)], keywords=[], ctx=ast.Load())
         ast.fix_missing_locations(node)
         return super().generic_visit(node)
 
@@ -78,8 +80,24 @@ class Transformer(ast.NodeTransformer):
 
 
     def visit_FunctionDef(self, node):
+
+        self.__func_name__ = node.name
+
+        if node.args.vararg:
+            vararg = ast.Str(s=astunparse.unparse(node.args.vararg).strip())
+        else:
+            vararg = ast.NameConstant(value=None)
+        if node.args.kwarg:
+            kwarg = ast.Str(s=astunparse.unparse(node.args.kwarg).strip())
+        else:
+            kwarg = ast.NameConstant(value=None)
+
         enter = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_enter', ctx=ast.Load()),
-                         args=[], keywords=[], ctx=ast.Load()))
+                         args=[
+                             ast.Call(func=ast.Name(id='locals'), args=[], keywords=[], ctx=ast.Load()),
+                             vararg,
+                             kwarg
+                         ], keywords=[], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
                                         args=[], keywords=[], ctx=ast.Load()))

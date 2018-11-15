@@ -5,7 +5,7 @@
     "from_arg": false,
     "in_execution": "main",
     "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-    "instruction_no": 28,
+    "instruction_no": 27,
     "keyword_name": null,
     "pos": 0,
     "runtime_value": "data.json",
@@ -23,7 +23,7 @@
     "from_arg": true,
     "in_execution": "main",
     "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-    "instruction_no": 34,
+    "instruction_no": 33,
     "keyword_name": "test_size",
     "pos": null,
     "runtime_value": 0.2,
@@ -41,7 +41,7 @@
     "from_arg": true,
     "in_execution": "main",
     "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-    "instruction_no": 34,
+    "instruction_no": 33,
     "keyword_name": "random_state",
     "pos": null,
     "runtime_value": 92,
@@ -56,7 +56,7 @@
         "from_arg": true,
         "in_execution": "train_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 16,
+        "instruction_no": 15,
         "keyword_name": "n_estimators",
         "pos": null,
         "runtime_value": 1,
@@ -69,7 +69,7 @@
         "from_arg": false,
         "in_execution": "train_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 17,
+        "instruction_no": 16,
         "keyword_name": null,
         "pos": 0,
         "runtime_value": "clf.pkl",
@@ -79,15 +79,20 @@
     ],
     [
       {
+        "consumes_from": [
+          "train_model"
+        ]
+      },
+      {
         "assignee": "score",
         "caller": null,
         "from_arg": false,
         "in_execution": "test_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 23,
+        "instruction_no": 22,
         "keyword_name": null,
         "pos": null,
-        "runtime_value": 0.6337,
+        "runtime_value": 0.6204,
         "typ": "metric",
         "value": "clf.score(X_te, y_te)"
       }
@@ -101,7 +106,7 @@
         "from_arg": true,
         "in_execution": "train_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 16,
+        "instruction_no": 15,
         "keyword_name": "n_estimators",
         "pos": null,
         "runtime_value": 5,
@@ -114,7 +119,7 @@
         "from_arg": false,
         "in_execution": "train_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 17,
+        "instruction_no": 16,
         "keyword_name": null,
         "pos": 0,
         "runtime_value": "clf.pkl",
@@ -124,15 +129,20 @@
     ],
     [
       {
+        "consumes_from": [
+          "train_model"
+        ]
+      },
+      {
         "assignee": "score",
         "caller": null,
         "from_arg": false,
         "in_execution": "test_model",
         "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-        "instruction_no": 23,
+        "instruction_no": 22,
         "keyword_name": null,
         "pos": null,
-        "runtime_value": 0.7028,
+        "runtime_value": 0.7084,
         "typ": "metric",
         "value": "clf.score(X_te, y_te)"
       }
