@@ -2,6 +2,9 @@
 .project
 .pydevproject
 .DS_Store
+build/
+dist/
+flor.egg-info/
 experiment_graph.pkl
 output.gv
 output.gv.pdf
