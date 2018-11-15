@@ -27,7 +27,7 @@
     "keyword_name": "test_size",
     "pos": null,
     "runtime_value": 0.2,
-    "typ": "parameter",
+    "typ": "param",
     "value": "x"
   },
   {
@@ -45,7 +45,7 @@
     "keyword_name": "random_state",
     "pos": null,
     "runtime_value": 92,
-    "typ": "parameter",
+    "typ": "param",
     "value": "y"
   },
   [
@@ -60,7 +60,7 @@
         "keyword_name": "n_estimators",
         "pos": null,
         "runtime_value": 1,
-        "typ": "parameter",
+        "typ": "param",
         "value": "n_estimators"
       },
       {
@@ -92,7 +92,7 @@
         "instruction_no": 22,
         "keyword_name": null,
         "pos": null,
-        "runtime_value": 0.6204,
+        "runtime_value": 0.6065,
         "typ": "metric",
         "value": "clf.score(X_te, y_te)"
       }
@@ -110,7 +110,7 @@
         "keyword_name": "n_estimators",
         "pos": null,
         "runtime_value": 5,
-        "typ": "parameter",
+        "typ": "param",
         "value": "n_estimators"
       },
       {
@@ -142,7 +142,7 @@
         "instruction_no": 22,
         "keyword_name": null,
         "pos": null,
-        "runtime_value": 0.7084,
+        "runtime_value": 0.7118,
         "typ": "metric",
         "value": "clf.score(X_te, y_te)"
       }

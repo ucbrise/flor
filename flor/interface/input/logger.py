@@ -22,7 +22,7 @@ class log:
         return path
 
     @staticmethod
-    def parameter(value, **kwargs):
+    def param(value, **kwargs):
         """
         Input value
         """

@@ -23,7 +23,7 @@ class Transformer(ast.NodeTransformer):
             value = astunparse.unparse(node.value).strip()
             attr = node.attr
             if value == 'log' or value == 'flor.log':
-                if attr in ['read', 'write', 'parameter', 'metric']:
+                if attr in ['read', 'write', 'param', 'metric']:
                     return FlorLog
             return super().generic_visit(node)
 

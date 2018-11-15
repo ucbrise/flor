@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 log = flor.log
 
 # Hyper-parameters
-@flor.track_execution
+@flor.track
 def main():
     # Toy dataset
     x_train = np.array([[3.3], [4.4], [5.5], [6.71], [6.93], [4.168],
@@ -25,14 +25,14 @@ def main():
     learning_rate = 0.001
 
     # Linear regression model
-    model = nn.Linear(log.parameter(input_size), log.parameter(output_size))
+    model = nn.Linear(log.param(input_size), log.param(output_size))
 
     # Loss and optimizer
     criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=log.parameter(learning_rate))  
+    optimizer = torch.optim.SGD(model.parameters(), lr=log.param(learning_rate))
 
     # Train the model
-    for epoch in range(log.parameter(num_epochs)):
+    for epoch in range(log.param(num_epochs)):
         # Convert numpy arrays to torch tensors
         inputs = torch.from_numpy(x_train)
         targets = torch.from_numpy(y_train)
@@ -48,7 +48,7 @@ def main():
         
         if (epoch+1) % 5 == 0:
             #evaluate_loss(epoch, loss.item())
-            log.parameter(epoch)
+            log.param(epoch)
             log.metric(loss.item())
             #print ('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, loss.item()))
 

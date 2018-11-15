@@ -95,10 +95,10 @@ class Visitor(ast.NodeVisitor):
                                                        caller=caller, pos=pos, in_execution=self.__in_execution__,
                                                        in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
-                    elif attr == 'parameter':
+                    elif attr == 'param':
                         self.__structs__.append(Struct(assignee=self.__pruned_names__,
                                                        value=astunparse.unparse(self.__val__).strip(),
-                                                       typ='parameter',
+                                                       typ='param',
                                                        instruction_no=self.__assign_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos, in_execution=self.__in_execution__,
@@ -131,9 +131,9 @@ class Visitor(ast.NodeVisitor):
                                                        caller=caller, pos=pos, in_execution=self.__in_execution__,
                                                        in_file=self.__in_file__))
                         self.__struct_index__.append(len(self.__struct_index__))
-                    elif attr == 'parameter':
+                    elif attr == 'param':
                         self.__structs__.append(Struct(value=astunparse.unparse(self.__val__).strip(),
-                                                       typ='parameter',
+                                                       typ='param',
                                                        instruction_no=self.__expr_line_no__,
                                                        keyword_name=self.__keyword_name__,
                                                        caller=caller, pos=pos, in_execution=self.__in_execution__,

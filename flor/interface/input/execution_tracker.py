@@ -30,7 +30,7 @@ class Mapper():
         return os.path.join(self.dst, d)
 
 
-def track_execution(f):
+def track(f):
     if global_state.ci_temporary_directory is None:
         global_state.ci_temporary_directory = tempfile.TemporaryDirectory()
         logger.debug("Temporary directory created at {}".format(global_state.ci_temporary_directory.name))
@@ -82,7 +82,7 @@ def track_execution(f):
         for idx, each in enumerate(tree.body):
             if (type(each) == ast.FunctionDef
                     and each.decorator_list
-                    and astunparse.unparse(each.decorator_list[0]).strip() == 'flor.track_execution'):
+                    and astunparse.unparse(each.decorator_list[0]).strip() == 'flor.track'):
                 logger.debug("Detected a Flor Track Executuon decorator")
                 visitor = Visitor(each.name, inspect.getsourcefile(f))
                 visitor.visit(each)

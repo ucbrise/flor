@@ -21,7 +21,7 @@ class NeuralNet(nn.Module):
         out = self.fc2(out)
         return out
 
-@flor.track_execution
+@flor.track
 def main():
     # Device configuration
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -53,11 +53,11 @@ def main():
                                               batch_size=batch_size,
                                               shuffle=False)
 
-    model = NeuralNet(log.parameter(input_size), log.parameter(hidden_size), log.parameter(num_classes)).to(device)
+    model = NeuralNet(log.param(input_size), log.param(hidden_size), log.param(num_classes)).to(device)
 
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=log.parameter(learning_rate))
+    optimizer = torch.optim.Adam(model.parameters(), lr=log.param(learning_rate))
 
     # Train the model
     total_step = len(train_loader)
