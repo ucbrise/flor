@@ -12,4 +12,4 @@ members, and thus define the experiment’s dependency graph.
 	with flor.Experiment('NAME_AS_STRING') as ex:
 		# Your experiment is defined in this context
 
-.. autofunction:: flor.log.param
+.. autofunction:: flor.interface.input.headers.setNotebookName
