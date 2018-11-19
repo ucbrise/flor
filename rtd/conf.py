@@ -22,16 +22,16 @@ import sys
 #sys.path.insert(0, os.path.abspath('.'))
 
 
-import sphinx_rtd_theme
-import mock
+# import sphinx_rtd_theme
+# import mock
 
-MOCK_MODULES= [
-       "ground",
-       "ground.client",
-       "ground.client.GroundClient"
-        ]
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
+# MOCK_MODULES= [
+#        "ground",
+#        "ground.client",
+#        "ground.client.GroundClient"
+#         ]
+# for mod_name in MOCK_MODULES:
+#     sys.modules[mod_name] = mock.Mock()
 
 # -- General configuration ------------------------------------------------
 
