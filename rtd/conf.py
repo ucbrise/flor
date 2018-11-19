@@ -23,13 +23,16 @@ import sys
 
 
 import sphinx_rtd_theme
-import mock
+# import mock
 
-MOCK_MODULES= [
-       "flor",
-        ]
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
+# MOCK_MODULES= [
+#        "flor",
+#         ]
+# for mod_name in MOCK_MODULES:
+#     sys.modules[mod_name] = mock.Mock()
+
+import flor
+
 
 # -- General configuration ------------------------------------------------
 
