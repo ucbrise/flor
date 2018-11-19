@@ -7,8 +7,8 @@ from typing import Union
 from flor.object_model.experiment_graph import ExperimentGraph
 import flor.global_state as global_state
 
-from grit.client import GroundClient as GritClient
-from ground.client import GroundClient
+# from grit.client import GroundClient as GritClient
+# from ground.client import GroundClient
 
 
 class State:
@@ -19,7 +19,7 @@ class State:
         self.edges = []
         self.eg : ExperimentGraph = None
         self.EXPERIMENT_NAME = None
-        self.gc : Union[GroundClient, GritClient] = None
+        self.gc = None
         self.ghostFiles = set([])
 
         if global_state.interactive:
