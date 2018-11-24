@@ -1,8 +1,11 @@
-UCB Flor
-========
+Flor: The Context Management System that feels like a logger
+=============================================================
 
-Flor_ (formerly known as Jarvis_) is a system with a declarative DSL embedded in python for managing the workflow development phase of the machine learning lifecycle. Flor enables data scientists to describe ML workflows as directed acyclic graphs (DAGs) of *Actions* and *Artifacts*, and to experiment with different configurations by automatically running the workflow many times, varying the configuration. To date, Flor serves as a build system for producing some desired artifact, and serves as a versioning system that enables tracking the evolution of artifacts across multiple runs in support of reproducibility.
-
+Flor_ is made for data scientists who write ML code to train models, it helps you understand what alternatives you've tried, and with what results.
+It alleviates the burden of tracking the data, code, and parameters used to train a model,
+and associating such metadata with the model's metrics, for each execution.
+Flor_ automatically tracks this context on every execution so your changes are **reversible** and **redo-able** --
+you can focus on exploration and composition.
 
 
 Install Flor
@@ -86,7 +89,6 @@ The expected output is as follows:
 
 
 
-.. _Jarvis: https://github.com/ucbrise/jarvis
 .. _Flor: https://github.com/ucbrise/flor
 
 Table of Contents
