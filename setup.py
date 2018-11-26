@@ -1,9 +1,9 @@
 import setuptools
 import io
-# with open("README.md", "r") as fh:
-#     long_description = fh.read()
+with io.open("README.md", mode="r", encoding='utf-8') as fh:
+    long_description = fh.read()
 
-with io.open("requirements.txt", mode='r', encoding='utf-8') as f:
+with open("requirements.txt", 'r') as f:
     requirements = f.read().split('\n')
 
 setuptools.setup(
