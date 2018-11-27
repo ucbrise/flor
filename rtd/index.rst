@@ -89,6 +89,14 @@ The expected output is as follows:
 
 
 
+License
+-------
+
+Flor is Licensed under the `Apache V2 License`__.
+
+__ https://www.apache.org/licenses/LICENSE-2.0
+
+
 .. _Flor: https://github.com/ucbrise/flor
 
 Table of Contents
@@ -97,7 +105,14 @@ Table of Contents
 .. toctree::
     :maxdepth: 1
     :caption: Installation
+    install.rst
 
-   about
-   api_documentation
-   support
+.. toctree::
+    :maxdepth: 1
+    :caption: Getting Started
+    api.rst
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Help
+    support.rst

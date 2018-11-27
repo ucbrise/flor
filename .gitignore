@@ -20,3 +20,6 @@ grit/python/tests/
 *.csv
 *logs/
 *.json
+rtd/_build
+
+
