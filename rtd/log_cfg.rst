@@ -4,6 +4,7 @@ Context Free Grammar of the Log
 Below is the Context Free Grammar for the log files emitted by Flor.
 
 .. code-block:: bash
+
     ROOT -> BLOCK_NODE
             | ROOT, BLOCK_NODE
 
@@ -47,6 +48,7 @@ Every Flor log has exactly one `ROOT` node as the root.
 
 We call a value **string serializable** if and only if:
 .. code-block:: python
+
     x == eval(str(x))
 
 This means, for example, that a Pandas Dataframe is not string-serializable.
