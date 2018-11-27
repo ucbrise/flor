@@ -105,14 +105,17 @@ Table of Contents
 .. toctree::
     :maxdepth: 1
     :caption: Installation
+
     install.rst
 
 .. toctree::
     :maxdepth: 1
     :caption: Getting Started
+
     api.rst
 
 .. toctree::
     :maxdepth: 1
     :caption: Help
+
     support.rst
