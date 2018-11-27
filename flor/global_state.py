@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import tempfile
-
 interactive = False
 nb_name = None
 
