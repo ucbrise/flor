@@ -99,9 +99,6 @@ __ https://www.apache.org/licenses/LICENSE-2.0
 
 .. _Flor: https://github.com/ucbrise/flor
 
-Table of Contents
-^^^^^^^^^^^^^^^^^
-
 .. toctree::
     :maxdepth: 1
     :caption: Installation
