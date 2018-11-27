@@ -51,126 +51,114 @@
       "value": "y"
     },
     {
-      "children": [
+      "block_type": "loop_body",
+      "log_sequence": [
         {
-          "block_type": "loop_body",
+          "block_type": "function_body :: train_model",
           "log_sequence": [
             {
-              "children": [
-                {
-                  "block_type": "function_body :: train_model",
-                  "log_sequence": [
-                    {
-                      "assignee": "clf",
-                      "caller": "RandomForestClassifier",
-                      "from_arg": true,
-                      "in_execution": "train_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 15,
-                      "keyword_name": "n_estimators",
-                      "pos": null,
-                      "runtime_value": 1,
-                      "typ": "param",
-                      "value": "n_estimators"
-                    },
-                    {
-                      "assignee": "classifier",
-                      "caller": "open",
-                      "from_arg": false,
-                      "in_execution": "train_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 16,
-                      "keyword_name": null,
-                      "pos": 0,
-                      "runtime_value": "clf.pkl",
-                      "typ": "write",
-                      "value": "'clf.pkl'"
-                    }
-                  ]
-                },
-                {
-                  "block_type": "function_body :: test_model",
-                  "consumes_from": [
-                    "train_model"
-                  ],
-                  "log_sequence": [
-                    {
-                      "assignee": "score",
-                      "caller": null,
-                      "from_arg": false,
-                      "in_execution": "test_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 22,
-                      "keyword_name": null,
-                      "pos": null,
-                      "runtime_value": 0.6221,
-                      "typ": "metric",
-                      "value": "clf.score(X_te, y_te)"
-                    }
-                  ]
-                }
-              ]
+              "assignee": "clf",
+              "caller": "RandomForestClassifier",
+              "from_arg": true,
+              "in_execution": "train_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 15,
+              "keyword_name": "n_estimators",
+              "pos": null,
+              "runtime_value": 1,
+              "typ": "param",
+              "value": "n_estimators"
+            },
+            {
+              "assignee": "classifier",
+              "caller": "open",
+              "from_arg": false,
+              "in_execution": "train_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 16,
+              "keyword_name": null,
+              "pos": 0,
+              "runtime_value": "clf.pkl",
+              "typ": "write",
+              "value": "'clf.pkl'"
             }
           ]
         },
         {
-          "block_type": "loop_body",
+          "block_type": "function_body :: test_model",
+          "consumes_from": [
+            "train_model"
+          ],
           "log_sequence": [
             {
-              "children": [
-                {
-                  "block_type": "function_body :: train_model",
-                  "log_sequence": [
-                    {
-                      "assignee": "clf",
-                      "caller": "RandomForestClassifier",
-                      "from_arg": true,
-                      "in_execution": "train_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 15,
-                      "keyword_name": "n_estimators",
-                      "pos": null,
-                      "runtime_value": 5,
-                      "typ": "param",
-                      "value": "n_estimators"
-                    },
-                    {
-                      "assignee": "classifier",
-                      "caller": "open",
-                      "from_arg": false,
-                      "in_execution": "train_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 16,
-                      "keyword_name": null,
-                      "pos": 0,
-                      "runtime_value": "clf.pkl",
-                      "typ": "write",
-                      "value": "'clf.pkl'"
-                    }
-                  ]
-                },
-                {
-                  "block_type": "function_body :: test_model",
-                  "consumes_from": [
-                    "train_model"
-                  ],
-                  "log_sequence": [
-                    {
-                      "assignee": "score",
-                      "caller": null,
-                      "from_arg": false,
-                      "in_execution": "test_model",
-                      "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
-                      "instruction_no": 22,
-                      "keyword_name": null,
-                      "pos": null,
-                      "runtime_value": 0.7058,
-                      "typ": "metric",
-                      "value": "clf.score(X_te, y_te)"
-                    }
-                  ]
-                }
-              ]
+              "assignee": "score",
+              "caller": null,
+              "from_arg": false,
+              "in_execution": "test_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 22,
+              "keyword_name": null,
+              "pos": null,
+              "runtime_value": 0.625,
+              "typ": "metric",
+              "value": "clf.score(X_te, y_te)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "block_type": "loop_body",
+      "log_sequence": [
+        {
+          "block_type": "function_body :: train_model",
+          "log_sequence": [
+            {
+              "assignee": "clf",
+              "caller": "RandomForestClassifier",
+              "from_arg": true,
+              "in_execution": "train_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 15,
+              "keyword_name": "n_estimators",
+              "pos": null,
+              "runtime_value": 5,
+              "typ": "param",
+              "value": "n_estimators"
+            },
+            {
+              "assignee": "classifier",
+              "caller": "open",
+              "from_arg": false,
+              "in_execution": "train_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 16,
+              "keyword_name": null,
+              "pos": 0,
+              "runtime_value": "clf.pkl",
+              "typ": "write",
+              "value": "'clf.pkl'"
+            }
+          ]
+        },
+        {
+          "block_type": "function_body :: test_model",
+          "consumes_from": [
+            "train_model"
+          ],
+          "log_sequence": [
+            {
+              "assignee": "score",
+              "caller": null,
+              "from_arg": false,
+              "in_execution": "test_model",
+              "in_file": "/Users/rogarcia/git/flor/examples/logger/basic.py",
+              "instruction_no": 22,
+              "keyword_name": null,
+              "pos": null,
+              "runtime_value": 0.7105,
+              "typ": "metric",
+              "value": "clf.score(X_te, y_te)"
             }
           ]
         }

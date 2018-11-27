@@ -21,12 +21,25 @@ class FlorExit:
     pass
 
 def internal_log(v, d):
+    """
+    Creates a new LOG_RECORD
+    :param v:
+    :param d:
+    :return:
+    """
     d['runtime_value'] = v
     # struct = Struct.from_dict(d)
     structured_log.log_tree['log_sequence'].append(d)
     return v
 
 def log_enter(locl=None, vararg=None, kwarg=None):
+    """
+    Signals the entry of a BLOCK_NODE
+    :param locl: a call to locals(). A dictionary mapping name to value of input args to a function
+    :param vararg:
+    :param kwarg:
+    :return:
+    """
     structured_log.parents.append(structured_log.log_tree)
     structured_log.log_tree = {}
 
@@ -62,14 +75,17 @@ def log_enter(locl=None, vararg=None, kwarg=None):
         structured_log.log_tree["consumes_from"] = consumes_from
 
     structured_log.log_tree['log_sequence'] = []
-    # structured_log.log_sequence = structured_log.log_tree['log_sequence']
-
-    # log_sequence.append(FlorEnter)
 
 
 
 
 def log_exit(v=None, func_name=None):
+    """
+    Signals the exit of a BLOCK_NODE
+    :param v:
+    :param func_name:
+    :return:
+    """
 
     if func_name:
         # Return Context
@@ -87,14 +103,9 @@ def log_exit(v=None, func_name=None):
 
     parent = structured_log.parents.pop()
     if parent:
-        original = structured_log.log_tree
+        child = structured_log.log_tree
         structured_log.log_tree = parent
 
-        if structured_log.log_tree['log_sequence'] and 'children' in structured_log.log_tree['log_sequence'][-1]:
-            structured_log.log_tree['log_sequence'][-1]['children'].append(original)
-        else:
-            structured_log.log_tree['log_sequence'].append({'children': [original, ]})
+        structured_log.log_tree['log_sequence'].append(child)
 
-
-    # log_sequence.append(FlorExit)
     return v
