@@ -95,7 +95,9 @@ Table of Contents
 ^^^^^^^^^^^^^^^^^
 
 .. toctree::
-   
+    :maxdepth: 1
+    :caption: Installation
+
    about
    api_documentation
    support

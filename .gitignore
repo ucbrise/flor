@@ -19,3 +19,4 @@ grit/python/tests/
 *.idea/
 *.csv
 *logs/
+*.json
