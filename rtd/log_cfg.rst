@@ -47,6 +47,7 @@ Below is the Context Free Grammar for the log files emitted by Flor.
 Every Flor log has exactly one `ROOT` node as the root.
 
 We call a value **string serializable** if and only if:
+
 .. code-block:: python
 
     x == eval(str(x))
