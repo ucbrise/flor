@@ -28,6 +28,7 @@ __ https://www.apache.org/licenses/LICENSE-2.0
     :caption: Getting Started
 
     api.rst
+    log_cfg.rst
 
 .. toctree::
     :maxdepth: 1
