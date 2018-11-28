@@ -47,7 +47,7 @@ class Versioner:
             # TODO: ADD GIT_IGNORE FOR THE USER
             repo = git.Repo.init(self.current_dir)
             repo.git.add(A=True)
-            repo.git.add([log_file])
+            repo.git.add([log_file], force=True)
             repo.index.commit(msg)
         else:
             repo = git.Repo(self.versioning_dir)

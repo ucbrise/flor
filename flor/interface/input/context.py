@@ -14,11 +14,11 @@ class Context():
         self.versioner = Versioner()
 
         if not self.versioner.get_ancestor_repo_path(os.getcwd()):
-            logger.warning("The current working directory {} is not a git repository.\n" +
+            logger.warning("The current working directory {} is not a git repository.\n".format(os.getcwd()) +
                            "We recommend that you quit this program. Initialize a git repository, " +
-                           "and add a `.gitignore` file".format(os.getcwd()))
+                           "and add a `.gitignore` file")
             while True:
-                quit_flag = input("Would you like to quit? [y/N]").strip()
+                quit_flag = input("Would you like to quit? [y/N] ").strip()
                 if quit_flag == 'N':
                     break
                 elif quit_flag.lower() == 'y':
