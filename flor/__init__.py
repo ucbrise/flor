@@ -1,14 +1,6 @@
 #!/usr/bin/env python3
-from flor import global_state
-import sys
+
 import logging
-# Am I running from an interactive environment?
-try:
-    from IPython import get_ipython
-    get_ipython
-    global_state.interactive = True
-except:
-    pass
 
 logging.basicConfig(format='%(name)-12s: %(levelname)-8s %(message)s',level=logging.WARNING)
 
