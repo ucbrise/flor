@@ -84,7 +84,7 @@ def track(f):
                     and each.decorator_list
                     and astunparse.unparse(each.decorator_list[0]).strip() == 'flor.track'):
                 logger.debug("Detected a Flor Track Executuon decorator")
-                visitor = Visitor(each.name, inspect.getsourcefile(f))
+                visitor = Visitor(each.name, os.path.abspath(inspect.getsourcefile(f)))
                 visitor.visit(each)
                 visitor.consolidate_structs()
 
@@ -101,9 +101,6 @@ def track(f):
                     and astunparse.unparse(each.items[0].context_expr.func).strip() == 'flor.Context'):
                 logger.debug("Detected a Flor Context")
                 del tree.body[idx]
-
-        # print(astor.dump_tree(tree))
-        # print(astunparse.unparse(tree))
 
         with open(dest_path, 'w') as dest_f:
             dest_f.write(astunparse.unparse(tree))

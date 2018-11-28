@@ -35,4 +35,6 @@ class Context():
         log_file_name = os.path.abspath('{}_log.json'.format(self.xp_name))
         with open(log_file_name, 'w') as f:
             json.dump(structured_log.log_tree, f, indent=4)
-        self.versioner.save_commit_event(json.dumps(structured_log.log_tree, indent=4), log_file_name)
+        structured_log.lossless_compress()
+        self.versioner.save_commit_event("Experiment Name :: {}\n\n".format(self.xp_name)
+                                         + json.dumps(structured_log.log_tree, indent=4, sort_keys=True), log_file_name)

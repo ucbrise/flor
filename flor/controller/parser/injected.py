@@ -12,6 +12,46 @@ class StructuredLog:
         self.dict_of_returns = {}
         self.parents = []
 
+    def lossless_compress(self):
+        if 'log_sequence' in self.log_tree:
+            queue = [self.log_tree['log_sequence'], ]
+            parents = [self.log_tree, ]
+            while queue:
+                log_sequence = queue.pop(0)
+                parent = parents.pop(0)
+                filtered_log_sequence = list(filter(lambda x: 'block_type' not in x or 'log_sequence' in x, log_sequence))
+                for log_seq_mem in filtered_log_sequence:
+                    if 'block_type' in log_seq_mem:
+                        # This log record is a block
+                        queue.append(log_seq_mem['log_sequence'])
+                        parents.append(log_seq_mem)
+                    else:
+                        # This is a proper log record
+                        if 'in_file' not in parent:
+                            parent['in_file'] = log_seq_mem['in_file']
+
+                        if not log_seq_mem['from_arg']:
+                            del log_seq_mem['from_arg']
+
+                        del log_seq_mem['in_execution']
+                        del log_seq_mem['in_file']
+
+                        try:
+                            x = eval(log_seq_mem['value'])
+                            if x == log_seq_mem['runtime_value']:
+                                del log_seq_mem['value']
+                        except:
+                            pass
+
+                        for k in [each for each in log_seq_mem.keys()]:
+                            if log_seq_mem[k] is None:
+                                del log_seq_mem[k]
+
+                parent['log_sequence'] = filtered_log_sequence
+
+
+
+
 structured_log = StructuredLog()
 
 class FlorEnter:
