@@ -34,5 +34,5 @@ class Context():
     def __exit__(self, exc_type, exc_val, exc_tb):
         log_file_name = os.path.abspath('{}_log.json'.format(self.xp_name))
         with open(log_file_name, 'w') as f:
-            json.dump(structured_log.log_tree, f)
-        self.versioner.save_commit_event("flor commit", log_file_name)
+            json.dump(structured_log.log_tree, f, indent=4)
+        self.versioner.save_commit_event(json.dumps(structured_log.log_tree, indent=4), log_file_name)
