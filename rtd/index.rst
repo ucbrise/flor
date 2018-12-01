@@ -12,7 +12,7 @@ Example Use
 -----------
 
 In the animation below, we show you how to wrap the classic scikit-learn
-`iris example <https://scikit-learn.org/stable/tutorial/basic/tutorial.html>` in Flor.
+`iris example <https://scikit-learn.org/stable/tutorial/basic/tutorial.html>`_. in Flor.
 
 .. image:: images/iris.gif
 
@@ -138,9 +138,7 @@ For reference, we've transformed this code...
 License
 -------
 
-Flor is Licensed under the `Apache V2 License`__.
-
-__ https://www.apache.org/licenses/LICENSE-2.0
+Flor is Licensed under the `Apache V2 License <https://www.apache.org/licenses/LICENSE-2.0>`_.
 
 
 .. _Flor: https://github.com/ucbrise/flor
