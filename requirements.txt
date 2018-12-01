@@ -13,3 +13,5 @@ astor>=0.6
 astunparse>=1.6.1
 ipykernel
 notebook
+astunparse >= 1.6.0
+astor >= 0.6
