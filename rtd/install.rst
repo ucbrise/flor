@@ -1,5 +1,13 @@
-Install Flor
+Install Flor from Pip
 =================
+
+1. Run the command: ``pip install pyflor``
+
+
+Install Flor from Source
+=================
+
+*MacOS Instructions*
 
 1. **Clone or download this repository.** ``git clone https://github.com/ucbrise/flor``
 2. **Create a Virtual Environment.**
@@ -15,31 +23,15 @@ Install Flor
 
  *Note: Whenever you work with Flor, make sure that this environment is active. For more information about environments, please read `this guide <https://conda.io/docs/user-guide/tasks/manage-environments.html>`.*
 
-3. **Installing Ray (Flor Dependency)**
-
- * Run the following Brew Commands:
-
- ``brew update``
- ``brew install cmake pkg-config automake autoconf libtool boost wget``
- *Note: Linux users should use linuxbrew. See installation details in the **Additional Linux Instructions** section.*
-
- * Run the following Pip Commands:
-
- ``pip install numpy funcsigs click colorama psutil redis flatbuffers cython --ignore-installed six
- conda install libgcc
- pip install git+https://github.com/ray-project/ray.git#subdirectory=python``
-
- * If the command above fails, then use: ``pip3 install ray``.
-
-4. **Add Flor to Bash Profile**
+3. **Add Flor to Bash Profile**
  * Open Bash Profile using the following MacOS command:
  ``vim  ~/.bash_profile``
  *Note: linux machines should use `vim ~/.bashrc`*
 
  * Add the path to your flor directory in your Bash Profile. Here is an example of a command to add.
- ``export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/flor"``
+ ``export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/flor"``
 
-5. **Installing Ground**
+4. **Installing Ground**
 
  * Download the zip file containing the latest version of Ground `here <https://github.com/ground-context/ground/releases>` and unzip it.
  
@@ -49,8 +41,6 @@ Install Flor
 
  ``
  #!/bin/bash 
- `
- `
  python3 /Users/Bob/ground-0.1.2/db/postgres_setup.py 
  ground ground drop
  ``
@@ -68,41 +58,20 @@ Install Flor
 
  * Linux machines may require several more steps to get ground working. See **Additional Linux Instructions**.
 
-6. **Installing Grit and Client**
-
- * Flor requires ground-context in order to operate properly. Go to the `Ground Context Repo <https://github.com/ground-context>` and download/install the Grit and Client repos. Downloading the zip files and unzipping them is sufficient. 
-
- * Open Bash Profile using the following MacOS command: ``vim  ~/.bash_profile``
-
- * Modify the bash_profile to include paths to these directories like the following commands:
-
- ``export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/grit-master/python/"
- export PYTHONPATH="$PYTHONPATH:/Users/Sona/Documents/Jarvis/client-master/python/"``
-
- * To update your Bash Profile, run the following command: ``source ~/.bash_profile``
-
-7. **Starting Ground**
+5. **Starting Ground**
 
  * In order to use Flor, you will need to start Ground. In your environment, run the following command:
  ``startground``
 
+ 6. Using Flor
 
-For examples on how to write your own flor workflow, please have a look at:
-``
-examples/twitter.py -- classic example
-examples/plate.py -- multi-trial example
-``
+ Make sure you:
+ * Import `flor`
+ * Initialize a `flor.Experiment`
+ * Set the experiment's `groundClient` to 'git'.
 
-Make sure you:
-1. Import `flor`
-2. Initialize a `flor.Experiment`
-2. set the experiment's `groundClient` to 'git'.
 
-Once you build the workflow, call `pull()` on the artifact you want to produce. You can find it in `~/flor.d/`.
-
-If you pass in a non-empty `dict` to `pull` (see `lifted_twitter.py`), the call will return a pandas dataframe with literals and requested artifacts for the columns, and different trials for the rows.
-
-## Additional Linux Instructions
+*Additional Linux Instructions*
  * **Installing linuxbrew**
  	* Use the command:
  		`sudo apt install linuxbrew-wrapper`
@@ -139,3 +108,12 @@ If you pass in a non-empty `dict` to `pull` (see `lifted_twitter.py`), the call 
  		and issuing the command 
  		`createdb ground`
  	* You should now be able to enter the `ground-0.1.2/db` directory and issue the `startground` command.
+
+For examples on how to write your own flor workflow, please have a look at:
+``
+examples/twitter.py -- classic example
+examples/plate.py -- multi-trial example
+``
+
+Once you build the workflow, call `pull()` on the artifact you want to produce. You can find it in `~/flor.d/`.
+
