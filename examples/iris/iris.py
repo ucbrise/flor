@@ -10,12 +10,11 @@ log = flor.log
 def fit_and_score_model(gamma, C, test_size, random_state):
 
     iris = datasets.load_iris()
-    clf = svm.SVC(gamma=log.param(gamma), C=log.param(C))
-
     X_tr, X_te, y_tr, y_te = train_test_split(iris.data, iris.target,
                                                   test_size=log.param(test_size),
                                                   random_state=log.param(random_state))
 
+    clf = svm.SVC(gamma=log.param(gamma), C=log.param(C))
     clf.fit(X_tr, y_tr)
 
     score = log.metric(clf.score(X_te, y_te))
