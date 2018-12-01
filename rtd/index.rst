@@ -12,11 +12,11 @@ Example Use
 -----------
 
 In the animation below, we show you how to wrap the classic scikit-learn
-`iris example <https://scikit-learn.org/stable/tutorial/basic/tutorial.html>`_. in Flor.
+`iris example <https://scikit-learn.org/stable/tutorial/basic/tutorial.html>`_ in Flor.
 
 .. image:: images/iris.gif
 
-For reference, we've transformed this code...
+For reference, we've transformed this code:
 
 .. code-block:: python
 
