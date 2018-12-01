@@ -8,7 +8,7 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
      name='flor',
-     version='0.0.0-alpha',
+     version='0.0.1-alpha',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
      description="A Context Management System that feels like a logger",
