@@ -9,7 +9,12 @@ from flor.controller.versioner import Versioner
 logger = logging.getLogger(__name__)
 
 class Context():
-    def __init__(self, xp_name):
+    def __init__(self, xp_name: str):
+        """
+        Context class.
+        
+        :param xp_name:
+        """
         self.xp_name = xp_name
         self.versioner = Versioner()
 
