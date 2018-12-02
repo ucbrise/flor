@@ -31,6 +31,28 @@ class Mapper():
 
 
 def track(f):
+    """
+    Function decorator.
+
+    Wrap a function that contains `flor.log` statements.
+    Does program analysis to generate rich logs from log statements.
+
+    Usage:
+
+    @flor.track
+    def foo():
+        ...
+        ... log.read('data.csv') ...
+        ... log.param(10) ...
+        ... log.metric(0.9)k ...
+        ... log.write('model.pkl') ...
+        ...
+
+    See: https://github.com/ucbrise/flor/blob/master/examples/logger/basic.py
+
+    :param f: a function
+    :return: a modified function that generates rich logs
+    """
     if global_state.ci_temporary_directory is None:
         global_state.ci_temporary_directory = tempfile.TemporaryDirectory()
         logger.debug("Temporary directory created at {}".format(global_state.ci_temporary_directory.name))

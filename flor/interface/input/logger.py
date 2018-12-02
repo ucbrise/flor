@@ -2,9 +2,8 @@
 class log:
 
     """
-    Transparent interface
-    Used for tagging important elements in code
-    Processed by the parser
+    Transparent interface used for tagging important elements in code and processed by the parser.
+    Every log statement must appear inside a flor-tracked function.
     """
 
     @staticmethod
