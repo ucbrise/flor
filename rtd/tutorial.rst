@@ -196,7 +196,7 @@ queryable. For help interpreting the logs, please read its `documentation <https
 
 2. Every Flor experiment must have a Flor context, the name of the context must be unique in your scope, and the top-level flor decorated function must be invoked from a Flor context
 
-3. Wrap any value you want to track in a `log.param()` or `log.metric()`
+3. Wrap any value you want to track in a ``log.param()`` or ``log.metric()``
 
 4. Flor automatically versions the code and results of your execution
 
@@ -223,3 +223,11 @@ Using what you've learned, try to wrap the following code in Flor. Track the rel
 
     score = clf.score(X_te, y_te)
 
+More Examples
+-------------
+
+1. ** `BASIC<https://github.com/ucbrise/flor/tree/master/examples/logger>`_ **: See ``basic.py``. This example shows you how to track the data you read
+and the models you serialize using ``log.read()`` and ``log.write()``. Additionally, it separates a model-training pipeline into multiple functions,
+and demonstrates the extent to which Flor can infer dataflow and lineage in the `logs <https://github.com/ucbrise/flor/blob/master/examples/logger/basic_log.json>`_.
+
+2. ** PYTORCH **.
