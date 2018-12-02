@@ -189,3 +189,33 @@ This change produces the following log:
 
 From the log we learn more information than from the print statement, we're working on making these logs
 queryable. For help interpreting the logs, please read its `documentation <https://flor.readthedocs.io/en/latest/log_cfg.html>`_.
+
+**RECAP:**
+1. Any code you want Flor to track should be in a Flor decorated function
+2. Every Flor experiment must have a Flor context, the name of the context must be unique in your scope,
+and the top-level flor decorated function must be invoked from a Flor context
+3. Wrap any value you want to track in a `log.param()` or `log.metric()`
+4. Flor automatically versions the code and results of your execution
+5. Flor produces rich JSON logs, and writes them to the same directory
+
+Exercise
+--------
+
+Using what you've learned, try to wrap the following code in Flor. Track the relevant parameters and metrics:
+
+.. code-block:: python
+
+    from sklearn import datasets
+    from sklearn import svm
+    from sklearn.model_selection import train_test_split
+
+    iris = datasets.load_iris()
+    X_tr, X_te, y_tr, y_te = train_test_split(iris.data, iris.target,
+                                              test_size=0.15,
+                                              random_state=430)
+
+    clf = svm.SVC(gamma=0.001, C=100.0)
+    clf.fit(X_tr, y_tr)
+
+    score = clf.score(X_te, y_te)
+
