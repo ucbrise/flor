@@ -1,4 +1,3 @@
-
 Flor requires Python 3.6 or higher.
 
 Install Flor from Pip

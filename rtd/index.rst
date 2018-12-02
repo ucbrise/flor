@@ -153,6 +153,7 @@ Flor is Licensed under the `Apache V2 License <https://www.apache.org/licenses/L
     :maxdepth: 1
     :caption: Getting Started
 
+    tutorial.rst
     api.rst
     log_cfg.rst
 
