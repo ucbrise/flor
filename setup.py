@@ -11,7 +11,6 @@ setuptools.setup(
      version='0.0.1-alpha',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
-     scripts=['pyflor'],
      description="A context-centric logger and automatic version controller",
      long_description=long_description,
      long_description_content_type="text/markdown",
