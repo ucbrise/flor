@@ -186,3 +186,6 @@ This change produces the following log:
             ...
         ]
     }
+
+From the log we learn more information than from the print statement, we're working on making these logs
+queryable. For help interpreting the logs, please read its `documentation <https://flor.readthedocs.io/en/latest/log_cfg.html>`_.
