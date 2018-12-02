@@ -191,11 +191,16 @@ From the log we learn more information than from the print statement, we're work
 queryable. For help interpreting the logs, please read its `documentation <https://flor.readthedocs.io/en/latest/log_cfg.html>`_.
 
 **RECAP:**
+
 1. Any code you want Flor to track should be in a Flor decorated function
+
 2. Every Flor experiment must have a Flor context, the name of the context must be unique in your scope,
 and the top-level flor decorated function must be invoked from a Flor context
+
 3. Wrap any value you want to track in a `log.param()` or `log.metric()`
+
 4. Flor automatically versions the code and results of your execution
+
 5. Flor produces rich JSON logs, and writes them to the same directory
 
 Exercise
