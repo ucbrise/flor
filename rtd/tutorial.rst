@@ -226,8 +226,8 @@ Using what you've learned, try to wrap the following code in Flor. Track the rel
 More Examples
 -------------
 
-1. `**BASIC** <https://github.com/ucbrise/flor/tree/master/examples/logger>`_: See ``basic.py``. This example shows you how to track the data you read
+1. **`BASIC <https://github.com/ucbrise/flor/tree/master/examples/logger>`_:** See ``basic.py``. This example shows you how to track the data you read
 and the models you serialize using ``log.read()`` and ``log.write()``. Additionally, it separates a model-training pipeline into multiple functions,
 and demonstrates the extent to which Flor can infer dataflow and lineage in the `logs <https://github.com/ucbrise/flor/blob/master/examples/logger/basic_log.json>`_.
 
-2. `**PYTORCH** <https://github.com/ucbrise/flor/tree/master/examples/pytorch>`_: These examples show you how PyTorch code can be wrapped in Flor.
+2. **`PYTORCH <https://github.com/ucbrise/flor/tree/master/examples/pytorch>`_:** These examples show you how PyTorch code can be wrapped in Flor.
