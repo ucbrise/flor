@@ -161,4 +161,4 @@ Flor is Licensed under the `Apache V2 License <https://www.apache.org/licenses/L
     :maxdepth: 1
     :caption: Help
 
-    support.rst
+    contact.rst
