@@ -1,15 +1,12 @@
 The Flor API
 =================
 
-Starting or Continuing an Experiment
-------------------------------------
+.. autofunction:: flor.setNotebookName
 
-A Flor Experiment is an object from which we can declare *Action*, *Artifact*, and *Literal*
-members, and thus define the experiment’s dependency graph.
+.. autofunction:: flor.log.param
 
-.. code-block:: python
+.. autofunction:: flor.log.metric
 
-	with flor.Experiment('NAME_AS_STRING') as ex:
-		# Your experiment is defined in this context
+.. autofunction:: flor.log.read
 
-.. autofunction:: flor.interface.input.headers.setNotebookName
+.. autofunction:: flor.log.write
