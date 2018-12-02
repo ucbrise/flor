@@ -1,12 +1,8 @@
 The Flor API
 =============
 
-.. autofunction:: flor.setNotebookName
+.. autofunction:: flor.track
 
-.. autofunction:: flor.log.param
+.. autoclass:: flor.log
 
-.. autofunction:: flor.log.metric
-
-.. autofunction:: flor.log.read
-
-.. autofunction:: flor.log.write
+.. autoclass:: flor.Context
