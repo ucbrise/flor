@@ -9,12 +9,21 @@ from flor.controller.versioner import Versioner
 logger = logging.getLogger(__name__)
 
 class Context():
-    def __init__(self, xp_name: str):
-        """
-        Context class.
+    """
+    Defines a `context manager <http://book.pythontips.com/en/latest/context_managers.html>`_.
 
-        :param xp_name:
-        """
+    The top-level flor decorated function in some experiment.
+    Every top-level flor-decorated function must be called from within a Flor Context.
+
+    Usage:
+
+    https://github.com/ucbrise/flor/tree/master/examples
+
+    :param xp_name: The name of the experiment, unique in the scope of the Flor user
+    """
+
+
+    def __init__(self, xp_name: str):
         self.xp_name = xp_name
         self.versioner = Versioner()
 
