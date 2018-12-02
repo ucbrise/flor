@@ -7,11 +7,12 @@ with open("requirements.txt", 'r') as f:
     requirements = f.read().split('\n')
 
 setuptools.setup(
-     name='flor',
+     name='pyflor',
      version='0.0.1-alpha',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
-     description="A Context Management System that feels like a logger",
+     scripts=['pyflor'],
+     description="A context-centric logger and automatic version controller",
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
