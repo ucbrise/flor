@@ -1,5 +1,5 @@
 The Flor API
-=================
+=============
 
 .. autofunction:: flor.setNotebookName
 
