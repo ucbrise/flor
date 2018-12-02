@@ -12,7 +12,7 @@ class Context():
     def __init__(self, xp_name: str):
         """
         Context class.
-        
+
         :param xp_name:
         """
         self.xp_name = xp_name

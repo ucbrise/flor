@@ -7,6 +7,7 @@ import inspect
 import os, sys
 
 from uuid import uuid4
+from typing import Callable, Any
 
 from flor import util
 from flor import global_state
@@ -16,6 +17,7 @@ from flor.controller.parser.transformer import Transformer
 import logging
 import importlib.util
 import shutil
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +32,7 @@ class Mapper():
         return os.path.join(self.dst, d)
 
 
-def track(f: function):
+def track(f: Callable[..., Any]):
     """
     Function decorator.
 
