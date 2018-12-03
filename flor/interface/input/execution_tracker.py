@@ -127,10 +127,23 @@ def track(f: Callable[..., Any]):
                     and astunparse.unparse(each.items[0].context_expr.func).strip() == 'flor.Context'):
                 logger.debug("Detected a Flor Context")
                 del tree.body[idx]
-
-        with open(dest_path, 'w') as dest_f:
-            dest_f.write(astunparse.unparse(tree))
-            dest_f.write('\n')
+                
+        def create_nested_dir(path):
+            if not os.path.isdir(path):
+                head, tail = os.path.split(path)
+                os.mkdir(os.path.join(create_nested_dir(head), tail))
+            return path
+                
+        try:
+            with open(dest_path, 'w') as dest_f:
+                dest_f.write(astunparse.unparse(tree))
+                dest_f.write('\n')
+        except FileNotFoundError:
+            h, t = os.path.split(dest_path)
+            create_nested_dir(h)
+            with open(dest_path, 'w') as dest_f:
+                dest_f.write(astunparse.unparse(tree))
+                dest_f.write('\n')
 
         with open(os.path.join(secret_dir, filename), 'w') as dest_f:
             dest_f.write('\n')
