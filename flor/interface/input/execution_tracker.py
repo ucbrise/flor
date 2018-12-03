@@ -27,7 +27,7 @@ class Mapper():
         self.dst = dst
 
     def map(self, path):
-        assert len(path) >= len(self.src)
+        assert len(path) >= len(self.src), "path: {}, self.src: {}".format(path, self.src)
         d = path[len(self.src) + 1 :]
         return os.path.join(self.dst, d)
 
