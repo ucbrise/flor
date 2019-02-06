@@ -46,13 +46,13 @@ class Transformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         node.value = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                       args=[node.value, ast.Str(s=self.__func_name__)], keywords=[], ctx=ast.Load())
+                                       args=[node.value], keywords=[], ctx=ast.Load())
         ast.fix_missing_locations(node)
         return super().generic_visit(node)
 
     def visit_While(self, node):
         enter = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_enter', ctx=ast.Load()),
-                                        args=[], keywords=[], ctx=ast.Load()))
+                                        args=[], keywords=[ast.keyword(arg='iteration_id', value=ast.Num(node.lineno))], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
                                        args=[], keywords=[], ctx=ast.Load()))
@@ -66,7 +66,7 @@ class Transformer(ast.NodeTransformer):
 
     def visit_For(self, node):
         enter = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_enter', ctx=ast.Load()),
-                                        args=[], keywords=[], ctx=ast.Load()))
+                                        args=[], keywords=[ast.keyword(arg='iteration_id', value=ast.Num(node.lineno))], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
                                        args=[], keywords=[], ctx=ast.Load()))
@@ -96,11 +96,12 @@ class Transformer(ast.NodeTransformer):
                          args=[
                              ast.Call(func=ast.Name(id='locals'), args=[], keywords=[], ctx=ast.Load()),
                              vararg,
-                             kwarg
+                             kwarg,
+                             ast.Str(s=node.name)
                          ], keywords=[], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                        args=[], keywords=[ast.keyword(arg='func_name', value=ast.Str(s=node.name))], ctx=ast.Load()))
+                                        args=[], keywords=[], ctx=ast.Load()))
 
         node.body.insert(0, enter)
         node.body.append(exit)

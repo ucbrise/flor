@@ -10,5 +10,5 @@ from flor.interface.input.logger import log
 from flor.interface.input.execution_tracker import track
 from flor.interface.input.context import Context
 
-__all__ = ["setNotebookName", "log", "track", 'internal_log',
+__all__ = ['setNotebookName', 'log', 'track', 'internal_log',
            'Context', 'log_enter', 'log_exit']

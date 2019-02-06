@@ -104,19 +104,17 @@ def track(f: Callable[..., Any]):
         # Needs compilation
         with open(tru_path, 'r') as sourcefile:
             tree = ast.parse(sourcefile.read())
-            logger.debug(astor.dump_tree(tree))
+            # logger.debug(astor.dump_tree(tree))
         for idx, each in enumerate(tree.body):
             if (type(each) == ast.FunctionDef
                     and each.decorator_list
                     and astunparse.unparse(each.decorator_list[0]).strip() == 'flor.track'):
-                logger.debug("Detected a Flor Track Executuon decorator")
+                logger.debug("Detected a Flor Track Execution decorator")
                 visitor = Visitor(each.name, os.path.abspath(inspect.getsourcefile(f)))
                 visitor.visit(each)
                 visitor.consolidate_structs()
 
-                args = []
-                for arg in each.args.args:
-                    args.append(arg.arg)
+                args = [arg.arg for arg in each.args.args]
 
                 transformer = Transformer(visitor.__structs__, args)
                 transformer.visit(each)

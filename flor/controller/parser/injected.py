@@ -1,58 +1,16 @@
 #!/usr/bin/env python3
-from flor.context.struct import Struct
+from typing import List, Tuple, Dict, Any, Set
+import json
 
-# TODO: OUT-OF-CORE. Log could potentially be very big
+stack_frame: List[Tuple[str, str]] = []
+consume_from = {}
+dict_of_loopids = {}
 
-class StructuredLog:
+# Maps a value that was returned by a function to the names of the functions that return that value
+dict_of_returns: Dict[Any, Set[str]] = {}
 
-    def __init__(self):
+file = None
 
-        # self.log_sequence = None
-        self.log_tree = None
-        self.dict_of_returns = {}
-        self.parents = []
-
-    def lossless_compress(self):
-        if 'log_sequence' in self.log_tree:
-            queue = [self.log_tree['log_sequence'], ]
-            parents = [self.log_tree, ]
-            while queue:
-                log_sequence = queue.pop(0)
-                parent = parents.pop(0)
-                filtered_log_sequence = list(filter(lambda x: 'block_type' not in x or 'log_sequence' in x, log_sequence))
-                for log_seq_mem in filtered_log_sequence:
-                    if 'block_type' in log_seq_mem:
-                        # This log record is a block
-                        queue.append(log_seq_mem['log_sequence'])
-                        parents.append(log_seq_mem)
-                    else:
-                        # This is a proper log record
-                        if 'in_file' not in parent:
-                            parent['in_file'] = log_seq_mem['in_file']
-
-                        if not log_seq_mem['from_arg']:
-                            del log_seq_mem['from_arg']
-
-                        del log_seq_mem['in_execution']
-                        del log_seq_mem['in_file']
-
-                        try:
-                            x = eval(log_seq_mem['value'])
-                            if x == log_seq_mem['runtime_value']:
-                                del log_seq_mem['value']
-                        except:
-                            pass
-
-                        for k in [each for each in log_seq_mem.keys()]:
-                            if log_seq_mem[k] is None:
-                                del log_seq_mem[k]
-
-                parent['log_sequence'] = filtered_log_sequence
-
-
-
-
-structured_log = StructuredLog()
 
 class FlorEnter:
     pass
@@ -68,84 +26,87 @@ def internal_log(v, d):
     :return:
     """
     d['runtime_value'] = v
-    # struct = Struct.from_dict(d)
-    structured_log.log_tree['log_sequence'].append(d)
+    d['__stack_frame__'] = tuple(stack_frame)
+    file.write(json.dumps(d, indent=4) + ',\n')
     return v
 
-def log_enter(locl=None, vararg=None, kwarg=None):
+def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=None):
     """
     Signals the entry of a BLOCK_NODE
     :param locl: a call to locals(). A dictionary mapping name to value of input args to a function
     :param vararg:
     :param kwarg:
-    :return:
-    """
-    structured_log.parents.append(structured_log.log_tree)
-    structured_log.log_tree = {}
-
-    varargs = []
-    kwargs = []
-
-    consumes = False
-    consumes_from = None
-
-    if locl is not None:
-        if vararg is not None:
-            varargs = list(locl[vararg])
-            del locl[vararg]
-        if kwarg is not None:
-            kwargs = list(locl[kwarg].values())
-            del locl[kwarg]
-
-        for arg in list(locl.values()) + varargs + kwargs:
-            for returned_value in structured_log.dict_of_returns:
-                func_names = structured_log.dict_of_returns[returned_value]
-                consumes = returned_value is arg
-                if type(returned_value) == list or type(returned_value) == tuple:
-                    consumes = consumes or any([x is arg for x in returned_value])
-                if consumes:
-                    consumes_from = list(set(["{}".format(each) for each in func_names]))
-                    break
-            if consumes_from:
-                break
-
-    structured_log.log_tree['block_type'] = ''
-
-    if consumes_from:
-        structured_log.log_tree["consumes_from"] = consumes_from
-
-    structured_log.log_tree['log_sequence'] = []
-
-
-
-
-def log_exit(v=None, func_name=None):
-    """
-    Signals the exit of a BLOCK_NODE
-    :param v:
     :param func_name:
+    :param iteration_id: If entering loop body block, iteration_id is an integer
     :return:
     """
 
     if func_name:
-        # Return Context
-        if v in structured_log.dict_of_returns:
-            structured_log.dict_of_returns[v] |= {func_name,}
-        else:
-            structured_log.dict_of_returns[v] = {func_name,}
+        # block_type: function_body
+        function_identifier = ('function_body', func_name)
+        stack_frame.append(function_identifier)
 
-        structured_log.log_tree['block_type'] = "function_body :: {}".format(func_name)
+        varargs = []
+        kwargs = []
+
+        consumes = False
+
+        if locl is not None:
+            if vararg is not None:
+                varargs = list(locl[vararg])
+                del locl[vararg]
+            if kwarg is not None:
+                kwargs = list(locl[kwarg].values())
+                del locl[kwarg]
+
+            for arg in list(locl.values()) + varargs + kwargs:
+                for returned_value in dict_of_returns:
+                    func_names = dict_of_returns[returned_value]
+                    consumes = returned_value is arg
+                    if type(returned_value) == list or type(returned_value) == tuple:
+                        consumes = consumes or any([x is arg for x in returned_value])
+                    if consumes:
+                        if func_name not in consume_from:
+                            consume_from[func_name] = set(["{}".format(each) for each in func_names])
+                            # write fact to log first time it appears
+                            file.write(json.dumps({'to': func_name,
+                             'from': tuple(consume_from[func_name])}, indent=4) + ',\n')
+
+                        else:
+                            assert consume_from[func_name] == set(["{}".format(each) for each in func_names])
+                        break
+                if consume_from:
+                    break
     else:
-        structured_log.log_tree['block_type'] = "loop_body"
+        # block_type: loop_body
+        assert iteration_id is not None
+        stack_identifier = tuple(stack_frame)
+        iteration_num = 0
+        if stack_identifier not in dict_of_loopids:
+            dict_of_loopids[stack_identifier] = {iteration_id: 0}
+        elif iteration_id not in dict_of_loopids[stack_identifier]:
+            dict_of_loopids[stack_identifier][iteration_id] = 0
+        else:
+            dict_of_loopids[stack_identifier][iteration_id] += 1
+            iteration_num = dict_of_loopids[stack_identifier][iteration_id]
 
-    if not structured_log.log_tree['log_sequence']:
-        del structured_log.log_tree['log_sequence']
+        stack_frame.append(('loop_body', str(iteration_num)))
 
-    parent = structured_log.parents.pop()
-    if parent:
-        child = structured_log.log_tree
-        structured_log.log_tree = parent
 
-        structured_log.log_tree['log_sequence'].append(child)
+def log_exit(v=None):
+    """
+    Signals the exit of a BLOCK_NODE
+    :param v:
+    :return:
+    """
+
+    if v:
+        # Return Context
+        if v in dict_of_returns:
+            dict_of_returns[v] |= {stack_frame[-1][1],}
+        else:
+            dict_of_returns[v] = {stack_frame[-1][1],}
+
+    stack_frame.pop()
 
     return v
