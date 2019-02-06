@@ -3,8 +3,8 @@ import logging
 import os
 import sys
 
-from flor.controller.parser.injected import structured_log
 from flor.controller.versioner import Versioner
+from flor.controller.parser import injected
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +41,13 @@ class Context():
                 else:
                     logger.info('Invalid entry: {}'.format(quit_flag))
 
+        self.log_file_name = os.path.abspath('{}_log.json'.format(self.xp_name))
+        injected.file = open(self.log_file_name, 'w')
+
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        log_file_name = os.path.abspath('{}_log.json'.format(self.xp_name))
-        with open(log_file_name, 'w') as f:
-            json.dump(structured_log.log_tree, f, indent=4)
-        structured_log.lossless_compress()
-        self.versioner.save_commit_event("Experiment Name :: {}\n\n".format(self.xp_name)
-                                         + json.dumps(structured_log.log_tree, indent=4, sort_keys=True), log_file_name)
+        injected.file.close()
+        self.versioner.save_commit_event("Experiment Name :: {}\n\n".format(self.xp_name), self.log_file_name)
