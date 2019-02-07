@@ -1,0 +1,254 @@
+{
+    "assignee": "movie_reviews",
+    "caller": "pd.read_json",
+    "from_arg": false,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 27,
+    "keyword_name": null,
+    "pos": 0,
+    "runtime_value": "data.json",
+    "typ": "read",
+    "value": "'data.json'",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ]
+    ]
+},
+{
+    "assignee": [
+        "X_tr",
+        "X_te",
+        "y_tr",
+        "y_te"
+    ],
+    "caller": "train_test_split",
+    "from_arg": true,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 32,
+    "keyword_name": "test_size",
+    "pos": null,
+    "runtime_value": 0.2,
+    "typ": "param",
+    "value": "x",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ]
+    ]
+},
+{
+    "assignee": [
+        "X_tr",
+        "X_te",
+        "y_tr",
+        "y_te"
+    ],
+    "caller": "train_test_split",
+    "from_arg": true,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 32,
+    "keyword_name": "random_state",
+    "pos": null,
+    "runtime_value": 92,
+    "typ": "param",
+    "value": "y",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ]
+    ]
+},
+{
+    "assignee": "clf",
+    "caller": "RandomForestClassifier",
+    "from_arg": true,
+    "in_execution": "train_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 15,
+    "keyword_name": "n_estimators",
+    "pos": null,
+    "runtime_value": 1,
+    "typ": "param",
+    "value": "n_estimators",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "0"
+        ],
+        [
+            "function_body",
+            "train_model"
+        ]
+    ]
+},
+{
+    "assignee": "classifier",
+    "caller": "open",
+    "from_arg": false,
+    "in_execution": "train_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 16,
+    "keyword_name": null,
+    "pos": 0,
+    "runtime_value": "clf.pkl",
+    "typ": "write",
+    "value": "'clf.pkl'",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "0"
+        ],
+        [
+            "function_body",
+            "train_model"
+        ]
+    ]
+},
+{
+    "to": "test_model",
+    "from": [
+        "train_model"
+    ]
+},
+{
+    "assignee": "score",
+    "caller": null,
+    "from_arg": false,
+    "in_execution": "test_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 22,
+    "keyword_name": null,
+    "pos": null,
+    "runtime_value": 0.628,
+    "typ": "metric",
+    "value": "clf.score(X_te, y_te)",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "0"
+        ],
+        [
+            "function_body",
+            "test_model"
+        ]
+    ]
+},
+{
+    "assignee": "clf",
+    "caller": "RandomForestClassifier",
+    "from_arg": true,
+    "in_execution": "train_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 15,
+    "keyword_name": "n_estimators",
+    "pos": null,
+    "runtime_value": 5,
+    "typ": "param",
+    "value": "n_estimators",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "1"
+        ],
+        [
+            "function_body",
+            "train_model"
+        ]
+    ]
+},
+{
+    "assignee": "classifier",
+    "caller": "open",
+    "from_arg": false,
+    "in_execution": "train_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 16,
+    "keyword_name": null,
+    "pos": 0,
+    "runtime_value": "clf.pkl",
+    "typ": "write",
+    "value": "'clf.pkl'",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "1"
+        ],
+        [
+            "function_body",
+            "train_model"
+        ]
+    ]
+},
+{
+    "assignee": "score",
+    "caller": null,
+    "from_arg": false,
+    "in_execution": "test_model",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 22,
+    "keyword_name": null,
+    "pos": null,
+    "runtime_value": 0.7062,
+    "typ": "metric",
+    "value": "clf.score(X_te, y_te)",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ],
+        [
+            "loop_body",
+            "1"
+        ],
+        [
+            "function_body",
+            "test_model"
+        ]
+    ]
+},
+{
+    "assignee": "the_answer_to_everything",
+    "caller": null,
+    "from_arg": false,
+    "in_execution": "main",
+    "in_file": "/Users/rogarcia/sandbox/logger/basic.py",
+    "instruction_no": 47,
+    "keyword_name": null,
+    "pos": null,
+    "runtime_value": 42,
+    "typ": "param",
+    "value": "42",
+    "__stack_frame__": [
+        [
+            "function_body",
+            "main"
+        ]
+    ]
+},
