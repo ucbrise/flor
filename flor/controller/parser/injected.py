@@ -2,6 +2,8 @@
 from typing import List, Tuple, Dict, Any, Set
 import json
 
+from flor import global_state
+
 stack_frame: List[Tuple[str, str]] = []
 consume_from = {}
 dict_of_loopids = {}
@@ -93,7 +95,7 @@ def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=N
         stack_frame.append(('loop_body', str(iteration_num)))
 
 
-def log_exit(v=None):
+def log_exit(v=None, is_function=False):
     """
     Signals the exit of a BLOCK_NODE
     :param v:
@@ -106,6 +108,11 @@ def log_exit(v=None):
             dict_of_returns[v] |= {stack_frame[-1][1],}
         else:
             dict_of_returns[v] = {stack_frame[-1][1],}
+
+    if is_function and global_state.interactive:
+        global file
+        file.close()
+        file = open(global_state.log_name, 'a')
 
     stack_frame.pop()
 
