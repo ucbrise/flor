@@ -13,6 +13,9 @@ dict_of_returns: Dict[Any, Set[str]] = {}
 
 file = None
 
+log_record_buffer = []
+log_record_flag = False
+
 
 class FlorEnter:
     pass
@@ -29,6 +32,8 @@ def internal_log(v, d):
     """
     d['runtime_value'] = v
     d['__stack_frame__'] = tuple(stack_frame)
+    if log_record_flag:
+        log_record_buffer.append(d)
     file.write(json.dumps(d, indent=4) + ',\n')
     return v
 
@@ -42,7 +47,6 @@ def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=N
     :param iteration_id: If entering loop body block, iteration_id is an integer
     :return:
     """
-
     if func_name:
         # block_type: function_body
         function_identifier = ('function_body', func_name)
@@ -71,8 +75,10 @@ def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=N
                         if func_name not in consume_from:
                             consume_from[func_name] = set(["{}".format(each) for each in func_names])
                             # write fact to log first time it appears
-                            file.write(json.dumps({'to': func_name,
-                             'from': tuple(consume_from[func_name])}, indent=4) + ',\n')
+                            d = {'to': func_name, 'from': tuple(consume_from[func_name])}
+                            if log_record_flag:
+                                log_record_buffer.append(d)
+                            file.write(json.dumps(d, indent=4) + ',\n')
 
                         else:
                             assert consume_from[func_name] == set(["{}".format(each) for each in func_names])

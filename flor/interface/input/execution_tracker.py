@@ -14,12 +14,14 @@ from flor.controller.parser.visitor import Visitor
 from flor.controller.parser.transformer import Transformer
 from flor.controller.parser import injected
 import flor.global_state as global_state
+from flor.context.tree import Tree
 
 from IPython.core.magic import register_cell_magic
 
 import logging
 import importlib.util
 import shutil
+from io import StringIO
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +59,20 @@ if global_state.interactive:
             transformer.visit(each)
             tree.body[idx] = each
 
+        injected.log_record_buffer = []
+        injected.log_record_flag = True
+
         shell = get_ipython().get_ipython()
         shell.run_cell(astunparse.unparse(tree))
         injected.file.close()
         injected.file = open(global_state.log_name, 'a')
+
+        df = Tree(injected.log_record_buffer).get_df()
+
+        injected.log_record_buffer = []
+        injected.log_record_flag = False
+
+        return df
 
 
 def track(f: Callable[..., Any]):
