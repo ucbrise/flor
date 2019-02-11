@@ -72,7 +72,7 @@ def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=N
                     if type(returned_value) == list or type(returned_value) == tuple:
                         consumes = consumes or any([x is arg for x in returned_value])
                     if consumes:
-                        if func_name not in consume_from:
+                        if func_name not in consume_from or log_record_flag:
                             consume_from[func_name] = set(["{}".format(each) for each in func_names])
                             # write fact to log first time it appears
                             d = {'to': func_name, 'from': tuple(consume_from[func_name])}

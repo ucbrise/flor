@@ -37,10 +37,15 @@ class Tree:
 
         for r in log_records:
             if 'from' in r and 'to' in r:
-                self.producers_table[r['to']] = r['from']
+                if r['to'] not in self.producers_table:
+                    self.producers_table[r['to']] = set(r['from'])
+                else:
+                    self.producers_table[r['to']] |= set(r['from'])
             else:
                 nodes.append(Node(r))
                 self.leaves |= {nodes[-1],}
+
+        # print(self.producers_table)
 
         for idx, node in enumerate(nodes):
             # Attach this node to its parent, unless this node is root
