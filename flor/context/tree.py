@@ -31,7 +31,6 @@ class Tree:
         stack_frames = []
 
         self.producers_table = {}
-        self.root : Node = None
         self.leaves = set([])
         nodes : List[Node] = []
 
@@ -52,10 +51,7 @@ class Tree:
             if node.stack_frame not in marker:
                 # Update the marker and stack frames the first time we see a new stack_frame
                 marker[node.stack_frame] = node
-                if not stack_frames:
-                    assert self.root is None and idx == 0
-                    self.root = node
-                else:
+                if stack_frames:
                     for stack_frame in stack_frames:
                         if self.__is_ancestor__(stack_frame, node.stack_frame):
                             parent = marker[stack_frame]
@@ -63,8 +59,6 @@ class Tree:
                             node.parent = parent
                             self.leaves -= {parent,}
                             break
-                    else:
-                        raise RuntimeError("A node in the tree, besides root, has no parent")
                 stack_frames.insert(0, node.stack_frame)
             else:
                 # Advance the marker
