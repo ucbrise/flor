@@ -46,7 +46,7 @@ class Transformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         node.value = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                       args=[node.value], keywords=[], ctx=ast.Load())
+                                       args=[node.value, ast.NameConstant(value=True)], keywords=[], ctx=ast.Load())
         ast.fix_missing_locations(node)
         return super().generic_visit(node)
 
@@ -101,7 +101,7 @@ class Transformer(ast.NodeTransformer):
                          ], keywords=[], ctx=ast.Load()))
 
         exit = ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='log_exit', ctx=ast.Load()),
-                                        args=[], keywords=[], ctx=ast.Load()))
+                                        args=[], keywords=[ast.keyword(arg='is_function', value=ast.NameConstant(value=True))], ctx=ast.Load()))
 
         node.body.insert(0, enter)
         node.body.append(exit)

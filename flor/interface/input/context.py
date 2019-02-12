@@ -5,6 +5,7 @@ import sys
 
 from flor.controller.versioner import Versioner
 from flor.controller.parser import injected
+import flor.global_state as global_state
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class Context():
 
 
     def __init__(self, xp_name: str):
+        assert not global_state.interactive, "flor.Context not defined for interactive environments (IPython or Jupyter)"
         self.xp_name = xp_name
         self.versioner = Versioner()
 
@@ -46,8 +48,10 @@ class Context():
 
 
     def __enter__(self):
+        assert not global_state.interactive, "flor.Context not defined for interactive environments (IPython or Jupyter)"
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        assert not global_state.interactive, "flor.Context not defined for interactive environments (IPython or Jupyter)"
         injected.file.close()
         self.versioner.save_commit_event("Experiment Name :: {}\n\n".format(self.xp_name), self.log_file_name)

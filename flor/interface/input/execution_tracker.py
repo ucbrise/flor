@@ -10,13 +10,18 @@ from uuid import uuid4
 from typing import Callable, Any
 
 from flor import util
-from flor import global_state
 from flor.controller.parser.visitor import Visitor
 from flor.controller.parser.transformer import Transformer
+from flor.controller.parser import injected
+import flor.global_state as global_state
+from flor.context.tree import Tree
+
+from IPython.core.magic import register_cell_magic
 
 import logging
 import importlib.util
 import shutil
+from io import StringIO
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +35,44 @@ class Mapper():
         assert len(path) >= len(self.src), "path: {}, self.src: {}".format(path, self.src)
         d = path[len(self.src) + 1 :]
         return os.path.join(self.dst, d)
+
+
+if global_state.interactive:
+    @register_cell_magic
+    def florit(line, cell):
+        """
+        Cell magic
+
+        :param line:
+        :param cell:
+        :return:
+        """
+        # TODO: Test on IPython (Tested on Jupyter)
+        tree = ast.parse(cell)
+        logger.debug(astor.dump_tree(tree))
+        for idx, each in enumerate(tree.body):
+            visitor = Visitor(False, os.path.abspath(util.get_notebook_name()))
+            visitor.visit(each)
+            visitor.consolidate_structs()
+
+            transformer = Transformer(visitor.__structs__, [])
+            transformer.visit(each)
+            tree.body[idx] = each
+
+        injected.log_record_buffer = []
+        injected.log_record_flag = True
+
+        shell = get_ipython().get_ipython()
+        shell.run_cell(astunparse.unparse(tree))
+        injected.file.close()
+        injected.file = open(global_state.log_name, 'a')
+
+        df = Tree(injected.log_record_buffer).get_df()
+
+        injected.log_record_buffer = []
+        injected.log_record_flag = False
+
+        return df
 
 
 def track(f: Callable[..., Any]):
@@ -57,19 +100,13 @@ def track(f: Callable[..., Any]):
     :param f: a function
     :return: a modified function that generates rich logs
     """
+    # TODO: https://docs.python.org/3/library/code.html
+    assert not global_state.interactive, "You're in an interactive environment, use %%florit instead"
     if global_state.ci_temporary_directory is None:
         global_state.ci_temporary_directory = tempfile.TemporaryDirectory()
         logger.debug("Temporary directory created at {}".format(global_state.ci_temporary_directory.name))
 
-    if global_state.interactive:
-        filename = inspect.getsourcefile(f).split('/')[-1]
-        if '.py' not in filename[-3:]:
-            if global_state.nb_name is None:
-                filename =  os.path.basename(util.get_notebook_name())
-            else:
-                filename = global_state.nb_name
-    else:
-        filename = inspect.getsourcefile(f).split('/')[-1]
+    filename = inspect.getsourcefile(f).split('/')[-1]
 
     func_name = f.__name__
     temp_dir = global_state.ci_temporary_directory.name
