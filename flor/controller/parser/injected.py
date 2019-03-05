@@ -108,7 +108,7 @@ def log_exit(v=None, is_function=False):
     :return:
     """
 
-    if v:
+    if v is not None:
         # Return Context
         if v in dict_of_returns:
             dict_of_returns[v] |= {stack_frame[-1][1],}
