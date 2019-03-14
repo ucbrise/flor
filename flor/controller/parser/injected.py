@@ -23,6 +23,10 @@ class FlorEnter:
 class FlorExit:
     pass
 
+STATE = {}
+PARAMS = []
+METRICS = []
+
 def internal_log(v, d):
     """
     Creates a new LOG_RECORD
@@ -35,6 +39,12 @@ def internal_log(v, d):
     if log_record_flag:
         log_record_buffer.append(d)
     file.write(json.dumps(d, indent=4) + ',\n')
+    if d['typ'] == 'param':
+        PARAMS.append(d)
+        STATE[d] = v
+    elif d['typ'] == 'metric':
+        for p in PARAMS:
+            STATE[p]
     return v
 
 def log_enter(locl=None, vararg=None, kwarg=None, func_name=None, iteration_id=None):

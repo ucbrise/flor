@@ -32,9 +32,10 @@ from flor.interface.input.logger import log
 from flor.interface.input.execution_tracker import track
 from flor.interface.input.context import Context
 
-
+from flor.interface.input.new_log import OpenLog
+from flor.interface.input.new_log import Flog
 __all__ = ['setNotebookName', 'log', 'track', 'internal_log',
-           'Context', 'log_enter', 'log_exit']
+           'Context', 'log_enter', 'log_exit', 'OpenLog', 'Flog']
 
 
 
