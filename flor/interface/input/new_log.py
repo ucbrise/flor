@@ -12,6 +12,15 @@ class Flog:
     def write(self, s):
         self.writer.write(json.dumps(s) + '\n')
         self.writer.flush()
+        return True
+
+    def serialize(self, x):
+        import cloudpickle
+        try:
+            out = str(cloudpickle.dumps(x))
+            return out
+        except:
+            return "ERROR: failed to serialize"
 
     @staticmethod
     def __get_current__():
