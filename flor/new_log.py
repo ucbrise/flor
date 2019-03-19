@@ -11,8 +11,11 @@ class Flog:
 
     def write(self, s):
         self.writer.write(json.dumps(s) + '\n')
-        self.writer.flush()
+        self.flush()
         return True
+
+    def flush(self):
+        self.writer.flush()
 
     def serialize(self, x):
         import cloudpickle
