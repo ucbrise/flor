@@ -1,13 +1,20 @@
-from flor.constants import FLOR_CUR, FLOR_DIR
+from flor.constants import *
+from flor.controller import Controller
 import os
 import json
+import cloudpickle
 
 class Flog:
 
     def __init__(self):
         self.writer = open(self.__get_current__(), 'a')
+        self.controller = Controller()
 
     def write(self, s):
+        #TODO: Can I dump with json rather than dumps
+        decision = self.controller.do(s)
+        if decision is Exit:
+            return True
         self.writer.write(json.dumps(s) + '\n')
         self.flush()
         return True
@@ -16,8 +23,11 @@ class Flog:
         self.writer.flush()
 
     def serialize(self, x):
-        import cloudpickle
+        license = self.controller.get_license_to_serialize()
+        if not license:
+            return "PASS"
         try:
+            # import cloudpickle
             out = str(cloudpickle.dumps(x))
             return out
         except:
