@@ -7,7 +7,8 @@ from flor import OpenLog
 import time
 start_time = time.time()
 
-with OpenLog('iris_raw', depth_limit=None):
+with OpenLog('iris_raw', depth_limit=1):
+
     iris = datasets.load_iris()
     X_tr, X_te, y_tr, y_te = train_test_split(iris.data, iris.target, test_size=0.15, random_state=430)
 
