@@ -1,4 +1,4 @@
-from florist.transformer import Transformer
+from flor.dynamic_capture.transformer import Transformer
 
 import tempfile
 import os

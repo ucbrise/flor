@@ -6,6 +6,10 @@ import cloudpickle
 
 class Flog:
 
+    """
+    This class is instantiated only within a function
+    """
+
     def __init__(self):
         self.writer = open(self.__get_current__(), 'a')
         self.controller = Controller()

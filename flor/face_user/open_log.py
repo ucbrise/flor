@@ -25,8 +25,6 @@ class OpenLog:
         log_file.close()
 
     def __enter__(self):
-        print('hello')
-        print('something')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

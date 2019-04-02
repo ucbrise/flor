@@ -1,6 +1,6 @@
 import ast
 import astor
-from florist.generator import Assign, BoolExp, Raise, Return, FuncDef, Loop
+from flor.dynamic_capture.generator import Assign, BoolExp, Raise, Return, FuncDef, Loop
 
 class Transformer(ast.NodeTransformer):
 

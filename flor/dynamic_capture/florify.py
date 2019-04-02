@@ -1,4 +1,5 @@
-from florist.walker import Walker
+from flor.dynamic_capture.walker import Walker
 
-walker = Walker('/anaconda3/envs/flor/lib/python3.7/site-packages/numpy')
-walker.compile_tree()
+if __name__ == "__main__":
+    walker = Walker('/Users/rogarcia/git/flor/examples/iris')
+    walker.compile_tree()
