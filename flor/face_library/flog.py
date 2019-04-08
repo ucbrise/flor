@@ -18,7 +18,7 @@ class Flog:
         #TODO: Can I dump with json rather than dumps
         decision = self.controller.do(s)
         if decision is Exit:
-            return True
+            return False
         self.writer.write(json.dumps(s) + '\n')
         self.flush()
         return True
@@ -27,6 +27,7 @@ class Flog:
         self.writer.flush()
 
     def serialize(self, x):
+        # We need a license because Python evaluates arguments before calling a function
         license = self.controller.get_license_to_serialize()
         if not license:
             return "PASS"
