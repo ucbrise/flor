@@ -40,7 +40,7 @@ if __name__ == '__main__':
     # Run code
     exec(open(full_path).read())
 
-    # Model OpenLog Behavior (Add some fault tolerance)
+    # Model OpenLog Behavior TODO Add some fault tolerance
     ol.exit()
 
     # Restore original
