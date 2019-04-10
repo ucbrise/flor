@@ -1,6 +1,8 @@
 import git
 import os
 import sys
+import tempfile
+import shutil
 
 class Versioner:
 
@@ -26,6 +28,8 @@ class Versioner:
                 else:
                     print('Invalid entry: {}'.format(quit_flag))
 
+        # self.targetbasis = tempfile.mkdtemp(prefix='git.florist')
+        # print("Target directory at: {}".format(self.targetbasis))
 
     @staticmethod
     def __is_git_repo__(path):
@@ -56,3 +60,26 @@ class Versioner:
             repo = git.Repo(self.versioning_dir)
             repo.git.add(A=True)
             repo.index.commit(msg)
+
+    def reset_hard(self):
+        if not self.versioning_dir:
+            repo = git.Repo(self.current_dir)
+            repo.git.reset('--hard')
+        else:
+            repo = git.Repo(self.versioning_dir)
+            repo.git.reset('--hard')
+
+    # def protect_assets(self):
+    #     shutil.copytree(os.path.join(self.versioning_dir, '.git'),
+    #                     os.path.join(self.targetbasis, '.git'))
+    #
+    #     shutil.copy2(os.path.join(self.versioning_dir, '.gitignore'),
+    #                  os.path.join(self.targetbasis, '.gitignore'))
+    #
+    # def restore_assets(self):
+    #     shutil.copytree(os.path.join(self.targetbasis, '.git'),
+    #                     os.path.join(self.versioning_dir, '.git'))
+    #
+    #     shutil.copy2(os.path.join(self.versioning_dir, '.gitignore'),
+    #                  os.path.join(self.targetbasis, '.gitignore'))
+

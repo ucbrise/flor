@@ -3,9 +3,13 @@ from flor.constants import *
 
 class Controller:
 
-    def __init__(self):
+    def __init__(self, init_in_func_ctx=True):
+        """
+        Corrected
+        :param init_in_func_ctx:
+        """
         self.depth_limit = get('depth_limit')
-        if self.depth_limit is not Null:
+        if self.depth_limit is not Null and init_in_func_ctx:
             self.depth_limit -= 1
             put('depth_limit', self.depth_limit)
 

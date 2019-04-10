@@ -8,17 +8,42 @@ class Flog:
 
     """
     This class is instantiated only within a function
+
+    ...
+    That's a problem, we need this class, or equivalent
+    To be instantiated in the header of client-side code
+    even outside the scope of the function
+
+    What behavior do we care about?
+
     """
 
-    def __init__(self):
+    def __init__(self, init_in_func_ctx=True):
+        """
+        We have to read the current name of the experiment
+        The log.json file in the corresponding directory need not exist in advance
+        The Controller initialization
+            Reads and modifies the depth limit automatically
+            Because we assume we're in the context of a function
+
+        Recommended Correction:
+        Flagging -- On initialization, parameterize on context of initialization.
+
+        Modification preserves intended behavior in previous context
+        Generalizes
+        On context outside function, no modification of depth limit
+
+        """
+        self.init_in_func_ctx = init_in_func_ctx
         self.writer = open(self.__get_current__(), 'a')
-        self.controller = Controller()
+        self.controller = Controller(init_in_func_ctx)
 
     def write(self, s):
         #TODO: Can I dump with json rather than dumps
-        decision = self.controller.do(s)
-        if decision is Exit:
-            return False
+        if self.init_in_func_ctx:
+            decision = self.controller.do(s)
+            if decision is Exit:
+                return False
         self.writer.write(json.dumps(s) + '\n')
         self.flush()
         return True
@@ -28,9 +53,10 @@ class Flog:
 
     def serialize(self, x):
         # We need a license because Python evaluates arguments before calling a function
-        license = self.controller.get_license_to_serialize()
-        if not license:
-            return "PASS"
+        if self.init_in_func_ctx:
+            license = self.controller.get_license_to_serialize()
+            if not license:
+                return "PASS"
         try:
             # import cloudpickle
             out = str(cloudpickle.dumps(x))

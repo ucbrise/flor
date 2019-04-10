@@ -24,10 +24,7 @@ class OpenLog:
         log_file.flush()
         log_file.close()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def exit(self):
         log_file = open(Flog.__get_current__(), 'a')
         session_end = {'session_end': format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
         log_file.write(json.dumps(session_end) + '\n')
@@ -37,3 +34,9 @@ class OpenLog:
         cond_rmdir(MODEL_DIR)
 
         log_file.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit()
