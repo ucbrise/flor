@@ -4,9 +4,10 @@ import ast
 
 class Assign(LogStmt):
 
-    def __init__(self, node: 'ast.Assign'):
+    def __init__(self, node: 'ast.Assign', counter):
         super().__init__()
         self.node = node
+        self.counter = counter
 
     def __make_locals__(self):
         if isinstance(self.node, ast.Assign):
@@ -17,9 +18,12 @@ class Assign(LogStmt):
             raise RuntimeError()
 
     def to_string(self):
-        return "{{'locals': [{}], 'lineage': '{}'}}".format(
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        return "{{'locals': [{}], 'lineage': '{}', 'lsn': {}}}".format(
             self.__make_locals__(),
-            gen.proc_lhs(self.node)
+            gen.proc_lhs(self.node),
+            lsn
         )
 
     def parse(self):

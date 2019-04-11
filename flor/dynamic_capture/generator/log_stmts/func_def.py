@@ -9,12 +9,13 @@ if Flog.flagged(): flog = Flog()
 
 class FuncDef(LogStmt):
 
-    def __init__(self, node: ast.FunctionDef, filepath, classname=None):
+    def __init__(self, node: ast.FunctionDef, filepath, counter, classname=None):
         super().__init__()
         self.node = node
         self.filepath = filepath
         self.classname = classname
         self.arg_names = []
+        self.counter = counter
         if node.args:
             for arg in node.args.args:
                 self.arg_names.append(arg.arg)
@@ -24,7 +25,9 @@ class FuncDef(LogStmt):
                 self.arg_names.append(node.args.kwarg.arg)
 
     def __get_params__(self):
-        return super().to_string(("{" + "'params': "
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        return super().to_string(("{" + "'lsn': {},".format(lsn) + "'params': "
                                   + str(list(map(lambda x: "{{'{}': {}}}".format(gen.proc_lhs(x), gen.proc_rhs(x)), self.arg_names)))
                                   + "}").replace('"', ''))
 
@@ -36,17 +39,25 @@ class FuncDef(LogStmt):
 
     def to_string_head(self):
         if self.classname:
+            lsn1 = self.counter['value']
+            lsn2, lsn3 = lsn1 + 1, lsn1 + 2
+            self.counter['value'] = lsn3 + 1
             return (HEADER + "\n"
-                   + super().to_string("{{'file_path': '{}'}}".format(self.filepath)) + "\n"
-                    + super().to_string("{{'class_name': '{}'}}".format(self.classname)) + "\n"
-                    + super().to_string("{{'start_function': '{}'}}".format(self.node.name)) + "\n"
+                   + super().to_string("{{'file_path': '{}', 'lsn': {}}}".format(self.filepath, lsn1)) + "\n"
+                    + super().to_string("{{'class_name': '{}', 'lsn': {}}}".format(self.classname, lsn2)) + "\n"
+                    + super().to_string("{{'start_function': '{}', 'lsn':{}}}".format(self.node.name, lsn3)) + "\n"
                     + self.__get_params__() + "\n")
         else:
+            lsn1 = self.counter['value']
+            lsn2 = lsn1 + 1
+            self.counter['value'] = lsn2 + 1
             return (HEADER + "\n"
-                    + super().to_string("{{'file_path': '{}'}}".format(self.filepath)) + "\n"
-                    + super().to_string("{{'start_function': '{}'}}".format(self.node.name)) + "\n"
+                    + super().to_string("{{'file_path': '{}', 'lsn': {}}}".format(self.filepath, lsn1)) + "\n"
+                    + super().to_string("{{'start_function': '{}', 'lsn': {}}}".format(self.node.name, lsn2)) + "\n"
                     + self.__get_params__() + "\n")
 
     def to_string_foot(self):
-        return super().to_string("{{'end_function': '{}'}}".format(self.node.name))
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        return super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn))
 

@@ -4,9 +4,10 @@ import ast
 
 class Raise(LogStmt):
 
-    def __init__(self, node: ast.Raise):
+    def __init__(self, node: ast.Raise, counter):
         super().__init__()
         self.node = node
+        self.counter = counter
 
     def __make_msg__(self):
         if self.node.exc:
@@ -24,13 +25,16 @@ class Raise(LogStmt):
         return ast.parse(str(self)).body[0]
 
     def to_string(self):
+        lsn = self.counter['value']
+        self.counter['value'] += 1
         if self.node.exc and isinstance(self.node.exc, ast.Call):
-            return "{{'exception_condition': {{'{}': [{}]}}}}".format(
+            return "{{'lsn': {}, 'exception_condition': {{'{}': [{}]}}}}".format(
+                lsn,
                 gen.proc_lhs(self.node.exc.func),
                 self.__make_msg__()
             )
         else:
-            return "{'exception_raised': None}"
+            return "{{'exception_raised': None, 'lsn': {}}}".format(lsn)
 
     def __str__(self):
         return super().to_string(self.to_string())

@@ -4,16 +4,21 @@ import ast
 
 class Loop(LogStmt):
 
-    def __init__(self, node):
+    def __init__(self, node, counter):
         super().__init__()
         self.node = node
+        self.counter = counter
 
     def to_string_start(self):
-        d = "{{'start_loop': {}}}".format(self.node.lineno)
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        d = "{{'start_loop': {}, 'lsn': {}}}".format(self.node.lineno, lsn)
         return super().to_string(d)
 
     def to_string_end(self):
-        d = "{{'end_loop': {}}}".format(self.node.lineno)
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        d = "{{'end_loop': {}, 'lsn': {}}}".format(self.node.lineno, lsn)
         return super().to_string(d)
 
     def parse_start(self):

@@ -11,6 +11,7 @@ class ClientTransformer(ast.NodeTransformer):
         self.fd = None # FuncDef
 
         self.client_header_license = True
+        self.relative_counter = {'value': 0}
 
     def visit_ClassDef(self, node):
         self.classname = node.name
@@ -22,6 +23,8 @@ class ClientTransformer(ast.NodeTransformer):
         if '__' != node.name[0:2] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             prev = self.fd
+            relative_counter = self.relative_counter['value']
+            self.relative_counter['value'] = 0
             self.fd = FuncDef(node, self.filepath, self.classname)
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
@@ -32,23 +35,24 @@ class ClientTransformer(ast.NodeTransformer):
                 new_node.body.pop()
             new_node.body.append(foot)
             self.fd = prev
+            self.relative_counter['value'] = relative_counter
             return new_node
         else:
             return node
 
     def visit_If(self, node):
-        node.body.insert(0, self.visit(BoolExp(node.test).parse(True)))
-        node.orelse.insert(0, self.visit(BoolExp(node.test).parse(False)))
+        node.body.insert(0, self.visit(BoolExp(node.test, self.relative_counter).parse(True)))
+        node.orelse.insert(0, self.visit(BoolExp(node.test, self.relative_counter).parse(False)))
         return self.generic_visit(node)
 
     def visit_For(self, node):
-        loop = Loop(node)
+        loop = Loop(node, self.relative_counter)
         node.body.insert(0, self.visit(loop.parse_start()))
         node.body.append(self.visit(loop.parse_end()))
         return self.generic_visit(node)
 
     def visit_While(self, node):
-        loop = Loop(node)
+        loop = Loop(node, self.relative_counter)
         node.body.insert(0, self.visit(loop.parse_start()))
         node.body.append(self.visit(loop.parse_end()))
         return self.generic_visit(node)
@@ -67,13 +71,13 @@ class ClientTransformer(ast.NodeTransformer):
         for field, old_value in ast.iter_fields(node):
             if isinstance(old_value, list):
                 if self.client_header_license:
-                    new_values = ClientRoot(self.filepath).parse_heads()
+                    new_values = ClientRoot(self.filepath, self.relative_counter).parse_heads()
                     self.client_header_license = False
                 else:
                     new_values = []
                 for value in old_value:
                     if isinstance(value, ast.Raise):
-                        r = self.visit(Raise(value).parse())
+                        r = self.visit(Raise(value, self.relative_counter).parse())
                         new_values.append(r)
                     elif isinstance(value, ast.Return):
                         values = self.visit(value)
@@ -92,7 +96,7 @@ class ClientTransformer(ast.NodeTransformer):
                             isinstance(value, ast.AugAssign) or \
                             isinstance(value, ast.AnnAssign):
                         # OUTPUT ASSIGN STATEMENT
-                        value = self.visit(Assign(value).parse())
+                        value = self.visit(Assign(value, self.relative_counter).parse())
                         new_values.append(value)
                 old_value[:] = new_values
             elif isinstance(old_value, ast.AST):
@@ -113,6 +117,9 @@ class LibTransformer(ast.NodeTransformer):
         self.classname = None
         self.fd = None
 
+        # relative_counter: used to uniquely identfy log statements, relative to their context
+        self.relative_counter = {'value': 0}
+
     def visit_ClassDef(self, node):
         self.classname = node.name
         new_node = self.generic_visit(node)
@@ -120,11 +127,14 @@ class LibTransformer(ast.NodeTransformer):
         return new_node
 
     def visit_FunctionDef(self, node):
+        # TODO: Relative counter needs more work
         if '__' != node.name[0:2] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             self.active = True
             prev = self.fd
-            self.fd = FuncDef(node, self.filepath, self.classname)
+            relative_counter = self.relative_counter['value']
+            self.relative_counter['value'] = 0
+            self.fd = FuncDef(node, self.filepath, self.relative_counter, self.classname)
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
             new_node = self.generic_visit(node)
@@ -135,26 +145,27 @@ class LibTransformer(ast.NodeTransformer):
             new_node.body.append(foot)
             self.fd = prev
             self.active = False
+            self.relative_counter['value'] = relative_counter
             return new_node
         else:
             return node
 
     def visit_If(self, node):
         if self.active:
-            node.body.insert(0, self.visit(BoolExp(node.test).parse(True)))
-            node.orelse.insert(0, self.visit(BoolExp(node.test).parse(False)))
+            node.body.insert(0, self.visit(BoolExp(node.test, self.relative_counter).parse(True)))
+            node.orelse.insert(0, self.visit(BoolExp(node.test, self.relative_counter).parse(False)))
         return self.generic_visit(node)
 
     def visit_For(self, node):
         if self.active:
-            loop = Loop(node)
+            loop = Loop(node, self.relative_counter)
             node.body.insert(0, self.visit(loop.parse_start()))
             node.body.append(self.visit(loop.parse_end()))
         return self.generic_visit(node)
 
     def visit_While(self, node):
         if self.active:
-            loop = Loop(node)
+            loop = Loop(node, self.relative_counter)
             node.body.insert(0, self.visit(loop.parse_start()))
             node.body.append(self.visit(loop.parse_end()))
         return self.generic_visit(node)
@@ -176,7 +187,7 @@ class LibTransformer(ast.NodeTransformer):
                     new_values = []
                     for value in old_value:
                         if isinstance(value, ast.Raise):
-                            r = self.visit(Raise(value).parse())
+                            r = self.visit(Raise(value, self.relative_counter).parse())
                             new_values.append(r)
                         elif isinstance(value, ast.Return):
                             values = self.visit(value)
@@ -195,7 +206,7 @@ class LibTransformer(ast.NodeTransformer):
                                 isinstance(value, ast.AugAssign) or \
                                 isinstance(value, ast.AnnAssign):
                             # OUTPUT ASSIGN STATEMENT
-                            value = self.visit(Assign(value).parse())
+                            value = self.visit(Assign(value, self.relative_counter).parse())
                             new_values.append(value)
                     old_value[:] = new_values
                 elif isinstance(old_value, ast.AST):
