@@ -1,8 +1,9 @@
 import ast
 import astor
-from flor.dynamic_capture.generator import Assign, BoolExp, Raise, Return, FuncDef, Loop, ClientRoot
+from flor.dynamic_capture.generator import *
 
 class ClientTransformer(ast.NodeTransformer):
+    # TODO: Implement YIELD for Client
 
     def __init__(self, filepath=''):
         super().__init__()
@@ -180,6 +181,16 @@ class LibTransformer(ast.NodeTransformer):
         nodes_module.body.append(ret_stmt)
         return nodes_module.body
 
+    def visit_Yield(self, node):
+        nodes_module = Yield(node).parse()
+        nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
+        if len(nodes_module.body) <= 2:
+            return nodes_module.body
+        ret_stmt = nodes_module.body.pop()
+        nodes_module = self.generic_visit(nodes_module)
+        nodes_module.body.append(ret_stmt)
+        return nodes_module.body
+
     def generic_visit(self, node):
         if self.active:
             for field, old_value in ast.iter_fields(node):
@@ -189,10 +200,26 @@ class LibTransformer(ast.NodeTransformer):
                         if isinstance(value, ast.Raise):
                             r = self.visit(Raise(value, self.relative_counter).parse())
                             new_values.append(r)
-                        elif isinstance(value, ast.Return):
+                        elif (isinstance(value, ast.Return)
+                            or (isinstance(value, ast.Expr) and isinstance(value.value, ast.Yield))
+                            or ((isinstance(value, ast.Assign) or
+                                isinstance(value, ast.AugAssign) or
+                                isinstance(value, ast.AnnAssign))
+                                and isinstance(value.value, ast.Yield)
+                              )
+                        ):
+                            _v = value
+                            assign_type = isinstance(value, ast.Assign)
+                            if not isinstance(value, ast.Return):
+                                value = value.value
                             values = self.visit(value)
                             assert values and isinstance(values, list)
+                            if assign_type:
+                                assignee = values.pop()
                             new_values.extend(values)
+                            if assign_type:
+                                _v.value = assignee.value
+                                new_values.append(_v)
                             continue
                         if isinstance(value, ast.AST):
                             value = self.visit(value)

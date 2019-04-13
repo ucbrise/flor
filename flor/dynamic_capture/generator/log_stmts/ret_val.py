@@ -16,3 +16,18 @@ class Return():
 
     def parse(self):
         return ast.parse(self.to_string())
+
+class Yield():
+    def __init__(self, node):
+        self.node = node
+
+    def to_string(self):
+        if self.node.value:
+            out = "__return__ = {}\n".format(gen.proc_lhs(self.node.value, esc=False))
+            out += "yield __return__"
+        else:
+            out = gen.proc_lhs(self.node, esc=False)
+        return out
+
+    def parse(self):
+        return ast.parse(self.to_string())

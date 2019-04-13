@@ -7,6 +7,8 @@ class Ctx:
         self.class_ctx = None
         self.func_ctx = None
 
+        self.parent_ctx = None
+
     def is_enabled(self, obj):
         return (self.file_path == obj.file_path
                 and self.class_ctx == obj.class_ctx
@@ -42,12 +44,28 @@ class ActualParam:
         self.pos_kw = pos_kw
 
         # State
+        self.trailing_ctx = None
         self.contexts = []
+
         self.func_enabled = False
         self.prev_lsn_enabled = False
 
         # Outputs
         self.collected = []
+
+
+    def _ancestor_is_enabled(self):
+        ctx = self.contexts[-1].parent_ctx
+        if len(self.contexts) >= 2:
+            while ctx is not self.contexts[-2]:
+                if ctx.is_enabled(self):
+                    return True
+        else:
+            while ctx is not None:
+                if ctx.is_enabled(self):
+                    return True
+        return False
+
 
     def transition(self, log_record):
         """
@@ -55,36 +73,49 @@ class ActualParam:
         :param log_record: dict from log
         :return:
         """
+        if 'session_start' in log_record or 'session_end' in log_record:
+            return
         if 'file_path' in log_record:
             ctx = Ctx()
-            ctx.file_path = log_record['file_path']
-            self.contexts.append(ctx)
+            ctx.parent_ctx = self.trailing_ctx
+            self.trailing_ctx = ctx
+            self.trailing_ctx.file_path = log_record['file_path']
         elif 'class_name' in log_record:
-            self.contexts[-1].class_ctx = log_record['class_name']
+            self.trailing_ctx.class_ctx = log_record['class_name']
         elif 'start_function' in log_record:
-            self.contexts[-1].func_ctx = log_record['start_function']
+            self.trailing_ctx.func_ctx = log_record['start_function']
             if log_record['start_function'] == self.func_name: self.func_enabled = True
-            elif log_record['start_function'] == '__init__' and self.contexts[-1].class_ctx == self.func_name:
+            elif log_record['start_function'] == '__init__' and self.trailing_ctx.class_ctx == self.func_name:
                 self.func_enabled = True
+            self.contexts.append(self.trailing_ctx)
         elif 'end_function' in log_record:
             if log_record['end_function'] == self.func_name: self.func_enabled = False
             elif log_record['end_function'] == '__init__' and self.contexts[-1].class_ctx == self.func_name:
                 self.func_enabled = False
-            self.contexts.pop()
-
+            ctx = self.contexts.pop()
+            try:
+                assert ctx.func_ctx == log_record['end_function']
+            except:
+                print('hold')
+            if self.contexts:
+                self.trailing_ctx = self.contexts[-1]
+            else:
+                while ctx.parent_ctx is not None:
+                    ctx = ctx.parent_ctx
+                self.trailing_ctx = ctx
         else:
 
             #TODO: must resolve train_test_split(iris.data, iris.target, test_size=0.15, random_state=430) --> train_test_split(*arrays, **options)
             #TODO: Logger must be more robust
             # data log record
-            if self.contexts and self.contexts[-1].is_enabled(self):
+            if self.trailing_ctx is not None and self.trailing_ctx.is_enabled(self):
                 if log_record['lsn'] == self.prev_lsn:
                     self.prev_lsn_enabled = True
                 elif log_record['lsn'] == self.follow_lsn:
                     self.prev_lsn_enabled = False
             if (
-                len(self.contexts) >= 2
-                and self.contexts[-2].is_enabled(self)
+                self.contexts
+                and self._ancestor_is_enabled()
             ) and self.prev_lsn_enabled and self.func_enabled:
                 # active only means search
                 if 'params' in log_record:

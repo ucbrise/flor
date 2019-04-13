@@ -1,6 +1,14 @@
 from flor.log_scanner.scanners.actual_param import ActualParam
 import json
 
+ap_rando = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
+                           None,
+                           None,
+                           2,
+                           3,
+                           'train_test_split',
+                           {'pos': 0})
+
 ap_test_size = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
                            None,
                            None,
@@ -23,7 +31,7 @@ ap_gamma = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
                               3,
                               4,
                               'SVC',
-                              {'kw': 'random_state'})
+                              {'kw': 'gamma'})
 
 ap_C = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
                               None,
@@ -33,7 +41,8 @@ ap_C = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
                               'SVC',
                               {'kw': 'C'})
 
-aps = [ap_gamma,]
+# aps = [ap_gamma,]
+aps = [ap_rando, ap_test_size, ap_random_state, ap_gamma, ap_C]
 with open('/Users/rogarcia/.flor/new_param/log.json', 'r') as f:
     for line in f:
         d = json.loads(line.strip())
