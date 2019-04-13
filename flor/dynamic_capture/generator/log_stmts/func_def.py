@@ -18,17 +18,19 @@ class FuncDef(LogStmt):
         self.counter = counter
         if node.args:
             for arg in node.args.args:
-                self.arg_names.append(arg.arg)
+                self.arg_names.append("raw.{}".format(arg.arg))
             if node.args.vararg:
-                self.arg_names.append(node.args.vararg.arg)
+                self.arg_names.append("vararg.{}".format(node.args.vararg.arg))
             if node.args.kwarg:
-                self.arg_names.append(node.args.kwarg.arg)
+                self.arg_names.append("kwarg.{}".format(node.args.kwarg.arg))
 
     def __get_params__(self):
         lsn = self.counter['value']
         self.counter['value'] += 1
         return super().to_string(("{" + "'lsn': {},".format(lsn) + "'params': "
-                                  + str(list(map(lambda x: "{{'{}': {}}}".format(gen.proc_lhs(x), gen.proc_rhs(x)), self.arg_names)))
+                                  + str(list(map(lambda i, x: "{{'{}.{}': {}}}".format(i, gen.proc_lhs(x),
+                                                                                       gen.proc_rhs(x.split('.')[1])),
+                                                 range(len(self.arg_names)), self.arg_names)))
                                   + "}").replace('"', ''))
 
     def parse_heads(self):
