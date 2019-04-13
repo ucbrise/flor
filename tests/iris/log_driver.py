@@ -43,7 +43,7 @@ ap_C = ActualParam("/Users/rogarcia/sandbox/iris/iris_raw.py",
 
 # aps = [ap_gamma,]
 aps = [ap_rando, ap_test_size, ap_random_state, ap_gamma, ap_C]
-with open('/Users/rogarcia/.flor/new_param/log.json', 'r') as f:
+with open('log.json', 'r') as f:
     for line in f:
         d = json.loads(line.strip())
         for ap in aps:

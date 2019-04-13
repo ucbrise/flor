@@ -26,7 +26,7 @@ class ClientTransformer(ast.NodeTransformer):
             prev = self.fd
             relative_counter = self.relative_counter['value']
             self.relative_counter['value'] = 0
-            self.fd = FuncDef(node, self.filepath, self.classname)
+            self.fd = FuncDef(node, self.filepath, self.relative_counter, self.classname)
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
             new_node = self.generic_visit(node)
