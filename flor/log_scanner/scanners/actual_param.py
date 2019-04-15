@@ -15,6 +15,12 @@ class Ctx:
                 and (self.func_ctx == obj.func_ctx
                      or self.func_ctx == '__init__'))
 
+    def __eq__(self, other):
+        return (self.file_path == other.file_path
+        and self.class_ctx == other.class_ctx
+        and self.func_ctx == other.func_ctx
+        and self.parent_ctx == other.parent_ctx)
+
 
 class ActualParam:
     """
@@ -60,10 +66,12 @@ class ActualParam:
             while ctx is not self.contexts[-2]:
                 if ctx.is_enabled(self):
                     return True
+                ctx = ctx.parent_ctx
         else:
             while ctx is not None:
                 if ctx.is_enabled(self):
                     return True
+                ctx = ctx.parent_ctx
         return False
 
 
@@ -105,8 +113,6 @@ class ActualParam:
                 self.trailing_ctx = ctx
         else:
 
-            #TODO: must resolve train_test_split(iris.data, iris.target, test_size=0.15, random_state=430) --> train_test_split(*arrays, **options)
-            #TODO: Logger must be more robust
             # data log record
             if self.trailing_ctx is not None and self.trailing_ctx.is_enabled(self):
                 if log_record['lsn'] == self.prev_lsn:

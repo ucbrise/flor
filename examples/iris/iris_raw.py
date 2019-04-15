@@ -1,7 +1,6 @@
 from sklearn import datasets
 from sklearn import svm
 from sklearn.model_selection import train_test_split
-from flor import OpenLog
 
 import time
 start_time = time.time()
