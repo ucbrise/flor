@@ -1,27 +1,5 @@
 import cloudpickle
 
-class Ctx:
-
-    def __init__(self):
-        self.file_path = None
-        self.class_ctx = None
-        self.func_ctx = None
-
-        self.parent_ctx = None
-
-    def is_enabled(self, obj):
-        return (self.file_path == obj.file_path
-                and self.class_ctx == obj.class_ctx
-                and (self.func_ctx == obj.func_ctx
-                     or self.func_ctx == '__init__'))
-
-    def __eq__(self, other):
-        return (self.file_path == other.file_path
-        and self.class_ctx == other.class_ctx
-        and self.func_ctx == other.func_ctx
-        and self.parent_ctx == other.parent_ctx)
-
-
 class ActualParam:
     """
     This class will act like a finite state machine
@@ -50,124 +28,92 @@ class ActualParam:
         self.pos_kw = pos_kw
 
         # State
-        self.trailing_ctx = None
-        self.contexts = []
-
         self.func_enabled = False
         self.prev_lsn_enabled = False
 
-        # Outputs
-        self.collected = []
 
-
-    def _ancestor_is_enabled(self):
-        ctx = self.contexts[-1].parent_ctx
-        if len(self.contexts) >= 2:
-            while ctx is not self.contexts[-2]:
-                if ctx.is_enabled(self):
-                    return True
-                ctx = ctx.parent_ctx
-        else:
-            while ctx is not None:
-                if ctx.is_enabled(self):
-                    return True
-                ctx = ctx.parent_ctx
+    def _ancestor_is_enabled(self, contexts):
+        if contexts:
+            ctx = contexts[-1].parent_ctx
+            if len(contexts) >= 2:
+                while ctx is not contexts[-2]:
+                    if ctx.is_enabled(self):
+                        return True
+                    ctx = ctx.parent_ctx
+            else:
+                while ctx is not None:
+                    if ctx.is_enabled(self):
+                        return True
+                    ctx = ctx.parent_ctx
         return False
 
+    def consume_func_name(self, log_record, trailing_ctx, contexts):
+        if 'start_function' in log_record:
+            if log_record['start_function'] == self.func_name:
+                self.func_enabled = True
+            elif log_record['start_function'] == '__init__' and trailing_ctx.class_ctx == self.func_name:
+                self.func_enabled = True
+        elif 'end_function' in log_record:
+            if log_record['end_function'] == self.func_name:
+                self.func_enabled = False
+            elif log_record['end_function'] == '__init__' and contexts[-1].class_ctx == self.func_name:
+                self.func_enabled = False
 
-    def transition(self, log_record):
+    def consume_data(self, log_record, trailing_ctx, contexts):
         """
 
         :param log_record: dict from log
         :return:
         """
-        if 'session_start' in log_record or 'session_end' in log_record:
-            return
-        if 'file_path' in log_record:
-            ctx = Ctx()
-            ctx.parent_ctx = self.trailing_ctx
-            self.trailing_ctx = ctx
-            self.trailing_ctx.file_path = log_record['file_path']
-        elif 'class_name' in log_record:
-            self.trailing_ctx.class_ctx = log_record['class_name']
-        elif 'start_function' in log_record:
-            self.trailing_ctx.func_ctx = log_record['start_function']
-            if log_record['start_function'] == self.func_name: self.func_enabled = True
-            elif log_record['start_function'] == '__init__' and self.trailing_ctx.class_ctx == self.func_name:
-                self.func_enabled = True
-            self.contexts.append(self.trailing_ctx)
-        elif 'end_function' in log_record:
-            if log_record['end_function'] == self.func_name: self.func_enabled = False
-            elif log_record['end_function'] == '__init__' and self.contexts[-1].class_ctx == self.func_name:
-                self.func_enabled = False
-            ctx = self.contexts.pop()
-            try:
-                assert ctx.func_ctx == log_record['end_function']
-            except:
-                print('hold')
-            if self.contexts:
-                self.trailing_ctx = self.contexts[-1]
-            else:
-                while ctx.parent_ctx is not None:
-                    ctx = ctx.parent_ctx
-                self.trailing_ctx = ctx
-        else:
-
-            # data log record
-            if self.trailing_ctx is not None and self.trailing_ctx.is_enabled(self):
-                if log_record['lsn'] == self.prev_lsn:
-                    self.prev_lsn_enabled = True
-                elif log_record['lsn'] == self.follow_lsn:
-                    self.prev_lsn_enabled = False
-            if (
-                self.contexts
-                and self._ancestor_is_enabled()
-            ) and self.prev_lsn_enabled and self.func_enabled:
-                # active only means search
-                if 'params' in log_record:
-                    params = []
-                    unfolded_idx = 0
-                    for param in log_record['params']:
-                        # param is a singleton dict. k -> value
-                        k = list(param.keys()).pop()
-                        idx, typ, name = k.split('.')
-                        if typ == 'raw':
-                            params.append({k: cloudpickle.loads(eval(param[k]))})
+        # data log record
+        if trailing_ctx is not None and trailing_ctx.is_enabled(self):
+            if log_record['lsn'] == self.prev_lsn:
+                self.prev_lsn_enabled = True
+            elif log_record['lsn'] == self.follow_lsn:
+                self.prev_lsn_enabled = False
+        if self._ancestor_is_enabled(contexts) and \
+                self.prev_lsn_enabled and self.func_enabled:
+            # active only means search
+            if 'params' in log_record:
+                params = []
+                unfolded_idx = 0
+                for param in log_record['params']:
+                    # param is a singleton dict. k -> value
+                    k = list(param.keys()).pop()
+                    idx, typ, name = k.split('.')
+                    if typ == 'raw':
+                        params.append({k: cloudpickle.loads(eval(param[k]))})
+                        unfolded_idx += 1
+                    elif typ == 'vararg':
+                        list_of_params = cloudpickle.loads(eval(param[k]))
+                        for each in list_of_params:
+                            new_key = '.'.join((str(unfolded_idx),'raw','$'))
+                            params.append({new_key: each})
                             unfolded_idx += 1
-                        elif typ == 'vararg':
-                            list_of_params = cloudpickle.loads(eval(param[k]))
-                            for each in list_of_params:
-                                new_key = '.'.join((str(unfolded_idx),'raw','$'))
-                                params.append({new_key: each})
-                                unfolded_idx += 1
-                        elif typ == 'kwarg':
-                            dict_of_params = cloudpickle.loads(eval(param[k]))
-                            for k in dict_of_params:
-                                new_key = '.'.join(('$','raw',k))
-                                params.append({new_key: dict_of_params[k]})
-                        else:
-                            raise RuntimeError()
-
-
-                    #params: List[Singleton_Dict[(idx, 'raw', kw_name), deserialized_val]]
-
-
-                    if 'pos' in self.pos_kw:
-
-                        for single_dict in params:
-                            k = list(single_dict.keys()).pop()
-                            if int(k.split('.')[0]) == self.pos_kw['pos']:
-                                self.collected.append(single_dict)
-                                break
+                    elif typ == 'kwarg':
+                        dict_of_params = cloudpickle.loads(eval(param[k]))
+                        for k in dict_of_params:
+                            new_key = '.'.join(('$','raw',k))
+                            params.append({new_key: dict_of_params[k]})
                     else:
-                        assert 'kw' in self.pos_kw
-                        for single_dict in params:
-                            k = list(single_dict.keys()).pop()
-                            if k.split('.')[2] == self.pos_kw['kw']:
-                                self.collected.append(single_dict)
-                    try:
-                        print("It's a match: {}".format(self.collected[-1]))
-                    except:
-                        print("ERROR ... log record: {}".format(params))
+                        raise RuntimeError()
+
+                #params: List[Singleton_Dict[(idx, 'raw', kw_name), deserialized_val]]
+
+                if 'pos' in self.pos_kw:
+
+                    for single_dict in params:
+                        k = list(single_dict.keys()).pop()
+                        if int(k.split('.')[0]) == self.pos_kw['pos']:
+                            print("It's a match: {}".format(single_dict))
+                            return single_dict
+                else:
+                    assert 'kw' in self.pos_kw
+                    for single_dict in params:
+                        k = list(single_dict.keys()).pop()
+                        if k.split('.')[2] == self.pos_kw['kw']:
+                            print("It's a match: {}".format(single_dict))
+                            return single_dict
+
 
 
