@@ -1,6 +1,7 @@
 import json
 
 from .scanners.actual_param import ActualParam
+from .scanners.root_expression import RootExpression
 from .context import Ctx
 
 class Scanner:
@@ -51,7 +52,7 @@ class Scanner:
             for fsm in self.state_machines:
                 out = fsm.consume_data(log_record, self.trailing_ctx, self.contexts)
                 if out:
-                    self.collected.append(out)
+                    self.collected.append({id(fsm): out})
 
     def scan_log(self):
         with open(self.log_path, 'r') as f:
@@ -60,6 +61,24 @@ class Scanner:
                 self.scan(log_record)
 
     def to_rows(self):
+        #TODO: missing robust Dataflow analysis
+        """
+        E
+        x, y, z could be:
+        *----*----*----*
+        | x0 | .  | z0 |
+        *----*----*----*
+        | x0 | y0  | . |
+        *----*----*----*
+
+        or it could be:
+        *----*----*----*
+        | x0 | y0 | z0 |
+        *----*----*----*
+
+        ... Need to inspect loops and stack_frames to infer visibility and scopes over which the val is defined
+
+        """
         rows = []
         row = []
         for each in self.collected:

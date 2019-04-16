@@ -1,9 +1,11 @@
 import cloudpickle
 
-class ActualParam:
+from .scanner_type import ScannerType
+
+class ActualParam(ScannerType):
     """
-    This class will act like a finite state machine
-    Every log record in the log is an input
+    Collects from the actual parameters passed into a function
+    For the context-specific call to that function, not every invocation of that function
     """
 
     def __init__(self, file_path, class_ctx, func_ctx, prev_lsn, follow_lsn, func_name, pos_kw):

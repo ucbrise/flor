@@ -1,4 +1,5 @@
 from flor.log_scanner.scanners.actual_param import ActualParam
+from flor.log_scanner.scanners.root_expression import RootExpression
 from flor.log_scanner.scanner import Scanner
 import json
 
@@ -43,6 +44,13 @@ scanner.register_state_machine(ActualParam("/Users/rogarcia/sandbox/iris_loop/ir
                               6,
                               'SVC',
                               {'kw': 'C'}))
+
+scanner.register_state_machine(RootExpression("/Users/rogarcia/sandbox/iris_loop/iris_raw.py",
+                                              None,
+                                              None,
+                                              6,
+                                              7,
+                                              None))
 
 scanner.scan_log()
 print("collected: {}".format(scanner.collected))
