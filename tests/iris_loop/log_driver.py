@@ -1,5 +1,5 @@
-from flor.log_scanner.scanners.actual_param import ActualParam
-from flor.log_scanner.scanners.root_expression import RootExpression
+from flor.log_scanner.state_machines.actual_param import ActualParam
+from flor.log_scanner.state_machines.root_expression import RootExpression
 from flor.log_scanner.scanner import Scanner
 import json
 

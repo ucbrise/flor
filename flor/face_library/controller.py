@@ -1,4 +1,4 @@
-from flor.model import get, put
+from flor.stateful import get, put
 from flor.constants import *
 
 class Controller:

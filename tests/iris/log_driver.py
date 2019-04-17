@@ -1,4 +1,4 @@
-from flor.log_scanner.scanners.actual_param import ActualParam
+from flor.log_scanner.state_machines.actual_param import ActualParam
 from flor.log_scanner.scanner import Scanner
 import json
 

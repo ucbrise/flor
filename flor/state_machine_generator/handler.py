@@ -1,6 +1,6 @@
 import ast
 
-from flor.dynamic_capture.generator.log_stmts.log_stmt import LogStmt
+from flor.complete_capture.trace_generator.log_stmts.log_stmt import LogStmt
 
 class Handler:
 

@@ -1,8 +1,8 @@
 import os
 import ast
 
-from flor.dynamic_capture.transformer import ClientTransformer
-from flor.state_machiner.visitor import Visitor
+from flor.complete_capture.transformer import ClientTransformer
+from flor.state_machine_generator import Visitor
 
 def _get_src_filename(full_path):
     with open(full_path, 'r') as f:

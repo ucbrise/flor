@@ -1,5 +1,5 @@
 from .log_stmt import LogStmt
-from .. import generate as gen
+from .. import util as gen
 import ast
 
 class Loop(LogStmt):

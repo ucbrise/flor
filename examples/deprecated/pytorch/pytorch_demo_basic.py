@@ -24,14 +24,14 @@ def main():
     num_epochs = 60
     learning_rate = 0.001
 
-    # Linear regression model
+    # Linear regression stateful
     model = nn.Linear(log.param(input_size), log.param(output_size))
 
     # Loss and optimizer
     criterion = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=log.param(learning_rate))
 
-    # Train the model
+    # Train the stateful
     for epoch in range(log.param(num_epochs)):
         # Convert numpy arrays to torch tensors
         inputs = torch.from_numpy(x_train)
@@ -53,14 +53,14 @@ def main():
             #print ('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, loss.item()))
 
     # Plot the graph
-    #predicted = model(torch.from_numpy(x_train)).detach().numpy()
+    #predicted = stateful(torch.from_numpy(x_train)).detach().numpy()
     #plt.plot(x_train, y_train, 'ro', label='Original data')
     #plt.plot(x_train, predicted, label='Fitted line')
     #plt.legend()
     #plt.show()
 
-    # Save the model checkpoint
-    #torch.save(model.state_dict(), 'model.ckpt')
+    # Save the stateful checkpoint
+    #torch.save(stateful.state_dict(), 'stateful.ckpt')
 
 with flor.Context('pytorch_demo'):
     main()

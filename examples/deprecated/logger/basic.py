@@ -39,7 +39,7 @@ def main(x, y, z):
     X_tr = vectorizer.transform(X_tr)
     X_te = vectorizer.transform(X_te)
 
-    # Fit the model
+    # Fit the stateful
     for i in [1, 5]:
         clf = train_model(i, X_tr, y_tr)
         test_model(clf, X_te, y_te)

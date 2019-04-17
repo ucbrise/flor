@@ -2,8 +2,8 @@ import os
 import shutil
 
 from flor.versioner.versioner import Versioner
-from flor.dynamic_capture.walker import Walker
-from flor.face_user.open_log import OpenLog
+from flor.complete_capture.walker import Walker
+from flor.logs_manipulator.open_log import OpenLog
 
 def exec_flython(args):
     # Get path and check

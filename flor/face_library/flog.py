@@ -1,5 +1,5 @@
 from flor.constants import *
-from flor.controller import Controller
+from .controller import Controller
 import os
 import json
 import cloudpickle

@@ -1,8 +1,8 @@
 import json
 import pandas as pd
 
-from .scanners.actual_param import ActualParam
-from .scanners.root_expression import RootExpression
+from .state_machines.actual_param import ActualParam
+from .state_machines.root_expression import RootExpression
 from .context import Ctx
 
 class Scanner:

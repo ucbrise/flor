@@ -1,4 +1,4 @@
-from .. import generate as gen
+from .. import util as gen
 import ast
 
 class LogStmt():

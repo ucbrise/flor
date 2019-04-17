@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='subcommand')
 
 python_parser = subparsers.add_parser('python')
-python_parser.add_argument("path", help="The path to the model training pipeline to execute")
+python_parser.add_argument("path", help="The path to the stateful training pipeline to execute")
 python_parser.add_argument("name", help="The name of the experiment to run")
 python_parser.add_argument("-d", "--depth_limit", type=int, help="Depth limit the logging")
 

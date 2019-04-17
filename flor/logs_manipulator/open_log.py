@@ -1,7 +1,7 @@
 from flor.constants import *
 from flor.face_library.flog import Flog
 from flor.utils import cond_mkdir, refresh_tree, cond_rmdir
-from flor.model import get, put
+from flor.stateful import get, put
 import os
 import datetime
 import json

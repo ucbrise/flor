@@ -1,6 +1,6 @@
 from .log_stmt import LogStmt
 import ast
-from .. import generate as gen
+from .. import util as gen
 
 class BoolExp(LogStmt):
 

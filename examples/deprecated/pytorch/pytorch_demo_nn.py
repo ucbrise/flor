@@ -59,7 +59,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=log.param(learning_rate))
 
-    # Train the model
+    # Train the stateful
     total_step = len(train_loader)
     for epoch in range(num_epochs):
         for i, (images, labels) in enumerate(train_loader):
@@ -81,7 +81,7 @@ def main():
                 log.metric(i)
                 log.metric(loss.item())
 
-    # Test the model
+    # Test the stateful
     # In test phase, we don't need to compute gradients (for memory efficiency)
     with torch.no_grad():
         correct = 0

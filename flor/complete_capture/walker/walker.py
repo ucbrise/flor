@@ -1,4 +1,4 @@
-from flor.dynamic_capture.transformer import LibTransformer, ClientTransformer
+from flor.complete_capture.transformer import LibTransformer, ClientTransformer
 
 import tempfile
 import os

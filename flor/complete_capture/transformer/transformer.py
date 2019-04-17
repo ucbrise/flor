@@ -1,6 +1,6 @@
 import ast
 import astor
-from flor.dynamic_capture.generator import *
+from flor.complete_capture.trace_generator import *
 
 class ClientTransformer(ast.NodeTransformer):
     # TODO: Implement YIELD for Client
