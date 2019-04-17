@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 
 from .scanners.actual_param import ActualParam
 from .scanners.root_expression import RootExpression
@@ -17,6 +18,14 @@ class Scanner:
 
     def register_state_machine(self, fsm):
         self.state_machines.append(fsm)
+
+    def register_ActualParam(self, *args, **kwargs):
+        self.state_machines.append(ActualParam(*args, **kwargs))
+        return self.state_machines[-1]
+
+    def register_RootExpression(self, *args, **kwargs):
+        self.state_machines.append(RootExpression(*args, **kwargs))
+        return self.state_machines[-1]
 
     def scan(self, log_record):
         # log_record is a dictionary
@@ -52,6 +61,7 @@ class Scanner:
             for fsm in self.state_machines:
                 out = fsm.consume_data(log_record, self.trailing_ctx, self.contexts)
                 if out:
+                    out = {fsm.name: list(out.values()).pop()}
                     self.collected.append({id(fsm): out})
 
     def scan_log(self):
@@ -95,4 +105,23 @@ class Scanner:
                         break
                 row = new_row
         rows.append(row)
-        return rows
+        # post-proc
+        rows2 = []
+        for row in rows:
+            row2 = []
+            for each in row:
+                row2.append(list(each.values()).pop())
+            rows2.append(row2)
+        return rows2
+
+    def to_df(self):
+        rows = self.to_rows()
+        d = {}
+        for row in rows:
+            for each in row:
+                k = list(each.keys()).pop()
+                if k not in d:
+                    d[k] = [each[k],]
+                else:
+                    d[k].append(each[k])
+        return pd.DataFrame(d)

@@ -8,7 +8,7 @@ class ActualParam(ScannerType):
     For the context-specific call to that function, not every invocation of that function
     """
 
-    def __init__(self, file_path, class_ctx, func_ctx, prev_lsn, follow_lsn, func_name, pos_kw):
+    def __init__(self, name, file_path, class_ctx, func_ctx, prev_lsn, func_name, pos_kw):
         """
 
         :param file_path: file path of pre-annotated source where the highlight appears
@@ -21,18 +21,18 @@ class ActualParam(ScannerType):
         :param func_name: The name of the function that the highlighted actual param is passed to
         :param pos_kw: {'pos': int} or {'kw': str} ... To resolve the value of the parameter
         """
+        super().__init__()
+        self.name = name
         self.file_path = file_path
         self.class_ctx = class_ctx
         self.func_ctx = func_ctx
         self.prev_lsn = prev_lsn
-        self.follow_lsn = follow_lsn
         self.func_name = func_name
         self.pos_kw = pos_kw
 
         # State
         self.func_enabled = False
         self.prev_lsn_enabled = False
-
 
     def _ancestor_is_enabled(self, contexts):
         if contexts:
@@ -107,14 +107,12 @@ class ActualParam(ScannerType):
                     for single_dict in params:
                         k = list(single_dict.keys()).pop()
                         if int(k.split('.')[0]) == self.pos_kw['pos']:
-                            print("It's a match: {}".format(single_dict))
                             return single_dict
                 else:
                     assert 'kw' in self.pos_kw
                     for single_dict in params:
                         k = list(single_dict.keys()).pop()
                         if k.split('.')[2] == self.pos_kw['kw']:
-                            print("It's a match: {}".format(single_dict))
                             return single_dict
 
 
