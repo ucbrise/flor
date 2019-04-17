@@ -63,7 +63,6 @@ class Scanner:
     def to_rows(self):
         #TODO: missing robust Dataflow analysis
         """
-        E
         x, y, z could be:
         *----*----*----*
         | x0 | .  | z0 |

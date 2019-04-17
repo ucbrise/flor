@@ -1,4 +1,3 @@
-import argparse
 import os
 import shutil
 
@@ -6,15 +5,7 @@ from flor.versioner.versioner import Versioner
 from flor.dynamic_capture.walker import Walker
 from flor.face_user.open_log import OpenLog
 
-parser = argparse.ArgumentParser()
-parser.add_argument("path", help="The path to the model training pipeline to execute")
-parser.add_argument("name", help="The name of the experiment to run")
-parser.add_argument("-d", "--depth_limit", type=int, help="Depth limit the logging")
-
-
-args = parser.parse_args()
-
-if __name__ == '__main__':
+def exec_flython(args):
     # Get path and check
     full_path = os.path.abspath(args.path)
     assert os.path.splitext(os.path.basename(full_path))[1] == '.py'
