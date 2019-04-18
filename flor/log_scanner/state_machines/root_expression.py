@@ -1,4 +1,4 @@
-import cloudpickle
+import pickle as cloudpickle
 
 from .scanner_type import ScannerType
 

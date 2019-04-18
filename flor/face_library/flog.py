@@ -2,7 +2,7 @@ from flor.constants import *
 from .controller import Controller
 import os
 import json
-import cloudpickle
+import pickle as cloudpickle
 
 class Flog:
 
@@ -58,7 +58,7 @@ class Flog:
             if not license:
                 return "PASS"
         try:
-            # import cloudpickle
+
             out = str(cloudpickle.dumps(x))
             return out
         except:
