@@ -32,10 +32,13 @@ def exec_flython(args):
     ol = OpenLog(args.name, args.depth_limit)
 
     # Run code
-    spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    del module
+    try:
+        spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        del module
+    except:
+        print("Cleaning up...")
 
     # Model OpenLog Behavior TODO Add some fault tolerance
     ol.exit()
