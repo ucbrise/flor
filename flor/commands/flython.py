@@ -1,9 +1,12 @@
 import os
 import shutil
+import importlib
+from uuid import uuid4
 
 from flor.versioner.versioner import Versioner
 from flor.complete_capture.walker import Walker
 from flor.logs_manipulator.open_log import OpenLog
+
 
 def exec_flython(args):
     # Get path and check
@@ -29,7 +32,10 @@ def exec_flython(args):
     ol = OpenLog(args.name, args.depth_limit)
 
     # Run code
-    exec(open(full_path).read())
+    spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    del module
 
     # Model OpenLog Behavior TODO Add some fault tolerance
     ol.exit()
