@@ -21,18 +21,12 @@ class ActualParam(ScannerType):
         :param func_name: The name of the function that the highlighted actual param is passed to
         :param pos_kw: {'pos': int} or {'kw': str} ... To resolve the value of the parameter
         """
-        super().__init__()
-        self.name = name
-        self.file_path = file_path
-        self.class_ctx = class_ctx
-        self.func_ctx = func_ctx
-        self.prev_lsn = prev_lsn
+        super().__init__(name, file_path, class_ctx, func_ctx, prev_lsn)
         self.func_name = func_name
         self.pos_kw = pos_kw
 
         # State
         self.func_enabled = False
-        self.prev_lsn_enabled = False
 
     def _ancestor_is_enabled(self, contexts):
         if contexts:

@@ -22,16 +22,11 @@ class RootExpression(ScannerType):
                             the purpose is to narrow the scope of search and limit possibility of ambiguities
         :param follow_lsn: The lsn from which we want to extract data
         """
-        super().__init__()
-        self.name = name
-        self.file_path = file_path
-        self.class_ctx = class_ctx
-        self.func_ctx = func_ctx
-        self.prev_lsn = prev_lsn
+        super().__init__(name, file_path, class_ctx, func_ctx, prev_lsn)
         self.tuple_idx = tuple_idx
 
         #State
-        self.prev_lsn_enabled = False
+
 
     def consume_data(self, log_record, trailing_ctx, contexts):
         if trailing_ctx is not None and trailing_ctx.is_enabled(self):

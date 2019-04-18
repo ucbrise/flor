@@ -36,16 +36,22 @@ class Scanner:
             ctx.parent_ctx = self.trailing_ctx
             self.trailing_ctx = ctx
             self.trailing_ctx.file_path = log_record['file_path']
+            for fsm in self.state_machines:
+                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
         elif 'class_name' in log_record:
             self.trailing_ctx.class_ctx = log_record['class_name']
+            for fsm in self.state_machines:
+                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
         elif 'start_function' in log_record:
             self.trailing_ctx.func_ctx = log_record['start_function']
             self.contexts.append(self.trailing_ctx)
             for fsm in self.state_machines:
+                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
                 if isinstance(fsm, ActualParam):
                     fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
         elif 'end_function' in log_record:
             for fsm in self.state_machines:
+                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
                 if isinstance(fsm, ActualParam):
                     fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
             ctx = self.contexts.pop()
