@@ -20,7 +20,7 @@ def exec_flan(args):
     assert os.path.exists(log_path)
 
     for full_path in full_paths:
-        # Transform code
+        # Transform code TODO: what if library code is annotated? ClientTransformer will mismatch
         exec_path = _get_src_filename(full_path)
         transformer = ClientTransformer(exec_path)
         with open(full_path, 'r') as f:
