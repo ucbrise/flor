@@ -14,7 +14,7 @@ class Ctx:
                      or self.func_ctx == '__init__'))
 
     def __eq__(self, other):
-        return (self.file_path == other.file_path
+        return (other is not None and self.file_path == other.file_path
         and self.class_ctx == other.class_ctx
         and self.func_ctx == other.func_ctx
         and self.parent_ctx == other.parent_ctx)

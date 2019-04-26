@@ -32,7 +32,7 @@ class Visitor(ast.NodeVisitor):
         prev = self.func_ctx
         self.func_ctx = node.name
         self.generic_visit(node)
-        self.class_ctx = prev
+        self.func_ctx = prev
 
     def visit_Call(self, node):
         h = Handler(node)

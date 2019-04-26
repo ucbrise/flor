@@ -39,3 +39,4 @@ def exec_flan(args):
         #TODO : To join the tables in full_paths need to do DataFlow analysis
         target, _= os.path.splitext(os.path.basename(full_path))
         df.to_csv(target + '.csv')
+

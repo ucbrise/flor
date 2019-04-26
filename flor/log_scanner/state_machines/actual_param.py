@@ -28,11 +28,21 @@ class ActualParam(ScannerType):
         # State
         self.func_enabled = False
 
+    def _get_strict_ancestors(self, contexts):
+        assert len(contexts) >= 2
+        parent = contexts[-2].parent_ctx
+        if len(contexts) >= 3:
+            pred = contexts[-3]
+        else:
+            pred = None
+        return parent, pred
+
+
     def _ancestor_is_enabled(self, contexts):
         if contexts:
             ctx = contexts[-1].parent_ctx
             if len(contexts) >= 2:
-                while ctx is not contexts[-2]:
+                while ctx not in self._get_strict_ancestors(contexts):
                     if ctx.is_enabled(self):
                         return True
                     ctx = ctx.parent_ctx
@@ -47,13 +57,17 @@ class ActualParam(ScannerType):
         if 'start_function' in log_record:
             if log_record['start_function'] == self.func_name:
                 self.func_enabled = True
+                # print("func enabled")
             elif log_record['start_function'] == '__init__' and trailing_ctx.class_ctx == self.func_name:
                 self.func_enabled = True
+                # print("func_enabled")
         elif 'end_function' in log_record:
             if log_record['end_function'] == self.func_name:
                 self.func_enabled = False
+                # print("func_disabled")
             elif log_record['end_function'] == '__init__' and contexts[-1].class_ctx == self.func_name:
                 self.func_enabled = False
+                # print("func_disabled")
 
     def consume_data(self, log_record, trailing_ctx, contexts):
         """
@@ -65,10 +79,15 @@ class ActualParam(ScannerType):
         if trailing_ctx is not None and trailing_ctx.is_enabled(self):
             if log_record['lsn'] == self.prev_lsn:
                 self.prev_lsn_enabled = True
+                # print("prev_lsn_enabled")
             elif log_record['lsn'] == self.follow_lsn:
                 self.prev_lsn_enabled = False
+                # print("prev_lsn_disabled")
+        ffflag = self.prev_lsn_enabled and self.func_enabled
+        _ = ffflag or True
         if self._ancestor_is_enabled(contexts) and \
                 self.prev_lsn_enabled and self.func_enabled:
+            # print("collecting...")
             # active only means search
             if 'params' in log_record:
                 params = []
