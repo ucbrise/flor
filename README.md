@@ -1,5 +1,5 @@
 Flor
-=====
+======
 
 Flor is an easy to use logger and automatic version controller made for data scientists who write ML code. It helps you understand what alternatives you’ve tried, and with what results. It alleviates the burden of tracking the data, code, and parameters used to train a model, and associating such metadata with the model’s metrics, for each execution. Flor automatically tracks this context on every execution so your changes are **reversible** and **redo-able** – you can focus on exploration and composition.
 
