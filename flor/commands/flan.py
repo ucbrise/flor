@@ -21,6 +21,7 @@ def exec_flan(args):
 
     for full_path in full_paths:
         # Transform code TODO: what if library code is annotated? ClientTransformer will mismatch
+        #Solution: flor highlighter can provide info about where code comes from
         exec_path = _get_src_filename(full_path)
         transformer = ClientTransformer(exec_path)
         with open(full_path, 'r') as f:

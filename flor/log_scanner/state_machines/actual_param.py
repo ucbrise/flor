@@ -83,8 +83,6 @@ class ActualParam(ScannerType):
             elif log_record['lsn'] == self.follow_lsn:
                 self.prev_lsn_enabled = False
                 # print("prev_lsn_disabled")
-        ffflag = self.prev_lsn_enabled and self.func_enabled
-        _ = ffflag or True
         if self._ancestor_is_enabled(contexts) and \
                 self.prev_lsn_enabled and self.func_enabled:
             # print("collecting...")

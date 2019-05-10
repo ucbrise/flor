@@ -15,9 +15,10 @@ class ClientTransformer(ast.NodeTransformer):
         self.relative_counter = {'value': 0}
 
     def visit_ClassDef(self, node):
+        prev_class_name = self.classname
         self.classname = node.name
         new_node = self.generic_visit(node)
-        self.classname = None
+        self.classname = prev_class_name
         return new_node
 
     def visit_FunctionDef(self, node):
@@ -122,9 +123,10 @@ class LibTransformer(ast.NodeTransformer):
         self.relative_counter = {'value': 0}
 
     def visit_ClassDef(self, node):
+        prev_class_name = self.classname
         self.classname = node.name
         new_node = self.generic_visit(node)
-        self.classname = None
+        self.classname = prev_class_name
         return new_node
 
     def visit_FunctionDef(self, node):
