@@ -55,7 +55,8 @@ class Scanner:
                 if isinstance(fsm, ActualParam):
                     fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
             ctx = self.contexts.pop()
-            assert ctx.func_ctx == log_record['end_function']
+            assert ctx.func_ctx == log_record['end_function'], \
+                "Expected: {}, Actual: {}".format(ctx.func_ctx, log_record['end_function'] )
             if self.contexts:
                 self.trailing_ctx = self.contexts[-1]
             else:
