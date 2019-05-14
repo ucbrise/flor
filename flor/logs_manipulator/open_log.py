@@ -1,7 +1,7 @@
 from flor.constants import *
 from flor.face_library.flog import Flog
 from flor.utils import cond_mkdir, refresh_tree, cond_rmdir
-from flor.stateful import get, put
+from flor.stateful import get, put, start
 import os
 import datetime
 import json
@@ -9,6 +9,7 @@ import json
 class OpenLog:
 
     def __init__(self, name, depth_limit=0):
+        start()
         self.name = name
         cond_mkdir(os.path.join(FLOR_DIR, name))
         refresh_tree(FLOR_CUR)

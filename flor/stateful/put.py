@@ -1,9 +1,5 @@
-from flor.constants import *
-import flor.utils as utils
-import json
+from . import shared
 
 def put(k, v):
-    utils.cond_mkdir(MODEL_DIR)
-    with open(os.path.join(MODEL_DIR, k), 'w') as f:
-        json.dump(v, f)
+    setattr(shared.shared_state, k, v)
 

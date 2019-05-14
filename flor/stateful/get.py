@@ -1,11 +1,4 @@
-from flor.constants import *
-import flor.utils as utils
-import json
+from . import shared
 
 def get(k):
-    try:
-        with open(os.path.join(MODEL_DIR, k), 'r') as f:
-            v = json.load(f)
-        return v
-    except:
-        return Null
+    return getattr(shared.shared_state, k)
