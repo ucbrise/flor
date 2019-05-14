@@ -37,7 +37,8 @@ def exec_flython(args):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         del module
-    except:
+    except Exception as e:
+        print(e)
         print("Cleaning up...")
 
     # Model OpenLog Behavior TODO Add some fault tolerance

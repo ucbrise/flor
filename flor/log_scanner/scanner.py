@@ -15,6 +15,35 @@ class Scanner:
         self.contexts = [] # Models current stack frame
 
         self.collected = []
+        self.line_number = -1
+
+    @staticmethod
+    def is_subset(ours, theirs):
+        """
+        :param ours: A subset of self.contexts -- Most recent element at tail
+        :param theirs: A subset of the Python stack found in log_record['catch_stack_frame'] -- Most recent element at head
+        :return: Boolean
+        """
+        assert isinstance(ours, list)
+        assert isinstance(theirs, list)
+
+        if not ours:
+            # An empty set is a subset of any set.
+            return True
+        if not theirs:
+            # ours is not empty but theirs is
+            return False
+
+        try:
+            func_name = ours[-1].func_ctx
+            if func_name is not None:
+                i = theirs.index(func_name)
+                return Scanner.is_subset(ours[0:-1], theirs[i+1:])
+            else:
+                return Scanner.is_subset(ours[0:-1], theirs)
+        except ValueError:
+            # string is not in list
+            return False
 
     def register_state_machine(self, fsm):
         self.state_machines.append(fsm)
@@ -56,13 +85,28 @@ class Scanner:
                     fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
             ctx = self.contexts.pop()
             assert ctx.func_ctx == log_record['end_function'], \
-                "Expected: {}, Actual: {}".format(ctx.func_ctx, log_record['end_function'] )
+                "For log record {} ... Expected: {}, Actual: {}".format(self.line_number,
+                                                                        log_record['end_function'], ctx.func_ctx)
             if self.contexts:
                 self.trailing_ctx = self.contexts[-1]
             else:
                 while ctx.parent_ctx is not None:
                     ctx = ctx.parent_ctx
                 self.trailing_ctx = ctx
+        elif 'catch_stack_frame' in log_record:
+            # Enfore that the Scanner Stack is a subset of the Python Stack
+            # TODO: This approach will be an approximation unless we Flor-transform all of Python
+            # Recursive solution to the problem.
+            start_len = len(self.contexts)
+            theirs = log_record['catch_stack_frame']
+            while self.contexts and not self.is_subset(self.contexts, theirs):
+                # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
+                self.contexts.pop()
+                if self.contexts:
+                    self.trailing_ctx = self.contexts[-1]
+                else:
+                    self.trailing_ctx = None
+            assert start_len == 0 or len(self.contexts) > 0, 'Could not align Scanner stack frame with Python stack frame'
         else:
             # Conditionally consume data log record
             for fsm in self.state_machines:
@@ -73,7 +117,8 @@ class Scanner:
 
     def scan_log(self):
         with open(self.log_path, 'r') as f:
-            for line in f:
+            for idx, line in enumerate(f):
+                self.line_number = idx + 1
                 log_record = json.loads(line.strip())
                 self.scan(log_record)
 

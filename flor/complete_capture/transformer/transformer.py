@@ -69,6 +69,13 @@ class ClientTransformer(ast.NodeTransformer):
         nodes_module.body.append(ret_stmt)
         return nodes_module.body
 
+    def visit_ExceptHandler(self, node):
+        body = ExceptHandler(self.relative_counter).parse()
+        new_node = self.generic_visit(node)
+        body.extend(new_node.body)
+        new_node.body = body
+        return new_node
+
     def generic_visit(self, node):
         for field, old_value in ast.iter_fields(node):
             if isinstance(old_value, list):
@@ -187,11 +194,20 @@ class LibTransformer(ast.NodeTransformer):
         nodes_module = Yield(node).parse()
         nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 2:
+            nodes_module.body.extend(self.fd.parse_heads())
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
         nodes_module = self.generic_visit(nodes_module)
         nodes_module.body.append(ret_stmt)
+        nodes_module.body.extend(self.fd.parse_heads())
         return nodes_module.body
+
+    def visit_ExceptHandler(self, node):
+        body = ExceptHandler(self.relative_counter).parse()
+        new_node = self.generic_visit(node)
+        body.extend(new_node.body)
+        new_node.body = body
+        return new_node
 
     def generic_visit(self, node):
         if self.active:
