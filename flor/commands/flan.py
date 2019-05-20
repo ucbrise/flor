@@ -7,7 +7,11 @@ from flor.state_machine_generator import Visitor
 def _get_src_filename(full_path):
     with open(full_path, 'r') as f:
         line = f.readline().strip()
-    return line.split('#')[1]
+    parts = line.split('#')[1]
+    #TODO: This is where we check that the file we are reading is valid output of Flor highlight
+    assert len(parts) > 1, "Invalid annotation file. Did you call `flor cp source.py target.py` first?\n" \
+                           "The annotation file is `target.py`."
+    return parts[1]
 
 def exec_flan(args):
     # Get path and check
