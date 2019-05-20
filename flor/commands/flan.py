@@ -7,7 +7,7 @@ from flor.state_machine_generator import Visitor
 def _get_src_filename(full_path):
     with open(full_path, 'r') as f:
         line = f.readline().strip()
-    parts = line.split('#')[1]
+    parts = line.split('#')
     #TODO: This is where we check that the file we are reading is valid output of Flor highlight
     assert len(parts) > 1, "Invalid annotation file. Did you call `flor cp source.py target.py` first?\n" \
                            "The annotation file is `target.py`."
@@ -44,4 +44,6 @@ def exec_flan(args):
         #TODO : To join the tables in full_paths need to do DataFlow analysis
         target, _= os.path.splitext(os.path.basename(full_path))
         df.to_csv(target + '.csv')
+
+
 
