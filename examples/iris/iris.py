@@ -1,23 +1,36 @@
-import flor
 from sklearn import datasets
 from sklearn import svm
 from sklearn.model_selection import train_test_split
+from flor import OpenLog
 
-log = flor.log
+import time
+start_time = time.time()
 
 
-@flor.track
-def fit_and_score_model(gamma, C, test_size, random_state):
+with OpenLog('iris_raw', depth_limit=2):
+    from flor import Flog
+    if Flog.flagged():
+        flog = Flog()
+    Flog.flagged() and flog.write({'file_path':
+        '/Users/rogarcia/git/flor/examples/iris/iris.py'})
 
     iris = datasets.load_iris()
+    Flog.flagged() and flog.write({'locals': [{'iris': flog.serialize(iris)
+        }], 'lineage': 'iris = datasets.load_iris()'})
     X_tr, X_te, y_tr, y_te = train_test_split(iris.data, iris.target,
-                                                  test_size=log.param(test_size),
-                                                  random_state=log.param(random_state))
-
-    clf = svm.SVC(gamma=log.param(gamma), C=log.param(C))
+        test_size=0.15, random_state=430)
+    Flog.flagged() and flog.write({'locals': [{'X_tr': flog.serialize(X_tr)
+        }, {'X_te': flog.serialize(X_te)}, {'y_tr': flog.serialize(y_tr)},
+        {'y_te': flog.serialize(y_te)}], 'lineage':
+        'X_tr, X_te, y_tr, y_te = train_test_split(iris.data, iris.target, test_size=0.15, random_state=430)'
+        })
+    clf = svm.SVC(gamma=0.001, C=100.0)
+    Flog.flagged() and flog.write({'locals': [{'clf': flog.serialize(clf)}],
+        'lineage': 'clf = svm.SVC(gamma=0.001, C=100.0)'})
     clf.fit(X_tr, y_tr)
+    score = clf.score(X_te, y_te)
+    Flog.flagged() and flog.write({'locals': [{'score': flog.serialize(score)}], 'lineage': 'score = clf.score(X_te, y_te)'})
+    print(score)
 
-    score = log.metric(clf.score(X_te, y_te))
 
-with flor.Context('iris'):
-    fit_and_score_model(gamma=0.001, C=100.0, test_size=0.15, random_state=430)
+print('--- %s seconds ---' % (time.time() - start_time))
