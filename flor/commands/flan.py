@@ -23,6 +23,7 @@ def exec_flan(args):
     log_path = os.path.join(os.path.expanduser('~'), '.flor', args.name, 'log.json')
     assert os.path.exists(log_path)
 
+    visitors = []
     for full_path in full_paths:
         # Transform code TODO: what if library code is annotated? ClientTransformer will mismatch
         #Solution: flor highlighter can provide info about where code comes from
@@ -35,12 +36,14 @@ def exec_flan(args):
         # Generate State machines
         visitor = Visitor(exec_path, log_path)
         visitor.visit(new_astree)
+        visitors.append(visitor)
 
-        # Scan the log
-        visitor.scanner.scan_log()
-        df = visitor.scanner.to_df()
-        #TODO: we will want to join the tables across file highlights
-            # This corresponds to a function in one file calling out to a function in another file
-        #TODO : To join the tables in full_paths need to do DataFlow analysis
-        target, _= os.path.splitext(os.path.basename(full_path))
-        df.to_csv(target + '.csv')
+    consolidated_scanner = visitors.pop(0).scanner
+    for visitor in visitors:
+        consolidated_scanner.state_machines.extend(visitor.scanner.state_machines)
+
+    # Scan the log
+    consolidated_scanner.scan_log()
+    df = consolidated_scanner.to_df()
+    target = args.name
+    df.to_csv(target + '.csv')
