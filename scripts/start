@@ -1,0 +1,2 @@
+#!/bin/bash
+conda create --name flor --clone base

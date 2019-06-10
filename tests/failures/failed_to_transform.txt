@@ -1,0 +1,6 @@
+/anaconda3/envs/flor/lib/python3.7/site-packages/prompt_toolkit/application/application.py
+/anaconda3/envs/flor/lib/python3.7/site-packages/xlrd/book.py
+/anaconda3/envs/flor/lib/python3.7/site-packages/numba/tests/test_multi3.py
+/anaconda3/envs/flor/lib/python3.7/site-packages/anaconda_project/internal/http_client.py
+/anaconda3/envs/flor/lib/python3.7/site-packages/scipy/stats/_continuous_distns.py
+/anaconda3/envs/flor/lib/python3.7/site-packages/ipykernel/ipkernel.py

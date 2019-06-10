@@ -1,7 +1,7 @@
 import ast
 import astor
 
-from state_machine_generator.handler import Handler
+from flor.state_machine_generator.handler import Handler
 from flor.log_scanner.scanner import Scanner
 
 class Visitor(ast.NodeVisitor):

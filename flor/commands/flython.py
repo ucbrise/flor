@@ -38,6 +38,8 @@ def exec_flython(args):
         spec.loader.exec_module(module)
         del module
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(e)
         print("Cleaning up...")
 
