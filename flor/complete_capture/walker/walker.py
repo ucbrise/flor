@@ -1,4 +1,5 @@
 from flor.complete_capture.transformer import LibTransformer, ClientTransformer
+from flor.constants import *
 
 import tempfile
 import os
@@ -6,12 +7,28 @@ import shutil
 import ast
 import astor
 
+
 class Walker():
 
     def __init__(self, rootpath):
+
+        def transformer_parameterizer(src_root, dst_root):
+            src_root = src_root.split(os.path.sep)
+            dst_root = dst_root.split(os.path.sep)
+            def transformer(dst_path):
+                dst_path = dst_path.split(os.path.sep)
+                return os.path.sep.join(src_root + dst_path[len(dst_root) :])
+            return transformer
+
+
         self.rootpath = os.path.abspath(rootpath)
         self.targetbasis = tempfile.mkdtemp(prefix='florist')
         self.targetpath = os.path.join(self.targetbasis, os.path.basename(self.rootpath))
+
+        with open(os.path.join(FLOR_DIR, '.conda_map'), 'r') as f:
+            src_root, dst_root = f.read().strip().split(',')
+
+        self.transformer = transformer_parameterizer(src_root, dst_root)
 
         shutil.copytree(self.rootpath, self.targetpath)
 
@@ -89,7 +106,7 @@ class Walker():
                     lib_code and print('transforming {}'.format(os.path.join(src_root, file)))
                     try:
                         if lib_code:
-                            transformer = LibTransformer(os.path.join(src_root, file))
+                            transformer = LibTransformer(self.transformer(os.path.join(src_root, file)))
                         else:
                             transformer = ClientTransformer(os.path.join(src_root, file))
                         try:

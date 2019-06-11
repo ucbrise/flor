@@ -1,8 +1,16 @@
 Flor
 ======
 
-Flor is an easy to use logger and automatic version controller made for data scientists who write ML code. It helps you understand what alternatives you’ve tried, and with what results. It alleviates the burden of tracking the data, code, and parameters used to train a model, and associating such metadata with the model’s metrics, for each execution. Flor automatically tracks this context on every execution so your changes are **reversible** and **redo-able** – you can focus on exploration and composition.
+Flor is a diagnostics and sharing system for the Machine Learning Lifecycle.
+Flor transparently captures complete execution traces (CETs) and surfaces them as relational tables with minimal human guidance.
+You can run SQL queries over CETs by annotating your code with log statements --- after your code executes.
+Run your ML code with confidence: you won't forget to track something important.
+When you need the value of some expression in your code, just click on it and give it a name, we'll do ETL.
+Ask your questions in SQL.
 
+Flor is a work in progress.
+You are welcome to try it now and give us feedback via Github Issues.
+We're working on making Flor run faster, without sacrificing completeness, transparency, or ease of use.
 [Learn more](https://flor.readthedocs.io)
 
 ## License
