@@ -6,9 +6,16 @@ from uuid import uuid4
 from flor.versioner.versioner import Versioner
 from flor.complete_capture.walker import Walker
 from flor.logs_manipulator.open_log import OpenLog
-
+from flor.constants import *
 
 def exec_flython(args):
+
+    if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
+        print("Flor hasn't been installed.")
+        print("From Python: You may run the function flor.install()")
+        print("From CLI: You may run the pyflor_install script")
+        import sys; sys.exit(0)
+
     # Get path and check
     full_path = os.path.abspath(args.path)
     assert os.path.splitext(os.path.basename(full_path))[1] == '.py'

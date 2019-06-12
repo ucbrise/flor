@@ -11,3 +11,4 @@ astor>=0.6
 astunparse>=1.6.1
 ipykernel
 notebook
+conda
