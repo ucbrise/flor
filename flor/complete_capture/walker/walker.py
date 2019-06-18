@@ -113,7 +113,7 @@ class Walker():
         for ((src_root, _, _), (dest_root, dirs, files)) in zip(os.walk(self.rootpath), os.walk(self.targetpath)):
             for file in files:
                 _, ext = os.path.splitext(file)
-                if ext == '.py' and keep(os.path.join(src_root, file)):
+                if ext == '.py' and patch_keep(os.path.join(src_root, file)):
                     lib_code and print('transforming {}'.format(os.path.join(src_root, file)))
                     try:
                         if lib_code:
