@@ -148,6 +148,12 @@ class LibTransformer(ast.NodeTransformer):
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
             new_node = self.generic_visit(node)
+
+            # Does function contain docstring?
+            if ast.get_docstring(new_node) is not None:
+                heads.insert(0, new_node.body[0])
+
+
             heads.extend(new_node.body)
             new_node.body = heads
             if isinstance(new_node.body[-1], ast.Pass):

@@ -32,17 +32,14 @@ def main(args=None):
     if args is None:
         args = parser.parse_args()
 
-    try:
-        if args.subcommand == 'python':
-            exec_flython(args)
-        elif args.subcommand == 'etl':
-            exec_flan(args)
-        elif args.subcommand == 'cp':
-            exec_cp(args)
-        else:
-            raise ValueError("Invalid option: {}".format(args.subcommand))
-    except:
-        pass
+    if args.subcommand == 'python':
+        exec_flython(args)
+    elif args.subcommand == 'etl':
+        exec_flan(args)
+    elif args.subcommand == 'cp':
+        exec_cp(args)
+    else:
+        raise ValueError("Invalid option: {}".format(args.subcommand))
 
 def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
     import pip

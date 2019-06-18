@@ -98,6 +98,17 @@ class Walker():
                 if keep_element == abs_path[0:len(keep_element)]: return True
             return False
 
+        def patch_keep(abs_path):
+            if not lib_code:
+                return True
+
+            j = os.path.join
+            ROOT = 'site-packages'
+
+            KEEP_SET = {'sklearn'
+                        }
+
+
         lib_code and print("Target directory at: {}".format(self.targetpath))
         for ((src_root, _, _), (dest_root, dirs, files)) in zip(os.walk(self.rootpath), os.walk(self.targetpath)):
             for file in files:

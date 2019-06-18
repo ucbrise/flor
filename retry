@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 rm -rf /var/folders/9k/v6q2q7jd03qfr1v6rp7tvvk40000gn/T/florist*;
+rm -rf ~/.flor
 set -e;
 conda env remove --name flor;
 pip uninstall pyflor -y;
-
+rm -rf dist/
