@@ -40,6 +40,7 @@ class Walker():
 
         self.rootpath = os.path.abspath(rootpath)
 
+
         with open(os.path.join(FLOR_DIR, '.conda_map'), 'r') as f:
             src_root, dst_root = f.read().strip().split(',')
 
@@ -157,6 +158,13 @@ class Walker():
                                 astree = ast.parse(save_in_case)
                         new_astree = transformer.visit(astree)
                         to_source = astor.to_source(new_astree)
+
+                        # Conda symlinks --- no copy. We need to remove symlink first
+                        try:
+                            os.unlink(os.path.join(src_root, file))
+                        except:
+                            pass
+                        # Now we can write without disturbing source conda.
                         try:
                             with open(os.path.join(src_root, file), 'w') as f:
                                 f.write(to_source)
