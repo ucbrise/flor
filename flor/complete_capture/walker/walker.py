@@ -105,8 +105,17 @@ class Walker():
             j = os.path.join
             ROOT = 'site-packages'
 
-            KEEP_SET = {'sklearn'
-                        }
+            KEEP_SET = {'sklearn',}
+
+            abs_path = abs_path.split(os.path.sep)
+            abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
+
+            # for skip_element in SKIP_SET:
+            #     if skip_element == abs_path[0:len(skip_element)]: return False
+            # return True
+            for keep_element in KEEP_SET:
+                if keep_element == abs_path[0:len(keep_element)]: return True
+            return False
 
 
         lib_code and print("Target directory at: {}".format(self.targetpath))
