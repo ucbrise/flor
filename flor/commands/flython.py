@@ -28,13 +28,6 @@ def exec_flython(args):
     walker = Walker(os.path.dirname(full_path))
     walker.compile_tree(lib_code=False) # Transformed code in walker.targetpath
 
-    # Overwrite current directory
-    current_dir = os.getcwd()
-    os.chdir(os.path.dirname(os.path.dirname(full_path)))
-    shutil.rmtree(os.path.dirname(full_path))
-    shutil.copytree(walker.targetpath, os.path.dirname(full_path))
-    os.chdir(current_dir)
-
     # Model OpenLog Behavior
     ol = OpenLog(args.name, args.depth_limit)
 

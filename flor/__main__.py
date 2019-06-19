@@ -113,9 +113,6 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
     walker = Walker(env_path)
     walker.compile_tree()
 
-    shutil.rmtree(env_path)
-    shutil.move(walker.targetpath, env_path)
-
     print("Install succeeded.")
 
     print("Please append the following line to your shell configuration file:\n"
