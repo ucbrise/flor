@@ -22,4 +22,5 @@ grit/python/tests/
 *.json
 rtd/_build
 pyflor.egg-info/
-
+profiler/data1/
+profiler/data2/
