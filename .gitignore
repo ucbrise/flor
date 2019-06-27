@@ -24,3 +24,5 @@ rtd/_build
 pyflor.egg-info/
 profiler/data1/
 profiler/data2/
+.pytest_cache/
+

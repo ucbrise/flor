@@ -1,3 +1,8 @@
+![Travis](https://travis-ci.org/ucbrise/flor.svg?branch=travis)
+![Python37](https://img.shields.io/badge/python-3.7-blue.svg) 
+[![](https://badge.fury.io/py/pyflor.svg)](https://pypi.org/project/pyflor/)
+[![codecov](https://codecov.io/gh/ucbrise/flor/branch/master/graph/badge.svg)](https://codecov.io/gh/ucbrise/flor)
+
 Flor
 ======
 
