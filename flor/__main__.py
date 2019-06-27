@@ -4,6 +4,7 @@ from flor.commands.flan import exec_flan
 from flor.commands.cp import exec_cp
 import sys
 import shutil
+import os
 from flor.complete_capture.walker import Walker
 from flor import utils
 from flor.constants import *
@@ -42,18 +43,30 @@ def main(args=None):
         raise ValueError("Invalid option: {}".format(args.subcommand))
 
 def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
-    import pip
 
-    def _install(package):
-        if hasattr(pip, 'main'):
-            pip.main(['install', package])
-        else:
-            pip._internal.main(['install', package])
+    def make_conda_map(d, base_env_path, env_path):
+        utils.cond_mkdir(d)
+        with open(os.path.join(d, '.conda_map'), 'w') as f:
+            # Storing the map src conda -> dst conda
+            # This will be used for flor cp, so the user sees the pre-transformed code.
+            f.write(base_env_path + ',' + env_path + '\n')
+
+    if os.path.isdir(FLOR_SHARE):
+        # initialize flor in current directory but do nothing else
+        with open(os.path.join(FLOR_SHARE, '.conda_map'), 'r') as f:
+            src_root, dst_root = f.read().strip().split(',')
+        make_conda_map(FLOR_DIR, src_root, dst_root)
+        return
+
+    import pip
 
     try:
         import conda.cli.python_api
     except ImportError:
-        _install('conda')
+        if hasattr(pip, 'main'):
+            pip.main(['install', 'conda'])
+        else:
+            pip._internal.main(['install', 'conda'])
         import conda.cli.python_api
 
     print("The Flor installer needs to copy and transform an anaconda environment.\n"
@@ -102,11 +115,9 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
     assert env_path is not None
     assert base_env_path is not None
 
-    utils.cond_mkdir(FLOR_DIR)
-    with open(os.path.join(FLOR_DIR, '.conda_map'), 'w') as f:
-        # Storing the map src conda -> dst conda
-        # This will be used for flor cp, so the user sees the pre-transformed code.
-        f.write(base_env_path + ',' + env_path + '\n')
+
+    make_conda_map(FLOR_SHARE, base_env_path, env_path)
+    make_conda_map(FLOR_DIR, base_env_path, env_path)
 
     env_path = os.path.join(env_path, 'lib', 'python' + python_version, 'site-packages')
 
