@@ -42,7 +42,7 @@ def main(args=None):
     else:
         raise ValueError("Invalid option: {}".format(args.subcommand))
 
-def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
+def install(base_conda='base', conda_flor_env='flor', python_version='3.7', multiuser=False):
 
     def make_conda_map(d, base_env_path, env_path):
         utils.cond_mkdir(d)
@@ -51,7 +51,8 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
             # This will be used for flor cp, so the user sees the pre-transformed code.
             f.write(base_env_path + ',' + env_path + '\n')
 
-    if os.path.isdir(FLOR_SHARE):
+
+    if multiuser and os.path.isdir(FLOR_SHARE):
         # initialize flor in current directory but do nothing else
         with open(os.path.join(FLOR_SHARE, '.conda_map'), 'r') as f:
             src_root, dst_root = f.read().strip().split(',')
@@ -116,7 +117,7 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7'):
     assert base_env_path is not None
 
 
-    make_conda_map(FLOR_SHARE, base_env_path, env_path)
+    multiuser and make_conda_map(FLOR_SHARE, base_env_path, env_path)
     make_conda_map(FLOR_DIR, base_env_path, env_path)
 
     env_path = os.path.join(env_path, 'lib', 'python' + python_version, 'site-packages')
