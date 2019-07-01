@@ -4,7 +4,7 @@ import ast
 
 HEADER = """
 from flor import Flog
-if Flog.flagged(): flog = Flog(False)
+if Flog.flagged(option='nofork'): flog = Flog(False)
 """
 
 class ClientRoot(LogStmt):

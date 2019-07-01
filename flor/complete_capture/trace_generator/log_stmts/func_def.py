@@ -4,7 +4,7 @@ import ast
 
 HEADER = """
 from flor import Flog
-if Flog.flagged(): flog = Flog()
+if Flog.flagged(option='nofork'): flog = Flog()
 """
 
 class FuncDef(LogStmt):
