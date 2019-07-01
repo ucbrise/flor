@@ -16,7 +16,7 @@ setuptools.setup(
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
-     packages=setuptools.find_packages(),
+     packages=[p for p in setuptools.find_packages() if p != 'tests'],
      install_requires = requirements,
      classifiers = [
          "Programming Language :: Python :: 3",
