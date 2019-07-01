@@ -70,5 +70,7 @@ class Flog:
         return os.path.join(FLOR_DIR, name, 'log.json')
 
     @staticmethod
-    def flagged():
+    def flagged(option: str = None):
+        if option == 'nofork':
+            return not not os.listdir(FLOR_CUR)
         return not not os.listdir(FLOR_CUR)
