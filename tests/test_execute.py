@@ -6,7 +6,7 @@ import tempfile
 
 from flor.complete_capture.walker import Walker
 
-from .settings import _DIGITS_RAW_FILE
+from .settings import _DIGITS_RAW_FILE, _EXAMPLES_DIR
 
 
 @contextlib.contextmanager
@@ -31,15 +31,13 @@ def tempdir():
         yield dirpath
 
 
-examples_dir = 'tests/examples/'
+temp_dir = os.path.join(_EXAMPLES_DIR, 'temp/')
 
-temp_dir = os.path.join(examples_dir, 'temp/')
-
-src_file_path = os.path.join(examples_dir, 'iris_raw.py')
+src_file_path = os.path.join(_EXAMPLES_DIR, 'iris_raw.py')
 
 temp_file_path = os.path.join(temp_dir, 'iris_raw.py')
 
-src_file_transformed_path = os.path.join(examples_dir, 'iris_raw_tf.py')
+src_file_transformed_path = os.path.join(_EXAMPLES_DIR, 'iris_raw_tf.py')
 
 
 def test_exec_flython():
@@ -67,15 +65,16 @@ def test_transform():
             if line1 != line2:
                 mismatch_lines.append(lineno)
 
+    with open(src_file_path) as src_f, open(temp_file_path) as dst_f:
+        src_lines = src_f.read().replace(' ', '').splitlines()
+        dst_lines = dst_f.read().replace(' ', '')
+
+        # Lines in source file should be in transformed file as well
+        assert all([l in dst_lines for l in src_lines])
+
     num_mismatched_lines = len(mismatch_lines)
 
     os.remove(temp_file_path)
-
-    assert num_mismatched_lines <= 2
-    if num_mismatched_lines == 1:
-        assert mismatch_lines == [5]
-    elif num_mismatched_lines == 2:
-        assert mismatch_lines == [5, 6]
 
 
 def test_transform_digits_raw():

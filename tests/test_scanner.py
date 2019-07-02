@@ -6,14 +6,12 @@ from flor.log_scanner.context import Ctx
 
 from flor.log_scanner.scanner import Scanner
 
-from . import settings
+from .settings import _LOGS_DIR
 
-settings.init()
+with ZipFile(_LOGS_DIR + 'log.json.zip', 'r') as zipObj:
+    zipObj.extractall(_LOGS_DIR)
 
-with ZipFile(settings.logs_dir + 'log.json.zip', 'r') as zipObj:
-    zipObj.extractall(settings.logs_dir)
-
-log_file_path = settings.logs_dir + 'log.json'
+log_file_path = _LOGS_DIR + 'log.json'
 
 
 def test_is_subset():
