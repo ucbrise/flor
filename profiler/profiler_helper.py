@@ -8,8 +8,7 @@ import re
 import importlib
 
 # The module below implements a function that identifies which modules are C Extensions
-import \
-    c_extens  # thanks https://stackoverflow.com/questions/20339053/in-python-how-can-one-tell-if-a-module-comes-from-a-c-extension
+import c_extens  # thanks https://stackoverflow.com/questions/20339053/in-python-how-can-one-tell-if-a-module-comes-from-a-c-extension
 
 
 def get_raw_output(source):
@@ -45,7 +44,6 @@ def to_df(raw: str) -> pd.DataFrame:
     # we rename for pandas
     columns[5] = 'plf'  # p: path, l: lineno, f: function
 
-    import re
     tabular = [re.split('\s\s+', line) for line in tabular_raw[1:]]
 
     # preprocess
@@ -60,12 +58,19 @@ def to_df(raw: str) -> pd.DataFrame:
             n, s = last[0:split_idx], last[split_idx + 1:]
             line.append(n)
             line.append(s)
-            assert len(line) == len(columns), "i: {}, len: {} --- {}".format(i, len(line), line)
-            tabular.append(line)
+            # assert len(line) == len(columns), "i: {}, len: {} --- {}".format(i, len(line), line)
+            while len(line) != len(columns):
+                line = sum([re.split(' ', x) if x and '{' not in x else re.split(' ', x, 1) if x[0] != '{' else [x] for x in line], [])
+            else:
+                tabular.append(line)
 
     # Ready to load into DF
     df = pd.DataFrame(tabular)
     df.columns = columns
+
+    for col in ['tottime', 'cumtime']:
+        df[col] = df[col].astype('float')
+
     return df
 
 
@@ -137,11 +142,14 @@ toby = Template()
 
 
 def get_c_df(df):
-    return df[df['plf'].map(toby.is_c_extension)]
+    c_df = df[df['plf'].map(toby.is_c_extension)]
+    c_df.ncalls = c_df.ncalls.astype('int')
+    return c_df
 
 
 def get_c_fraction(df):
     if os.path.exists(df):
         df = to_df(df)
     c_df = get_c_df(df)
-    return "{0:.3%}".format(c_df['cumtime'].map(float).sum() / df['cumtime'].map(float).max())
+    # return "{0:.3%}".format(c_df['cumtime'].map(float).sum() / df['cumtime'].map(float).max())
+    return c_df['cumtime'].map(float).sum() / df['cumtime'].map(float).max()
