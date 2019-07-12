@@ -8,12 +8,12 @@ import time
 start_time = time.time()
 
 # Import MNIST data
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
+import tensorflow.examples.tutorials.mnist.input_data as input_data
+mnist = input_data.read_data_sets("../data/", one_hot=True)
 
 # Parameters
 learning_rate = 0.01
-training_epochs = 25
+training_epochs = 50
 batch_size = 100
 display_step = 1
 
