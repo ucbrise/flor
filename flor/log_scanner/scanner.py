@@ -12,7 +12,6 @@ class Scanner:
         self.state_machines = []
 
         self.trailing_ctx = None
-        self.contexts = [] # Models current stack frame
 
         self.collected = []
         self.line_number = -1
@@ -57,7 +56,6 @@ class Scanner:
         return self.state_machines[-1]
 
     def scan(self, log_record):
-        # log_record is a dictionary
         if 'session_start' in log_record or 'session_end' in log_record:
             return
         if 'file_path' in log_record:
@@ -66,51 +64,72 @@ class Scanner:
             self.trailing_ctx = ctx
             self.trailing_ctx.file_path = log_record['file_path']
             for fsm in self.state_machines:
-                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
+                fsm.consume_lsn(log_record, self.trailing_ctx)
         elif 'class_name' in log_record:
             self.trailing_ctx.class_ctx = log_record['class_name']
             for fsm in self.state_machines:
-                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
+                fsm.consume_lsn(log_record, self.trailing_ctx)
         elif 'start_function' in log_record:
             self.trailing_ctx.func_ctx = log_record['start_function']
-            self.contexts.append(self.trailing_ctx)
             for fsm in self.state_machines:
-                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
+                fsm.consume_lsn(log_record, self.trailing_ctx)
                 if isinstance(fsm, ActualParam):
-                    fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
+                    fsm.consume_func_name(log_record, self.trailing_ctx)
         elif 'end_function' in log_record:
             for fsm in self.state_machines:
-                fsm.consume_lsn(log_record, self.trailing_ctx, self.contexts)
+                fsm.consume_lsn(log_record, self.trailing_ctx)
                 if isinstance(fsm, ActualParam):
-                    fsm.consume_func_name(log_record, self.trailing_ctx, self.contexts)
-            ctx = self.contexts.pop()
-            assert ctx.func_ctx == log_record['end_function'], \
-                "For log record {} ... Expected: {}, Actual: {}".format(self.line_number,
-                                                                        log_record['end_function'], ctx.func_ctx)
-            if self.contexts:
-                self.trailing_ctx = self.contexts[-1]
-            else:
-                while ctx.parent_ctx is not None:
-                    ctx = ctx.parent_ctx
-                self.trailing_ctx = ctx
+                    fsm.consume_func_name(log_record, self.trailing_ctx)
+            assert self.trailing_ctx.func_ctx is not None,  \
+                "Tried to pop element from the stack but element is not a function {}::{}".format(
+                    self.line_number, str(self.trailing_ctx))
+            
+            # Do POP
+            ctx = self.trailing_ctx
+            self.trailing_ctx = self.trailing_ctx.parent_ctx
+
+            if ctx.func_ctx != log_record['end_function']:
+                # Exception case
+                def to_str(o):
+                    def t_closure(o):
+                        if o is None:
+                            return ''
+                        return t_closure(o.parent_ctx) + ';' + str(o)
+                    if isinstance(o, list):
+                        return ';'.join([str(e) for e in o])
+                    else:
+                        return t_closure(o)
+                print("trailing_ctx: \n{}\n\n\n\n".format(to_str(self.trailing_ctx)))
+                raise RuntimeError("For log record {} ... Expected: {}, Actual: {}".format(
+                    self.line_number, log_record['end_function'], ctx.func_ctx))
+
         elif 'catch_stack_frame' in log_record:
             # Enfore that the Scanner Stack is a subset of the Python Stack
             # TODO: This approach will be an approximation unless we Flor-transform all of Python
             # Recursive solution to the problem.
-            start_len = len(self.contexts)
+            def path_to_non(tr_ctx):
+                if tr_ctx is None:
+                    return 0
+                if tr_ctx.func_ctx is None:
+                    return path_to_non(tr_ctx.parent_ctx)
+                return 1 + path_to_non(tr_ctx.parent_ctx)
+            start_len = path_to_non(self.trailing_ctx)
             theirs = log_record['catch_stack_frame']
-            while self.contexts and not self.is_subset(self.contexts, theirs):
-                # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
-                self.contexts.pop()
-                if self.contexts:
-                    self.trailing_ctx = self.contexts[-1]
-                else:
-                    self.trailing_ctx = None
-            assert start_len == 0 or len(self.contexts) > 0, 'Could not align Scanner stack frame with Python stack frame'
+
+            # contexts = 
+
+            # while self.contexts and not self.is_subset(self.contexts, theirs):
+            #     # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
+            #     self.contexts.pop()
+            #     if self.contexts:
+            #         self.trailing_ctx = self.contexts[-1]
+            #     else:
+            #         self.trailing_ctx = None
+            # assert start_len == 0 or len(self.contexts) > 0, 'Could not align Scanner stack frame with Python stack frame'
         else:
             # Conditionally consume data log record
             for fsm in self.state_machines:
-                out = fsm.consume_data(log_record, self.trailing_ctx, self.contexts)
+                out = fsm.consume_data(log_record, self.trailing_ctx)
                 if out:
                     out = {fsm.name: list(out.values()).pop()}
                     self.collected.append({id(fsm): out})
