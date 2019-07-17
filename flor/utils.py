@@ -1,5 +1,6 @@
-import os
 import shutil
+from flor.constants import *
+
 
 def cond_mkdir(path):
     """
@@ -9,6 +10,7 @@ def cond_mkdir(path):
     """
     if not os.path.isdir(path):
         os.mkdir(path)
+
 
 def refresh_tree(path):
     """
@@ -20,6 +22,17 @@ def refresh_tree(path):
     cond_rmdir(path)
     os.mkdir(path)
 
+
 def cond_rmdir(path):
     if os.path.isdir(path):
         shutil.rmtree(path)
+
+
+def check_flor_install():
+    if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
+        print("Flor hasn't been installed.")
+        print("From Python: You may run the function flor.install()")
+        print("From CLI: You may run the pyflor_install script")
+        import sys;
+        sys.exit(0)
+

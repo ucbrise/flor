@@ -3,14 +3,13 @@ from flor.commands.flython import exec_flython
 from flor.commands.flan import exec_flan
 from flor.commands.cp import exec_cp
 import sys
-import shutil
-import os
 from flor.complete_capture.walker import Walker
 from flor import utils
 from flor.constants import *
+import pip
+
 
 def main(args=None):
-
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='subcommand')
@@ -42,8 +41,40 @@ def main(args=None):
     else:
         raise ValueError("Invalid option: {}".format(args.subcommand))
 
-def install(base_conda='base', conda_flor_env='flor', python_version='3.7', multiuser=False):
 
+def uninstall(multiuser=False):
+    """
+    Completely uninstall Flor: Removes conda_flor_env; keeps logs in FLOR_DIR.
+    """
+    utils.check_flor_install()
+
+    from flor.constants import FLOR_DIR
+
+    if multiuser and os.path.isdir(FLOR_SHARE):
+        FLOR_DIR = FLOR_SHARE
+
+    conda_map_path = os.path.join(FLOR_DIR, '.conda_map')
+
+    with open(conda_map_path, 'r') as f:
+        src_root, dst_root = f.read().strip().split(',')
+
+        conda_flor_env = dst_root.split('/')[-1]
+
+        try:
+            import conda.cli.python_api
+        except ImportError:
+            if hasattr(pip, 'main'):
+                pip.main(['install', 'conda'])
+            else:
+                pip._internal.main(['install', 'conda'])
+            import conda.cli.python_api
+
+        conda.cli.python_api.run_command('remove', '--name', conda_flor_env, '--all')
+
+        os.remove(conda_map_path)
+
+
+def install(base_conda='base', conda_flor_env='flor', python_version='3.7', multiuser=False):
     def make_conda_map(d, base_env_path, env_path):
         utils.cond_mkdir(d)
         with open(os.path.join(d, '.conda_map'), 'w') as f:
@@ -51,15 +82,12 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
             # This will be used for flor cp, so the user sees the pre-transformed code.
             f.write(base_env_path + ',' + env_path + '\n')
 
-
     if multiuser and os.path.isdir(FLOR_SHARE):
         # initialize flor in current directory but do nothing else
         with open(os.path.join(FLOR_SHARE, '.conda_map'), 'r') as f:
             src_root, dst_root = f.read().strip().split(',')
         make_conda_map(FLOR_DIR, src_root, dst_root)
         return
-
-    import pip
 
     try:
         import conda.cli.python_api
@@ -106,7 +134,7 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
     for raw_env in raw_envs:
         raw_env = raw_env.replace('*', '')
         name_path = raw_env.split()
-        if len(name_path) < 2:
+        if len(name_path) != 2:
             continue
         name, path = name_path
         if name == conda_flor_env:
@@ -115,7 +143,6 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
             base_env_path = path
     assert env_path is not None
     assert base_env_path is not None
-
 
     multiuser and make_conda_map(FLOR_SHARE, base_env_path, env_path)
     make_conda_map(FLOR_DIR, base_env_path, env_path)
@@ -127,7 +154,7 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
 
     print("Install succeeded.")
 
-    print("Please append the following line to your shell configuration file:\n"
+    print("Please append the following lines to your shell configuration file:\n"
           "" + FLOR_FUNC)
 
 

@@ -26,7 +26,9 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'pyflor = flor.__main__:main',
-            'pyflor_install = flor.__main__:install'
+            'pyflor_install = flor.__main__:install',
+            'pyflor_uninstall = flor.__main__:uninstall'
+
         ]
     }
  )
