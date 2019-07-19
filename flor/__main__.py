@@ -46,7 +46,9 @@ def main(args=None):
 
 def uninstall(multiuser=False):
     """
-    Completely uninstall Flor: Removes conda_flor_env; keeps logs in FLOR_DIR.
+    Completely uninstall Flor: Removes the pyflor package, the conda
+    environment named conda_flor_env, and everything except logs in
+    FLOR_DIR.
     """
     utils.check_flor_install()
 
@@ -63,6 +65,8 @@ def uninstall(multiuser=False):
         conda_flor_env = dst_root.split('/')[-1]
 
         subprocess.call(['conda', 'remove', '--name', conda_flor_env, '--all'])
+
+        subprocess.call((['pip', 'uninstall', 'pyflor']))
 
         os.remove(conda_map_path)
 
