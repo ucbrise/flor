@@ -1,4 +1,6 @@
 import argparse
+import subprocess
+
 from flor.commands.flython import exec_flython
 from flor.commands.flan import exec_flan
 from flor.commands.cp import exec_cp
@@ -118,14 +120,14 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
     flor() {{
             conda activate {};
             pyflor $@;
-            cd $(pwd);
+            cd $(pwd);  
             conda deactivate;
     }}
     """.format(conda_flor_env)
 
-    conda.cli.python_api.run_command('create', '--name', conda_flor_env, '--clone', base_conda)
+    subprocess.call(['conda', 'create', '--name', conda_flor_env, '--clone', base_conda])
 
-    raw_envs, _, _ = conda.cli.python_api.run_command('info', '--envs')
+    raw_envs = subprocess.check_output(['conda', 'env', 'list']).decode('utf-8')
     raw_envs = raw_envs.split('\n')
     raw_envs = raw_envs[2:]
 
