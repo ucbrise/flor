@@ -62,16 +62,7 @@ def uninstall(multiuser=False):
 
         conda_flor_env = dst_root.split('/')[-1]
 
-        try:
-            import conda.cli.python_api
-        except ImportError:
-            if hasattr(pip, 'main'):
-                pip.main(['install', 'conda'])
-            else:
-                pip._internal.main(['install', 'conda'])
-            import conda.cli.python_api
-
-        conda.cli.python_api.run_command('remove', '--name', conda_flor_env, '--all')
+        subprocess.call(['conda', 'remove', '--name', conda_flor_env, '--all'])
 
         os.remove(conda_map_path)
 
@@ -90,15 +81,6 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
             src_root, dst_root = f.read().strip().split(',')
         make_conda_map(FLOR_DIR, src_root, dst_root)
         return
-
-    try:
-        import conda.cli.python_api
-    except ImportError:
-        if hasattr(pip, 'main'):
-            pip.main(['install', 'conda'])
-        else:
-            pip._internal.main(['install', 'conda'])
-        import conda.cli.python_api
 
     print("The Flor installer needs to copy and transform an anaconda environment.\n"
           "This installer will take some time to complete.")
@@ -127,7 +109,7 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
 
     subprocess.call(['conda', 'create', '--name', conda_flor_env, '--clone', base_conda])
 
-    raw_envs = subprocess.check_output(['conda', 'env', 'list']).decode('utf-8')
+    raw_envs = subprocess.check_output(['conda', 'info', '--envs']).decode('utf-8')
     raw_envs = raw_envs.split('\n')
     raw_envs = raw_envs[2:]
 
