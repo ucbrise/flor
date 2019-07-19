@@ -103,14 +103,15 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
     conda_flor_env = input("Enter the name of the new anaconda environment [{}]: ".format(conda_flor_env)).strip() or conda_flor_env
 
     FLOR_FUNC = """
-    flor() {{
-            conda activate {};
-            pyflor $@;
-            cd $(pwd);  
-            conda deactivate;
-    }}
-    """.format(conda_flor_env)
+flor() {{
+    conda activate {};
+    pyflor $@;
+    cd $(pwd);  
+    conda deactivate;
+}}
+""".format(conda_flor_env)
 
+    # conda clone environment
     subprocess.call(['conda', 'create', '--name', conda_flor_env, '--clone', base_conda])
 
     raw_envs = subprocess.check_output(['conda', 'info', '--envs']).decode('utf-8')
@@ -137,10 +138,19 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
 
     env_path = os.path.join(env_path, 'lib', 'python' + python_version, 'site-packages')
 
+    # Perform lib transformation
     walker = Walker(env_path)
     walker.compile_tree()
 
     print("Install succeeded.")
+
+    # Add Flor script to user shell config file
+    shells_list = ['.zshrc', '.bashrc', '.cshrc', '.kshrc', '.config/fish/config.fish']
+    for s in shells_list:
+        shell_config = os.path.join(os.path.expanduser('~'), s)
+        if os.path.exists(shell_config):
+            with open(shell_config, 'a') as f:
+                f.write(FLOR_FUNC)
 
     print("Please append the following lines to your shell configuration file:\n"
           "" + FLOR_FUNC)
