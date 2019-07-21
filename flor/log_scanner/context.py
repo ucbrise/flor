@@ -8,6 +8,10 @@ class Ctx:
         self.parent_ctx = None
 
     def is_enabled(self, obj):
+        """
+        Checks whether state machine obj is enabled in this context
+        :obj: a state machine
+        """
         return (self.file_path == obj.file_path
                 and self.class_ctx == obj.class_ctx
                 and (self.func_ctx == obj.func_ctx

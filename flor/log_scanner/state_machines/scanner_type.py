@@ -14,13 +14,13 @@ class ScannerType:
     def set_follow_lsn(self, lsn):
         self.follow_lsn = lsn
 
-    def consume_lsn(self, log_record, trailing_ctx, contexts):
+    def consume_lsn(self, log_record, trailing_ctx):
         if trailing_ctx is not None and trailing_ctx.is_enabled(self):
             if log_record['lsn'] == self.prev_lsn:
                 self.prev_lsn_enabled = True
 
-    def consume_func_name(self, log_record, trailing_ctx, contexts):
+    def consume_func_name(self, log_record, trailing_ctx):
         raise NotImplementedError()
 
-    def consume_data(self, log_record, trailing_ctx, contexts):
+    def consume_data(self, log_record, trailing_ctx):
         raise NotImplementedError()

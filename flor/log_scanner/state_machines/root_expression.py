@@ -28,7 +28,7 @@ class RootExpression(ScannerType):
         #State
 
 
-    def consume_data(self, log_record, trailing_ctx, contexts):
+    def consume_data(self, log_record, trailing_ctx):
         if trailing_ctx is not None and trailing_ctx.is_enabled(self):
             if log_record['lsn'] == self.prev_lsn:
                 self.prev_lsn_enabled = True

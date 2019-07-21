@@ -36,7 +36,7 @@ class Scanner:
         try:
             func_name = ours[-1].func_ctx
             if func_name is not None:
-                i = theirs.index(func_name)
+                i = theirs.index(func_name) # Excception source
                 return Scanner.is_subset(ours[0:-1], theirs[i+1:])
             else:
                 return Scanner.is_subset(ours[0:-1], theirs)
@@ -78,17 +78,15 @@ class Scanner:
         elif 'end_function' in log_record:
             for fsm in self.state_machines:
                 fsm.consume_lsn(log_record, self.trailing_ctx)
-                if isinstance(fsm, ActualParam):
-                    fsm.consume_func_name(log_record, self.trailing_ctx)
             assert self.trailing_ctx.func_ctx is not None,  \
                 "Tried to pop element from the stack but element is not a function {}::{}".format(
                     self.line_number, str(self.trailing_ctx))
             
             # Do POP
-            ctx = self.trailing_ctx
+            old_trailing_ctx = self.trailing_ctx
             self.trailing_ctx = self.trailing_ctx.parent_ctx
 
-            if ctx.func_ctx != log_record['end_function']:
+            if old_trailing_ctx.func_ctx != log_record['end_function']:
                 # Exception case
                 def to_str(o):
                     def t_closure(o):
@@ -101,7 +99,7 @@ class Scanner:
                         return t_closure(o)
                 print("trailing_ctx: \n{}\n\n\n\n".format(to_str(self.trailing_ctx)))
                 raise RuntimeError("For log record {} ... Expected: {}, Actual: {}".format(
-                    self.line_number, log_record['end_function'], ctx.func_ctx))
+                    self.line_number, log_record['end_function'], old_trailing_ctx.func_ctx))
 
         elif 'catch_stack_frame' in log_record:
             # Enfore that the Scanner Stack is a subset of the Python Stack
@@ -116,16 +114,22 @@ class Scanner:
             start_len = path_to_non(self.trailing_ctx)
             theirs = log_record['catch_stack_frame']
 
-            # contexts = 
+            # Pop as many Contexts as you need to meet the invariant: Scanner Stack is a subset of the Python Stack.
+            contexts = []
+            ctx = self.trailing_ctx
+            while ctx is not None:
+                contexts.insert(0, ctx)
+                ctx = ctx.parent_ctx
 
-            # while self.contexts and not self.is_subset(self.contexts, theirs):
-            #     # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
-            #     self.contexts.pop()
-            #     if self.contexts:
-            #         self.trailing_ctx = self.contexts[-1]
-            #     else:
-            #         self.trailing_ctx = None
-            # assert start_len == 0 or len(self.contexts) > 0, 'Could not align Scanner stack frame with Python stack frame'
+            while contexts and not self.is_subset(contexts, theirs):
+                # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
+                contexts.pop()
+                self.trailing_ctx = self.trailing_ctx.parent_ctx
+            # Now, correct for case where trailing_ctx.func_ctx is None: this may occur because is_subset treats nameless contexts as transparents
+            while contexts and self.trailing_ctx.func_ctx is None:
+                contexts.pop()
+                self.trailing_ctx = self.trailing_ctx.parent_ctx
+            assert start_len == 0 or self.trailing_ctx is not None, 'Could not align Scanner stack frame with Python stack frame'
         else:
             # Conditionally consume data log record
             for fsm in self.state_machines:
@@ -135,6 +139,7 @@ class Scanner:
                     self.collected.append({id(fsm): out})
 
     def scan_log(self):
+        print("Using new scan")
         with open(self.log_path, 'r') as f:
             for idx, line in enumerate(f):
                 self.line_number = idx + 1
