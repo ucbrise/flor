@@ -31,17 +31,20 @@ class ActualParam(ScannerType):
     def _ancestor_is_enabled(self, trailing_ctx):
         if trailing_ctx is None:
             return False
+
         parent_trailing_ctx = trailing_ctx.parent_ctx
 
-        # Check for transparents
-        iter_ctx = parent_trailing_ctx
-        while iter_ctx and iter_ctx.func_ctx is None:
-            iter_ctx = iter_ctx.parent_ctx
+        return parent_trailing_ctx is not None and parent_trailing_ctx.is_enabled(self)
 
-        if iter_ctx is None:
-            return False
-        
-        return iter_ctx.is_enabled(self)
+        # Check for transparents
+        # iter_ctx = parent_trailing_ctx
+        # while iter_ctx and iter_ctx.func_ctx is None:
+        #     iter_ctx = iter_ctx.parent_ctx
+        #
+        # if iter_ctx is None:
+        #     return False
+        #
+        # return iter_ctx.is_enabled(self)
         
     def consume_func_name(self, log_record, trailing_ctx):
         if 'start_function' in log_record:
