@@ -28,32 +28,22 @@ class ActualParam(ScannerType):
         # State
         self.func_enabled = False
 
-    def _get_strict_ancestors(self, contexts):
-        assert len(contexts) >= 2
-        parent = contexts[-2].parent_ctx
-        if len(contexts) >= 3:
-            pred = contexts[-3]
-        else:
-            pred = None
-        return parent, pred
+    def _ancestor_is_enabled(self, trailing_ctx):
+        if trailing_ctx is None:
+            return False
+        parent_trailing_ctx = trailing_ctx.parent_ctx
 
+        # Check for transparents
+        iter_ctx = parent_trailing_ctx
+        while iter_ctx and iter_ctx.func_ctx is None:
+            iter_ctx = iter_ctx.parent_ctx
 
-    def _ancestor_is_enabled(self, contexts):
-        if contexts:
-            ctx = contexts[-1].parent_ctx
-            if len(contexts) >= 2:
-                while ctx not in self._get_strict_ancestors(contexts):
-                    if ctx.is_enabled(self):
-                        return True
-                    ctx = ctx.parent_ctx
-            else:
-                while ctx is not None:
-                    if ctx.is_enabled(self):
-                        return True
-                    ctx = ctx.parent_ctx
-        return False
-
-    def consume_func_name(self, log_record, trailing_ctx, contexts):
+        if iter_ctx is None:
+            return False
+        
+        return iter_ctx.is_enabled(self)
+        
+    def consume_func_name(self, log_record, trailing_ctx):
         if 'start_function' in log_record:
             if log_record['start_function'] == self.func_name:
                 self.func_enabled = True
@@ -61,15 +51,8 @@ class ActualParam(ScannerType):
             elif log_record['start_function'] == '__init__' and trailing_ctx.class_ctx == self.func_name:
                 self.func_enabled = True
                 # print("func_enabled")
-        elif 'end_function' in log_record:
-            if log_record['end_function'] == self.func_name:
-                self.func_enabled = False
-                # print("func_disabled")
-            elif log_record['end_function'] == '__init__' and contexts[-1].class_ctx == self.func_name:
-                self.func_enabled = False
-                # print("func_disabled")
 
-    def consume_data(self, log_record, trailing_ctx, contexts):
+    def consume_data(self, log_record, trailing_ctx):
         """
 
         :param log_record: dict from log
@@ -83,11 +66,13 @@ class ActualParam(ScannerType):
             elif log_record['lsn'] == self.follow_lsn:
                 self.prev_lsn_enabled = False
                 # print("prev_lsn_disabled")
-        if self._ancestor_is_enabled(contexts) and \
+        if self._ancestor_is_enabled(trailing_ctx) and \
                 self.prev_lsn_enabled and self.func_enabled:
             # print("collecting...")
             # active only means search
             if 'params' in log_record:
+                # COLLECTING! Disable func_enabled
+                self.func_enabled = False
                 params = []
                 unfolded_idx = 0
                 for param in log_record['params']:
