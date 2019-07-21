@@ -148,7 +148,7 @@ flor() {{
     shells_list = ['.zshrc', '.bashrc', '.cshrc', '.kshrc', '.config/fish/config.fish']
     for s in shells_list:
         shell_config = os.path.join(os.path.expanduser('~'), s)
-        if os.path.exists(shell_config):
+        if os.path.exists(shell_config) and FLOR_FUNC not in open(shell_config, 'r').read():
             with open(shell_config, 'a') as f:
                 f.write(FLOR_FUNC)
 
