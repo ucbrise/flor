@@ -34,12 +34,9 @@ class Scanner:
             return False
 
         try:
-            func_name = ours[-1].func_ctx
-            if func_name is not None:
-                i = theirs.index(func_name) # Excception source
-                return Scanner.is_subset(ours[0:-1], theirs[i+1:])
-            else:
-                return Scanner.is_subset(ours[0:-1], theirs)
+            func_name = ours[-1].func_ctx or '<module>'
+            i = theirs.index(func_name) # Excception source
+            return Scanner.is_subset(ours[0:-1], theirs[i+1:])
         except ValueError:
             # string is not in list
             return False
@@ -108,8 +105,6 @@ class Scanner:
             def path_to_non(tr_ctx):
                 if tr_ctx is None:
                     return 0
-                if tr_ctx.func_ctx is None:
-                    return path_to_non(tr_ctx.parent_ctx)
                 return 1 + path_to_non(tr_ctx.parent_ctx)
             start_len = path_to_non(self.trailing_ctx)
             theirs = log_record['catch_stack_frame']
@@ -123,10 +118,6 @@ class Scanner:
 
             while contexts and not self.is_subset(contexts, theirs):
                 # Exception Raise/Catch are used to control flow. A raise can pop many items off the stack in one shot
-                contexts.pop()
-                self.trailing_ctx = self.trailing_ctx.parent_ctx
-            # Now, correct for case where trailing_ctx.func_ctx is None: this may occur because is_subset treats nameless contexts as transparents
-            while contexts and self.trailing_ctx.func_ctx is None:
                 contexts.pop()
                 self.trailing_ctx = self.trailing_ctx.parent_ctx
             assert start_len == 0 or self.trailing_ctx is not None, 'Could not align Scanner stack frame with Python stack frame'

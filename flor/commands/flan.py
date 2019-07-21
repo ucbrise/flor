@@ -4,6 +4,16 @@ import ast
 from flor.complete_capture.transformer import ClientTransformer
 from flor.state_machine_generator import Visitor
 
+class DebuggingObj:
+    def __init__(self, name, abspath_root, annotated_files: 'List'):
+        assert isinstance(annotated_files, list)
+        annotated_files = [os.path.join(abspath_root, a_f) for a_f in annotated_files]
+        self.name = name
+        self.annotated_file = annotated_files
+
+    def debug(self):
+        exec_flan(self)
+
 def _get_src_filename(full_path):
     with open(full_path, 'r') as f:
         line = f.readline().strip()
@@ -47,3 +57,11 @@ def exec_flan(args):
     df = consolidated_scanner.to_df()
     target = args.name
     df.to_csv(target + '.csv')
+
+if __name__ == '__main__':
+    name = "sysml"
+    DebuggingObj(name, 
+        "/Users/rogarcia/sandbox/sysml/highlighted.20190627-123053.d", 
+        ['iris_raw_h.py', 'sklearn_svm_classes_h.py']).debug()
+    if os.path.exists(name + '.csv'):
+        os.remove(name+'.csv')
