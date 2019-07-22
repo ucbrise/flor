@@ -59,9 +59,9 @@ def exec_flan(args):
     df.to_csv(target + '.csv')
 
 if __name__ == '__main__':
-    name = "sysml"
+    name = "bgfx"
     DebuggingObj(name, 
-        "/Users/rogarcia/sandbox/sysml/highlighted.20190627-123053.d", 
-        ['iris_raw_h.py', 'sklearn_svm_classes_h.py']).debug()
+        "/Users/rogarcia/sandbox/iris_loop",
+        ['iris_h.py', 'sklearn_svm_classes_h.py']).debug()
     if os.path.exists(name + '.csv'):
         os.remove(name+'.csv')
