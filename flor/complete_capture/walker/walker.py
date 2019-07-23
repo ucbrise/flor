@@ -124,7 +124,7 @@ class Walker():
             j = os.path.join
             ROOT = 'site-packages'
 
-            KEEP_SET = {'sklearn',}
+            KEEP_SET = {'sklearn', 'torchvision'}
 
             abs_path = abs_path.split(os.path.sep)
             abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
@@ -135,6 +135,23 @@ class Walker():
             for keep_element in KEEP_SET:
                 if keep_element == abs_path[0:len(keep_element)]: return True
             return False
+
+        def insert_import(data_str):
+            data_split = data_str.split("\n")
+            inserted = False
+
+            for i in range(len(data_split)):
+                if data_split[i] == '':
+                    continue
+                if not inserted and 'import' in data_split[i]:
+                    inserted =  True
+                    data_split.insert(i, 'from flor import Flog')
+                if '\n' not in data_split[i]:
+                    data_split[i] += '\n'
+
+            return "".join(data_split)
+
+
 
         for (src_root, dirs, files) in os.walk(self.rootpath):
             # SRC_ROOT: in terms of Conda-Cloned environment
@@ -157,7 +174,7 @@ class Walker():
                                 save_in_case = f.read()
                                 astree = ast.parse(save_in_case)
                         new_astree = transformer.visit(astree)
-                        to_source = astor.to_source(new_astree)
+                        to_source = insert_import(astor.to_source(new_astree))
 
                         # Conda symlinks --- no copy. We need to remove symlink first
                         try:
