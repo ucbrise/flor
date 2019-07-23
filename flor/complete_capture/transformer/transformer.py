@@ -126,6 +126,7 @@ class LibTransformer(ast.NodeTransformer):
         self.classname = None
         self.fd = None
 
+        self.header_license = True
         # relative_counter: used to uniquely identfy log statements, relative to their context
         self.relative_counter = {'value': 0}
 
@@ -216,6 +217,20 @@ class LibTransformer(ast.NodeTransformer):
         return new_node
 
     def generic_visit(self, node):
+        if self.header_license:
+            self.header_license = False
+            for field, old_value in ast.iter_fields(node):
+                if isinstance(old_value, list):
+                    for x in range(len(old_value)):
+                        if isinstance(old_value[x], ast.Import) or isinstance(old_value[x], ast.ImportFrom):
+                            # maybe add code to insert flor imports at the end of all imports?
+                            old_value.insert(x+1, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
+                            return super().generic_visit(node)
+                    for x in range(len(old_value)):
+                        if isinstance(old_value[x], ast.ClassDef) or isinstance(old_value[x], ast.FunctionDef):
+                            old_value[:] = LibRoot(self.filepath, self.relative_counter).parse_heads() + old_value
+                            break
+            return super().generic_visit(node)
         if self.active:
             for field, old_value in ast.iter_fields(node):
                 if isinstance(old_value, list):

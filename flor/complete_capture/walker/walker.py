@@ -124,7 +124,7 @@ class Walker():
             j = os.path.join
             ROOT = 'site-packages'
 
-            KEEP_SET = {'sklearn', 'torchvision'}
+            KEEP_SET = {'sklearn', 'torch', 'torchvision'}
 
             abs_path = abs_path.split(os.path.sep)
             abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
@@ -175,7 +175,7 @@ class Walker():
                                 save_in_case = f.read()
                                 astree = ast.parse(save_in_case)
                         new_astree = transformer.visit(astree)
-                        to_source = insert_import(astor.to_source(new_astree))
+                        to_source = astor.to_source(new_astree)
 
                         # Conda symlinks --- no copy. We need to remove symlink first
                         try:
