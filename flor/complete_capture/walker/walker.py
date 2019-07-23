@@ -144,11 +144,12 @@ class Walker():
                 if data_split[i] == '':
                     continue
                 if not inserted and 'import' in data_split[i]:
-                    inserted =  True
-                    data_split.insert(i, 'from flor import Flog')
+                    inserted = True
+                    data_split.insert(i+1, 'from flor import Flog\n')
                 if '\n' not in data_split[i]:
                     data_split[i] += '\n'
-
+            if not inserted:
+                data_split.insert(0, 'from flor import Flog\n')
             return "".join(data_split)
 
 
