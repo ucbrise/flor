@@ -222,6 +222,12 @@ class LibTransformer(ast.NodeTransformer):
             for field, old_value in ast.iter_fields(node):
                 if isinstance(old_value, list):
                     for x in range(len(old_value)):
+                        if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                            x += 1
+                            while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                                x += 1
+                            old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
+                            return super().generic_visit(node)
                         if isinstance(old_value[x], ast.Import) or isinstance(old_value[x], ast.ImportFrom):
                             # maybe add code to insert flor imports at the end of all imports?
                             old_value.insert(x+1, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
