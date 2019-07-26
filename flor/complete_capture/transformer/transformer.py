@@ -139,7 +139,7 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         # TODO: Relative counter needs more work
-        if '__' != node.name[0:2] or node.name == '__init__':
+        if '_' != node.name[0:1] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             self.active = True
             prev = self.fd
