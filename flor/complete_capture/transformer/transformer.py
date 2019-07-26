@@ -22,7 +22,7 @@ class ClientTransformer(ast.NodeTransformer):
         return new_node
 
     def visit_FunctionDef(self, node):
-        if '__' != node.name[0:2] or node.name == '__init__':
+        if '_' != node.name[0:1] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             prev = self.fd
             relative_counter = self.relative_counter['value']
@@ -137,10 +137,25 @@ class LibTransformer(ast.NodeTransformer):
         self.classname = prev_class_name
         return new_node
 
+    def check_skip(self, node):
+        if node.decorator_list:
+            for each in node.decorator_list:
+                try:
+                    # not all decorator lists have attributes, which can cause failures
+                    if each.value.attr == 'jit':
+                        return True
+                except:
+                    continue
+        return False
+
     def visit_FunctionDef(self, node):
         # TODO: Relative counter needs more work
-        if '_' != node.name[0:1] or node.name == '__init__':
+        if '__' != node.name[0:1] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
+            #don't wrap methods decorated with @torch.jit.*
+            if self.check_skip(node):
+                return node
+
             self.active = True
             prev = self.fd
             relative_counter = self.relative_counter['value']
@@ -223,16 +238,18 @@ class LibTransformer(ast.NodeTransformer):
                 if isinstance(old_value, list):
                     for x in range(len(old_value)):
                         if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                            # all __future__ imports need to be at the top of the file
                             x += 1
                             while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
                                 x += 1
                             old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
                             return super().generic_visit(node)
                         if isinstance(old_value[x], ast.Import) or isinstance(old_value[x], ast.ImportFrom):
-                            # maybe add code to insert flor imports at the end of all imports?
-                            old_value.insert(x+1, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
+                            # if no __future__ imports, import flor at the top
+                            old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
                             return super().generic_visit(node)
                     for x in range(len(old_value)):
+                        # case where there are no imports but there are classes or functions
                         if isinstance(old_value[x], ast.ClassDef) or isinstance(old_value[x], ast.FunctionDef):
                             old_value[:] = LibRoot(self.filepath, self.relative_counter).parse_heads() + old_value
                             break

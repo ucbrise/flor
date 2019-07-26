@@ -124,7 +124,7 @@ class Walker():
             j = os.path.join
             ROOT = 'site-packages'
 
-            KEEP_SET = {'sklearn', 'torch', 'torchvision'}
+            KEEP_SET = {'sklearn', 'tensorflow', 'torch', 'torchvision'}
 
             abs_path = abs_path.split(os.path.sep)
             abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
@@ -157,7 +157,10 @@ class Walker():
         for (src_root, dirs, files) in os.walk(self.rootpath):
             # SRC_ROOT: in terms of Conda-Cloned environment
             for file in files:
-                _, ext = os.path.splitext(file)
+                filename, ext = os.path.splitext(file)
+                # blacklist serialization files
+                if 'serialization' in filename:
+                    continue
                 if ext == '.py' and patch_keep(os.path.join(src_root, file)):
                     lib_code and print('transforming {}'.format(os.path.join(src_root, file)))
                     try:

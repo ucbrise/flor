@@ -17,6 +17,7 @@ class Flog:
     What behavior do we care about?
 
     """
+    serializing = False
 
     def __init__(self, init_in_func_ctx=True):
         """
@@ -57,11 +58,15 @@ class Flog:
             license = self.controller.get_license_to_serialize()
             if not license:
                 return "PASS"
+        if Flog.serializing:
+            return "ERROR: failed to serialize"
         try:
-
+            Flog.serializing = True
             out = str(cloudpickle.dumps(x))
+            Flog.serializing = False
             return out
         except:
+            Flog.serializing = False
             return "ERROR: failed to serialize"
 
     @staticmethod
