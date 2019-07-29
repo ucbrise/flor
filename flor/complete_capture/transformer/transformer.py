@@ -22,7 +22,7 @@ class ClientTransformer(ast.NodeTransformer):
         return new_node
 
     def visit_FunctionDef(self, node):
-        if '_' != node.name[0:1] or node.name == '__init__':
+        if '__' != node.name[0:2] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             prev = self.fd
             relative_counter = self.relative_counter['value']
@@ -150,7 +150,8 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         # TODO: Relative counter needs more work
-        if '__' != node.name[0:1] or node.name == '__init__':
+        #this is still decorating a bunch fo things it's not supposed to...please figure this out.
+        if '__' != node.name[0:2] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             #don't wrap methods decorated with @torch.jit.*
             if self.check_skip(node):
