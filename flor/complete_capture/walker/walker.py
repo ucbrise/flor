@@ -121,6 +121,13 @@ class Walker():
             if not lib_code:
                 return True
 
+            try:
+                if 'flor_transformed' in open(abs_path).readline():
+                    return False
+            except:
+                if 'flor_transformed' in open(abs_path, encoding = 'ISO-8859-1').readline():
+                    return False
+
             j = os.path.join
             ROOT = 'site-packages'
 
@@ -167,7 +174,9 @@ class Walker():
                         # Now we can write without disturbing source conda.
                         try:
                             with open(os.path.join(src_root, file), 'w') as f:
+                                f.write('#flor_transformed' + '\n')
                                 f.write(to_source)
+                                f.close()
                         except:
                             with open(os.path.join(src_root, file), 'w') as f:
                                 f.write(save_in_case)
