@@ -136,30 +136,12 @@ class Walker():
                 if keep_element == abs_path[0:len(keep_element)]: return True
             return False
 
-        def insert_import(data_str):
-            data_split = data_str.split("\n")
-            inserted = False
-
-            for i in range(len(data_split)):
-                if data_split[i] == '':
-                    continue
-                if not inserted and 'import' in data_split[i]:
-                    inserted = True
-                    data_split.insert(i+1, 'from flor import Flog\n')
-                if '\n' not in data_split[i]:
-                    data_split[i] += '\n'
-            if not inserted:
-                data_split.insert(0, 'from flor import Flog\n')
-            return "".join(data_split)
-
-
-
         for (src_root, dirs, files) in os.walk(self.rootpath):
             # SRC_ROOT: in terms of Conda-Cloned environment
             for file in files:
                 filename, ext = os.path.splitext(file)
-                # blacklist serialization files
-                if 'serialization' in filename:
+                # blacklist serialization file
+                if 'serialization' in filename in filename:
                     continue
                 if ext == '.py' and patch_keep(os.path.join(src_root, file)):
                     lib_code and print('transforming {}'.format(os.path.join(src_root, file)))
