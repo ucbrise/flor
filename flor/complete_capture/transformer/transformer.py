@@ -81,15 +81,16 @@ class ClientTransformer(ast.NodeTransformer):
             if isinstance(old_value, list):
                 new_values = []
                 if self.client_header_license:
-                    x = 0
-                    if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
-                        # all __future__ imports need to be at the top of the file
-                        new_values.append(old_value[x])
-                        x += 1
-                        while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                    for x in range(len(old_value)):
+                        if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                            # all __future__ imports need to be at the top of the file
                             new_values.append(old_value[x])
                             x += 1
-                    old_value[:] = old_value[x:]
+                            while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                                new_values.append(old_value[x])
+                                x += 1
+                            old_value[:] = old_value[x:]
+                            break
                     new_values += ClientRoot(self.filepath, self.relative_counter).parse_heads()
                     self.client_header_license = False
                 for value in old_value:
@@ -245,22 +246,23 @@ class LibTransformer(ast.NodeTransformer):
             self.header_license = False
             for field, old_value in ast.iter_fields(node):
                 if isinstance(old_value, list):
-                    x = 0
-                    if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
-                        # all __future__ imports need to be at the top of the file
-                        x += 1
-                        while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                    for x in range(len(old_value)):
+                        # we have to loop because sometimes there are large comments at the tops of files
+                        if isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                            # all __future__ imports need to be at the top of the file
                             x += 1
-                        old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
-                    elif isinstance(old_value[x], ast.Import) or isinstance(old_value[x], ast.ImportFrom):
-                        # if no __future__ imports, import flor at the top
-                        old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
-                    else:
-                        for x in range(len(old_value)):
-                            # case where there are no imports but there are classes or functions
-                            if isinstance(old_value[x], ast.ClassDef) or isinstance(old_value[x], ast.FunctionDef):
-                                old_value[:] = LibRoot(self.filepath, self.relative_counter).parse_heads() + old_value
-                                break
+                            while isinstance(old_value[x], ast.ImportFrom) and old_value[x].module == '__future__':
+                                x += 1
+                            old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
+                            break
+                        if isinstance(old_value[x], ast.Import) or isinstance(old_value[x], ast.ImportFrom):
+                            # if no __future__ imports, import flor at the top
+                            old_value.insert(x, LibRoot(self.filepath, self.relative_counter).parse_heads()[0])
+                            break
+                        # case where there are no imports but there are classes or functions
+                        if isinstance(old_value[x], ast.ClassDef) or isinstance(old_value[x], ast.FunctionDef):
+                            old_value[:] = LibRoot(self.filepath, self.relative_counter).parse_heads() + old_value
+                            break
             return super().generic_visit(node)
         if self.active:
             for field, old_value in ast.iter_fields(node):

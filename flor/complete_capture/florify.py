@@ -5,5 +5,5 @@ if __name__ == "__main__":
     Warning: Walker overwrites the path that you give it. Don't try this on your anaconda environment
     """
     #pass
-    walker = Walker('/Users/eliu/anaconda3/envs/flor/lib/python3.7/site-packages/tensorflow')
+    walker = Walker('/Users/eliu/anaconda3/envs/flor/lib/python3.7/site-packages/scipy')
     walker.compile_tree()
