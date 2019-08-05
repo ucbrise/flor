@@ -1,6 +1,7 @@
 import datetime
 import json
 import re
+import time
 import uuid
 
 import git
@@ -61,6 +62,41 @@ class OpenLog:
         import getpass
         user_id = getpass.getuser()
         to_write.append({'user_id': user_id})
+
+        # Reliable timestamp from network server
+        def get_ntp_time(host='time.nist.gov'):
+            # Adapted from https://www.mattcrampton.com/blog/query_an_ntp_server_from_python/
+            # and https://gist.github.com/guneysus/9f85ab77e1a11d0eebdb
+            import socket
+            from socket import AF_INET, SOCK_DGRAM
+            import struct
+            import time
+
+            port = 123
+            buf = 1024
+            address = (host, port)
+            msg = '\x1b' + 47 * '\0'
+
+            # reference time (in seconds since 1900-01-01 00:00:00)
+            time1970 = 2208988800  # 1970-01-01 00:00:00
+
+            # connect to server
+            client = socket.socket(AF_INET, SOCK_DGRAM)
+            client.sendto(msg.encode('utf-8'), address)
+            msg, address = client.recvfrom(buf)
+
+            if msg:
+                # timestamp: seconds since epoch
+                timestamp = struct.unpack('!12I', msg)[10]
+                timestamp -= time1970
+                local_time = time.ctime(timestamp).replace('  ', ' ')
+                utc_time = time.strftime('%a %b %d %X %Y %Z', time.gmtime(timestamp))
+                return timestamp, local_time, utc_time
+
+        timestamp, local_time, utc_time = get_ntp_time()
+        to_write.append({'timestamp': timestamp})
+        to_write.append({'local_time': local_time})
+        to_write.append({'UTC_time': utc_time})
 
         for x in to_write:
             log_file.write(json.dumps(x) + '\n')
