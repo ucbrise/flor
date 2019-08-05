@@ -1,10 +1,6 @@
 import datetime
 import json
 import re
-<<<<<<< HEAD
-import time
-=======
->>>>>>> collect more contexts during execution
 import uuid
 
 import git
