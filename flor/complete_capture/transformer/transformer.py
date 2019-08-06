@@ -61,7 +61,7 @@ class ClientTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
+        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 2:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -156,9 +156,10 @@ class LibTransformer(ast.NodeTransformer):
 
             heads.extend(new_node.body)
             new_node.body = heads
+            new_node.body = [ast.Try(new_node.body, [], [], [foot])]
             if isinstance(new_node.body[-1], ast.Pass):
                 new_node.body.pop()
-            new_node.body.append(foot)
+            # new_node.body.append(foot)
             self.fd = prev
             self.active = False
             self.relative_counter['value'] = relative_counter
@@ -188,7 +189,7 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
+        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 2:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -198,7 +199,7 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_Yield(self, node):
         nodes_module = Yield(node).parse()
-        nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
+        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 2:
             nodes_module.body.extend(self.fd.parse_heads())
             return nodes_module.body

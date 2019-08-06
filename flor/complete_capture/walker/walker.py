@@ -124,7 +124,7 @@ class Walker():
             j = os.path.join
             ROOT = 'site-packages'
 
-            KEEP_SET = {'sklearn',}
+            KEEP_SET = {'sklearn', 'scipy'}
 
             abs_path = abs_path.split(os.path.sep)
             abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
