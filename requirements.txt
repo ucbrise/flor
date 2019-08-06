@@ -12,3 +12,4 @@ astunparse>=1.6.1
 ipykernel
 notebook
 conda
+cytoolz
