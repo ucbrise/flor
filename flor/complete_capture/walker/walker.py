@@ -59,68 +59,6 @@ class Walker():
             if not lib_code:
                 return True
 
-            j = os.path.join
-            ROOT = 'site-packages'
-            SKIP_SET = {'attr',
-                        'backcall',
-                        'backports',
-                        'Cython',
-                        'future',
-                        'ipykernel',
-                        'IPython',
-                        'jsonpickle',
-                        'jupyter_core',
-                        'pip',
-                        'pkg_resources',
-                        'pkginfo',
-                        'py',
-                        'setuptools',
-                        j('scipy', 'misc'),
-                        'flor',
-                        'pyflor',
-                        'pkg_resources',
-                        'six.py',
-                        'pytest.py',
-                        '_pytest'}
-
-            KEEP_SET = {'numpy',
-                        'scipy',
-                        'pandas',
-                        'statsmodels',
-                        'matplotlib',
-                        'seaborn',
-                        'plotly',
-                        'bokeh',
-                        'pydot.py',
-                        'sklearn',
-                        'xgboost',
-                        'lightgbm',
-                        'eli5',
-                        'tensorboard',
-                        'tensorflow',
-                        'tensorflow_estimator'
-                        'torch',
-                        'torchvision',
-                        'keras',
-                        'nltk',
-                        'spacy',
-                        'scrapy'
-                        }
-
-            abs_path = abs_path.split(os.path.sep)
-            abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
-
-            # for skip_element in SKIP_SET:
-            #     if skip_element == abs_path[0:len(skip_element)]: return False
-            # return True
-            for keep_element in KEEP_SET:
-                if keep_element == abs_path[0:len(keep_element)]: return True
-            return False
-
-        def patch_keep(abs_path):
-            if not lib_code:
-                return True
-
             try:
                 if 'flor_transformed' in open(abs_path).readline():
                     return False
@@ -128,26 +66,13 @@ class Walker():
                 if 'flor_transformed' in open(abs_path, encoding = 'ISO-8859-1').readline():
                     return False
 
-            j = os.path.join
-            ROOT = 'site-packages'
-
-            KEEP_SET = {'sklearn', 'scipy'}
-
-            abs_path = abs_path.split(os.path.sep)
-            abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1 : ])
-
-            # for skip_element in SKIP_SET:
-            #     if skip_element == abs_path[0:len(skip_element)]: return False
-            # return True
-            for keep_element in KEEP_SET:
-                if keep_element == abs_path[0:len(keep_element)]: return True
-            return False
+            return True
 
         for (src_root, dirs, files) in os.walk(self.rootpath):
             # SRC_ROOT: in terms of Conda-Cloned environment
             for file in files:
                 _, ext = os.path.splitext(file)
-                if ext == '.py' and patch_keep(os.path.join(src_root, file)):
+                if ext == '.py' and keep(os.path.join(src_root, file)):
                     lib_code and print('transforming {}'.format(os.path.join(src_root, file)))
                     try:
                         save_in_case = None

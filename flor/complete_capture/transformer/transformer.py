@@ -199,6 +199,7 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_Yield(self, node):
         nodes_module = Yield(node).parse()
+        #TODO: This requires further testing, could be a bug source
         # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 2:
             nodes_module.body.extend(self.fd.parse_heads())
