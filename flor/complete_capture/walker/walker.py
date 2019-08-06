@@ -60,11 +60,13 @@ class Walker():
                 return True
 
             try:
-                if 'flor_transformed' in open(abs_path).readline():
-                    return False
+                with open(abs_path, 'r') as f:
+                    if 'flor_transformed' in f.readline():
+                        return False
             except:
-                if 'flor_transformed' in open(abs_path, encoding = 'ISO-8859-1').readline():
-                    return False
+                with open(abs_path, 'r', encoding = 'ISO-8859-1') as f:
+                    if 'flor_transformed' in f.readline():
+                        return False
 
             return True
 
@@ -101,12 +103,12 @@ class Walker():
                             with open(os.path.join(src_root, file), 'w') as f:
                                 f.write('#flor_transformed' + '\n')
                                 f.write(to_source)
-                                f.close()
                         except:
                             with open(os.path.join(src_root, file), 'w') as f:
                                 f.write(save_in_case)
                     except:
                         # Failed to transform
+                        # TODO: Better policy is to transform much of a file rather than to fully ignore a file
                         failed_transforms.append(os.path.join(src_root, file))
                         print("FAILED TO TRANSFORM: {}".format(failed_transforms[-1]))
         if failed_transforms:
