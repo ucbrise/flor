@@ -6,7 +6,7 @@ import os
 import shutil
 import ast
 import astor
-
+import traceback
 
 class Walker():
 
@@ -58,6 +58,31 @@ class Walker():
         def keep(abs_path):
             if not lib_code:
                 return True
+            
+            ROOT = 'site-packages'
+            KEEP_SET = {'numpy',
+                        'scipy',
+                        'pandas',
+                        'statsmodels',
+                        'matplotlib',
+                        'seaborn',
+                        'plotly',
+                        'bokeh',
+                        'pydot.py',
+                        'sklearn',
+                        'xgboost',
+                        'lightgbm',
+                        'eli5',
+                        'tensorboard',
+                        'tensorflow',
+                        'tensorflow_estimator'
+                        'torch',
+                        'torchvision',
+                        'keras',
+                        'nltk',
+                        'spacy',
+                        'scrapy'
+                        }
 
             try:
                 with open(abs_path, 'r') as f:
@@ -68,7 +93,13 @@ class Walker():
                     if 'flor_transformed' in f.readline():
                         return False
 
-            return True
+            abs_path = abs_path.split(os.path.sep)
+            abs_path = (os.path.sep).join(abs_path[abs_path.index(ROOT) + 1:])
+
+            for keep_element in KEEP_SET:
+                if keep_element == abs_path[0:len(keep_element)]:
+                    return True
+            return False
 
         for (src_root, dirs, files) in os.walk(self.rootpath):
             # SRC_ROOT: in terms of Conda-Cloned environment
@@ -106,9 +137,11 @@ class Walker():
                         except:
                             with open(os.path.join(src_root, file), 'w') as f:
                                 f.write(save_in_case)
-                    except:
+                    except Exception as e:
                         # Failed to transform
                         # TODO: Better policy is to transform much of a file rather than to fully ignore a file
+                        print(e)
+                        print(traceback.format_exc())
                         failed_transforms.append(os.path.join(src_root, file))
                         print("FAILED TO TRANSFORM: {}".format(failed_transforms[-1]))
         if failed_transforms:

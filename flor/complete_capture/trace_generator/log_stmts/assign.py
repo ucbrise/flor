@@ -12,7 +12,7 @@ class Assign(LogStmt):
     def __make_locals__(self):
         if isinstance(self.node, ast.Assign):
             return self.__make_tuple__(self.node.targets)
-        elif isinstance(self.node, ast.AugAssign):
+        elif isinstance(self.node, ast.AugAssign) or isinstance(self.node, ast.AnnAssign):
             return self.__make_tuple__([self.node.target])
         else:
             raise RuntimeError()

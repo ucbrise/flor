@@ -1,5 +1,6 @@
 import shutil
 from flor.constants import *
+import os
 
 
 def cond_mkdir(path):
@@ -33,6 +34,10 @@ def check_flor_install():
         print("Flor hasn't been installed.")
         print("From Python: You may run the function flor.install()")
         print("From CLI: You may run the pyflor_install script")
-        import sys;
+        import sys
         sys.exit(0)
 
+def write_debug_msg(msg):
+    assert isinstance(msg, str)
+    with open(os.path.join(FLOR_DIR, 'debug_msg.txt'), 'a') as f:
+        f.write(msg + '\n')
