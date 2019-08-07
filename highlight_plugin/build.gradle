@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.4.9'
+}
+
+group 'org.rise.flor'
+version '1.1.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://www.jetbrains.com/intellij-repository/releases'
+    }
+    maven {
+        url 'https://oss.sonatype.org/content/repositories/snapshots/'
+    }
+    maven {
+        url 'https://dl.bintray.com/jetbrains/intellij-plugin-service'
+    }
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+//    compile fileTree(dir: 'libs', include: 'jython*.jar')
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+//    version '2019.1.3'
+//    plugins = ['PythonCore:2019.1.191.7479.7']
+
+//    version '2019.1.3'
+//    alternativeIdePath '/Applications/PyCharm.app/'
+//    localPath '/Applications/PyCharm.app/'
+//    type "PY"
+//    plugins = ['PythonCore:2019.1.191.7479.7']
+
+//    updateSinceUntilBuild false
+//    version 'PY-LATEST-EAP-SNAPSHOT'
+//    type 'PY'
+
+    // https://www.jetbrains.com/intellij-repository/snapshots
+//    version 'PY-192.4205.50-EAP-SNAPSHOT'
+//    type 'PY'
+
+    updateSinceUntilBuild false
+    version 'PC-LATEST-EAP-SNAPSHOT'
+    type 'PC'
+
+//    version 'PY-191.7479.3'
+//    type 'PY'
+}
+
+
+patchPluginXml {
+    changeNotes ""
+}
