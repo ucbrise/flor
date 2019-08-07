@@ -64,6 +64,22 @@ def uninstall(multiuser=False):
 
         conda_flor_env = dst_root.split('/')[-1]
 
+        # Remove Flor script from user shell config file
+        shells_list = ['.zshrc', '.bashrc', '.cshrc', '.kshrc', '.config/fish/config.fish']
+        for s in shells_list:
+            shell_config = os.path.join(os.path.expanduser('~'), s)
+            if os.path.exists(shell_config):
+                import fileinput
+                file = fileinput.input(shell_config, inplace=True)
+
+                for line in file:
+                    if 'flor() {' in line:
+                        for _ in range(5):
+                            # skip this line and next 5 lines
+                            next(file, None)
+                    else:
+                        print(line.strip())
+
         subprocess.call(['conda', 'remove', '--name', conda_flor_env, '--all'])
 
         subprocess.call((['pip', 'uninstall', 'pyflor']))
