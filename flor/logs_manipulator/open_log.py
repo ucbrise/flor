@@ -1,7 +1,6 @@
 import datetime
 import json
 import re
-import time
 import uuid
 
 import git
