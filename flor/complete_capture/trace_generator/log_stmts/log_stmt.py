@@ -28,6 +28,7 @@ class LogStmt():
     def is_instance(node : ast.Expr):
         """
         NOTE this method should be modified on change to LOG STMT FORMAT
+        Identifies instances of Flor LOG Statements
         :param node:
         :return:
         """

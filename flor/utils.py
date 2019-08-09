@@ -41,3 +41,8 @@ def write_debug_msg(msg):
     assert isinstance(msg, str)
     with open(os.path.join(FLOR_DIR, 'debug_msg.txt'), 'a') as f:
         f.write(msg + '\n')
+
+def write_failure_msg(msg):
+    assert isinstance(msg, str)
+    with open(os.path.join(FLOR_DIR, 'failures.txt'), 'a') as f:
+        f.write(msg + '\n')

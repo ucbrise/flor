@@ -135,7 +135,7 @@ class LibTransformer(ast.NodeTransformer):
         self.classname = None
         self.fd = None
 
-        # relative_counter: used to uniquely identfy log statements, relative to their context
+        # relative_counter: used to uniquely identify log statements, relative to their context
         self.relative_counter = {'value': 0}
 
     def visit_ClassDef(self, node):
@@ -172,8 +172,8 @@ class LibTransformer(ast.NodeTransformer):
                 return save_node
 
             # Does function contain docstring?
-            if ast.get_docstring(new_node) is not None:
-                heads.insert(0, new_node.body[0])
+            contains_docstring = ast.get_docstring(new_node) is not None
+            _docstring = new_node.body[0]
 
             heads.extend(new_node.body)
             new_node.body = heads
@@ -181,12 +181,33 @@ class LibTransformer(ast.NodeTransformer):
                 new_node.body.pop()
             new_node.body = [ast.Try(new_node.body, [], [], [foot])]
 
+            if contains_docstring:
+                new_node.body.insert(0, _docstring) 
+
             # new_node.body.append(foot)
             self.fd = prev
             self.active = False
             self.relative_counter['value'] = relative_counter
             self.refuse_transform = prev_refuse_transform
             return new_node
+        elif node.name == '__getstate__':
+            fd = StackOverflowPreventing_FuncDef(node)
+            heads = fd.parse_heads()
+            foot = fd.parse_foot()
+
+            contains_docstring = ast.get_docstring(node) is not None
+            _docstring = node.body[0]
+
+            heads.extend(node.body)
+            node.body = heads
+            if isinstance(node.body[-1], ast.Pass):
+                node.body.pop()
+            node.body = [ast.Try(node.body, [], [], [foot])]
+
+            if contains_docstring:
+                node.body.insert(0, _docstring)
+
+            return node
         else:
             return node
 

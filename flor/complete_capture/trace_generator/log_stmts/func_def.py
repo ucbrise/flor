@@ -63,3 +63,27 @@ class FuncDef(LogStmt):
         self.counter['value'] += 1
         return super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn))
 
+class StackOverflowPreventing_FuncDef(LogStmt):
+
+    def __init__(self, node: ast.FunctionDef):
+        super().__init__()
+        self.node = node
+    
+    def parse_heads(self):
+        """
+        Returns a list of statements
+        """
+        return ast.parse(self.to_string_head()).body
+
+    def parse_foot(self):
+        """
+        Returns a single statement
+        """
+        return ast.parse(self.to_string_foot()).body[0]
+
+    def to_string_head(self):
+        return (HEADER + "\n"
+                + 'Flog.flagged() and flog.block_recursive_serialization()\n')
+
+    def to_string_foot(self):
+        return 'Flog.flagged() and flog.unblock_recursive_serialization()\n'

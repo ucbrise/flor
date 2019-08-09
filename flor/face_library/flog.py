@@ -38,6 +38,10 @@ class Flog:
         self.writer = open(self.__get_current__(), 'a')
         self.controller = Controller(init_in_func_ctx)
 
+        # variable below is used by the controller,
+        # to avoid infinite recursions due to repeated calls to __get_state__
+        self.block_succeeded = False
+
     def write(self, s):
         #TODO: Can I dump with json rather than dumps
         if self.init_in_func_ctx:
@@ -51,18 +55,29 @@ class Flog:
     def flush(self):
         self.writer.flush()
 
-    def serialize(self, x):
+    def serialize(self, x, name: str = None):
         # We need a license because Python evaluates arguments before calling a function
-        if self.init_in_func_ctx:
-            license = self.controller.get_license_to_serialize()
-            if not license:
-                return "PASS"
+        reset_succeeded = False
         try:
+            if name == "self":
+                reset_succeeded = self.controller.cond_reset()
+            if self.init_in_func_ctx:
+                license = self.controller.get_license_to_serialize()
+                if not license:
+                    return "PASS"
+            try:
+                out = str(cloudpickle.dumps(x))
+                return out
+            except:
+                return "ERROR: failed to serialize"
+        finally:
+            self.controller.unreset(reset_succeeded)
 
-            out = str(cloudpickle.dumps(x))
-            return out
-        except:
-            return "ERROR: failed to serialize"
+    def block_recursive_serialization(self):
+        self.block_succeeded = self.controller.cond_inf_recursion_block
+    
+    def unblock_recursive_serialization(self):
+        self.controller.inf_recursion_unblock(self.block_succeeded)
 
     @staticmethod
     def __get_current__():

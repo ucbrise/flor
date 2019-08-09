@@ -55,21 +55,16 @@ def uninstall(multiuser=False):
     from flor.constants import FLOR_DIR
 
     if multiuser and os.path.isdir(FLOR_SHARE):
-        FLOR_DIR = FLOR_SHARE
-
-    conda_map_path = os.path.join(FLOR_DIR, '.conda_map')
-
+        conda_map_path = os.path.join(FLOR_SHARE, '.conda_map')
+    else:
+        conda_map_path = os.path.join(FLOR_DIR, '.conda_map')
     with open(conda_map_path, 'r') as f:
-        src_root, dst_root = f.read().strip().split(',')
+        _, dst_root = f.read().strip().split(',')
 
-        conda_flor_env = dst_root.split('/')[-1]
-
-        subprocess.call(['conda', 'remove', '--name', conda_flor_env, '--all'])
-
-        subprocess.call((['pip', 'uninstall', 'pyflor']))
-
-        os.remove(conda_map_path)
-
+    conda_flor_env = dst_root.split('/')[-1]
+    subprocess.call(['conda', 'remove', '--name', conda_flor_env, '--all'])
+    subprocess.call((['pip', 'uninstall', 'pyflor']))
+    os.remove(conda_map_path)
 
 def install(base_conda='base', conda_flor_env='flor', python_version='3.7', multiuser=False):
     def make_conda_map(d, base_env_path, env_path):

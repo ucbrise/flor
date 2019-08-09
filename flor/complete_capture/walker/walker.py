@@ -1,5 +1,6 @@
 from flor.complete_capture.transformer import LibTransformer, ClientTransformer
 from flor.constants import *
+from flor.utils import write_failure_msg 
 
 import tempfile
 import os
@@ -141,15 +142,17 @@ class Walker():
                         # Failed to transform
                         # TODO: Better policy is to transform much of a file rather than to fully ignore a file
                         print(e)
-                        print(traceback.format_exc())
+                        write_failure_msg(str(e))
+                        tback = traceback.format_exc()
+                        print(tback)
+                        write_failure_msg(str(tback))
                         failed_transforms.append(os.path.join(src_root, file))
                         print("FAILED TO TRANSFORM: {}".format(failed_transforms[-1]))
+                        write_failure_msg("FAILED TO TRANSFORM: {}".format(failed_transforms[-1]))
         if failed_transforms:
-            with open(os.path.join(FLOR_DIR, 'failures.txt'), 'w') as f:
-                print("FAILED TO TRANSFORM:")
-                for each in failed_transforms:
-                    print(each)
-                    f.write(each + '\n')
+            print("FAILED TO TRANSFORM:")
+            for each in failed_transforms:
+                print(each)
 
 
 

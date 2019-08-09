@@ -1,5 +1,4 @@
 import json
-import pandas as pd
 
 from .state_machines.actual_param import ActualParam
 from .state_machines.root_expression import RootExpression
@@ -182,6 +181,9 @@ class Scanner:
         return rows2
 
     def to_df(self):
+        #TODO: we need to use untransformed pandas.
+        #     ETL should be called from base conda rather than flor Conda
+        import pandas as pd
         rows = self.to_rows()
         d = {}
         for row in rows:

@@ -10,7 +10,10 @@ def greeting(s):
 
 def dump(s):
     # internal
-    return 'flog.serialize({})'.format(s)
+    if s.isidentifier():
+        return "flog.serialize({}, '{}')".format(s, s)
+    else:
+       return "flog.serialize({})".format(s)
 
 def unparse(n):
     return astor.to_source(n)
