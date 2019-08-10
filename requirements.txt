@@ -13,4 +13,3 @@ ipykernel
 notebook
 conda
 cytoolz
-boto3
