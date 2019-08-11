@@ -3,8 +3,6 @@ from .. import util as gen
 import ast
 
 HEADER = """
-from flor import Flog
-if Flog.flagged(option='nofork'): flog = Flog()
 from inspect import stack as stackkcats
 """
 

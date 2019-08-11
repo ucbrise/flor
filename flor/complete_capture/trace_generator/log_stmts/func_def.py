@@ -63,6 +63,11 @@ class FuncDef(LogStmt):
         self.counter['value'] += 1
         return super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn))
 
+HEADER_SOP_FD = """
+from flor import Flog
+if Flog.flagged(option='nofork'): flog = Flog(False)
+"""
+
 class StackOverflowPreventing_FuncDef(LogStmt):
 
     def __init__(self, node: ast.FunctionDef):
@@ -82,7 +87,7 @@ class StackOverflowPreventing_FuncDef(LogStmt):
         return ast.parse(self.to_string_foot()).body[0]
 
     def to_string_head(self):
-        return (HEADER + "\n"
+        return (HEADER_SOP_FD + "\n"
                 + 'Flog.flagged() and flog.block_recursive_serialization()\n')
 
     def to_string_foot(self):

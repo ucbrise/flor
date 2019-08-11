@@ -137,6 +137,7 @@ class LibTransformer(ast.NodeTransformer):
 
         # relative_counter: used to uniquely identify log statements, relative to their context
         self.relative_counter = {'value': 0}
+        self.header_license = True
 
     def visit_ClassDef(self, node):
         prev_class_name = self.classname
@@ -306,4 +307,62 @@ class LibTransformer(ast.NodeTransformer):
                         setattr(node, field, new_node)
             return node
         else:
-            return super().generic_visit(node)
+            if self.header_license:
+                contains_docstring = ast.get_docstring(node) is not None
+                if contains_docstring:
+                    _docstring = node.body.pop(0)
+
+                heads = ClientRoot(self.filepath, self.relative_counter).parse_heads()
+                heads.pop()
+
+                self.header_license = False
+
+                super().generic_visit(node)
+
+                contains_imports = False
+
+                for child in node.body[0:3]:
+                    if isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import):
+                        contains_imports = True
+                        break
+
+                first_import = None
+                last_import = None
+                if contains_imports:
+                    for i, child in enumerate(node.body):
+                        if first_import is None and last_import is None and not (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            continue
+                        elif first_import is None and last_import is None and (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            first_import = i
+                        elif first_import is not None and last_import is None and (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            continue
+                        elif first_import is not None and last_import is None and not (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            last_import = i - 1
+                            break
+                        else:
+                            raise  RuntimeError("Case not handled. [first_import is None, {}]. [last_import is None, {}]. [is import, {}]".format(
+                                first_import is None, last_import is None, isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)
+                            ))
+
+                    if last_import is None:
+                        # This is true whenever the full file is nothing but imports
+                        return node
+
+                    prefix = node.body[0:last_import + 1]
+                    postfix = node.body[last_import + 1 :]
+
+                    heads.extend(postfix)
+                    prefix.extend(heads)
+                    node.body = prefix
+                else:
+                    heads.extend(node.body)
+                    node.body = heads
+
+                if contains_docstring:
+                    node.body.insert(0, _docstring)
+
+            return node
