@@ -34,11 +34,20 @@ class ClientTransformer(ast.NodeTransformer):
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
             new_node = self.generic_visit(node)
+
+            # Does function contain docstring?
+            contains_docstring = ast.get_docstring(new_node) is not None
+            _docstring = new_node.body[0]
+
             heads.extend(new_node.body)
             new_node.body = heads
             if isinstance(new_node.body[-1], ast.Pass):
                 new_node.body.pop()
-            new_node.body.append(foot)
+            new_node.body = [ast.Try(new_node.body, [], [], foot)]
+
+            if contains_docstring:
+                new_node.body.insert(0, _docstring)
+
             self.fd = prev
             self.relative_counter['value'] = relative_counter
             return new_node
@@ -66,7 +75,6 @@ class ClientTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 1:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -180,12 +188,11 @@ class LibTransformer(ast.NodeTransformer):
             new_node.body = heads
             if isinstance(new_node.body[-1], ast.Pass):
                 new_node.body.pop()
-            new_node.body = [ast.Try(new_node.body, [], [], [foot])]
+            new_node.body = [ast.Try(new_node.body, [], [], foot)]
 
             if contains_docstring:
                 new_node.body.insert(0, _docstring) 
 
-            # new_node.body.append(foot)
             self.fd = prev
             self.active = False
             self.relative_counter['value'] = relative_counter
@@ -203,7 +210,7 @@ class LibTransformer(ast.NodeTransformer):
             node.body = heads
             if isinstance(node.body[-1], ast.Pass):
                 node.body.pop()
-            node.body = [ast.Try(node.body, [], [], [foot])]
+            node.body = [ast.Try(node.body, [], [], foot)]
 
             if contains_docstring:
                 node.body.insert(0, _docstring)
@@ -236,7 +243,6 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 1:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -312,7 +318,8 @@ class LibTransformer(ast.NodeTransformer):
                 if contains_docstring:
                     _docstring = node.body.pop(0)
 
-                heads = ClientRoot(self.filepath, self.relative_counter).parse_heads()
+                client_root = ClientRoot(self.filepath, self.relative_counter)
+                heads = client_root.parse_heads()
                 heads.pop()
 
                 self.header_license = False
@@ -358,11 +365,14 @@ class LibTransformer(ast.NodeTransformer):
                     heads.extend(postfix)
                     prefix.extend(heads)
                     node.body = prefix
+                    node.body.extend(client_root.parse_foot())
                 else:
                     heads.extend(node.body)
                     node.body = heads
+                    node.body.extend(client_root.parse_foot())
 
                 if contains_docstring:
                     node.body.insert(0, _docstring)
-
+            else:
+                super().generic_visit(node)
             return node

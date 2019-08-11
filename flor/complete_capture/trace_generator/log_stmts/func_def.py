@@ -7,6 +7,15 @@ from flor import Flog
 if Flog.flagged(option='nofork'): flog = Flog()
 """
 
+HEADER_SOP_FD = """
+from flor import Flog
+if Flog.flagged(option='nofork'): flog = Flog(False)
+"""
+
+FOOTER = """
+Flog.flagged(option='nofork') and flog.writer.close()
+"""
+
 class FuncDef(LogStmt):
 
     def __init__(self, node: ast.FunctionDef, filepath, counter, classname=None):
@@ -37,7 +46,7 @@ class FuncDef(LogStmt):
         return ast.parse(self.to_string_head()).body
 
     def parse_foot(self):
-        return ast.parse(self.to_string_foot()).body[0]
+        return ast.parse(self.to_string_foot()).body
 
     def to_string_head(self):
         if self.classname:
@@ -61,12 +70,8 @@ class FuncDef(LogStmt):
     def to_string_foot(self):
         lsn = self.counter['value']
         self.counter['value'] += 1
-        return super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn))
-
-HEADER_SOP_FD = """
-from flor import Flog
-if Flog.flagged(option='nofork'): flog = Flog(False)
-"""
+        return ( super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn)) + "\n"
+                 + FOOTER + "\n")
 
 class StackOverflowPreventing_FuncDef(LogStmt):
 
@@ -84,11 +89,12 @@ class StackOverflowPreventing_FuncDef(LogStmt):
         """
         Returns a single statement
         """
-        return ast.parse(self.to_string_foot()).body[0]
+        return ast.parse(self.to_string_foot()).body
 
     def to_string_head(self):
         return (HEADER_SOP_FD + "\n"
                 + 'Flog.flagged() and flog.block_recursive_serialization()\n')
 
     def to_string_foot(self):
-        return 'Flog.flagged() and flog.unblock_recursive_serialization()\n'
+        return ('Flog.flagged() and flog.unblock_recursive_serialization()\n'
+                + FOOTER + "\n")
