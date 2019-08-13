@@ -30,16 +30,15 @@ class OpenLog:
 
         # MAC address
         MAC_addr = {'MAC_address': ':'.join(re.findall('..?', '{:x}'.format(uuid.getnode())))}
-
-        to_write = [session_start, MAC_addr]
+        session_start.update(MAC_addr)
 
         # Get EC2 instance type
         try:
             ec2 = boto3.resource('ec2')
             for i in ec2.instances.all():
-                to_write.append({'EC2_instance_type': i.instance_type})
+                session_start.update({'EC2_instance_type': i.instance_type})
         except:
-            to_write.append({'EC2_instance_type': 'None'})
+            session_start.update({'EC2_instance_type': 'None'})
 
         # User info from Git
         class GitConfig(git.Repo):
@@ -54,13 +53,13 @@ class OpenLog:
         r = GitConfig().config_reader()
         user_name = r.get_value('user', 'name')
         user_email = r.get_value('user', 'email')
-        to_write.append({'git_user_name': user_name})
-        to_write.append({'git_user_email': user_email})
+        session_start.update({'git_user_name': user_name})
+        session_start.update({'git_user_email': user_email})
 
         # System's userid
         import getpass
         user_id = getpass.getuser()
-        to_write.append({'user_id': user_id})
+        session_start.update({'user_id': user_id})
 
         # Reliable timestamp from network server
         def get_ntp_time(host='time.nist.gov'):
@@ -93,12 +92,11 @@ class OpenLog:
                 return timestamp, local_time, utc_time
 
         timestamp, local_time, utc_time = get_ntp_time()
-        to_write.append({'timestamp': timestamp})
-        to_write.append({'local_time': local_time})
-        to_write.append({'UTC_time': utc_time})
+        session_start.update({'timestamp': timestamp})
+        session_start.update({'local_time': local_time})
+        session_start.update({'UTC_time': utc_time})
 
-        for x in to_write:
-            log_file.write(json.dumps(x) + '\n')
+        log_file.write(json.dumps(session_start) + '\n')
         log_file.flush()
         log_file.close()
 
