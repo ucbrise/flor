@@ -1,0 +1,85 @@
+<idea-plugin>
+    <id>org.rise.flor.flor_highlight_plugin</id>
+    <name>Flor Highlighter</name>
+    <vendor email="rise@cs.berkeley.edu" url="https://rise.cs.berkeley.edu/">RISELab</vendor>
+
+
+    <description><![CDATA[
+    Flor highlighter plugin with constrained highlighting and tree navigation.
+    ]]></description>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+    <depends>com.intellij.modules.python</depends>
+
+
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+<!--        <fileEditorProvider implementation="ViewOnlyFileEditorProvider"/>-->
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+        <group id="FlorPluginMenu" text="Flor" description="Flor menu">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+
+            <action id="FlorPluginMenu.StartNewHLSession"
+                    class="StartNewHLSession"
+                    text="New Highlighting Session"
+                    description="New Highlighting Session">
+            </action>
+
+<!--            <action id="FlorPluginMenu.AnnotatorView"-->
+<!--                    class="ToggleReadOnlyView"-->
+<!--                    text="Toggle Annotator View"-->
+<!--                    description="Make current file read only">-->
+<!--            </action>-->
+
+            <action class="CloneAndOpenAction" text="Annotate Current File" id="EditorPopupMenu.CloneAndOpen"
+                    description="Clone current file with `flor cp` and annotate.">
+                <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            </action>
+
+            <action class="FindAndCloneSource" text="Go to Source and Annotate" id="EditorPopupMenu.FindAndCloneSource"
+                    description="Locate source file and run `flor cp` to clone and prepare for highlighting session.">
+                <add-to-group group-id="EditorPopupMenu" anchor="before" relative-to-action="EditorPopupMenu.CloneAndOpen"/>
+            </action>
+
+            <!--
+            <action id="StackOverflow.AskQuestion.FlorMenu"
+                    class="SearchStackOverflow"
+                    text="Search on Stack Overflow">
+            </action>
+            -->
+        </group>
+
+        <action class="AnnotateAction"
+                text="Create Annotation"
+                description="Add Annotation">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+
+<!--        <action class="FindAndCloneSource" text="Find and Clone Source">-->
+<!--            <add-to-group group-id="EditorPopupMenu" anchor="first"/>-->
+<!--        </action>-->
+
+
+        <!--
+        <action id="StackOverflow.Search.Editor"
+                class="SearchStackOverflow"
+                text="Search on Stack Overflow">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
+        <action id="StackOverflow.Search.Console"
+                class="SearchStackOverflow"
+                text="Search on Stack Overflow">
+            <add-to-group group-id="ConsoleEditorPopupMenu" anchor="last"/>
+        </action>
+        -->
+    </actions>
+</idea-plugin>

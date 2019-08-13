@@ -26,3 +26,5 @@ profiler/data1/
 profiler/data2/
 profiler/**/data/
 .pytest_cache/
+!highlight_plugin/build/
+**/.gradle

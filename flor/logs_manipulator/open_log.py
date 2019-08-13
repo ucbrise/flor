@@ -32,6 +32,7 @@ class OpenLog:
         MAC_addr = {'MAC_address': ':'.join(re.findall('..?', '{:x}'.format(uuid.getnode())))}
         session_start.update(MAC_addr)
 
+
         # Get EC2 instance type
         try:
             ec2 = boto3.resource('ec2')
@@ -56,10 +57,12 @@ class OpenLog:
         session_start.update({'git_user_name': user_name})
         session_start.update({'git_user_email': user_email})
 
+
         # System's userid
         import getpass
         user_id = getpass.getuser()
         session_start.update({'user_id': user_id})
+
 
         # Reliable timestamp from network server
         def get_ntp_time(host='time.nist.gov'):
@@ -92,11 +95,13 @@ class OpenLog:
                 return timestamp, local_time, utc_time
 
         timestamp, local_time, utc_time = get_ntp_time()
+
         session_start.update({'timestamp': timestamp})
         session_start.update({'local_time': local_time})
         session_start.update({'UTC_time': utc_time})
 
         log_file.write(json.dumps(session_start) + '\n')
+
         log_file.flush()
         log_file.close()
 
