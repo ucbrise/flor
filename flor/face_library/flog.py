@@ -74,7 +74,7 @@ class Flog:
             self.controller.unreset(reset_succeeded)
 
     def block_recursive_serialization(self):
-        self.block_succeeded = self.controller.cond_inf_recursion_block
+        self.block_succeeded = self.controller.cond_inf_recursion_block()
     
     def unblock_recursive_serialization(self):
         self.controller.inf_recursion_unblock(self.block_succeeded)

@@ -83,7 +83,10 @@ class ActualParam(ScannerType):
                     k = list(param.keys()).pop()
                     idx, typ, name = k.split('.')
                     if typ == 'raw':
-                        params.append({k: cloudpickle.loads(eval(param[k]))})
+                        try:
+                            params.append({k: cloudpickle.loads(eval(param[k]))})
+                        except:
+                            params.append({k: None})
                         unfolded_idx += 1
                     elif typ == 'vararg':
                         list_of_params = cloudpickle.loads(eval(param[k]))

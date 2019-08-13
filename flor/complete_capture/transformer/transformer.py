@@ -34,11 +34,20 @@ class ClientTransformer(ast.NodeTransformer):
             heads = self.fd.parse_heads()
             foot = self.fd.parse_foot()
             new_node = self.generic_visit(node)
+
+            # Does function contain docstring?
+            contains_docstring = ast.get_docstring(new_node) is not None
+            _docstring = new_node.body[0]
+
             heads.extend(new_node.body)
             new_node.body = heads
             if isinstance(new_node.body[-1], ast.Pass):
                 new_node.body.pop()
-            new_node.body.append(foot)
+            new_node.body = [ast.Try(new_node.body, [], [], foot)]
+
+            if contains_docstring:
+                new_node.body.insert(0, _docstring)
+
             self.fd = prev
             self.relative_counter['value'] = relative_counter
             return new_node
@@ -66,7 +75,6 @@ class ClientTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 1:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -137,6 +145,7 @@ class LibTransformer(ast.NodeTransformer):
 
         # relative_counter: used to uniquely identify log statements, relative to their context
         self.relative_counter = {'value': 0}
+        self.header_license = True
 
     def visit_ClassDef(self, node):
         prev_class_name = self.classname
@@ -179,12 +188,11 @@ class LibTransformer(ast.NodeTransformer):
             new_node.body = heads
             if isinstance(new_node.body[-1], ast.Pass):
                 new_node.body.pop()
-            new_node.body = [ast.Try(new_node.body, [], [], [foot])]
+            new_node.body = [ast.Try(new_node.body, [], [], foot)]
 
             if contains_docstring:
                 new_node.body.insert(0, _docstring) 
 
-            # new_node.body.append(foot)
             self.fd = prev
             self.active = False
             self.relative_counter['value'] = relative_counter
@@ -202,7 +210,7 @@ class LibTransformer(ast.NodeTransformer):
             node.body = heads
             if isinstance(node.body[-1], ast.Pass):
                 node.body.pop()
-            node.body = [ast.Try(node.body, [], [], [foot])]
+            node.body = [ast.Try(node.body, [], [], foot)]
 
             if contains_docstring:
                 node.body.insert(0, _docstring)
@@ -235,7 +243,6 @@ class LibTransformer(ast.NodeTransformer):
 
     def visit_Return(self, node):
         nodes_module = Return(node).parse()
-        # nodes_module.body.insert(-1, self.visit(self.fd.parse_foot()))
         if len(nodes_module.body) <= 1:
             return nodes_module.body
         ret_stmt = nodes_module.body.pop()
@@ -306,4 +313,66 @@ class LibTransformer(ast.NodeTransformer):
                         setattr(node, field, new_node)
             return node
         else:
-            return super().generic_visit(node)
+            if self.header_license:
+                contains_docstring = ast.get_docstring(node) is not None
+                if contains_docstring:
+                    _docstring = node.body.pop(0)
+
+                client_root = ClientRoot(self.filepath, self.relative_counter)
+                heads = client_root.parse_heads()
+                heads.pop()
+
+                self.header_license = False
+
+                super().generic_visit(node)
+
+                contains_imports = False
+
+                for child in node.body[0:3]:
+                    if isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import):
+                        contains_imports = True
+                        break
+
+                first_import = None
+                last_import = None
+                if contains_imports:
+                    for i, child in enumerate(node.body):
+                        if first_import is None and last_import is None and not (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            continue
+                        elif first_import is None and last_import is None and (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            first_import = i
+                        elif first_import is not None and last_import is None and (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            continue
+                        elif first_import is not None and last_import is None and not (
+                                isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)):
+                            last_import = i - 1
+                            break
+                        else:
+                            raise  RuntimeError("Case not handled. [first_import is None, {}]. [last_import is None, {}]. [is import, {}]".format(
+                                first_import is None, last_import is None, isinstance(child, ast.ImportFrom) or isinstance(child, ast.Import)
+                            ))
+
+                    if last_import is None:
+                        # This is true whenever the full file is nothing but imports
+                        return node
+
+                    prefix = node.body[0:last_import + 1]
+                    postfix = node.body[last_import + 1 :]
+
+                    heads.extend(postfix)
+                    prefix.extend(heads)
+                    node.body = prefix
+                    node.body.extend(client_root.parse_foot())
+                else:
+                    heads.extend(node.body)
+                    node.body = heads
+                    node.body.extend(client_root.parse_foot())
+
+                if contains_docstring:
+                    node.body.insert(0, _docstring)
+            else:
+                super().generic_visit(node)
+            return node
