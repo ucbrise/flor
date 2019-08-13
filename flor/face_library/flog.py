@@ -57,21 +57,16 @@ class Flog:
 
     def serialize(self, x, name: str = None):
         # We need a license because Python evaluates arguments before calling a function
-        reset_succeeded = False
+        if self.init_in_func_ctx:
+            license = self.controller.get_license_to_serialize()
+            if not license:
+                return "PASS"
         try:
-            if name == "self":
-                reset_succeeded = self.controller.cond_reset()
-            if self.init_in_func_ctx:
-                license = self.controller.get_license_to_serialize()
-                if not license:
-                    return "PASS"
-            try:
-                out = str(cloudpickle.dumps(x))
-                return out
-            except:
-                return "ERROR: failed to serialize"
-        finally:
-            self.controller.unreset(reset_succeeded)
+
+            out = str(cloudpickle.dumps(x))
+            return out
+        except:
+            return "ERROR: failed to serialize"
 
     def block_recursive_serialization(self):
         self.block_succeeded = self.controller.cond_inf_recursion_block()

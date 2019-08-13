@@ -4,7 +4,6 @@ import re
 import uuid
 
 import git
-import boto3
 
 from flor.constants import *
 from flor.face_library.flog import Flog
@@ -35,6 +34,7 @@ class OpenLog:
 
         # Get EC2 instance type
         try:
+            import boto3
             ec2 = boto3.resource('ec2')
             for i in ec2.instances.all():
                 session_start.update({'EC2_instance_type': i.instance_type})
