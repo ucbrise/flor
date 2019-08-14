@@ -31,5 +31,9 @@ class ClientRoot(LogStmt):
                 + "\n")
 
     def to_string_foot(self):
-        return FOOTER + "\n"
+        lsn = self.counter['value']
+        self.counter['value'] += 1
+        return (super().to_string("{{'end_of_file': '{}', 'lsn': {}}}".format(self.filepath, lsn)) + "\n"
+                + FOOTER + "\n")
+
 

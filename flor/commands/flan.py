@@ -1,7 +1,7 @@
 import os
 import ast
 
-from flor.complete_capture.transformer import ClientTransformer
+from flor.complete_capture.transformer import Transformer
 from flor.state_machine_generator import Visitor
 
 class DebuggingObj:
@@ -35,10 +35,9 @@ def exec_flan(args):
 
     visitors = []
     for full_path in full_paths:
-        # Transform code TODO: what if library code is annotated? ClientTransformer will mismatch
-        #Solution: flor highlighter can provide info about where code comes from
+        # Transform code
         exec_path = _get_src_filename(full_path)
-        transformer = ClientTransformer(exec_path)
+        transformer = Transformer(exec_path)
         with open(full_path, 'r') as f:
             astree = ast.parse(f.read())
         new_astree = transformer.visit(astree)

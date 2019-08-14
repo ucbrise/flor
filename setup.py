@@ -9,14 +9,14 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
      name='pyflor',
-     version='0.0.3a31',
+     version='0.0.3a35',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
      description="A diagnostics and sharing system for ML",
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
-     packages=[p for p in setuptools.find_packages() if p != 'tests' or p != 'highlight_plugin'],
+     packages=[p for p in setuptools.find_packages() if p != 'tests' and p != 'highlight_plugin'],
      install_requires = requirements,
      classifiers = [
          "Programming Language :: Python :: 3",
