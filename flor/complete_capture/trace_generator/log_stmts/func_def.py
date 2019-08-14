@@ -3,12 +3,10 @@ from .. import util as gen
 import ast
 
 HEADER = """
-from flor import Flog
 if Flog.flagged(option='nofork'): flog = Flog()
 """
 
 HEADER_SOP_FD = """
-from flor import Flog
 if Flog.flagged(option='nofork'): flog = Flog(False)
 """
 
