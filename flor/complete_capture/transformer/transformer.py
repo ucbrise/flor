@@ -12,7 +12,7 @@ class Transformer(ast.NodeTransformer):
         And do some garbage collection at EOF
         """
         def __init__(self,
-                     client_root,
+                     client_root : ClientRoot,
                      docstring=None):
             self.client_root = client_root
             self.docstring = docstring

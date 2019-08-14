@@ -61,6 +61,32 @@ class Scanner:
             self.trailing_ctx.file_path = log_record['file_path']
             for fsm in self.state_machines:
                 fsm.consume_lsn(log_record, self.trailing_ctx)
+        elif 'end_of_file' in log_record:
+            for fsm in self.state_machines:
+                fsm.consume_lsn(log_record, self.trailing_ctx)
+            assert self.trailing_ctx.class_ctx is None and self.trailing_ctx.func_ctx is None, \
+                "Popped a function instead of a file root {}::{}".format(self.line_number, str(self.trailing_ctx))
+
+            # Do POP
+            old_trailing_ctx = self.trailing_ctx
+            self.trailing_ctx = self.trailing_ctx.parent_ctx
+
+            if old_trailing_ctx.file_path != log_record['end_of_file']:
+                # Exception case
+                def to_str(o):
+                    def t_closure(o):
+                        if o is None:
+                            return ''
+                        return t_closure(o.parent_ctx) + ';' + str(o)
+                    if isinstance(o, list):
+                        return ';'.join([str(e) for e in o])
+                    else:
+                        return t_closure(o)
+                print("trailing_ctx: \n{}\n\n\n\n".format(to_str(self.trailing_ctx)))
+                raise RuntimeError("For log record {} ... Expected: {}, Actual: {}".format(
+                    self.line_number, log_record['end_of_file'], old_trailing_ctx.file_path))
+
+            del old_trailing_ctx
         elif 'class_name' in log_record:
             self.trailing_ctx.class_ctx = log_record['class_name']
             for fsm in self.state_machines:
@@ -97,6 +123,7 @@ class Scanner:
                 raise RuntimeError("For log record {} ... Expected: {}, Actual: {}".format(
                     self.line_number, log_record['end_function'], old_trailing_ctx.func_ctx))
 
+            del old_trailing_ctx
         elif 'catch_stack_frame' in log_record:
             # Enfore that the Scanner Stack is a subset of the Python Stack
             # TODO: This approach will be an approximation unless we Flor-transform all of Python
@@ -129,7 +156,6 @@ class Scanner:
                     self.collected.append({id(fsm): out})
 
     def scan_log(self):
-        print("Using new scan")
         with open(self.log_path, 'r') as f:
             for idx, line in enumerate(f):
                 self.line_number = idx + 1
