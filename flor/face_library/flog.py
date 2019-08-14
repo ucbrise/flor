@@ -18,6 +18,8 @@ class Flog:
 
     """
 
+    serializing = False
+
     def __init__(self, init_in_func_ctx=True):
         """
         We have to read the current name of the experiment
@@ -62,17 +64,12 @@ class Flog:
             if not license:
                 return "PASS"
         try:
-
+            Flog.serializing = True
             out = str(cloudpickle.dumps(x))
+            Flog.serializing = False
             return out
         except:
             return "ERROR: failed to serialize"
-
-    def block_recursive_serialization(self):
-        self.block_succeeded = self.controller.cond_inf_recursion_block()
-    
-    def unblock_recursive_serialization(self):
-        self.controller.inf_recursion_unblock(self.block_succeeded)
 
     @staticmethod
     def __get_current__():
@@ -81,6 +78,9 @@ class Flog:
 
     @staticmethod
     def flagged(option: str = None):
+        if Flog.serializing:
+            # Stack overflow avoidance
+            return False
         if option == 'nofork':
             return not not os.listdir(FLOR_CUR)
         return not not os.listdir(FLOR_CUR)
