@@ -66,10 +66,11 @@ class Flog:
         try:
             Flog.serializing = True
             out = str(cloudpickle.dumps(x))
-            Flog.serializing = False
             return out
         except:
             return "ERROR: failed to serialize"
+        finally:
+            Flog.serializing = False
 
     @staticmethod
     def __get_current__():
