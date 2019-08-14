@@ -1,4 +1,4 @@
-from flor.complete_capture.transformer import LibTransformer, ClientTransformer
+from flor.complete_capture.transformer import Transformer
 from flor.constants import *
 from flor.utils import write_failure_msg 
 
@@ -111,9 +111,9 @@ class Walker():
                     try:
                         save_in_case = None
                         if lib_code:
-                            transformer = LibTransformer(self.transformer(os.path.join(src_root, file)))
+                            transformer = Transformer(self.transformer(os.path.join(src_root, file)))
                         else:
-                            transformer = ClientTransformer(os.path.join(src_root, file))
+                            transformer = Transformer(os.path.join(src_root, file))
                         try:
                             with open(os.path.join(src_root, file), 'r') as f:
                                 save_in_case = f.read()
