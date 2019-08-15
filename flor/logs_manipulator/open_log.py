@@ -12,13 +12,14 @@ from flor.utils import cond_mkdir, refresh_tree, cond_rmdir
 
 class OpenLog:
 
-    def __init__(self, name, depth_limit=0):
+    def __init__(self, name, depth_limit=None):
         self.name = name
         cond_mkdir(os.path.join(FLOR_DIR, name))
-        refresh_tree(FLOR_CUR)
-        open(os.path.join(FLOR_CUR, name), 'a').close()
 
-        log_file = open(Flog.__get_current__(), 'a')
+        Flog.xp_name = name
+        Flog.log_path = os.path.join(FLOR_DIR, name, 'log.json')
+
+        log_file = open(Flog.log_path, 'a')
 
         if depth_limit is not None:
             Flog.depth_limit = depth_limit
@@ -92,7 +93,7 @@ class OpenLog:
                 utc_time = time.strftime('%a %b %d %X %Y %Z', time.gmtime(timestamp))
                 return timestamp, local_time, utc_time
 
-        timestamp, local_time, utc_time = get_ntp_time()
+        timestamp, local_time, utc_time = None, None, None
 
         session_start.update({'timestamp': timestamp})
         session_start.update({'local_time': local_time})
@@ -104,12 +105,11 @@ class OpenLog:
         log_file.close()
 
     def exit(self):
-        log_file = open(Flog.__get_current__(), 'a')
+        log_file = open(Flog.log_path, 'a')
         session_end = {'session_end': format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
         log_file.write(json.dumps(session_end) + '\n')
         log_file.flush()
 
-        refresh_tree(FLOR_CUR)
         cond_rmdir(MODEL_DIR)
 
         log_file.close()
