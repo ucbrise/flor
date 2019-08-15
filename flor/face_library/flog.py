@@ -5,18 +5,6 @@ import pickle as cloudpickle
 
 class Flog:
 
-    """
-    This class is instantiated only within a function
-
-    ...
-    That's a problem, we need this class, or equivalent
-    To be instantiated in the header of client-side code
-    even outside the scope of the function
-
-    What behavior do we care about?
-
-    """
-
     serializing = False
     depth_limit = None
 
