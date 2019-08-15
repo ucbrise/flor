@@ -66,24 +66,6 @@ class Transformer(ast.NodeTransformer):
             self.relative_counter['value'] = relative_counter
             self.refuse_transform = prev_refuse_transform
             return new_node
-        elif node.name == '__getstate__':
-            fd = StackOverflowPreventing_FuncDef(node)
-            heads = fd.parse_heads()
-            foot = fd.parse_foot()
-
-            contains_docstring = ast.get_docstring(node) is not None
-            _docstring = node.body[0]
-
-            heads.extend(node.body)
-            node.body = heads
-            if isinstance(node.body[-1], ast.Pass):
-                node.body.pop()
-            node.body = [ast.Try(node.body, [], [], foot)]
-
-            if contains_docstring:
-                node.body.insert(0, _docstring)
-
-            return node
         else:
             return node
 

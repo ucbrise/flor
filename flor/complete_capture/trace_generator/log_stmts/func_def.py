@@ -3,15 +3,11 @@ from .. import util as gen
 import ast
 
 HEADER = """
-if Flog.flagged(option='nofork'): flog = Flog()
-"""
-
-HEADER_SOP_FD = """
-if Flog.flagged(option='nofork'): flog = Flog(False)
+if Flog.flagged(option='start_function'): flog = Flog()
 """
 
 FOOTER = """
-Flog.flagged(option='nofork') and flog.writer.close()
+Flog.flagged(option='end_function') and flog.writer.close()
 """
 
 class FuncDef(LogStmt):
@@ -70,29 +66,3 @@ class FuncDef(LogStmt):
         self.counter['value'] += 1
         return ( super().to_string("{{'end_function': '{}', 'lsn': {}}}".format(self.node.name, lsn)) + "\n"
                  + FOOTER + "\n")
-
-class StackOverflowPreventing_FuncDef(LogStmt):
-
-    def __init__(self, node: ast.FunctionDef):
-        super().__init__()
-        self.node = node
-    
-    def parse_heads(self):
-        """
-        Returns a list of statements
-        """
-        return ast.parse(self.to_string_head()).body
-
-    def parse_foot(self):
-        """
-        Returns a single statement
-        """
-        return ast.parse(self.to_string_foot()).body
-
-    def to_string_head(self):
-        return (HEADER_SOP_FD + "\n"
-                + 'Flog.flagged() and flog.block_recursive_serialization()\n')
-
-    def to_string_foot(self):
-        return ('Flog.flagged() and flog.unblock_recursive_serialization()\n'
-                + FOOTER + "\n")

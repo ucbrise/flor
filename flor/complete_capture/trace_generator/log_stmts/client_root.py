@@ -4,11 +4,11 @@ import ast
 
 HEADER = """
 from flor import Flog
-if Flog.flagged(option='nofork'): flog = Flog(False)
+if Flog.flagged(): flog = Flog()
 """
 
 FOOTER = """
-Flog.flagged(option='nofork') and flog.writer.close()
+Flog.flagged() and flog.writer.close()
 """
 
 class ClientRoot(LogStmt):
