@@ -91,9 +91,9 @@ class Flog:
 
     @staticmethod
     def flagged(option: str = None):
+        experiment_is_active = not not os.listdir(FLOR_CUR)
+        if not experiment_is_active:
+            return False
         if Flog.serializing:
             # Stack overflow avoidance
             return False
-        if option == 'nofork':
-            return not not os.listdir(FLOR_CUR)
-        return not not os.listdir(FLOR_CUR)
