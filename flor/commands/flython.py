@@ -38,14 +38,16 @@ def exec_flython(args):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         del module
-    except Exception as e:
+    except:
+        import sys
         import traceback
+        e = sys.exc_info()[0]
         traceback.print_exc()
         print(e)
         print("Cleaning up...")
+    finally:
+        # Model OpenLog Behavior TODO Add some fault tolerance
+        ol.exit()
 
-    # Model OpenLog Behavior TODO Add some fault tolerance
-    ol.exit()
-
-    # Restore original
-    versioner.reset_hard()
+        # Restore original
+        versioner.reset_hard()

@@ -7,14 +7,12 @@ import git
 
 from flor.constants import *
 from flor.face_library.flog import Flog
-from flor.stateful import put, start
 from flor.utils import cond_mkdir, refresh_tree, cond_rmdir
 
 
 class OpenLog:
 
     def __init__(self, name, depth_limit=0):
-        start()
         self.name = name
         cond_mkdir(os.path.join(FLOR_DIR, name))
         refresh_tree(FLOR_CUR)
@@ -23,7 +21,7 @@ class OpenLog:
         log_file = open(Flog.__get_current__(), 'a')
 
         if depth_limit is not None:
-            put('depth_limit', depth_limit)
+            Flog.depth_limit = depth_limit
 
         session_start = {'session_start': format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
 

@@ -1,5 +1,4 @@
 from flor.constants import *
-from .controller import Controller
 import os
 import json
 import pickle as cloudpickle
@@ -19,6 +18,8 @@ class Flog:
     """
 
     serializing = False
+    depth_limit = None
+    xp_name = None
 
     def __init__(self, init_in_func_ctx=True):
         """
@@ -38,16 +39,27 @@ class Flog:
         """
         self.init_in_func_ctx = init_in_func_ctx
         self.writer = open(self.__get_current__(), 'a')
-        self.controller = Controller(init_in_func_ctx)
 
-        # variable below is used by the controller,
-        # to avoid infinite recursions due to repeated calls to __get_state__
-        self.block_succeeded = False
+        if Flog.depth_limit is not None and init_in_func_ctx:
+            Flog.depth_limit -= 1
+
+    def __do__(self, d):
+        prev_depth_limit = Flog.depth_limit
+        if 'end_function' in d:
+            if Flog.depth_limit is not None:
+                Flog.depth_limit += 1
+        if prev_depth_limit is not None and prev_depth_limit < 0:
+            return Exit
+        else:
+            return Continue
+
+    def __get_license_to_serialize__(self):
+        return Flog.depth_limit is None or Flog.depth_limit >= 0
 
     def write(self, s):
         #TODO: Can I dump with json rather than dumps
         if self.init_in_func_ctx:
-            decision = self.controller.do(s)
+            decision = self.__do__(s)
             if decision is Exit:
                 return False
         self.writer.write(json.dumps(s) + '\n')
@@ -60,7 +72,7 @@ class Flog:
     def serialize(self, x, name: str = None):
         # We need a license because Python evaluates arguments before calling a function
         if self.init_in_func_ctx:
-            license = self.controller.get_license_to_serialize()
+            license = self.__get_license_to_serialize__()
             if not license:
                 return "PASS"
         try:
