@@ -1,6 +1,4 @@
-import os
-
-import shutil
+import warnings
 import importlib
 from uuid import uuid4
 
@@ -36,7 +34,9 @@ def exec_flython(args):
     try:
         spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            spec.loader.exec_module(module)
         del module
     except:
         import sys
