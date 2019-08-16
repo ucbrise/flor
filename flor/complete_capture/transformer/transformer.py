@@ -1,4 +1,4 @@
-import ast
+import ast, astor
 from flor.complete_capture.trace_generator import *
 from flor.utils import write_debug_msg
 from .helper import Header
@@ -26,8 +26,10 @@ class Transformer(ast.NodeTransformer):
         return new_node
 
     def visit_FunctionDef(self, node):
-        # TODO: Relative counter needs more work
-        if '__' != node.name[0:2] or node.name == '__init__':
+        # Lambda test is a patch
+        # PyTorch has some JIT functions that don't work if they're flor-transformed, we wish to skip those
+        if all(map(lambda decorator: 'jit' not in astor.to_source(decorator), node.decorator_list)) \
+            and '__' != node.name[0:2] or node.name == '__init__':
             # ONLY WRAP PUBLIC METHODS TO AVOID STACK OVERFLOW
             prev_refuse_transform = self.refuse_transform
             self.refuse_transform = False
