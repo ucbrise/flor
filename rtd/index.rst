@@ -99,7 +99,7 @@ Below is an example annotated file:
 
 .. code-block:: python
 
-    #/Users/rogarcia/sandbox/sysml_short/iris_raw.py
+    #/Users/rogarcia/sandbox/iris.py
     from sklearn import datasets
     from sklearn import svm
     from sklearn.model_selection import train_test_split
@@ -125,10 +125,21 @@ Flor includes a PyCharm plugin that allows you to annotate your code more easily
 Documentation for the PyCharm plugin will follow shortly.
 
 
-Step 3: Scan the CETs given your annotations to generate a table
+Step 3: Scan the CETs to generate a table
 -----------
 
-Pass
+At this point, we have a CET and an annotated Python script.
+The CET is a durable copy of a previous execution.
+Flor uses the annotated Python script ``iris_h.py`` to identify the values you want to fetch from the CET.
+Then, Flor scans the CET to extract the values and transform them into a relational table.
+
+.. code-block:: bash
+
+    flor etl iris_demo iris_h.py
+
+``iris_demo`` is the name of the experiment and ``iris_h.py`` is the path to the annotated file.
+
+When the program finishes, you can view the results in ``iris_demo.csv``.
 
 License
 -------
