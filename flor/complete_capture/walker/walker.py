@@ -76,7 +76,7 @@ class Walker():
                         'eli5',
                         'tensorboard',
                         'tensorflow',
-                        'tensorflow_estimator'
+                        'tensorflow_estimator',
                         'torch',
                         'torchvision',
                         'keras',
