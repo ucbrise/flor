@@ -8,7 +8,11 @@ if Flog.flagged(): flog = Flog()
 """
 
 FOOTER = """
-Flog.flagged() and (flog.writer.close() or del flog)
+Flog.flagged() and flog.writer.close()
+try:
+    del flog
+except NameError:
+    pass
 """
 
 class ClientRoot(LogStmt):
