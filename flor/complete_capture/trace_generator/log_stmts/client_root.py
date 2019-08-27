@@ -8,7 +8,7 @@ if Flog.flagged(): flog = Flog()
 """
 
 FOOTER = """
-Flog.flagged() and flog.writer.close()
+Flog.flagged() and (flog.writer.close() or del flog)
 """
 
 class ClientRoot(LogStmt):
