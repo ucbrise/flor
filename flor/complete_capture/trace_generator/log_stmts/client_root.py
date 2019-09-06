@@ -11,7 +11,7 @@ FOOTER = """
 Flog.flagged() and flog.writer.close()
 try:
     del flog
-except NameError:
+except:
     pass
 """
 
