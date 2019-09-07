@@ -145,9 +145,13 @@ class Transformer(ast.NodeTransformer):
                     if isinstance(value, ast.Assign) or \
                             isinstance(value, ast.AugAssign) or \
                             isinstance(value, ast.AnnAssign):
+                        if isinstance(value, ast.Assign) and \
+                                isinstance(value.targets[0], ast.Name) and \
+                                value.targets[0].id == '__all__' and \
+                                'dir()' in astor.to_source(value.value):
+                            value.value.generators[0].ifs = [ast.parse(astor.to_source(value.value.generators[0].ifs[0]).replace('\n', '') + "and s != 'flog'").body[0].value]
                         # OUTPUT ASSIGN STATEMENT
-                        value = self.visit(
-                            Assign(value, self.relative_counter).parse())
+                        value = self.visit(Assign(value, self.relative_counter).parse())
                         new_values.append(value)
                 old_value[:] = new_values
                 if header_obj is not None:
