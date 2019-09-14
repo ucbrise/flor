@@ -31,11 +31,12 @@ def test_etl():
     # replace first line with data header
     with open(h_file_path) as f:
         lines = f.readlines()
-    lines[0] = '#' + os.path.abspath(src_file_path)
+    lines[0] = '#' + os.path.abspath(src_file_path) + '\n'
     with open(h_file_path, 'w') as f:
         f.writelines(lines)
-    print(open(h_file_path).read())
     # run flor etl
     exec_flan(Namespace(name=exp_name, annotated_file=[os.path.abspath(h_file_path)]))
-    assert len(open(exp_name + '.csv', 'r').read().strip()) > 2, 'CSV file generated must be non-empty'
+    with open(exp_name + '.csv', 'r') as f:
+        text = f.read().strip()
+        assert len(text) > 2, 'CSV file generated must be non-empty'
     

@@ -16,6 +16,6 @@ for g in [0.1, 0.01, 0.001]:
     score = GET("score_1", clf.score(X_te, y_te))
     print(score)
 
-score = GET("score_1", 100)
+score = GET("score_2", 100)
 
 print('--- %s seconds ---' % (time.time() - start_time))
