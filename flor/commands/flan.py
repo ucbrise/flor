@@ -27,7 +27,7 @@ def exec_flan(args):
     # Get path and check
     full_paths = [os.path.abspath(path) for path in args.annotated_file]
     for full_path in full_paths:
-        assert os.path.splitext(os.path.basename(full_path))[1] == '.py'
+        assert os.path.splitext(os.path.basename(full_path))[1] == '.py', 'full_path {} ends in {} and not in .py'.format(full_path, os.path.splitext(os.path.basename(full_path))[1])
 
     # Get Log Name
     log_path = os.path.join(os.path.expanduser('~'), '.flor', args.name, 'log.json')
