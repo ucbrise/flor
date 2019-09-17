@@ -1,4 +1,5 @@
 import json
+import copy
 
 from .state_machines.actual_param import ActualParam
 from .state_machines.root_expression import RootExpression
@@ -182,10 +183,17 @@ class Scanner:
         """
         rows = []
         row = []
+        cols = set()
         for each in self.collected:
             k = list(each.keys()).pop()
             if k not in map(lambda x: list(x.keys()).pop(), row):
                 row.append(each)
+                if k not in cols:
+                    cols.add(k)
+                    none_copy = copy.deepcopy(each)
+                    none_copy[k][list(each[k].keys())[0]] = None
+                    for x in rows:
+                        x.append(none_copy)
             else:
                 rows.append(row)
                 new_row = []
