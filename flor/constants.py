@@ -11,3 +11,6 @@ MODEL_DIR = os.path.join(FLOR_DIR, '.stateful')
 class Null: pass
 class Exit: pass
 class Continue: pass
+
+class Play: pass
+class Replay: pass
