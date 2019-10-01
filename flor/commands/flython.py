@@ -7,12 +7,14 @@ from flor.complete_capture.walker import Walker
 from flor.logs_manipulator.open_log import OpenLog
 from flor.constants import *
 
+import sys
+
 def exec_flython(args):
     if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
         print("Flor hasn't been installed.")
         print("From Python: You may run the function flor.install()")
         print("From CLI: You may run the pyflor_install script")
-        import sys; sys.exit(0)
+        sys.exit(0)
 
     # Get path and check
     full_path = os.path.abspath(args.path)
@@ -26,12 +28,22 @@ def exec_flython(args):
     ol = OpenLog(args.name)
 
     try:
-        spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
-        module = importlib.util.module_from_spec(spec)
+        with open(full_path, 'r') as f:
+            full_text = f.read()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            spec.loader.exec_module(module)
-        del module
+            sys.path.insert(0, os.path.dirname(full_path))
+            sys.argv = sys.argv[3:-1]
+            g = globals()
+            old_name = g.get('__name__', None)
+            l = {'__name__': '__main__'}
+            g.update(l)
+            exec(full_text, g, l)
+            if old_name is None:
+                del g['__name__']
+            else:
+                g['__name__'] = old_name
+            sys.path.pop(0)
     except:
         import sys
         import traceback
@@ -47,12 +59,11 @@ def exec_flython(args):
     print("Execution finished... re-executing...")
 
 def re_exec_flython(args):
-
     if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
         print("Flor hasn't been installed.")
         print("From Python: You may run the function flor.install()")
         print("From CLI: You may run the pyflor_install script")
-        import sys; sys.exit(0)
+        sys.exit(0)
 
     # Get path and check
     full_path = os.path.abspath(args.path)
@@ -72,12 +83,22 @@ def re_exec_flython(args):
 
     # Run code
     try:
-        spec = importlib.util.spec_from_file_location("_{}".format(uuid4().hex), full_path)
-        module = importlib.util.module_from_spec(spec)
+        with open(full_path, 'r') as f:
+            full_text = f.read()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            spec.loader.exec_module(module)
-        del module
+            sys.path.insert(0, os.path.dirname(full_path))
+            sys.argv = sys.argv[3:-1]
+            g = globals()
+            old_name = g.get('__name__', None)
+            l = {'__name__': '__main__'}
+            g.update(l)
+            exec(full_text, g, l)
+            if old_name is None:
+                del g['__name__']
+            else:
+                g['__name__'] = old_name
+            sys.path.pop(0)
     except:
         import sys
         import traceback
