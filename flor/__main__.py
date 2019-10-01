@@ -127,13 +127,13 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
     conda_flor_env = input("Enter the name of the new anaconda environment [{}]: ".format(conda_flor_env)).strip() or conda_flor_env
 
     FLOR_FUNC = """
-flor() {
+flor() {{
     pyflor $@;
-    conda activate flor;
-    pyflor ${@:1:1} --re-execution ${@:2:99};
+    conda activate {};
+    pyflor ${{@:1:1}} --re-execution ${{@:2:99}};
     cd $(pwd);
     conda deactivate;
-}
+}}
 """.format(conda_flor_env)
 
     # conda clone environment
