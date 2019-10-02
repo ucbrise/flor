@@ -41,7 +41,7 @@ def exec_flython(args):
             old_name = g.get('__name__', None)
             l = {'__name__': '__main__'}
             g.update(l)
-            exec(full_text, g, l)
+            exec(full_text, g, g)
             if old_name is None:
                 del g['__name__']
             else:
@@ -95,7 +95,7 @@ def re_exec_flython(args):
             old_name = g.get('__name__', None)
             l = {'__name__': '__main__'}
             g.update(l)
-            exec(full_text, g, l)
+            exec(full_text, g, g)
             if old_name is None:
                 del g['__name__']
             else:

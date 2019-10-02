@@ -3,7 +3,6 @@ from .. import util as gen
 import ast
 
 HEADER = """
-global Flog
 if Flog.flagged(option='start_function'): flog = Flog()
 """
 
