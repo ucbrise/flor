@@ -7,7 +7,10 @@ from flor.complete_capture.walker import Walker
 from flor.logs_manipulator.open_log import OpenLog
 from flor.constants import *
 
-import sys
+import sys, os
+# Adding to global namespace
+import flor
+from flor import Flog
 
 def exec_flython(args):
     if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
@@ -45,7 +48,6 @@ def exec_flython(args):
                 g['__name__'] = old_name
             sys.path.pop(0)
     except:
-        import sys
         import traceback
         e = sys.exc_info()[0]
         traceback.print_exc()
@@ -100,7 +102,6 @@ def re_exec_flython(args):
                 g['__name__'] = old_name
             sys.path.pop(0)
     except:
-        import sys
         import traceback
         e = sys.exc_info()[0]
         traceback.print_exc()
