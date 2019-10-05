@@ -9,7 +9,7 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
      name='pyflor',
-     version='0.0.5a11',
+     version='0.0.6a0',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
      description="A diagnostics and sharing system for ML",
@@ -23,12 +23,4 @@ setuptools.setup(
          "License :: OSI Approved :: Apache Software License",
          "Operating System :: OS Independent",
      ],
-    entry_points={
-        'console_scripts': [
-            'pyflor = flor.__main__:main',
-            'pyflor_install = flor.__main__:install',
-            'pyflor_uninstall = flor.__main__:uninstall'
-
-        ]
-    }
  )
