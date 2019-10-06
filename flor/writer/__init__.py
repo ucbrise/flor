@@ -11,6 +11,7 @@ class Writer:
     lsn = 0
     pinned_state = []
     seeds = []
+    store_load = []
 
     if MODE is EXEC:
         fd = open(LOG_PATH, 'w')
@@ -23,6 +24,8 @@ class Writer:
                         pinned_state.append(cloudpickle.loads(eval(log_record['state'])))
                     elif log_record['source'] == 'random_seed':
                         seeds.append(log_record['seed'])
+                    elif log_record['source'] == 'store':
+                        store_load.append(cloudpickle.loads(eval(log_record['value'])))
 
     @staticmethod
     def serialize(obj):
@@ -41,6 +44,21 @@ class Writer:
         Writer.fd.write(json.dumps(obj) + '\n')
         Writer.fd.flush()
         Writer.lsn += 1
+
+    @staticmethod
+    def store(obj):
+        # Store the object in the memo
+        d = {
+            'source': 'store',
+            'value': Writer.serialize(obj)
+        }
+        Writer.write(d)
+
+    @staticmethod
+    def load():
+        value = Writer.store_load.pop(0)
+        return value
+
 
     @staticmethod
     def pin_state(library):
@@ -89,5 +107,7 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
+store = Writer.store
+load = Writer.load
 
-__all__ = ['pin_state', 'random_seed']
+__all__ = ['pin_state', 'random_seed', 'store', 'load']
