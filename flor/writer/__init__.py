@@ -25,7 +25,7 @@ class Writer:
                     elif log_record['source'] == 'random_seed':
                         seeds.append(log_record['seed'])
                     elif log_record['source'] == 'store':
-                        store_load.append(cloudpickle.loads(eval(log_record['value'])))
+                        store_load.append(eval(log_record['value']))
 
     @staticmethod
     def serialize(obj):
@@ -57,7 +57,7 @@ class Writer:
     @staticmethod
     def load():
         value = Writer.store_load.pop(0)
-        return value
+        return cloudpickle.loads(value)
 
 
     @staticmethod
