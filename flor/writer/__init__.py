@@ -1,8 +1,11 @@
-import numpy, random
+import numpy
+import pandas as pd
+import random
 import os
 import cloudpickle
 import json
 from flor.stateful import *
+
 
 class Writer:
     serializing = False
@@ -10,10 +13,13 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
+    condition = True
+    collected = []
+    columns = []
 
     if MODE is EXEC:
         fd = open(LOG_PATH, 'w')
-    else:
+    elif MODE is REEXEC or MODE is ETL:
         with open(MEMO_PATH, 'r') as f:
             for line in f:
                 log_record = json.loads(line.strip())
@@ -62,6 +68,8 @@ class Writer:
     @staticmethod
     def store(obj, global_key):
         # Store the object in the memo
+        if MODE is not EXEC:
+            return
         d = {
             'source': 'store',
             'global_key': global_key,
@@ -74,6 +82,60 @@ class Writer:
         its_key, values = Writer.store_load.pop(0)
         assert its_key == global_key
         return [cloudpickle.loads(v) for v in values]
+
+    @staticmethod
+    def get(expr, name, pred=None, maps=None):
+        if Writer.condition:
+            Writer.collected.append({name: expr})
+            if maps:
+                for name in maps:
+                    f = maps[name]
+                    Writer.collected.append({name: f(expr)})
+        return expr
+
+    @staticmethod
+    def cond(pred=None):
+        Writer.condition = eval(str(pred)) if pred is not None else True
+
+    @staticmethod
+    def to_rows():
+        rows = []
+        row = []
+        for each in Writer.collected:
+            k = list(each.keys()).pop()
+            if k not in Writer.columns:
+                Writer.columns.append(k)
+            if k not in map(lambda x: list(x.keys()).pop(), row):
+                row.append(each)
+            else:
+                rows.append(row)
+                new_row = []
+                for r in row:
+                    if k not in r:
+                        new_row.append(r)
+                    else:
+                        new_row.append(each)
+                        break
+                row = new_row
+        rows.append(row)
+        # post-proc
+        rows2 = []
+        for row in rows:
+            row2 = []
+            for each in row:
+                row2.append(list(each.values()).pop())
+            rows2.append(row2)
+        return rows2
+
+    @staticmethod
+    def to_df():
+        rows = Writer.to_rows()
+        return pd.DataFrame(rows, columns=Writer.columns)
+
+    @staticmethod
+    def export():
+        if MODE is ETL:
+            Writer.to_df().to_csv(CSV_PATH)
 
     @staticmethod
     def pin_state(library):
@@ -90,7 +152,7 @@ class Writer:
                 Writer.write(d)
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
-        elif MODE is REEXEC:
+        elif MODE is REEXEC or MODE is ETL:
             state = Writer.pinned_state.pop(0)
             if library is numpy:
                 library.random.set_state(state)
@@ -108,19 +170,23 @@ class Writer:
                 seed = numpy.random.randint(*args, **kwargs)
             else:
                 seed = numpy.random.randint(0, 2 ** 32)
-            d =  {
-            'source': 'random_seed',
-            'seed': seed
+            d = {
+                'source': 'random_seed',
+                'seed': seed
             }
             Writer.write(d)
             return seed
-        elif MODE is REEXEC:
+        elif MODE is REEXEC or MODE is ETL:
             seed = Writer.seeds.pop(0)
             return seed
         else:
             raise RuntimeError()
 
+
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
+get = Writer.get
+cond = Writer.cond
+export = Writer.export
 
-__all__ = ['pin_state', 'random_seed']
+__all__ = ['pin_state', 'random_seed', 'get', 'cond', 'export']

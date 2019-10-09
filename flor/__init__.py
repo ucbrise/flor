@@ -8,7 +8,7 @@ import flor.utils as utils
 
 # Fetch the flags we need without disrupting user code
 flor_settings = {
-    'mode': ['exec', 'reexec'], # default: exec
+    'mode': ['exec', 'reexec', 'etl'],  # default: exec
     'name': ANY,
     'memo': ANY
 }
@@ -40,19 +40,22 @@ flags.NAME = user_settings['name']
 flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
 
 # Update default settings
-if 'mode' in user_settings and user_settings['mode'] == 'reexec':
+if 'mode' in user_settings and user_settings['mode'] in ['reexec', 'etl']:
     assert 'memo' in user_settings, "[FLOR] On Re-execution, please specify a memoized file"
     flags.MEMO_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, user_settings['memo'])
     assert os.path.exists(flags.MEMO_PATH)
     flags.MODE = REEXEC
+    if user_settings['mode'] == 'etl':
+        flags.CSV_PATH = os.path.join(os.path.curdir, flags.NAME + '.csv')
+        flags.MODE = ETL
 
 # Mkdirs
 utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor'))
 utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
 
 # Finish initializing flor
-from flor.writer import pin_state, random_seed
+from flor.writer import pin_state, random_seed, get, cond, export
 from flor.skipblock import SkipBlock
 
 SKIP = flags.MODE is REEXEC
-__all__ = ['pin_state', 'random_seed', 'SKIP', 'SkipBlock']
+__all__ = ['pin_state', 'random_seed', 'get', 'cond', 'export', 'SKIP', 'SkipBlock']
