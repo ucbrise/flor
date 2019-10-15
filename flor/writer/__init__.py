@@ -1,8 +1,10 @@
 import numpy, random
 import os
 import cloudpickle
+import copy
 import json
 from flor.stateful import *
+from flor.serial_wrapper import SerialWrapper
 
 
 
@@ -12,6 +14,9 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
+    max_buffer = 10000
+    write_buffer = []
+    fork_now = False
 
     if MODE is EXEC:
         fd = open(LOG_PATH, 'w')
@@ -29,21 +34,48 @@ class Writer:
 
     @staticmethod
     def serialize(obj):
-        try:
-            Writer.serializing = True
-            out = str(cloudpickle.dumps(obj))
-            return out
-        except:
-            return "ERROR: failed to serialize"
-        finally:
-            Writer.serializing = False
+        if not isinstance(obj, (int, float, bool, str)):
+            try:
+                Writer.serializing = True
+                return SerialWrapper(copy.deepcopy(obj))
+            except:
+                try:
+                    return str(cloudpickle.dumps(obj))
+                except:
+                    return "ERROR: failed to serialize"
+            finally:
+                Writer.serializing = False
+        else:
+            return SerialWrapper(obj)
+
+        # try:
+        #     Writer.serializing = True
+        #     out = str(cloudpickle.dumps(obj))
+        #     return out
+        # except:
+        #     return "ERROR: failed to serialize"
+        # finally:
+        #     Writer.serializing = False
 
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        Writer.fd.write(json.dumps(obj) + '\n')
-        Writer.fd.flush()
+        Writer.write_buffer.append(obj)
         Writer.lsn += 1
+        if len(Writer.write_buffer) > Writer.max_buffer or Writer.fork_now:
+            Writer.fork_now = False
+            pid = os._fork()
+            if not pid:
+                os.nice(1)
+                Writer.serializing = True
+                for each in Writer.write_buffer:
+                    each['value'] = str(cloudpickle.dumps(each['value']))
+                    Writer.fd.write(json.dumps(each) + '\n')
+                Writer.fd.flush()
+                Writer.serializing = False
+                os._exit(0)
+            else:
+                Writer.write_buffer = []
 
     @staticmethod
     def store(obj):
