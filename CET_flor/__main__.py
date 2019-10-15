@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 
-from flor.commands.flython import exec_flython
+from flor.commands.flython import exec_flython, re_exec_flython
 from flor.commands.flan import exec_flan
 from flor.commands.cp import exec_cp
 import sys
@@ -20,26 +20,37 @@ def main(args=None):
     python_parser.add_argument("path", help="The path to the stateful training pipeline to execute")
     python_parser.add_argument("name", help="The name of the experiment to run")
     python_parser.add_argument("-d", "--depth_limit", type=int, help="Depth limit the logging")
+    python_parser.add_argument("--re-execution", dest='re_executing', action='store_true')
+    python_parser.set_defaults(re_executing=False)
 
     etl_parser = subparsers.add_parser('etl')
     etl_parser.add_argument("name", help="The name of the experiment that has been run")
     etl_parser.add_argument("annotated_file", nargs='+', help="The paths to the annotated files")
     etl_parser.add_argument("-d", "--dump_db", choices={"postgres", "sqlite"}, help="Load data to db")
     etl_parser.add_argument("-f", "--dump_file", help="Load data to file at specified path")
+    etl_parser.add_argument("--re-execution", dest='re_executing', action='store_true')
+    etl_parser.set_defaults(re_executing=False)
 
     cp_parser = subparsers.add_parser('cp')
     cp_parser.add_argument("src", help="The path to the source file that will be annotated")
     cp_parser.add_argument("dst", help="Name of the file that will be copied")
+    cp_parser.add_argument("--re-execution", dest='re_executing', action='store_true')
+    cp_parser.set_defaults(re_executing=False)
 
     if args is None:
         args = parser.parse_args()
 
     if args.subcommand == 'python':
-        exec_flython(args)
+        if not args.re_executing:
+            exec_flython(args)
+        else:
+            re_exec_flython(args)
     elif args.subcommand == 'etl':
-        exec_flan(args)
+        if not args.re_executing:
+            exec_flan(args)
     elif args.subcommand == 'cp':
-        exec_cp(args)
+        if not args.re_executing:
+            exec_cp(args)
     else:
         raise ValueError("Invalid option: {}".format(args.subcommand))
 
@@ -73,7 +84,7 @@ def uninstall(multiuser=False):
 
             for line in file:
                 if 'flor() {' in line:
-                    for _ in range(5):
+                    for _ in range(6):
                         # skip this line and next 5 lines
                         next(file, None)
                 else:
@@ -117,9 +128,10 @@ def install(base_conda='base', conda_flor_env='flor', python_version='3.7', mult
 
     FLOR_FUNC = """
 flor() {{
-    conda activate {};
     pyflor $@;
-    cd $(pwd);  
+    conda activate {};
+    pyflor ${{@:1:1}} --re-execution ${{@:2:99}};
+    cd $(pwd);
     conda deactivate;
 }}
 """.format(conda_flor_env)

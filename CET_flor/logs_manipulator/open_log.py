@@ -93,6 +93,11 @@ class OpenLog:
 
         cond_rmdir(MODEL_DIR)
         log_file.close()
+        Flog.state = Play
+
+    def set_re_execution_flag(self):
+        Flog.state = Replay
+        Flog.scan_indexed_log()
 
     def __enter__(self):
         return self
