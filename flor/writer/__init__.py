@@ -95,20 +95,19 @@ class Writer:
             return True
 
     @staticmethod
-    def update_condition():
+    def check_condition():
         if not Writer.predicates:
             # Initialize condition to True
             Writer.condition = True
         else:
             Writer.condition = all([Writer.eval_pred(pred) for pred in Writer.predicates])
+        return Writer.condition
 
     @staticmethod
     def get(expr, name, pred=None, maps=None):
         setattr(Writer.flor_vars, name, expr)
-        if type(pred) == str:
-            cond(pred)
-        Writer.update_condition()
-        if Writer.condition:
+        cond(pred)
+        if Writer.check_condition():
             Writer.collected.append({name: expr})
             if maps:
                 for name in maps:
@@ -118,15 +117,15 @@ class Writer:
 
     @staticmethod
     def cond(pred=None):
-        if type(pred) == str and str(pred) not in Writer.predicates:
-            Writer.predicates.append(str(pred))
-            Writer.update_condition()
+        # Register new predicate
+        if type(pred) == str and pred not in Writer.predicates:
+            Writer.predicates.append(pred)
         elif type(pred) == bool:
             Writer.condition = Writer.condition and pred
 
     @staticmethod
     def var(name):
-        # TODO: default value
+        # Default to None
         return getattr(Writer.flor_vars, name, None)
 
     @staticmethod
