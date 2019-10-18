@@ -112,7 +112,9 @@ class Writer:
             if maps:
                 for name in maps:
                     f = maps[name]
-                    Writer.collected.append({name: f(expr)})
+                    value = f(expr)
+                    setattr(Writer.flor_vars, name, value)
+                    Writer.collected.append({name: value})
         return expr
 
     @staticmethod
