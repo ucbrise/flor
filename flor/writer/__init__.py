@@ -14,7 +14,7 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
-    max_buffer = 50000
+    max_buffer = 1
     write_buffer = []
     fork_now = False
 
@@ -48,14 +48,16 @@ class Writer:
         else:
             return obj
 
-        # try:
-        #     Writer.serializing = True
-        #     out = str(cloudpickle.dumps(obj))
-        #     return out
-        # except:
-        #     return "ERROR: failed to serialize"
-        # finally:
-        #     Writer.serializing = False
+    @staticmethod
+    def serial_serialize(obj):
+        try:
+            Writer.serializing = True
+            out = str(cloudpickle.dumps(obj))
+            return out
+        except:
+            return "ERROR: failed to serialize"
+        finally:
+            Writer.serializing = False
 
     @staticmethod
     def write(obj):
@@ -124,12 +126,12 @@ class Writer:
             if library is numpy:
                 d = {'source': 'pin_state',
                      'library': 'numpy',
-                     'state': Writer.serialize(library.random.get_state())}
+                     'state': Writer.serial_serialize(library.random.get_state())}
                 Writer.write(d)
             elif library is random:
                 d = {'source': 'pin_state',
                      'library': 'random',
-                     'state': Writer.serialize(library.getstate())}
+                     'state': Writer.serial_serialize(library.getstate())}
                 Writer.write(d)
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
@@ -168,4 +170,4 @@ random_seed = Writer.random_seed
 store = Writer.store
 load = Writer.load
 
-__all__ = ['pin_state', 'random_seed', 'store', 'load']
+__all__ = ['pin_state', 'random_seed', 'store', 'load', 'flush']
