@@ -8,3 +8,4 @@ def pure_func(f):
                 f(*args, **kwargs)
             finally:
                 os._exit(0)
+    return fork_protect
