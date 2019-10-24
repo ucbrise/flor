@@ -4,8 +4,6 @@ import cloudpickle
 import json
 from flor.stateful import *
 
-
-
 class Writer:
     serializing = False
     lsn = 0
