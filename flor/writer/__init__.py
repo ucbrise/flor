@@ -6,6 +6,7 @@ import json
 from flor.stateful import *
 from flor.serial_wrapper import SerialWrapper
 
+from torch import Tensor
 
 
 class Writer:
@@ -109,11 +110,33 @@ class Writer:
     @staticmethod
     def store(obj):
         # Store the object in the memo
+        if isinstance(obj, dict):
+            d = Writer.store_state_dict(obj)
+        else:
+            d = {
+                'source': 'store',
+                'value': Writer.serialize(obj)
+            }
+        Writer.write(d)
+
+    @staticmethod
+    def store_state_dict(obj: dict):
+        #if this is a state dict, it would only have tensors in it
+        #however, if there are more than just tensors, we must copy
+        is_state = True
+        for k, v in obj.items():
+            if isinstance(v, Tensor):
+                obj[k] = v.cpu()
+            else:
+                is_state = False
+        if not is_state:
+            obj = Writer.serialize(obj)
+
         d = {
             'source': 'store',
-            'value': Writer.serialize(obj)
+            'value': obj
         }
-        Writer.write(d)
+        return d
 
     @staticmethod
     def load():
