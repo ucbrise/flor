@@ -52,7 +52,6 @@ utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
 
 # Finish initializing flor
 from flor.writer import pin_state, random_seed, store, load
-from flor.eval_functions import pure_func
 
 SKIP = flags.MODE is REEXEC
-__all__ = ['pin_state', 'random_seed', 'store', 'load', 'SKIP', 'pure_func']
+__all__ = ['pin_state', 'random_seed', 'store', 'load', 'SKIP']
