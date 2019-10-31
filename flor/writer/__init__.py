@@ -18,7 +18,10 @@ class Writer:
     predicates = []
     condition = True
     collected = []
+    names_to_skip = []
     columns = []
+    groups = {}
+    prev_name = None
     flor_vars = SimpleNamespace()
 
     if MODE is EXEC:
@@ -95,30 +98,65 @@ class Writer:
             return True
 
     @staticmethod
-    def check_condition():
+    def check_condition(name):
         if not Writer.predicates:
             # Initialize condition to True
             Writer.condition = True
+        elif name in Writer.names_to_skip:
+            Writer.names_to_skip.remove(name)
         else:
-            Writer.condition = all([Writer.eval_pred(pred) for pred in Writer.predicates])
+            Writer.condition = all([Writer.eval_pred(pred) for pred in Writer.predicates if name in pred])
         return Writer.condition
 
     @staticmethod
+    def update_groups(name):
+        if name not in Writer.columns:
+            Writer.columns.append(name)
+        elif name not in Writer.groups:
+            name_idx = Writer.columns.index(name)
+            prev_name = Writer.collected[name_idx - 1] if name_idx else None
+            if Writer.prev_name != prev_name:
+                end_idx = Writer.columns.index(Writer.prev_name)
+                group = Writer.columns[name_idx:end_idx + 1]
+                for x in group:
+                    Writer.groups[x] = group
+        Writer.prev_name = name
+
+    @staticmethod
     def get(expr, name, pred=None, maps=None):
+        if MODE is not ETL:
+            return expr
+        Writer.update_groups(name)
         setattr(Writer.flor_vars, name, expr)
         cond(pred)
-        if Writer.check_condition():
+        if Writer.check_condition(name):
             Writer.collected.append({name: expr})
             if maps:
                 for name in maps:
+                    Writer.update_groups(name)
                     f = maps[name]
                     value = f(expr)
                     setattr(Writer.flor_vars, name, value)
                     Writer.collected.append({name: value})
+        elif name in Writer.groups:
+            group = Writer.groups[name]
+            name_idx = group.index(name)
+            for i in range(name_idx - 1, -1, -1):
+                if len(Writer.collected) > 0 and list(Writer.collected[-1])[0] == group[i]:
+                    Writer.collected.pop(-1)
+            Writer.names_to_skip = group[name_idx + 1:]
+        else:
+            Writer.collected.append({name: ""})
+            if maps:
+                for name in maps:
+                    Writer.collected.append({name: ""})
+
         return expr
 
     @staticmethod
     def cond(pred=None):
+        if MODE is not ETL:
+            return
         # Register new predicate
         if type(pred) == str and pred not in Writer.predicates:
             Writer.predicates.append(pred)
@@ -223,4 +261,4 @@ cond = Writer.cond
 var = Writer.var
 export = Writer.export
 
-__all__ = ['pin_state', 'random_seed', 'get', 'cond', 'export']
+__all__ = ['pin_state', 'random_seed', 'get', 'cond', 'var', 'export']
