@@ -119,20 +119,18 @@ class Writer:
             if isinstance(v, Tensor):
                 obj[k] = v.cpu()
             else:
-                is_state = False
-        if not is_state:
-            obj = Writer.serialize(obj)
-
+                obj[k] = Writer.serialize(obj) #this deepcopies or serializes the output
         d = {
             'source': 'store',
-            'value': obj
+            'value': SerialWrapper(obj)
         }
         return d
 
     @staticmethod
     def store_tensor(obj: Tensor):
+        #special handling for tensors
         on_cpu = obj.cpu()
-        return {'source': 'store', 'value': on_cpu}
+        return {'source': 'store', 'value': SerialWrapper(on_cpu)}
 
     @staticmethod
     def load():
