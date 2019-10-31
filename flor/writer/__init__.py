@@ -66,45 +66,34 @@ class Writer:
         Writer.write_buffer.append(obj)
         Writer.lsn += 1
         if len(Writer.write_buffer) >= Writer.max_buffer or Writer.fork_now:
-            Writer.fork_now = False
-            pid = os.fork()
-            if not pid:
-                os.nice(1)
-                Writer.serializing = True
-                for each in Writer.write_buffer:
-                    if 'value' in each:
-                        if isinstance(each['value'], SerialWrapper):
-                            each['value'] = str(cloudpickle.dumps(each['value']))
-                    else:
-                        if isinstance(each['state'], SerialWrapper):
-                            each['state'] = str(cloudpickle.dumps(each['state']))
-                    Writer.fd.write(json.dumps(each) + '\n')
-                Writer.fd.flush()
-                Writer.serializing = False
-                os._exit(0)
-            else:
-                Writer.write_buffer = []
+            Writer.forked_write()
+
+    @staticmethod
+    def forked_write():
+        Writer.fork_now = False
+        pid = os.fork()
+        if not pid:
+            os.nice(1)
+            Writer.serializing = True
+            for each in Writer.write_buffer:
+                if 'value' in each:
+                    if isinstance(each['value'], SerialWrapper):
+                        each['value'] = str(cloudpickle.dumps(each['value']))
+                else:
+                    if isinstance(each['state'], SerialWrapper):
+                        each['state'] = str(cloudpickle.dumps(each['state']))
+                Writer.fd.write(json.dumps(each) + '\n')
+            Writer.fd.flush()
+            Writer.serializing = False
+            os._exit(0)
+        else:
+            Writer.write_buffer = []
+
 
     @staticmethod
     def flush():
         if Writer.write_buffer:
-            pid = os.fork()
-            if not pid:
-                os.nice(1)
-                Writer.serializing = True
-                for each in Writer.write_buffer:
-                    if 'value' in each:
-                        if isinstance(each['value'], SerialWrapper):
-                            each['value'] = str(cloudpickle.dumps(each['value']))
-                    else:
-                        if isinstance(each['state'], SerialWrapper):
-                            each['state'] = str(cloudpickle.dumps(each['state']))
-                    Writer.fd.write(json.dumps(each) + '\n')
-                Writer.fd.flush()
-                Writer.serializing = False
-                os._exit(0)
-            else:
-                Writer.write_buffer = []
+            Writer.forked_write()
 
 
     @staticmethod
@@ -112,6 +101,8 @@ class Writer:
         # Store the object in the memo
         if isinstance(obj, dict):
             d = Writer.store_state_dict(obj)
+        elif isinstance(obj, Tensor):
+            d = Writer.store_tensor(obj)
         else:
             d = {
                 'source': 'store',
@@ -137,6 +128,11 @@ class Writer:
             'value': obj
         }
         return d
+
+    @staticmethod
+    def store_tensor(obj: Tensor):
+        on_cpu = obj.cpu()
+        return {'source': 'store', 'value': on_cpu}
 
     @staticmethod
     def load():
@@ -192,5 +188,6 @@ pin_state = Writer.pin_state
 random_seed = Writer.random_seed
 store = Writer.store
 load = Writer.load
+flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'store', 'load', 'flush']
