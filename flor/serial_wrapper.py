@@ -1,4 +1,4 @@
-import pickle
+import cloudpickle
 
 class SerialWrapper():
 
@@ -9,4 +9,8 @@ class SerialWrapper():
         return self.data
 
     def serialize(self):
-        self.data = pickle.dumps(self.data)
+        if isinstance(self.data, dict):
+            for k, v in self.data.items():
+                self.data[k] = str(cloudpickle.dumps(v))
+        else:
+            self.data = cloudpickle.dumps(self.data)

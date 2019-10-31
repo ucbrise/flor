@@ -4,6 +4,7 @@ import cloudpickle
 import copy
 import json
 from flor.stateful import *
+from flor.serial_wrapper import SerialWrapper
 
 from torch import Tensor
 
@@ -76,9 +77,15 @@ class Writer:
             Writer.serializing = True
             for each in Writer.write_buffer:
                 if 'value' in each:
-                    each['value'] = str(cloudpickle.dumps(each['value']))
+                    if isinstance(each['value'], SerialWrapper):
+                        each['value'] = each['value'].serialize()
+                    else:
+                        each['value'] = str(cloudpickle.dumps(each['value']))
                 else:
-                    each['state'] = str(cloudpickle.dumps(each['state']))
+                    if isinstance(each['state'], SerialWrapper):
+                        each['state'] = each['state'].serialize()
+                    else:
+                        each['state'] = str(cloudpickle.dumps(each['state']))
                 Writer.fd.write(json.dumps(each) + '\n')
             Writer.fd.flush()
             Writer.serializing = False
@@ -111,7 +118,6 @@ class Writer:
     def store_state_dict(obj: dict):
         #if this is a state dict, it would only have tensors in it
         #however, if there are more than just tensors, we must copy
-        is_state = True
         for k, v in obj.items():
             if isinstance(v, Tensor):
                 obj[k] = v.cpu()
@@ -119,7 +125,7 @@ class Writer:
                 obj[k] = Writer.serialize(obj) #this deepcopies or serializes the output
         d = {
             'source': 'store',
-            'value': obj
+            'value': SerialWrapper(obj)
         }
         return d
 
