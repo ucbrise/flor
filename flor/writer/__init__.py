@@ -4,7 +4,7 @@ import cloudpickle
 import copy
 import json
 from flor.stateful import *
-from flor.serial_wrapper import SerialWrapper
+from flor.serial_wrapper import StateWrapper
 
 from torch import Tensor
 
@@ -34,7 +34,20 @@ class Writer:
                         store_load.append(eval(log_record['value']))
 
     @staticmethod
+    def serial_serialize(obj):
+        try:
+            Writer.serializing = True
+            out = str(cloudpickle.dumps(obj))
+            return out
+        except:
+            return "ERROR: failed to serialize"
+        finally:
+            Writer.serializing = False
+
+    @staticmethod
     def serialize(obj):
+        if isinstance(obj, Tensor):
+            return obj.clone()
         if not isinstance(obj, (int, float, bool, str)):
             try:
                 Writer.serializing = True
@@ -48,17 +61,6 @@ class Writer:
                 Writer.serializing = False
         else:
             return obj
-
-    @staticmethod
-    def serial_serialize(obj):
-        try:
-            Writer.serializing = True
-            out = str(cloudpickle.dumps(obj))
-            return out
-        except:
-            return "ERROR: failed to serialize"
-        finally:
-            Writer.serializing = False
 
     @staticmethod
     def write(obj):
@@ -77,15 +79,9 @@ class Writer:
             Writer.serializing = True
             for each in Writer.write_buffer:
                 if 'value' in each:
-                    if isinstance(each['value'], SerialWrapper):
-                        each['value'] = each['value'].serialize()
-                    else:
-                        each['value'] = str(cloudpickle.dumps(each['value']))
+                    each['value'] = str(cloudpickle.dumps(each['value']))
                 else:
-                    if isinstance(each['state'], SerialWrapper):
-                        each['state'] = each['state'].serialize()
-                    else:
-                        each['state'] = str(cloudpickle.dumps(each['state']))
+                    each['state'] = str(cloudpickle.dumps(each['state']))
                 Writer.fd.write(json.dumps(each) + '\n')
             Writer.fd.flush()
             Writer.serializing = False
@@ -104,36 +100,36 @@ class Writer:
     def store(obj):
         # Store the object in the memo
         if isinstance(obj, dict):
-            d = Writer.store_state_dict(obj)
+            obj = StateWrapper(obj).get() # this moves all tensors to cpu
+            # there should be a test that accepts or rejects state dicts
         elif isinstance(obj, Tensor):
-            d = Writer.store_tensor(obj)
-        else:
-            d = {
-                'source': 'store',
-                'value': Writer.serialize(obj)
-            }
-        Writer.write(d)
-
-    @staticmethod
-    def store_state_dict(obj: dict):
-        #if this is a state dict, it would only have tensors in it
-        #however, if there are more than just tensors, we must copy
-        for k, v in obj.items():
-            if isinstance(v, Tensor):
-                obj[k] = v.cpu()
-            else:
-                obj[k] = Writer.serialize(obj) #this deepcopies or serializes the output
+            obj = obj.cpu()
         d = {
             'source': 'store',
-            'value': SerialWrapper(obj)
+            'value': Writer.serialize(obj)
         }
-        return d
+        Writer.write(d)
 
-    @staticmethod
-    def store_tensor(obj: Tensor):
-        #special handling for tensors
-        on_cpu = obj.cpu()
-        return {'source': 'store', 'value': on_cpu}
+    # @staticmethod
+    # def store_dict(obj: dict):
+    #     #if this is a dict, it would only have tensors in it
+    #     #however, if there are more than just tensors, we must copy
+    #     # for k, v in obj.items():
+    #     #     if isinstance(v, Tensor):
+    #     #         obj[k] = v.cpu()
+    #     #     else:
+    #     #         obj[k] = Writer.serialize(obj) #this deepcopies or serializes the output
+    #     d = {
+    #         'source': 'store',
+    #         'value': StateWrapper(obj)
+    #     }
+    #     return d
+
+    # @staticmethod
+    # def store_tensor(obj: Tensor):
+    #     #special handling for tensors
+    #     on_cpu = obj.cpu()
+    #     return {'source': 'store', 'value': on_cpu}
 
     @staticmethod
     def load():
