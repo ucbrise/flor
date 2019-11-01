@@ -5,6 +5,7 @@ from datetime import datetime
 from flor.constants import *
 import flor.stateful as flags
 import flor.utils as utils
+import signal
 
 # Fetch the flags we need without disrupting user code
 flor_settings = {
@@ -12,6 +13,8 @@ flor_settings = {
     'name': ANY,
     'memo': ANY
 }
+
+signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
 argvs = []
 flor_arg = None
