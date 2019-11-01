@@ -4,8 +4,6 @@ import cloudpickle
 import json
 from flor.stateful import *
 
-
-
 class Writer:
     serializing = False
     lsn = 0
@@ -25,7 +23,23 @@ class Writer:
                     elif log_record['source'] == 'random_seed':
                         seeds.append(log_record['seed'])
                     elif log_record['source'] == 'store':
-                        store_load.append(eval(log_record['value']))
+                        store_load.append((log_record['global_key'], eval(log_record['value'])))
+            # We now do a Group By global_key on store_load
+            new_store_load = []
+            current_group = {'key': None, 'list': None}
+            for k, v in store_load:
+                if current_group['key'] != k:
+                    # New Group
+                    new_store_load.append((current_group['key'], current_group['list']))
+                    current_group = {'key': k, 'list': []}
+                current_group['list'].append(v)
+            new_store_load.append((current_group['key'], current_group['list']))
+            assert new_store_load.pop(0) == (None, None)
+
+            store_load = new_store_load
+            del new_store_load
+            del current_group
+
 
     @staticmethod
     def serialize(obj):
@@ -46,19 +60,20 @@ class Writer:
         Writer.lsn += 1
 
     @staticmethod
-    def store(obj):
+    def store(obj, global_key):
         # Store the object in the memo
         d = {
             'source': 'store',
+            'global_key': global_key,
             'value': Writer.serialize(obj)
         }
         Writer.write(d)
 
     @staticmethod
-    def load():
-        value = Writer.store_load.pop(0)
-        return cloudpickle.loads(value)
-
+    def load(global_key):
+        its_key, values = Writer.store_load.pop(0)
+        assert its_key == global_key
+        return [cloudpickle.loads(v) for v in values]
 
     @staticmethod
     def pin_state(library):
@@ -107,7 +122,5 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
-store = Writer.store
-load = Writer.load
 
-__all__ = ['pin_state', 'random_seed', 'store', 'load']
+__all__ = ['pin_state', 'random_seed']
