@@ -112,14 +112,23 @@ class Writer:
     def update_groups(name):
         if name not in Writer.columns:
             Writer.columns.append(name)
-        elif name not in Writer.groups:
+        if name not in Writer.groups:
             name_idx = Writer.columns.index(name)
             prev_name = Writer.collected[name_idx - 1] if name_idx else None
             if Writer.prev_name != prev_name:
+                # generate new group
                 end_idx = Writer.columns.index(Writer.prev_name)
                 group = Writer.columns[name_idx:end_idx + 1]
                 for x in group:
-                    Writer.groups[x] = group
+                    if x not in Writer.groups:
+                        Writer.groups[x] = group
+
+                if len(Writer.collected) > len(group):
+                    collected_group = Writer.collected[- len(group):]
+                    collected_names = [list(x.keys())[0] for x in collected_group]
+                    collected_values = [list(x.values())[0] for x in collected_group]
+                    if collected_names == group and 'null' in collected_values:
+                        Writer.collected[- len(group):] = [{n: 'null'} for n in collected_names]
         Writer.prev_name = name
 
     @staticmethod
@@ -146,10 +155,10 @@ class Writer:
                     Writer.collected.pop(-1)
             Writer.names_to_skip = group[name_idx + 1:]
         else:
-            Writer.collected.append({name: ""})
+            Writer.collected.append({name: "null"})
             if maps:
                 for name in maps:
-                    Writer.collected.append({name: ""})
+                    Writer.collected.append({name: "null"})
 
         return expr
 
@@ -172,6 +181,7 @@ class Writer:
     def to_rows():
         rows = []
         row = []
+        Writer.collected = list(filter(lambda x: list(x.values())[0] != 'null', Writer.collected))
         for each in Writer.collected:
             k = list(each.keys()).pop()
             if k not in Writer.columns:
