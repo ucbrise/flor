@@ -17,7 +17,7 @@ class StateWrapper():
         #use get_device() to determine whether it is gpu or cpu
         for k,v in data.items():
             if isinstance(v, dict):
-                self.deep_dive(data[k])
+                self.dict_check(data[k])
             elif isinstance(v, list):
                 self.list_check(data[k])
             elif isinstance(v, Tensor):
