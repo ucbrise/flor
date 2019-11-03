@@ -101,6 +101,9 @@ class Writer:
     def store(obj):
         # Store the object in the memo
         if isinstance(obj, dict):
+            # the optimizer has issues when converting tensors to cpu, somehow
+            if len(obj) == 2 and 'state' in obj and 'param_groups' in obj:
+                return {'source':'store', 'value': obj}
             Writer.dict_check(obj)  # this moves all tensors to cpu
             # later we should have even more special handling for state dicts
         elif isinstance(obj, Tensor):

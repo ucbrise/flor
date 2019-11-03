@@ -21,7 +21,7 @@ class StateWrapper():
             elif isinstance(v, list):
                 self.list_check(data[k])
             elif isinstance(v, Tensor):
-                data[k] = v.cpu()
+                data[k] = v.clone().cpu()
 
     def list_check(self, data):
         for x in range(len(data)):
@@ -30,7 +30,7 @@ class StateWrapper():
             elif isinstance(data[x], list):
                 self.list_check(data[x])
             elif isinstance(data[x], Tensor):
-                data[x] = data[x].cpu()
+                data[x] = data[x].clone().cpu()
 
     def serialize(self):
         for k, v in self.data.items():
