@@ -4,9 +4,9 @@ import cloudpickle
 import copy
 import json
 from flor.stateful import *
-from flor.serial_wrapper import StateWrapper
 
 from torch import Tensor
+from torch import cuda
 
 
 class Writer:
@@ -15,7 +15,7 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
-    max_buffer = 1
+    max_buffer = 10
     write_buffer = []
     fork_now = False
 
@@ -74,6 +74,7 @@ class Writer:
     @staticmethod
     def forked_write():
         Writer.fork_now = False
+        cuda.synchronize()
         pid = os.fork()
         if not pid:
             os.nice(1)  # child process gets lower priority and starts flushing
@@ -102,8 +103,8 @@ class Writer:
         # Store the object in the memo
         if isinstance(obj, dict):
             # the optimizer has issues when converting tensors to cpu, somehow
-            if len(obj) == 2 and 'state' in obj and 'param_groups' in obj:
-                return {'source':'store', 'value': obj}
+            # if len(obj) == 2 and 'state' in obj and 'param_groups' in obj:
+            #     return {'source':'store', 'value': obj}
             Writer.dict_check(obj)  # this moves all tensors to cpu
             # later we should have even more special handling for state dicts
         elif isinstance(obj, Tensor):
