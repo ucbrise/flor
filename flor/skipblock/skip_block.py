@@ -72,7 +72,13 @@ class SkipBlock:
         else:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)
-            raw_args, raw_forced= packed_state.split(SEPARATOR)
+            raw_args, raw_forced = [], []
+            current = raw_args
+            for each in packed_state:
+                if each is SEPARATOR:
+                    current = raw_forced
+                    continue
+                current.append(each)
 
             forced = []
             current = []

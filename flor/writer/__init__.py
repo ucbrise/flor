@@ -71,8 +71,11 @@ class Writer:
 
     @staticmethod
     def load(global_key):
-        its_key, values = Writer.store_load.pop(0)
-        assert its_key == global_key
+        while True:
+            its_key, values = Writer.store_load.pop(0)
+            if its_key == global_key:
+                break
+            print("WASTING LOAD")
         return [cloudpickle.loads(v) for v in values]
 
     @staticmethod
