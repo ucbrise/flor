@@ -2,6 +2,8 @@ from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import REDUNDANT, SEPARATOR
 
+import torch.nn as nn
+import torch.optim as optim
 
 class SkipBlock:
     """
@@ -51,30 +53,26 @@ class SkipBlock:
             objects = [each[2] for each in forced]
 
             materialize_additionals = False
-            for arg in self.args:
-                # Checkpoint the net, optimizer pair
-                if arg in objects:
-                    materialize_additionals = True
-                    break
 
-            if materialize_additionals:
-                for l, k, v in forced:
-                    Writer.store(l, self.global_key)
-                    Writer.store(k, self.global_key)
-                    Writer.store(v.state_dict(), self.global_key)
-            Writer.store(SEPARATOR, self.global_key)
             for arg in self.args:
-                if arg not in objects:
+                if not isinstance(arg, (nn.Module, optim.Optimizer)) or arg not in objects:
                     if not hasattr(arg, 'state_dict'):
                         Writer.store(arg, self.global_key)
                     else:
                         Writer.store(arg.state_dict(), self.global_key)
                 else:
                     Writer.store(REDUNDANT, self.global_key)
+                    materialize_additionals = True
+            Writer.store(SEPARATOR, self.global_key)
+            if materialize_additionals:
+                for l, k, v in forced:
+                    Writer.store(l, self.global_key)
+                    Writer.store(k, self.global_key)
+                    Writer.store(v.state_dict(), self.global_key)
         else:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)
-            raw_forced, raw_args = packed_state.split(SEPARATOR)
+            raw_args, raw_forced= packed_state.split(SEPARATOR)
 
             forced = []
             current = []
@@ -91,7 +89,12 @@ class SkipBlock:
                 if arg is REDUNDANT:
                     mixed_args.append(self.args[i])
                 else:
-                    mixed_args.append(arg)
+                    if hasattr(self.args[i], 'state_dict'):
+                        self.args[i].load_state_dict(arg)
+                        mixed_args.append(self.args[i])
+                    else:
+                        mixed_args.append(arg)
+
 
             self.args = mixed_args
 
