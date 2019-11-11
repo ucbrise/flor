@@ -6,7 +6,6 @@ import flor.stateful as flags
 from datetime import datetime
 import flor.utils as utils
 
-from flor.writer import pin_state, random_seed
 from flor.skipblock.skip_block import SkipBlock
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.skipblock.skip_stack import SkipStack
@@ -35,8 +34,7 @@ def initialize(name, mode='exec', memo=None):
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
 
     # FINISH INITIALIZATION
-
-
+    from flor.writer import pin_state, random_seed
 
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
