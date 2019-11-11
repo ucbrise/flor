@@ -16,13 +16,32 @@ class NullClass:
     def __init__(self, *args, **kwargs):
         raise NotInitializedError("[FLOR] Missing experiment name, mode, and memo.")
 
+    @staticmethod
+    def new():
+        raise NotInitializedError("[FLOR] Missing experiment name, mode, and memo.")
+
+    @staticmethod
+    def peek():
+        raise NotInitializedError("[FLOR] Missing experiment name, mode, and memo.")
+
+    @staticmethod
+    def pop():
+        raise NotInitializedError("[FLOR] Missing experiment name, mode, and memo.")
+
+    @staticmethod
+    def test_force(*args):
+        raise NotInitializedError("[FLOR] Missing experiment name, mode, and memo.")
+
 
 pin_state = foo
 random_seed = foo
 SKIP = False
 SkipBlock = NullClass
 
-__all__ = ['pin_state', 'random_seed', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized']
+namespace_stack = NullClass
+skip_stack = NullClass
+
+__all__ = ['pin_state', 'random_seed', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', ]
 
 if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     # Fetch the flags we need without disrupting user code
