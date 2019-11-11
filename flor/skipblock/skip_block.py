@@ -48,12 +48,20 @@ class SkipBlock:
         if self.block_executed:
             # Code ran so we need to store the side-effects
             forced = NamespaceStack.get_forced()
-            objects = []
-            for l, k, v in forced:
-                Writer.store(l, self.global_key)
-                Writer.store(k, self.global_key)
-                Writer.store(v.state_dict(), self.global_key)
-                objects.append(v)
+            objects = [each[2] for each in forced]
+
+            materialize_additionals = False
+            for arg in self.args:
+                # Checkpoint the net, optimizer pair
+                if arg in objects:
+                    materialize_additionals = True
+                    break
+
+            if materialize_additionals:
+                for l, k, v in forced:
+                    Writer.store(l, self.global_key)
+                    Writer.store(k, self.global_key)
+                    Writer.store(v.state_dict(), self.global_key)
             Writer.store(SEPARATOR, self.global_key)
             for arg in self.args:
                 if arg not in objects:
