@@ -6,6 +6,10 @@ import flor.stateful as flags
 from datetime import datetime
 import flor.utils as utils
 
+from flor.writer import pin_state, random_seed
+from flor.skipblock.skip_block import SkipBlock
+from flor.skipblock.namespace_stack import NamespaceStack
+from flor.skipblock.skip_stack import SkipStack
 
 def initialize(name, mode='exec', memo=None):
     """
@@ -32,13 +36,15 @@ def initialize(name, mode='exec', memo=None):
 
     # FINISH INITIALIZATION
 
-    from flor.writer import pin_state, random_seed
-    from flor.skipblock import SkipBlock
+
 
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
     flor.random_seed = random_seed
     flor.SkipBlock = SkipBlock
+
+    flor.namespace_stack = NamespaceStack
+    flor.skip_stack = SkipStack
 
 
 def is_initialized():
