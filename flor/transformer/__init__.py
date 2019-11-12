@@ -40,10 +40,10 @@ class Transformer(ast.NodeTransformer):
 
         output.body = [make_block_initialize('namespace_stack'), ] + output.body
 
-        output.body = ast.Try(body=output.body,
+        output.body = [ast.Try(body=output.body,
                               handlers=[],
                               orelse=[],
-                              finalbody=[make_block_destroy('namespace_stack')])
+                              finalbody=[make_block_destroy('namespace_stack')]), ]
 
         return output
 
