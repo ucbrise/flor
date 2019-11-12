@@ -1,4 +1,5 @@
 import ast
+from copy import deepcopy
 
 class False_Break(ValueError): pass
 
@@ -51,6 +52,14 @@ def set_union(nodes1, nodes2):
     for node2 in nodes2:
         if not node_in_nodes(node2, nodes1):
             output.append(node2)
+    return output
+
+def underscoring_set_union(lsd, mcd):
+    output = [n for n in lsd]
+    underscore = ast.Name('_', ast.Store())
+    for node in mcd:
+        if not node_in_nodes(node, output):
+            output.append(deepcopy(underscore))
     return output
 
 def set_intersection(nodes1, nodes2):

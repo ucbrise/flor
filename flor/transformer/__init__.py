@@ -1,7 +1,7 @@
 import ast
 from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector
 from flor.transformer.code_gen import *
-from flor.transformer.utils import set_intersection, set_union
+from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 
 
 class Transformer(ast.NodeTransformer):
@@ -54,22 +54,32 @@ class Transformer(ast.NodeTransformer):
         return self.generic_visit(node)
 
     def _vistit_loop(self, node):
-        change_set, read_set = get_change_and_read_set(node)
+        lsd_change_set, mcd_change_set, read_set = get_change_and_read_set(node)
+        change_set = set_union(lsd_change_set, mcd_change_set)
         memoization_set = set_intersection(set_union(self.assign_updates, read_set), change_set)
 
         new_node = self.generic_visit(node)
 
+        underscored_memoization_set = []
+        for element in memoization_set:
+            if node_in_nodes(element, lsd_change_set):
+                underscored_memoization_set.append(element)
+            else:
+                underscored_memoization_set.append(ast.Name('_', ast.Store()))
+
         # Inner Block
         block_initialize = make_block_initialize('skip_stack')
         cond_block = make_cond_block()
-        proc_side_effects = make_proc_side_effects(memoization_set)
+        proc_side_effects = make_proc_side_effects(underscored_memoization_set,
+                                                   memoization_set)
         cond_block.body = new_node.body
         new_node.body = [block_initialize, cond_block, proc_side_effects]
 
         # Outer Block
         block_initialize = make_block_initialize('skip_stack')
         cond_block = make_cond_block()
-        proc_side_effects = make_proc_side_effects(memoization_set)
+        proc_side_effects = make_proc_side_effects(underscored_memoization_set,
+                                                   memoization_set)
 
         cond_block.body = [new_node, ]
 

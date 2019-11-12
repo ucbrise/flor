@@ -61,12 +61,12 @@ def make_cond_block():
     )
 
 
-def make_proc_side_effects(arg_list):
+def make_proc_side_effects(left_arg_lsit, right_arg_list):
     """
     *arg_list = flor.skip_stack.pop().proc_side_effects(*arg_list)
     """
-    load_list = deepcopy(arg_list)
-    store_list = deepcopy(arg_list)
+    load_list = deepcopy(right_arg_list)
+    store_list = deepcopy(left_arg_lsit)
     for each in load_list:
         each.ctx = ast.Load()
     for each in store_list:
