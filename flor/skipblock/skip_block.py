@@ -40,8 +40,7 @@ class SkipBlock:
         self.args = []
 
     def should_execute(self, predicate):
-        if predicate:
-            self.block_executed = True
+        self.block_executed = predicate
         return predicate
 
     def register_side_effects(self, *args):
@@ -58,7 +57,7 @@ class SkipBlock:
         if args:
             self.args = args
 
-        if self.block_executed:
+        if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
             forced = NamespaceStack.get_forced()
             objects = [each[2] for each in forced]
