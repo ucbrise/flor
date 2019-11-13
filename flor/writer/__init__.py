@@ -23,12 +23,15 @@ class Writer:
                     elif log_record['source'] == 'random_seed':
                         seeds.append(log_record['seed'])
                     elif log_record['source'] == 'store':
-                        store_load.append((log_record['global_key'], eval(log_record['value'])))
+                        if log_record['value'] != 'LBRACKET':
+                            store_load.append((log_record['global_key'], eval(log_record['value'])))
+                        else:
+                            store_load.append((log_record['global_key'], log_record['value']))
             # We now do a Group By global_key on store_load
             new_store_load = []
             current_group = {'key': None, 'list': None}
             for k, v in store_load:
-                if current_group['key'] != k:
+                if current_group['key'] != k or current_group['list'][0] == 'LBRACKET':
                     # New Group
                     new_store_load.append((current_group['key'], current_group['list']))
                     current_group = {'key': k, 'list': []}
@@ -62,11 +65,18 @@ class Writer:
     @staticmethod
     def store(obj, global_key):
         # Store the object in the memo
-        d = {
-            'source': 'store',
-            'global_key': global_key,
-            'value': Writer.serialize(obj)
-        }
+        if obj is not LBRACKET:
+            d = {
+                'source': 'store',
+                'global_key': global_key,
+                'value': Writer.serialize(obj)
+            }
+        else:
+            d = {
+                'source': 'store',
+                'global_key': global_key,
+                'value': 'LBRACKET'
+            }
         Writer.write(d)
 
     @staticmethod
@@ -75,8 +85,13 @@ class Writer:
             its_key, values = Writer.store_load.pop(0)
             if its_key == global_key:
                 break
-            print("WASTING LOAD")
         return [cloudpickle.loads(v) for v in values]
+
+    @staticmethod
+    def lbrack_load():
+        its_key, [v, ] = Writer.store_load.pop(0)
+        assert v == 'LBRACKET', str(v)
+        return its_key
 
     @staticmethod
     def pin_state(library):

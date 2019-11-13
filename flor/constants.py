@@ -5,3 +5,4 @@ class ANY: pass
 
 class REDUNDANT: pass
 class SEPARATOR: pass
+class LBRACKET: pass

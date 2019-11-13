@@ -1,9 +1,12 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
-from flor.constants import REDUNDANT, SEPARATOR
+from flor.constants import *
+
+import flor.stateful as state
 
 import torch.nn as nn
 import torch.optim as optim
+
 
 class SkipBlock:
     """
@@ -20,15 +23,20 @@ class SkipBlock:
 
     """
 
-    def __init__(self, global_key):
+    def __init__(self, global_key=None):
         """
         :param global_key: Unique static identifier for code block
         The global key allows us to identify stored state in a memo
         and match it unambiguously at reexecution runtime for loads.
         """
-        assert isinstance(global_key, str)
-        self.global_key = global_key
+
+        if state.MODE is EXEC:
+            self.global_key = global_key
+            Writer.store(LBRACKET, self.global_key)
+        else:
+            self.global_key = Writer.lbrack_load()
         self.block_executed = False
+        self.proc_side_effects_called = False
         self.args = []
 
     def should_execute(self, predicate):
@@ -41,8 +49,11 @@ class SkipBlock:
 
     def proc_side_effects(self, *args):
         # TODO: For selective replay, we will want to skip some loads. Add predicate for skipping.
+        # WARNING: MAY ONLY BE CALLED ONCE
         assert not self.args or not args
         assert self.args or args
+        assert not self.proc_side_effects_called
+        self.proc_side_effects_called = True
 
         if args:
             self.args = args
@@ -100,7 +111,6 @@ class SkipBlock:
                         mixed_args.append(self.args[i])
                     else:
                         mixed_args.append(arg)
-
 
             self.args = mixed_args
 

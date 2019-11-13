@@ -1,4 +1,6 @@
 from flor.skipblock.skip_block import SkipBlock
+from flor.constants import *
+import flor.stateful as state
 
 
 class SkipStack:
@@ -15,7 +17,8 @@ class SkipStack:
     @staticmethod
     def new():
         stack = SkipStack.stack
-        block = SkipBlock(SkipStack.auto_incr_id())
+        _id = SkipStack.auto_incr_id() if state.MODE is EXEC else None
+        block = SkipBlock(_id)
         stack.append(block)
 
     @staticmethod
