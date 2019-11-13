@@ -19,6 +19,7 @@ def initialize(name, mode='exec', memo=None):
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
+    flags.LOG_DATA_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, "data")
 
     if mode == 'reexec':
         assert memo is not None, "[FLOR] On Re-execution, please specify a memoized file"
@@ -28,6 +29,7 @@ def initialize(name, mode='exec', memo=None):
 
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor'))
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
+    utils.cond_mkdir(flags.LOG_DATA_PATH)
 
     # FINISH INITIALIZATION
     from flor.writer import pin_state, random_seed
