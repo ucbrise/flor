@@ -41,7 +41,7 @@ def make_block_destroy(attr):
 
 def make_cond_block():
     """
-    if flor.skip_stack.peek().should_execute():
+    if flor.skip_stack.peek().should_execute(not flor.SKIP):
         pass
 
     TODO: Extend to accept predicate
@@ -53,7 +53,14 @@ def make_cond_block():
                 attr='should_execute',
                 ctx=ast.Load()
             ),
-            args=[],
+            args=[ast.UnaryOp(
+                op=ast.Not(),
+                operand=ast.Attribute(
+                    value=ast.Name('flor', ast.Load()),
+                    attr='SKIP',
+                    ctx=ast.Load()
+                )
+            )],
             keywords=[]
         ),
         body=[ast.Pass()],
