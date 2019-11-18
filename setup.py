@@ -16,7 +16,7 @@ setuptools.setup(
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
-     packages=['flor', 'flor.writer', 'flor.skipblock'],
+     packages=['flor', 'flor.transformer', 'flor.transformer.visitors', 'flor.writer', 'flor.skipblock'],
      install_requires = requirements,
      classifiers = [
          "Programming Language :: Python :: 3",
