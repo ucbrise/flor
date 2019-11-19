@@ -1,5 +1,6 @@
 import numpy, random
 import os
+import uuid
 import cloudpickle
 import copy
 import json
@@ -7,7 +8,6 @@ from flor.stateful import *
 
 from torch import Tensor
 from torch import cuda
-
 
 class Writer:
     serializing = False
@@ -27,18 +27,47 @@ class Writer:
                 log_record = json.loads(line.strip())
                 if 'source' in log_record:
                     if log_record['source'] == 'pin_state':
-                        pinned_state.append(cloudpickle.loads(eval(log_record['state'])))
+                        pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
                     elif log_record['source'] == 'random_seed':
                         seeds.append(log_record['seed'])
                     elif log_record['source'] == 'store':
-                        store_load.append(eval(log_record['value']))
+                        # THIS IS FILENAME, or LBRACK, or ERROR
+                        store_load.append((log_record['global_key'], log_record['value']))
+            # We now do a Group By global_key on store_load
+            new_store_load = []
+            current_group = {'key': None, 'list': None}
+            for k, v in store_load:
+                if current_group['key'] != k or current_group['list'][0] == 'LBRACKET':
+                    # New Group
+                    new_store_load.append((current_group['key'], current_group['list']))
+                    current_group = {'key': k, 'list': []}
+                current_group['list'].append(v)
+            new_store_load.append((current_group['key'], current_group['list']))
+            assert new_store_load.pop(0) == (None, None)
+
+            store_load = new_store_load
+            del new_store_load
+            del current_group
+
 
     @staticmethod
     def serial_serialize(obj):
         try:
             Writer.serializing = True
-            out = str(cloudpickle.dumps(obj))
-            return out
+
+            # ADD SOME INDIRECTION
+            # MAKE THIS INTO INDEX
+
+            while True:
+                unique_filename = uuid.uuid4().hex + '.pkl'
+                unique_filename = os.path.join(LOG_DATA_PATH, unique_filename)
+                if not os.path.exists(unique_filename):
+                    break
+
+            with open(unique_filename, 'wb') as f:
+                cloudpickle.dump(obj, f)
+
+            return unique_filename
         except:
             return "ERROR: failed to serialize"
         finally:
@@ -99,48 +128,46 @@ class Writer:
 
 
     @staticmethod
-    def store(obj):
+    def store(obj, global_key):
         # Store the object in the memo
-        if isinstance(obj, dict):
-            # the optimizer has issues when converting tensors to cpu, somehow
-            # if len(obj) == 2 and 'state' in obj and 'param_groups' in obj:
-            #     return {'source':'store', 'value': obj}
-            Writer.dict_check(obj)  # this moves all tensors to cpu
-            # later we should have even more special handling for state dicts
-        elif isinstance(obj, Tensor):
-            obj = obj.cpu() # tensors are moved to cpu before copying
-        d = {
-            'source': 'store',
-            'value': Writer.serialize(obj)
-        }
+        if obj is not LBRACKET:
+            d = {
+                'source': 'store',
+                'global_key': global_key,
+                'value': Writer.serialize(obj)
+            }
+        else:
+            d = {
+                'source': 'store',
+                'global_key': global_key,
+                'value': 'LBRACKET'
+            }
         Writer.write(d)
 
     @staticmethod
-    def dict_check(data):
-        for k, v in data.items():  # check every item to see if its a tensor
-            if isinstance(v, dict):
-                Writer.dict_check(data[k])  # recursively check another dict
-            elif isinstance(v, list):
-                Writer.list_check(data[k])  # recursively check a list
-            elif isinstance(v, Tensor):
-                data[k] = v.cpu()  # convert the tensor to cpu
-                # this might need to be modified later because it is not general purpose
+    def load(global_key):
+        while True:
+            its_key, paths = Writer.store_load.pop(0)
+            if its_key == global_key:
+                break
+        # paths can only contain PATHS or ERRORS
+        values = []
+        for path in paths:
+            if '.pkl' not in path:
+                # ERROR CASE
+                raise RuntimeError("Necessary state corrupted, unrecoverable")
+            else:
+                # PATH CASE
+                with open(path, 'rb') as f:
+                    values.append(cloudpickle.load(f))
+
+        return values
 
     @staticmethod
-    def list_check(data):
-        for x in range(len(data)):  # check every item
-            if isinstance(data[x], dict):
-                Writer.dict_check(data[x])  # check dict
-            elif isinstance(data[x], list):
-                Writer.list_check(data[x])  # check list
-            elif isinstance(data[x], Tensor):
-                data[x] = data[x].cpu()  # convert the tensor to cpu
-                # this might need to be modified later because it is not general purpose
-
-    @staticmethod
-    def load():
-        value = Writer.store_load.pop(0)
-        return cloudpickle.loads(value)
+    def lbrack_load():
+        its_key, [v, ] = Writer.store_load.pop(0)
+        assert v == 'LBRACKET', str(v)
+        return its_key
 
     @staticmethod
     def pin_state(library):
@@ -158,7 +185,9 @@ class Writer:
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
         elif MODE is REEXEC:
-            state = Writer.pinned_state.pop(0)
+            path = Writer.pinned_state.pop(0)
+            with open(path, 'rb') as f:
+                state = cloudpickle.load(f)
             if library is numpy:
                 library.random.set_state(state)
             elif library is random:
@@ -189,8 +218,5 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
-store = Writer.store
-load = Writer.load
-flush = Writer.flush
 
-__all__ = ['pin_state', 'random_seed', 'store', 'load', 'flush']
+__all__ = ['pin_state', 'random_seed']
