@@ -2,11 +2,8 @@ import numpy, random
 import os
 import uuid
 import cloudpickle
-import copy
 import json
 from flor.stateful import *
-
-from torch import Tensor
 
 class Writer:
     serializing = False
@@ -197,6 +194,6 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
-flush = Writer.flush()
+flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'flush']
