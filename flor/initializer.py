@@ -7,7 +7,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, buffer_limit=5000):
+def initialize(name, mode='exec', memo=None, maxb=5000):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -17,7 +17,7 @@ def initialize(name, mode='exec', memo=None, buffer_limit=5000):
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
-    buffer_limit = int(buffer_limit)
+    buffer_limit = int(maxb)
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
