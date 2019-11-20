@@ -166,4 +166,4 @@ class Writer:
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
 
-__all__ = ['pin_state', 'random_seed']
+__all__ = ['pin_state', 'random_seed', 'Writer']
