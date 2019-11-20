@@ -5,13 +5,15 @@ import cloudpickle
 import json
 from flor.stateful import *
 
-
 class Writer:
     serializing = False
     lsn = 0
     pinned_state = []
     seeds = []
     store_load = []
+    max_buffer = 10
+    write_buffer = []
+    fork_now = False
 
     if MODE is EXEC:
         fd = open(LOG_PATH, 'w')
@@ -70,9 +72,36 @@ class Writer:
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        Writer.fd.write(json.dumps(obj) + '\n')
-        Writer.fd.flush()
-        Writer.lsn += 1
+        Writer.write_buffer.append(obj)
+        Writer.lsn += 1  # append to buffer and increment lsn
+        if len(Writer.write_buffer) >= Writer.max_buffer or Writer.fork_now:
+            Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
+            # note: fork_now is there as a mechanism for forcing fork, we aren't using it yet
+
+    @staticmethod
+    def forked_write():
+        Writer.fork_now = False
+        pid = os.fork()
+        if not pid:
+            os.nice(1)  # child process gets lower priority and starts flushing
+            Writer.serializing = True
+            for each in Writer.write_buffer:
+                if 'value' in each:  # the dict can have 'value' or 'state'
+                    if not isinstance(each['value'], str) or each['value'] != 'LBRACKET':
+                        each['value'] = Writer.serialize(each['value'])
+                Writer.fd.write(json.dumps(each) + '\n')
+            Writer.fd.flush()
+            Writer.serializing = False
+            os._exit(0)
+        else:
+            Writer.write_buffer = []  # parent process resets buffer
+
+
+    @staticmethod
+    def flush():
+        if Writer.write_buffer:
+            Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
+
 
     @staticmethod
     def store(obj, global_key):
@@ -81,7 +110,7 @@ class Writer:
             d = {
                 'source': 'store',
                 'global_key': global_key,
-                'value': Writer.serialize(obj)
+                'value': obj
             }
         else:
             d = {
@@ -165,5 +194,7 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
+flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'Writer']
+

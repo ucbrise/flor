@@ -32,7 +32,7 @@ def initialize(name, mode='exec', memo=None):
     utils.cond_mkdir(flags.LOG_DATA_PATH)
 
     # FINISH INITIALIZATION
-    from flor.writer import pin_state, random_seed
+    from flor.writer import pin_state, random_seed, flush
     from flor.skipblock.skip_block import SkipBlock
     from flor.skipblock.namespace_stack import NamespaceStack
     from flor.skipblock.skip_stack import SkipStack
@@ -41,6 +41,7 @@ def initialize(name, mode='exec', memo=None):
     flor.pin_state = pin_state
     flor.random_seed = random_seed
     flor.SkipBlock = SkipBlock
+    flor.flush = flush
 
     flor.namespace_stack = NamespaceStack
     flor.skip_stack = SkipStack
