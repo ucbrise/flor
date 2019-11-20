@@ -50,6 +50,7 @@ class SkipBlock:
 
     def proc_side_effects(self, *args):
         # TODO: For selective replay, we will want to skip some loads. Add predicate for skipping.
+        # TODO: Bug, the cpu() call won't copy if object is already in CPU
         # WARNING: MAY ONLY BE CALLED ONCE
         assert not self.args or not args
         assert self.args or args
