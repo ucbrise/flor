@@ -6,7 +6,8 @@ import flor.stateful as flags
 from datetime import datetime
 import flor.utils as utils
 
-def initialize(name, mode='exec', memo=None):
+
+def initialize(name, mode='exec', memo=None, buffer_limit=5000):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -16,6 +17,7 @@ def initialize(name, mode='exec', memo=None):
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
+    buffer_limit = int(buffer_limit)
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
@@ -32,10 +34,12 @@ def initialize(name, mode='exec', memo=None):
     utils.cond_mkdir(flags.LOG_DATA_PATH)
 
     # FINISH INITIALIZATION
-    from flor.writer import pin_state, random_seed, flush
+    from flor.writer import Writer, pin_state, random_seed, flush
     from flor.skipblock.skip_block import SkipBlock
     from flor.skipblock.namespace_stack import NamespaceStack
     from flor.skipblock.skip_stack import SkipStack
+
+    Writer.max_buffer = buffer_limit
 
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
