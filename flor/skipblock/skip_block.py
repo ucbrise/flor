@@ -6,6 +6,8 @@ import flor.stateful as state
 
 import torch.nn as nn
 import torch.optim as optim
+from torch import cuda
+import copy
 
 
 class SkipBlock:
@@ -67,9 +69,9 @@ class SkipBlock:
             for arg in self.args:
                 if not isinstance(arg, (nn.Module, optim.Optimizer)) or arg not in objects:
                     if not hasattr(arg, 'state_dict'):
-                        Writer.store(arg, self.global_key)
+                        Writer.store(copy.deepcopy(arg), self.global_key)
                     else:
-                        Writer.store(arg.state_dict(), self.global_key)
+                        Writer.store(copy.deepcopy(arg.state_dict()), self.global_key)
                 else:
                     Writer.store(REDUNDANT, self.global_key)
                     materialize_additionals = True
@@ -78,7 +80,14 @@ class SkipBlock:
                 for l, k, v in forced:
                     Writer.store(l, self.global_key)
                     Writer.store(k, self.global_key)
-                    Writer.store(v.state_dict(), self.global_key)
+                    sd = v.state_dict()
+                    sd_copy = {}
+                    for k in sd:
+                        if hasattr(sd[k], 'cpu'):
+                            sd_copy[k] = sd[k].cpu()
+                        else:
+                            sd_copy[k] = copy.deepcopy(sd[k])
+                    Writer.store(sd_copy, self.global_key)
         else:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)
@@ -112,6 +121,8 @@ class SkipBlock:
                         mixed_args.append(arg)
 
             self.args = mixed_args
+
+        cuda.synchronize()
 
         if len(self.args) > 1:
             return self.args

@@ -7,7 +7,6 @@ import json
 from flor.stateful import *
 
 from torch import Tensor
-from torch import cuda
 
 class Writer:
     serializing = False
@@ -51,7 +50,7 @@ class Writer:
 
 
     @staticmethod
-    def serial_serialize(obj):
+    def serialize(obj):
         try:
             Writer.serializing = True
 
@@ -74,24 +73,6 @@ class Writer:
             Writer.serializing = False
 
     @staticmethod
-    def serialize(obj):
-        if isinstance(obj, Tensor):
-            return obj.clone()  # if object is tensor, call tensor's copy method
-        if not isinstance(obj, (int, float, bool, str)):
-            try:  # int, float, bool, str are primitives
-                Writer.serializing = True
-                return copy.deepcopy(obj)
-            except:
-                try:  # if deepcopy fails, simply pickle or fail to serialize
-                    return str(cloudpickle.dumps(obj))
-                except:
-                    return "ERROR: failed to serialize"
-            finally:
-                Writer.serializing = False
-        else:
-            return obj
-
-    @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
         Writer.write_buffer.append(obj)
@@ -103,16 +84,14 @@ class Writer:
     @staticmethod
     def forked_write():
         Writer.fork_now = False
-        cuda.synchronize()
         pid = os.fork()
         if not pid:
             os.nice(1)  # child process gets lower priority and starts flushing
             Writer.serializing = True
             for each in Writer.write_buffer:
                 if 'value' in each:  # the dict can have 'value' or 'state'
-                    each['value'] = str(cloudpickle.dumps(each['value']))
-                else:
-                    each['state'] = str(cloudpickle.dumps(each['state']))
+                    if not isinstance(each['value'], str) or each['value'] != 'LBRACKET':
+                        each['value'] = Writer.serialize(each['value'])
                 Writer.fd.write(json.dumps(each) + '\n')
             Writer.fd.flush()
             Writer.serializing = False
@@ -134,7 +113,7 @@ class Writer:
             d = {
                 'source': 'store',
                 'global_key': global_key,
-                'value': Writer.serialize(obj)
+                'value': obj
             }
         else:
             d = {
@@ -175,12 +154,12 @@ class Writer:
             if library is numpy:
                 d = {'source': 'pin_state',
                      'library': 'numpy',
-                     'state': Writer.serial_serialize(library.random.get_state())}
+                     'state': Writer.serialize(library.random.get_state())}
                 Writer.write(d)
             elif library is random:
                 d = {'source': 'pin_state',
                      'library': 'random',
-                     'state': Writer.serial_serialize(library.getstate())}
+                     'state': Writer.serialize(library.getstate())}
                 Writer.write(d)
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
@@ -218,5 +197,6 @@ class Writer:
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
+flush = Writer.flush()
 
-__all__ = ['pin_state', 'random_seed']
+__all__ = ['pin_state', 'random_seed', 'flush']
