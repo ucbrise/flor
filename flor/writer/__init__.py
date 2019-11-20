@@ -196,4 +196,5 @@ pin_state = Writer.pin_state
 random_seed = Writer.random_seed
 flush = Writer.flush
 
-__all__ = ['pin_state', 'random_seed', 'flush']
+__all__ = ['pin_state', 'random_seed', 'Writer']
+
