@@ -11,11 +11,12 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
-    max_buffer = 10
+    max_buffer = 500
     write_buffer = []
 
     if MODE is EXEC:
-        fd = open(LOG_PATH, 'w')
+        # fd = open(LOG_PATH, 'w')
+        fd = None
     else:
         with open(MEMO_PATH, 'r') as f:
             for line in f:
@@ -81,12 +82,16 @@ class Writer:
     def forked_write():
         pid = os.fork()
         if not pid:
+            path = LOG_PATH.split('.')
+            path.insert(-1, str(Writer.lsn))
+            path = '.'.join(path)
+            fd = open(path, 'w')
             os.nice(1)  # child process gets lower priority and starts flushing
             for each in Writer.write_buffer:
                 if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
                     each['value'] = Writer.serialize(each['value'])
-                Writer.fd.write(json.dumps(each) + '\n')
-            Writer.fd.flush()
+                fd.write(json.dumps(each) + '\n')
+            fd.close()
             os._exit(0)
         else:
             Writer.write_buffer = []  # parent process resets buffer
