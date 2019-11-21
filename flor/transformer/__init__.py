@@ -67,14 +67,6 @@ class Transformer(ast.NodeTransformer):
             else:
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
 
-        # Inner Block
-        block_initialize = make_block_initialize('skip_stack')
-        cond_block = make_cond_block()
-        proc_side_effects = make_proc_side_effects(underscored_memoization_set,
-                                                   memoization_set)
-        cond_block.body = new_node.body
-        new_node.body = [block_initialize, cond_block, proc_side_effects]
-
         # Outer Block
         block_initialize = make_block_initialize('skip_stack')
         cond_block = make_cond_block()
