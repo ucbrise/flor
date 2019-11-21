@@ -82,7 +82,7 @@ class SkipBlock:
                                 sd_copy[k] = sd[k].cpu()
                             else:
                                 sd_copy[k] = copy.deepcopy(sd[k])
-                        Writer.store(copy.deepcopy(sd_copy, self.global_key))
+                        Writer.store(sd_copy, self.global_key)
                 else:
                     Writer.store(REDUNDANT, self.global_key)
                     materialize_additionals = True
