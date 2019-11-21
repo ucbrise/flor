@@ -1,6 +1,7 @@
 import sys
 
 from flor.constants import *
+
 from flor.initializer import initialize, is_initialized
 
 
@@ -35,20 +36,22 @@ class NullClass:
 
 pin_state = foo
 random_seed = foo
+flush = foo
 SKIP = False
 SkipBlock = NullClass
 
 namespace_stack = NullClass
 skip_stack = NullClass
 
-__all__ = ['pin_state', 'random_seed', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', ]
+__all__ = ['pin_state', 'random_seed', 'flush', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', ]
 
 if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     # Fetch the flags we need without disrupting user code
     flor_settings = {
         'mode': ['exec', 'reexec'], # default: exec
         'name': ANY,
-        'memo': ANY
+        'memo': ANY,
+        'maxb': ANY, #buffer limit
     }
 
     argvs = []
