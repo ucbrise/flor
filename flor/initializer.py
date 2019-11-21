@@ -38,6 +38,9 @@ def initialize(name, mode='exec', memo=None, maxb=5000):
     from flor.skipblock.skip_block import SkipBlock
     from flor.skipblock.namespace_stack import NamespaceStack
     from flor.skipblock.skip_stack import SkipStack
+    import signal
+
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
     Writer.max_buffer = buffer_limit
 
