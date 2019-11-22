@@ -4,6 +4,7 @@ import uuid
 import cloudpickle
 import json
 from flor.stateful import *
+from torch import cuda
 
 class Writer:
     serializing = False
@@ -81,6 +82,7 @@ class Writer:
     @staticmethod
     def forked_write():
         pid = os.fork()
+        cuda.synchronize()
         if not pid:
             path = LOG_PATH.split('.')
             path.insert(-1, str(Writer.lsn))
