@@ -130,13 +130,17 @@ class Writer:
         # paths can only contain PATHS or ERRORS
         values = []
         for path in paths:
-            if '.pkl' not in path:
+            if 'ERROR' in path[0:len('ERROR')]:
                 # ERROR CASE
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
-            else:
+            elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
+            else:
+                # Raw value
+                value = path
+                values.append(value)
 
         return values
 

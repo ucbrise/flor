@@ -89,7 +89,7 @@ class SkipBlock:
             Writer.store(SEPARATOR, self.global_key)
             if materialize_additionals:
                 for l, k, v in forced:
-                    Writer.store(l, self.global_key)
+                    Writer.store(str(l), self.global_key)
                     Writer.store(k, self.global_key)
                     sd = v.state_dict()
                     sd_copy = {}
