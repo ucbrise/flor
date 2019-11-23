@@ -81,8 +81,8 @@ class Writer:
 
     @staticmethod
     def forked_write():
-        pid = os.fork()
         cuda.synchronize()
+        pid = os.fork()
         if not pid:
             path = LOG_PATH.split('.')
             path.insert(-1, str(Writer.lsn))
