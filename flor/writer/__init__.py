@@ -73,7 +73,7 @@ class Writer:
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        # Writer.write_buffer.append(obj)
+        Writer.write_buffer.append(obj)
         Writer.lsn += 1  # append to buffer and increment lsn
         if len(Writer.write_buffer) >= Writer.max_buffer:
             Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
@@ -81,24 +81,22 @@ class Writer:
 
     @staticmethod
     def forked_write():
-        print("not doing a fork")
-        Writer.write_buffer = []
-        # cuda.synchronize()
-        # pid = os.fork()
-        # if not pid:
-        #     # path = LOG_PATH.split('.')
-        #     # path.insert(-1, str(Writer.lsn))
-        #     # path = '.'.join(path)
-        #     # fd = open(path, 'w')
-        #     # os.nice(1)  # child process gets lower priority and starts flushing
-        #     # for each in Writer.write_buffer:
-        #     #     if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
-        #     #         each['value'] = Writer.serialize(each['value'])
-        #     #     fd.write(json.dumps(each) + '\n')
-        #     # fd.close()
-        #     os._exit(0)
-        # else:
-        #     Writer.write_buffer = []  # parent process resets buffer
+        cuda.synchronize()
+        pid = os.fork()
+        if not pid:
+            path = LOG_PATH.split('.')
+            path.insert(-1, str(Writer.lsn))
+            path = '.'.join(path)
+            fd = open(path, 'w')
+            os.nice(1)  # child process gets lower priority and starts flushing
+            for each in Writer.write_buffer:
+                if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
+                    each['value'] = Writer.serialize(each['value'])
+                fd.write(json.dumps(each) + '\n')
+            fd.close()
+            os._exit(0)
+        else:
+            Writer.write_buffer = []  # parent process resets buffer
 
 
     @staticmethod
