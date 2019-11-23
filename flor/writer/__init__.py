@@ -81,22 +81,24 @@ class Writer:
 
     @staticmethod
     def forked_write():
-        cuda.synchronize()
-        pid = os.fork()
-        if not pid:
-            # path = LOG_PATH.split('.')
-            # path.insert(-1, str(Writer.lsn))
-            # path = '.'.join(path)
-            # fd = open(path, 'w')
-            # os.nice(1)  # child process gets lower priority and starts flushing
-            # for each in Writer.write_buffer:
-            #     if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
-            #         each['value'] = Writer.serialize(each['value'])
-            #     fd.write(json.dumps(each) + '\n')
-            # fd.close()
-            os._exit(0)
-        else:
-            Writer.write_buffer = []  # parent process resets buffer
+        print("not doing a fork")
+        Writer.write_buffer = []
+        # cuda.synchronize()
+        # pid = os.fork()
+        # if not pid:
+        #     # path = LOG_PATH.split('.')
+        #     # path.insert(-1, str(Writer.lsn))
+        #     # path = '.'.join(path)
+        #     # fd = open(path, 'w')
+        #     # os.nice(1)  # child process gets lower priority and starts flushing
+        #     # for each in Writer.write_buffer:
+        #     #     if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
+        #     #         each['value'] = Writer.serialize(each['value'])
+        #     #     fd.write(json.dumps(each) + '\n')
+        #     # fd.close()
+        #     os._exit(0)
+        # else:
+        #     Writer.write_buffer = []  # parent process resets buffer
 
 
     @staticmethod
