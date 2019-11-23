@@ -73,7 +73,7 @@ class Writer:
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        Writer.write_buffer.append(obj)
+        # Writer.write_buffer.append(obj)
         Writer.lsn += 1  # append to buffer and increment lsn
         if len(Writer.write_buffer) >= Writer.max_buffer:
             Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
