@@ -2,6 +2,7 @@ import cloudpickle
 from torch import Tensor
 import copy
 
+
 class StateWrapper():
     #this only works for GPU state dictionaries because we don't have to worry about deep copies
 
@@ -35,3 +36,9 @@ class StateWrapper():
     def serialize(self):
         for k, v in self.data.items():
             self.data[k] = str(cloudpickle.dumps(v))
+
+
+class Node:
+    def __init__(self, x):
+        self.val = x
+        self.next = None

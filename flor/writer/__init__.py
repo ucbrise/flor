@@ -4,6 +4,7 @@ import uuid
 import cloudpickle
 import json
 from flor.stateful import *
+from flor.serial_wrapper import Node
 
 class Writer:
     serializing = False
@@ -12,7 +13,9 @@ class Writer:
     seeds = []
     store_load = []
     max_buffer = 10
-    write_buffer = []
+    head = Node(None)
+    tail = head
+    list_size = 0
     fork_now = False
 
     if MODE is EXEC:
@@ -72,9 +75,11 @@ class Writer:
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        Writer.write_buffer.append(obj)
+        Writer.tail.next = Node(obj) #append to end
+        Writer.tail = Writer.tail.next #advance tail
+        Writer.list_size += 1
         Writer.lsn += 1  # append to buffer and increment lsn
-        if len(Writer.write_buffer) >= Writer.max_buffer or Writer.fork_now:
+        if Writer.list_size >= Writer.max_buffer or Writer.fork_now:
             Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
             # note: fork_now is there as a mechanism for forcing fork, we aren't using it yet
 
@@ -85,21 +90,25 @@ class Writer:
         if not pid:
             os.nice(1)  # child process gets lower priority and starts flushing
             Writer.serializing = True
-            for each in Writer.write_buffer:
-                if 'value' in each:  # the dict can have 'value' or 'state'
-                    if not isinstance(each['value'], str) or each['value'] != 'LBRACKET':
-                        each['value'] = Writer.serialize(each['value'])
-                Writer.fd.write(json.dumps(each) + '\n')
+            curr = Writer.head.next  # head is a sentinel
+            while curr:
+                if 'value' in curr.val:  # the dict can have 'value' or 'state'
+                    if not isinstance(curr.val['value'], str) or curr.val['value'] != 'LBRACKET':
+                        curr.val['value'] = Writer.serialize(curr.val['value'])
+                Writer.fd.write(json.dumps(curr.val) + '\n')
+                curr = curr.next
             Writer.fd.flush()
             Writer.serializing = False
             os._exit(0)
         else:
-            Writer.write_buffer = []  # parent process resets buffer
+            Writer.head = Node(None)  # unlink from the old list
+            Writer.tail = Writer.head  # parent process resets linked list
+            Writer.list_size = 0
 
 
     @staticmethod
     def flush():
-        if Writer.write_buffer:
+        if Writer.head.next:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
 
 
