@@ -70,16 +70,26 @@ class SkipBlock:
             for arg in self.args:
                 if not isinstance(arg, (nn.Module, optim.Optimizer)) or arg not in objects:
                     if not hasattr(arg, 'state_dict'):
-                        Writer.store(copy.deepcopy(arg), self.global_key)
+                        if not hasattr(arg, 'cpu'):
+                            Writer.store(copy.deepcopy(arg), self.global_key)
+                        else:
+                            Writer.store(arg.cpu(), self.global_key)
                     else:
-                        Writer.store(copy.deepcopy(arg.state_dict()), self.global_key)
+                        sd = arg.state_dict()
+                        sd_copy = {}
+                        for k in sd:
+                            if hasattr(sd[k], 'cpu'):
+                                sd_copy[k] = sd[k].cpu()
+                            else:
+                                sd_copy[k] = copy.deepcopy(sd[k])
+                        Writer.store(sd_copy, self.global_key)
                 else:
                     Writer.store(REDUNDANT, self.global_key)
                     materialize_additionals = True
             Writer.store(SEPARATOR, self.global_key)
             if materialize_additionals:
                 for l, k, v in forced:
-                    Writer.store(l, self.global_key)
+                    Writer.store(str(l), self.global_key)
                     Writer.store(k, self.global_key)
                     sd = v.state_dict()
                     sd_copy = {}
