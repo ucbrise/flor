@@ -50,7 +50,8 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     flor_settings = {
         'mode': ['exec', 'reexec'], # default: exec
         'name': ANY,
-        'memo': ANY
+        'memo': ANY,
+        'maxb': ANY, #buffer limit
     }
 
     argvs = []

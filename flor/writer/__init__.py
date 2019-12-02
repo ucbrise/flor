@@ -5,6 +5,7 @@ import cloudpickle
 import json
 from flor.stateful import *
 from flor.serial_wrapper import Node
+from torch import cuda
 
 class Writer:
     serializing = False
@@ -19,7 +20,8 @@ class Writer:
     fork_now = False
 
     if MODE is EXEC:
-        fd = open(LOG_PATH, 'w')
+        # fd = open(LOG_PATH, 'w')
+        fd = None
     else:
         with open(MEMO_PATH, 'r') as f:
             for line in f:
@@ -110,11 +112,13 @@ class Writer:
     def flush():
         if Writer.head.next:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
+        os.wait()
 
 
     @staticmethod
     def store(obj, global_key):
         # Store the object in the memo
+        #cuda.synchronize()
         if obj is not LBRACKET:
             d = {
                 'source': 'store',
@@ -138,13 +142,17 @@ class Writer:
         # paths can only contain PATHS or ERRORS
         values = []
         for path in paths:
-            if '.pkl' not in path:
+            if 'ERROR' in path[0:len('ERROR')]:
                 # ERROR CASE
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
-            else:
+            elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
+            else:
+                # Raw value
+                value = path
+                values.append(value)
 
         return values
 
@@ -205,4 +213,4 @@ pin_state = Writer.pin_state
 random_seed = Writer.random_seed
 flush = Writer.flush
 
-__all__ = ['pin_state', 'random_seed', 'flush']
+__all__ = ['pin_state', 'random_seed', 'Writer', 'flush']

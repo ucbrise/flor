@@ -46,7 +46,7 @@ class NamespaceStack:
         stack = NamespaceStack.stack
         assert stack
         for layer, k, state_dict in forced:
-            namespace = stack[layer]
+            namespace = stack[int(layer)]
             obj = namespace[k]
             obj.load_state_dict(state_dict)
 
