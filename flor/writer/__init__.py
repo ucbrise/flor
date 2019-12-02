@@ -4,8 +4,14 @@ import uuid
 import cloudpickle
 import json
 from flor.stateful import *
-from flor.serial_wrapper import Node
 from torch import cuda
+
+
+class Node:
+    def __init__(self, x):
+        self.val = x
+        self.next = None
+
 
 class Writer:
     serializing = False
