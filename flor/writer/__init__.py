@@ -19,7 +19,7 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
-    max_buffer = 10
+    max_buffer = 1000
     head = Node(None)
     tail = head
     list_size = 0
