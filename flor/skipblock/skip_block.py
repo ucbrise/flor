@@ -28,14 +28,13 @@ class SkipBlock:
     def __init__(self, static_key, global_key=None):
         """
         """
-
+        self.static_key = int(static_key)
         if state.MODE is EXEC:
             self.global_key = global_key
             Writer.store(LBRACKET, self.static_key, self.global_key)
         else:
             self.global_key = Writer.lbrack_load()
         self.global_key = int(self.global_key)
-        self.static_key = int(static_key)
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
