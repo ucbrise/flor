@@ -103,7 +103,10 @@ class Writer:
     def flush():
         if Writer.write_buffer:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
-        os.wait()
+        try:
+            os.wait()
+        except:
+            pass
 
 
     @staticmethod
