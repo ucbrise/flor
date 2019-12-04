@@ -25,18 +25,17 @@ class SkipBlock:
 
     """
 
-    def __init__(self, global_key=None):
+    def __init__(self, static_key, global_key=None):
         """
-        :param global_key: Unique static identifier for code block
-        The global key allows us to identify stored state in a memo
-        and match it unambiguously at reexecution runtime for loads.
         """
 
         if state.MODE is EXEC:
             self.global_key = global_key
-            Writer.store(LBRACKET, self.global_key)
+            Writer.store(LBRACKET, self.static_key, self.global_key)
         else:
             self.global_key = Writer.lbrack_load()
+        self.global_key = int(self.global_key)
+        self.static_key = int(static_key)
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
@@ -71,9 +70,9 @@ class SkipBlock:
                 if not isinstance(arg, (nn.Module, optim.Optimizer)) or arg not in objects:
                     if not hasattr(arg, 'state_dict'):
                         if not hasattr(arg, 'cpu'):
-                            Writer.store(copy.deepcopy(arg), self.global_key)
+                            Writer.store(copy.deepcopy(arg), self.static_key, self.global_key)
                         else:
-                            Writer.store(arg.cpu(), self.global_key)
+                            Writer.store(arg.cpu(), self.static_key, self.global_key)
                     else:
                         sd = arg.state_dict()
                         sd_copy = {}
@@ -82,15 +81,15 @@ class SkipBlock:
                                 sd_copy[k] = sd[k].cpu()
                             else:
                                 sd_copy[k] = copy.deepcopy(sd[k])
-                        Writer.store(sd_copy, self.global_key)
+                        Writer.store(sd_copy, self.static_key, self.global_key)
                 else:
-                    Writer.store(REDUNDANT, self.global_key)
+                    Writer.store(REDUNDANT, self.static_key, self.global_key)
                     materialize_additionals = True
-            Writer.store(SEPARATOR, self.global_key)
+            Writer.store(SEPARATOR, self.static_key, self.global_key)
             if materialize_additionals:
                 for l, k, v in forced:
-                    Writer.store(str(l), self.global_key)
-                    Writer.store(k, self.global_key)
+                    Writer.store(str(l), self.static_key, self.global_key)
+                    Writer.store(k, self.static_key, self.global_key)
                     sd = v.state_dict()
                     sd_copy = {}
                     for k in sd:
@@ -98,7 +97,7 @@ class SkipBlock:
                             sd_copy[k] = sd[k].cpu()
                         else:
                             sd_copy[k] = copy.deepcopy(sd[k])
-                    Writer.store(sd_copy, self.global_key)
+                    Writer.store(sd_copy, self.static_key, self.global_key)
         else:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)

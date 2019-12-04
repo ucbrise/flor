@@ -6,24 +6,14 @@ import json
 from flor.stateful import *
 from torch import cuda
 
-
-class Node:
-    def __init__(self, x):
-        self.val = x
-        self.next = None
-
-
 class Writer:
     serializing = False
     lsn = 0
     pinned_state = []
     seeds = []
     store_load = []
-    max_buffer = 10
-    head = Node(None)
-    tail = head
-    list_size = 0
-    fork_now = False
+    max_buffer = 5000
+    write_buffer = []
 
     if MODE is EXEC:
         # fd = open(LOG_PATH, 'w')
@@ -83,40 +73,35 @@ class Writer:
     @staticmethod
     def write(obj):
         obj['global_lsn'] = Writer.lsn
-        Writer.tail.next = Node(obj) #append to end
-        Writer.tail = Writer.tail.next #advance tail
-        Writer.list_size += 1
+        Writer.write_buffer.append(obj)
         Writer.lsn += 1  # append to buffer and increment lsn
-        if Writer.list_size >= Writer.max_buffer or Writer.fork_now:
+        if len(Writer.write_buffer) >= Writer.max_buffer:
             Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
             # note: fork_now is there as a mechanism for forcing fork, we aren't using it yet
 
     @staticmethod
     def forked_write():
-        Writer.fork_now = False
+        cuda.synchronize()
         pid = os.fork()
         if not pid:
+            path = LOG_PATH.split('.')
+            path.insert(-1, str(Writer.lsn))
+            path = '.'.join(path)
+            fd = open(path, 'w')
             os.nice(1)  # child process gets lower priority and starts flushing
-            Writer.serializing = True
-            curr = Writer.head.next  # head is a sentinel
-            while curr:
-                if 'value' in curr.val:  # the dict can have 'value' or 'state'
-                    if not isinstance(curr.val['value'], str) or curr.val['value'] != 'LBRACKET':
-                        curr.val['value'] = Writer.serialize(curr.val['value'])
-                Writer.fd.write(json.dumps(curr.val) + '\n')
-                curr = curr.next
-            Writer.fd.flush()
-            Writer.serializing = False
+            for each in Writer.write_buffer:
+                if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
+                    each['value'] = Writer.serialize(each['value'])
+                fd.write(json.dumps(each) + '\n')
+            fd.close()
             os._exit(0)
         else:
-            Writer.head = Node(None)  # unlink from the old list
-            Writer.tail = Writer.head  # parent process resets linked list
-            Writer.list_size = 0
+            Writer.write_buffer = []  # parent process resets buffer
 
 
     @staticmethod
     def flush():
-        if Writer.head.next:
+        if Writer.write_buffer:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
         try:
             os.wait()
@@ -125,18 +110,19 @@ class Writer:
 
 
     @staticmethod
-    def store(obj, global_key):
+    def store(obj, static_key, global_key):
         # Store the object in the memo
-        #cuda.synchronize()
         if obj is not LBRACKET:
             d = {
                 'source': 'store',
+                'static_key': static_key,
                 'global_key': global_key,
                 'value': obj
             }
         else:
             d = {
                 'source': 'store',
+                'static_key': static_key,
                 'global_key': global_key,
                 'value': 'LBRACKET'
             }
@@ -223,3 +209,4 @@ random_seed = Writer.random_seed
 flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'Writer', 'flush']
+
