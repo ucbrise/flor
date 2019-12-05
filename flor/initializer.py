@@ -43,6 +43,8 @@ def initialize(name, mode='exec', memo=None, maxb=None):
 
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
+    Writer.initialize()
+
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
     flor.random_seed = random_seed

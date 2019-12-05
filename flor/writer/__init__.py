@@ -16,56 +16,57 @@ class Writer:
     max_buffer = 5000
     write_buffer = []
 
-    if MODE is EXEC:
-        # fd = open(LOG_PATH, 'w')
-        fd = None
-    else:
-        with open(MEMO_PATH, 'r') as f:
-            for line in f:
-                log_record = json.loads(line.strip())
-                if 'source' in log_record:
-                    if log_record['source'] == 'pin_state':
-                        pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
-                    elif log_record['source'] == 'random_seed':
-                        seeds.append(log_record['seed'])
-                    elif log_record['source'] == 'store':
-                        # THIS IS FILENAME, or LBRACK, or ERROR
-                        store_load.append((log_record['static_key'], log_record['global_key'], log_record['value']))
-        # We now do a Group By global_key on store_load
-        new_store_load = []
-        current_group = {'key': None, 'skey': None, 'list': None}
-        period_head = None
-        for sk, gk, v in store_load:
-            if period_head is None:
-                period_head = sk
-            if current_group['key'] != gk or current_group['list'][0] == 'LBRACKET':
-                # New Group
-                new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
-                current_group = {'key': gk, 'skey': sk, 'list': []}
-            current_group['list'].append(v)
-        new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
-        assert new_store_load.pop(0) == (None, None, None)
+    @staticmethod
+    def initialize():
+        if MODE is EXEC:
+            # fd = open(LOG_PATH, 'w')
+            fd = None
+        else:
+            with open(MEMO_PATH, 'r') as f:
+                for line in f:
+                    log_record = json.loads(line.strip())
+                    if 'source' in log_record:
+                        if log_record['source'] == 'pin_state':
+                            Writer.pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
+                        elif log_record['source'] == 'random_seed':
+                            Writer.seeds.append(log_record['seed'])
+                        elif log_record['source'] == 'store':
+                            # THIS IS FILENAME, or LBRACK, or ERROR
+                            Writer.store_load.append((log_record['static_key'], log_record['global_key'], log_record['value']))
+            # We now do a Group By global_key on store_load
+            new_store_load = []
+            current_group = {'key': None, 'skey': None, 'list': None}
+            period_head = None
+            for sk, gk, v in Writer.store_load:
+                if period_head is None:
+                    period_head = sk
+                if current_group['key'] != gk or current_group['list'][0] == 'LBRACKET':
+                    # New Group
+                    new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+                    current_group = {'key': gk, 'skey': sk, 'list': []}
+                current_group['list'].append(v)
+            new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+            assert new_store_load.pop(0) == (None, None, None)
 
-        store_load = new_store_load
-        del new_store_load
+            Writer.store_load = new_store_load
+            del new_store_load
 
-        # We now Group By period
+            # We now Group By period
 
-        current_group = None
-        for sk, gk, v in store_load:
-            if sk == period_head and v[0] == 'LBRACKET':
-                partitioned_store_load.append(current_group)
-                current_group = []
-            current_group.append((sk, gk, v))
-        partitioned_store_load.append(current_group)
-        assert partitioned_store_load.pop(0) is None
+            current_group = None
+            for sk, gk, v in Writer.store_load:
+                if sk == period_head and v[0] == 'LBRACKET':
+                    Writer.partitioned_store_load.append(current_group)
+                    current_group = []
+                current_group.append((sk, gk, v))
+            Writer.partitioned_store_load.append(current_group)
+            assert Writer.partitioned_store_load.pop(0) is None
 
-        # for i, v in enumerate(partitioned_store_load):
-        #     for u in partitioned_store_load[i+1:]:
-        #         v.extend(u)
+            # for i, v in enumerate(partitioned_store_load):
+            #     for u in partitioned_store_load[i+1:]:
+            #         v.extend(u)
 
-        del current_group
-
+            del current_group
 
     @staticmethod
     def serialize(obj):
