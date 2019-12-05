@@ -58,7 +58,7 @@ class SkipBlock:
         if args:
             self.args = args
 
-        if state.MODE is EXEC:
+        if state.MODE is EXEC and self.block_executed:
             # Code ran so we need to store the side-effects
             forced = NamespaceStack.get_forced()
             objects = [each[2] for each in forced]
@@ -97,7 +97,8 @@ class SkipBlock:
                         else:
                             sd_copy[k] = copy.deepcopy(sd[k])
                     Writer.store(sd_copy, self.static_key, self.global_key)
-        else:
+            cuda.synchronize()
+        elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)
             raw_args, raw_forced = [], []
@@ -130,8 +131,6 @@ class SkipBlock:
                         mixed_args.append(arg)
 
             self.args = mixed_args
-
-        cuda.synchronize()
 
         if len(self.args) > 1:
             return self.args

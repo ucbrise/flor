@@ -12,6 +12,7 @@ class Writer:
     pinned_state = []
     seeds = []
     store_load = []
+    partitioned_store_load = []
     max_buffer = 5000
     write_buffer = []
 
@@ -29,22 +30,41 @@ class Writer:
                         seeds.append(log_record['seed'])
                     elif log_record['source'] == 'store':
                         # THIS IS FILENAME, or LBRACK, or ERROR
-                        store_load.append((log_record['global_key'], log_record['value']))
-            # We now do a Group By global_key on store_load
-            new_store_load = []
-            current_group = {'key': None, 'list': None}
-            for k, v in store_load:
-                if current_group['key'] != k or current_group['list'][0] == 'LBRACKET':
-                    # New Group
-                    new_store_load.append((current_group['key'], current_group['list']))
-                    current_group = {'key': k, 'list': []}
-                current_group['list'].append(v)
-            new_store_load.append((current_group['key'], current_group['list']))
-            assert new_store_load.pop(0) == (None, None)
+                        store_load.append((log_record['static_key'], log_record['global_key'], log_record['value']))
+        # We now do a Group By global_key on store_load
+        new_store_load = []
+        current_group = {'key': None, 'skey': None, 'list': None}
+        period_head = None
+        for sk, gk, v in store_load:
+            if period_head is None:
+                period_head = sk
+            if current_group['key'] != gk or current_group['list'][0] == 'LBRACKET':
+                # New Group
+                new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+                current_group = {'key': gk, 'skey': sk, 'list': []}
+            current_group['list'].append(v)
+        new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+        assert new_store_load.pop(0) == (None, None, None)
 
-            store_load = new_store_load
-            del new_store_load
-            del current_group
+        store_load = new_store_load
+        del new_store_load
+
+        # We now Group By period
+
+        current_group = None
+        for sk, gk, v in store_load:
+            if sk == period_head and v[0] == 'LBRACKET':
+                partitioned_store_load.append(current_group)
+                current_group = []
+            current_group.append((sk, gk, v))
+        partitioned_store_load.append(current_group)
+        assert partitioned_store_load.pop(0) is None
+
+        for i, v in enumerate(partitioned_store_load):
+            for u in partitioned_store_load[i+1:]:
+                v.extend(u)
+
+        del current_group
 
 
     @staticmethod
@@ -153,9 +173,9 @@ class Writer:
 
     @staticmethod
     def lbrack_load():
-        its_key, [v, ] = Writer.store_load.pop(0)
+        skey, gkey, [v, ] = Writer.store_load.pop(0)
         assert v == 'LBRACKET', str(v)
-        return its_key
+        return gkey
 
     @staticmethod
     def pin_state(library):
