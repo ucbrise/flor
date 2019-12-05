@@ -60,9 +60,9 @@ class Writer:
         partitioned_store_load.append(current_group)
         assert partitioned_store_load.pop(0) is None
 
-        for i, v in enumerate(partitioned_store_load):
-            for u in partitioned_store_load[i+1:]:
-                v.extend(u)
+        # for i, v in enumerate(partitioned_store_load):
+        #     for u in partitioned_store_load[i+1:]:
+        #         v.extend(u)
 
         del current_group
 

@@ -30,17 +30,18 @@ class SkipBlock:
         """
         self.static_key = int(static_key)
         if state.MODE is EXEC:
-            self.global_key = global_key
+            # Execution stores
+            self.global_key = int(global_key)
             Writer.store(LBRACKET, self.static_key, self.global_key)
-        else:
-            self.global_key = Writer.lbrack_load()
-        self.global_key = int(self.global_key)
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
 
     def should_execute(self, predicate):
         self.block_executed = predicate
+        if state.MODE is REEXEC and not predicate:
+            # Re-execution that skips loads
+            self.global_key = int(Writer.lbrack_load())
         return predicate
 
     def register_side_effects(self, *args):
@@ -58,7 +59,7 @@ class SkipBlock:
         if args:
             self.args = args
 
-        if state.MODE is EXEC and self.block_executed:
+        if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
             forced = NamespaceStack.get_forced()
             objects = [each[2] for each in forced]
