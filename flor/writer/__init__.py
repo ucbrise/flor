@@ -15,9 +15,11 @@ class Writer:
     partitioned_store_load = []
     max_buffer = 5000
     write_buffer = []
+    initialized = False
 
     @staticmethod
     def initialize():
+        Writer.initialized = True
         if MODE is EXEC:
             # fd = open(LOG_PATH, 'w')
             fd = None
