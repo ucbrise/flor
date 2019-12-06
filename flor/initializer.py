@@ -17,8 +17,7 @@ def initialize(name, mode='exec', memo=None, maxb=None):
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
-    if maxb is not None:
-        flor.writer.Writer.max_buffer = int(maxb)
+
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
@@ -44,6 +43,8 @@ def initialize(name, mode='exec', memo=None, maxb=None):
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
     Writer.initialize()
+    if maxb is not None:
+        Writer.max_buffer = int(maxb)
 
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
