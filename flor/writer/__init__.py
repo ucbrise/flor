@@ -154,8 +154,8 @@ class Writer:
     @staticmethod
     def load(global_key):
         while True:
-            its_key, paths = Writer.store_load.pop(0)
-            if its_key == global_key:
+            skey, gkey, paths = Writer.store_load.pop(0)
+            if gkey == global_key:
                 break
         # paths can only contain PATHS or ERRORS
         values = []
