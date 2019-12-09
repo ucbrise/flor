@@ -43,7 +43,7 @@ SkipBlock = NullClass
 namespace_stack = NullClass
 skip_stack = NullClass
 
-__all__ = ['pin_state', 'random_seed', 'flush', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', ]
+user_settings = None
 
 if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     # Fetch the flags we need without disrupting user code
@@ -79,3 +79,5 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     assert 'name' in user_settings, "[FLOR] Missing required parameter: name."
 
     initialize(**user_settings)
+
+__all__ = ['pin_state', 'random_seed', 'flush', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', 'user_settings']

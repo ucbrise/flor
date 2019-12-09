@@ -12,13 +12,13 @@ class SkipStack:
     def auto_incr_id():
         id = SkipStack.id
         SkipStack.id += 1
-        return str(id)
+        return id
 
     @staticmethod
-    def new():
+    def new(static_key):
         stack = SkipStack.stack
-        _id = SkipStack.auto_incr_id() if state.MODE is EXEC else None
-        block = SkipBlock(_id)
+        global_key = SkipStack.auto_incr_id() if state.MODE is EXEC else None
+        block = SkipBlock(static_key, global_key)
         stack.append(block)
 
     @staticmethod
