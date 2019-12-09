@@ -25,6 +25,7 @@ class Writer:
             # fd = open(LOG_PATH, 'w')
             fd = None
         else:
+            print("ENTERING ELSE")
             with open(MEMO_PATH, 'r') as f:
                 print("OPENED MEMO PATH")
                 for line in f:
@@ -74,7 +75,7 @@ class Writer:
             #         v.extend(u)
 
             del current_group
-            print("FINISHED PARTITIONED_STORE_LOAD WITH LEN: {}".format(len(Writer.store_load)))
+            print("FINISHED PARTITIONED_STORE_LOAD WITH LEN: {}".format(len(Writer.partitioned_store_load)))
 
     @staticmethod
     def serialize(obj):
