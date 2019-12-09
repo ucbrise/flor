@@ -2,7 +2,7 @@ import os
 import flor
 
 from flor.constants import *
-import stateful as flags
+from . import stateful as flags
 from datetime import datetime
 import flor.utils as utils
 
