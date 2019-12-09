@@ -22,6 +22,7 @@ class Writer:
         print("INITIALIZING WRITER")
         Writer.initialized = True
         if MODE is EXEC:
+            print("ENTERING IF")
             # fd = open(LOG_PATH, 'w')
             fd = None
         else:
