@@ -3,7 +3,8 @@ import os
 import uuid
 import cloudpickle
 import json
-from flor.stateful import *
+from flor.constants import *
+from .. import stateful as flags
 from torch import cuda
 
 class Writer:
@@ -21,13 +22,13 @@ class Writer:
     def initialize():
         print("INITIALIZING WRITER")
         Writer.initialized = True
-        if MODE is EXEC:
+        if flags.MODE is EXEC:
             print("ENTERING IF")
             # fd = open(LOG_PATH, 'w')
             fd = None
         else:
             print("ENTERING ELSE")
-            with open(MEMO_PATH, 'r') as f:
+            with open(flags.MEMO_PATH, 'r') as f:
                 print("OPENED MEMO PATH")
                 for line in f:
                     print("READ A MEMO LINE")
@@ -88,7 +89,7 @@ class Writer:
 
             while True:
                 unique_filename = uuid.uuid4().hex + '.pkl'
-                unique_filename = os.path.join(LOG_DATA_PATH, unique_filename)
+                unique_filename = os.path.join(flags.LOG_DATA_PATH, unique_filename)
                 if not os.path.exists(unique_filename):
                     break
 
@@ -115,7 +116,7 @@ class Writer:
         cuda.synchronize()
         pid = os.fork()
         if not pid:
-            path = LOG_PATH.split('.')
+            path = flags.LOG_PATH.split('.')
             path.insert(-1, str(Writer.lsn))
             path = '.'.join(path)
             fd = open(path, 'w')
@@ -203,7 +204,7 @@ class Writer:
                 Writer.write(d)
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
-        elif MODE is REEXEC:
+        elif flags.MODE is REEXEC:
             path = Writer.pinned_state.pop(0)
             with open(path, 'rb') as f:
                 state = cloudpickle.load(f)
@@ -218,7 +219,7 @@ class Writer:
 
     @staticmethod
     def random_seed(*args, **kwargs):
-        if MODE is EXEC:
+        if flags.MODE is EXEC:
             if args or kwargs:
                 seed = numpy.random.randint(*args, **kwargs)
             else:
@@ -229,7 +230,7 @@ class Writer:
             }
             Writer.write(d)
             return seed
-        elif MODE is REEXEC:
+        elif flags.MODE is REEXEC:
             seed = Writer.seeds.pop(0)
             return seed
         else:

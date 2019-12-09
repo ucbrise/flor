@@ -1,6 +1,6 @@
 import sys
 
-from flor.stateful import *
+from flor.constants import *
 
 from flor.initializer import initialize, is_initialized
 
