@@ -18,6 +18,7 @@ def initialize(name, mode='exec', memo=None, maxb=None):
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
 
+    print("MODE: {}".format(mode))
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
