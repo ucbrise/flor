@@ -7,7 +7,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None):
+def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -54,6 +54,10 @@ def initialize(name, mode='exec', memo=None, maxb=None):
 
     flor.namespace_stack = NamespaceStack
     flor.skip_stack = SkipStack
+
+    if predecessor_id is not None and predecessor_id >= 0:
+        assert flags.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(mode)
+        Writer.store_load = Writer.partitioned_store_load[predecessor_id]
 
 
 def is_initialized():

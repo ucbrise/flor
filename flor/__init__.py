@@ -1,9 +1,8 @@
 import sys
 
 from flor.constants import *
-
 from flor.initializer import initialize, is_initialized
-
+import flor.utils as utils
 
 class NotInitializedError(RuntimeError):
     pass
@@ -80,4 +79,12 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
 
     initialize(**user_settings)
 
-__all__ = ['pin_state', 'random_seed', 'flush', 'SKIP', 'SkipBlock', 'initialize', 'is_initialized', 'user_settings']
+__all__ = ['pin_state',
+           'random_seed',
+           'flush',
+           'SKIP',
+           'SkipBlock',
+           'initialize',
+           'is_initialized',
+           'user_settings',
+           'utils']
