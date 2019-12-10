@@ -20,18 +20,13 @@ class Writer:
 
     @staticmethod
     def initialize():
-        print("INITIALIZING WRITER")
         Writer.initialized = True
         if flags.MODE is EXEC:
-            print("ENTERING IF")
             # fd = open(LOG_PATH, 'w')
             fd = None
         else:
-            print("ENTERING ELSE")
             with open(flags.MEMO_PATH, 'r') as f:
-                print("OPENED MEMO PATH")
                 for line in f:
-                    print("READ A MEMO LINE")
                     log_record = json.loads(line.strip())
                     if 'source' in log_record:
                         if log_record['source'] == 'pin_state':
@@ -41,7 +36,6 @@ class Writer:
                         elif log_record['source'] == 'store':
                             # THIS IS FILENAME, or LBRACK, or ERROR
                             Writer.store_load.append((log_record['static_key'], log_record['global_key'], log_record['value']))
-            print("FINISHED READING MEMO PATH")
             # We now do a Group By global_key on store_load
             new_store_load = []
             current_group = {'key': None, 'skey': None, 'list': None}
@@ -60,7 +54,6 @@ class Writer:
             Writer.store_load = new_store_load
             del new_store_load
 
-            print("FINISHED STORE_LOAD WITH LEN: {}".format(len(Writer.store_load)))
             # We now Group By period
 
             current_group = None
@@ -77,7 +70,6 @@ class Writer:
             #         v.extend(u)
 
             del current_group
-            print("FINISHED PARTITIONED_STORE_LOAD WITH LEN: {}".format(len(Writer.partitioned_store_load)))
 
     @staticmethod
     def serialize(obj):
