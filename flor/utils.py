@@ -30,8 +30,7 @@ def cond_rmdir(path):
 
 
 def fprint(dir_tree_list, device_id):
-    root_path = os.path.join(*dir_tree_list)
-
+    root_path = os.path.sep + os.path.join(*dir_tree_list)
     def write(s):
         with open(os.path.join(root_path, "flor_output_{}.txt".format(device_id)), 'a') as f:
             f.write(s + '\n')
