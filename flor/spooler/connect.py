@@ -7,8 +7,8 @@ def send_to_S3():
 
 def receive_from_S3():
     try:
-        fp = open(flags.LOG_PATH, 'r')
         #fp = open('../.flor/resnet18-s3/20191121-202158.json', 'r')
+        fp = open(flags.LOG_PATH, 'r')
         line = fp.readline()
         while line: 
             re_pkl = re.search(r'\.pkl', line)
