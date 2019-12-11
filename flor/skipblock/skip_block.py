@@ -2,7 +2,7 @@ from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
 
-import flor.stateful as state
+from .. import stateful as state
 
 import torch.nn as nn
 import torch.optim as optim

@@ -1,6 +1,6 @@
 from flor.skipblock.skip_block import SkipBlock
 from flor.constants import *
-import flor.stateful as state
+from .. import stateful as state
 
 
 class SkipStack:
