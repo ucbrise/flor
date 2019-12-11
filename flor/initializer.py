@@ -2,11 +2,12 @@ import os
 import flor
 
 from flor.constants import *
-import flor.stateful as flags
+from . import stateful as flags
 from datetime import datetime
 import flor.utils as utils
 
-def initialize(name, mode='exec', memo=None):
+
+def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -16,6 +17,7 @@ def initialize(name, mode='exec', memo=None):
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
+
     flags.NAME = name
     flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
                                   "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
@@ -32,18 +34,30 @@ def initialize(name, mode='exec', memo=None):
     utils.cond_mkdir(flags.LOG_DATA_PATH)
 
     # FINISH INITIALIZATION
-    from flor.writer import pin_state, random_seed
+    from flor.writer import Writer, pin_state, random_seed, flush
     from flor.skipblock.skip_block import SkipBlock
     from flor.skipblock.namespace_stack import NamespaceStack
     from flor.skipblock.skip_stack import SkipStack
+    import signal
+
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+    Writer.initialize()
+    if maxb is not None:
+        Writer.max_buffer = int(maxb)
 
     flor.SKIP = flags.MODE is REEXEC
     flor.pin_state = pin_state
     flor.random_seed = random_seed
     flor.SkipBlock = SkipBlock
+    flor.flush = flush
 
     flor.namespace_stack = NamespaceStack
     flor.skip_stack = SkipStack
+
+    if predecessor_id is not None and predecessor_id >= 0:
+        assert flags.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(mode)
+        Writer.store_load = Writer.partitioned_store_load[predecessor_id]
 
 
 def is_initialized():

@@ -2,10 +2,12 @@ from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
 
-import flor.stateful as state
+from .. import stateful as state
 
 import torch.nn as nn
 import torch.optim as optim
+from torch import cuda
+import copy
 
 
 class SkipBlock:
@@ -23,24 +25,23 @@ class SkipBlock:
 
     """
 
-    def __init__(self, global_key=None):
+    def __init__(self, static_key, global_key=None):
         """
-        :param global_key: Unique static identifier for code block
-        The global key allows us to identify stored state in a memo
-        and match it unambiguously at reexecution runtime for loads.
         """
-
+        self.static_key = int(static_key)
         if state.MODE is EXEC:
-            self.global_key = global_key
-            Writer.store(LBRACKET, self.global_key)
-        else:
-            self.global_key = Writer.lbrack_load()
+            # Execution stores
+            self.global_key = int(global_key)
+            Writer.store(LBRACKET, self.static_key, self.global_key)
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
 
     def should_execute(self, predicate):
         self.block_executed = predicate
+        if state.MODE is REEXEC and not predicate:
+            # Re-execution that skips loads
+            self.global_key = int(Writer.lbrack_load())
         return predicate
 
     def register_side_effects(self, *args):
@@ -48,6 +49,7 @@ class SkipBlock:
 
     def proc_side_effects(self, *args):
         # TODO: For selective replay, we will want to skip some loads. Add predicate for skipping.
+        # TODO: Bug, the cpu() call won't copy if object is already in CPU
         # WARNING: MAY ONLY BE CALLED ONCE
         assert not self.args or not args
         assert self.args or args
@@ -67,19 +69,37 @@ class SkipBlock:
             for arg in self.args:
                 if not isinstance(arg, (nn.Module, optim.Optimizer)) or arg not in objects:
                     if not hasattr(arg, 'state_dict'):
-                        Writer.store(arg, self.global_key)
+                        if not hasattr(arg, 'cpu'):
+                            Writer.store(copy.deepcopy(arg), self.static_key, self.global_key)
+                        else:
+                            Writer.store(arg.cpu(), self.static_key, self.global_key)
                     else:
-                        Writer.store(arg.state_dict(), self.global_key)
+                        sd = arg.state_dict()
+                        sd_copy = {}
+                        for k in sd:
+                            if hasattr(sd[k], 'cpu'):
+                                sd_copy[k] = sd[k].cpu()
+                            else:
+                                sd_copy[k] = copy.deepcopy(sd[k])
+                        Writer.store(sd_copy, self.static_key, self.global_key)
                 else:
-                    Writer.store(REDUNDANT, self.global_key)
+                    Writer.store(REDUNDANT, self.static_key, self.global_key)
                     materialize_additionals = True
-            Writer.store(SEPARATOR, self.global_key)
+            Writer.store(SEPARATOR, self.static_key, self.global_key)
             if materialize_additionals:
                 for l, k, v in forced:
-                    Writer.store(l, self.global_key)
-                    Writer.store(k, self.global_key)
-                    Writer.store(v.state_dict(), self.global_key)
-        else:
+                    Writer.store(str(l), self.static_key, self.global_key)
+                    Writer.store(k, self.static_key, self.global_key)
+                    sd = v.state_dict()
+                    sd_copy = {}
+                    for k in sd:
+                        if hasattr(sd[k], 'cpu'):
+                            sd_copy[k] = sd[k].cpu()
+                        else:
+                            sd_copy[k] = copy.deepcopy(sd[k])
+                    Writer.store(sd_copy, self.static_key, self.global_key)
+            cuda.synchronize()
+        elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             packed_state = Writer.load(self.global_key)
             raw_args, raw_forced = [], []

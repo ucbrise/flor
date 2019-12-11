@@ -20,6 +20,13 @@ class Transformer(ast.NodeTransformer):
         #   Are we in a loop context?
         self.loop_context = False
 
+        self.static_key = 0
+
+    def get_incr_static_key(self):
+        sk = self.static_key
+        self.static_key += 1
+        return sk
+
     def visit_Assign(self, node):
         lsd = LoadStoreDetector(writes=self.assign_updates)
         lsd.visit(node)
@@ -67,16 +74,8 @@ class Transformer(ast.NodeTransformer):
             else:
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
 
-        # Inner Block
-        block_initialize = make_block_initialize('skip_stack')
-        cond_block = make_cond_block()
-        proc_side_effects = make_proc_side_effects(underscored_memoization_set,
-                                                   memoization_set)
-        cond_block.body = new_node.body
-        new_node.body = [block_initialize, cond_block, proc_side_effects]
-
         # Outer Block
-        block_initialize = make_block_initialize('skip_stack')
+        block_initialize = make_block_initialize('skip_stack', make_arg(self.get_incr_static_key()))
         cond_block = make_cond_block()
         proc_side_effects = make_proc_side_effects(underscored_memoization_set,
                                                    memoization_set)

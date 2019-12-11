@@ -1,33 +1,56 @@
 import ast
 from copy import deepcopy
 
+def make_arg(arg):
+    if isinstance(arg, (int, float)):
+        return ast.Num(arg)
+    elif isinstance(arg, str):
+        return ast.Str(arg)
+    else:
+        raise NotImplementedError()
 
-def make_attr_call(attr1, attr2):
+def make_attr_call(attr1, attr2, arg=None):
     """
     flor._attr1_._attr2_()
     """
-    return ast.Call(
-        func=ast.Attribute(
-            value=ast.Attribute(
-                value=ast.Name('flor', ast.Load()),
-                attr=attr1,
+    if arg is None:
+        return ast.Call(
+            func=ast.Attribute(
+                value=ast.Attribute(
+                    value=ast.Name('flor', ast.Load()),
+                    attr=attr1,
+                    ctx=ast.Load()
+                ),
+                attr=attr2,
                 ctx=ast.Load()
             ),
-            attr=attr2,
-            ctx=ast.Load()
-        ),
-        args=[],
-        keywords=[]
-    )
+            args=[],
+            keywords=[]
+        )
+    else:
+        return ast.Call(
+            func=ast.Attribute(
+                value=ast.Attribute(
+                    value=ast.Name('flor', ast.Load()),
+                    attr=attr1,
+                    ctx=ast.Load()
+                ),
+                attr=attr2,
+                ctx=ast.Load()
+            ),
+            args=[arg],
+            keywords=[]
+        )
 
 
-def make_block_initialize(attr):
+def make_block_initialize(attr, arg=None):
     """
     flor._attr_.new()
     """
     return ast.Expr(
-        value=make_attr_call(attr,'new')
+        value=make_attr_call(attr, 'new', arg),
     )
+
 
 
 def make_block_destroy(attr):
