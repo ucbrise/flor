@@ -2,6 +2,12 @@ import math
 import os
 import shutil
 
+class PATH:
+    def __init__(self, path_from_home):
+        self.path_from_home = path_from_home
+        self.squiggles = os.path.join('~', path_from_home)
+        self.absolute = os.path.join(os.path.expanduser('~'), path_from_home)
+
 
 def cond_mkdir(path):
     """

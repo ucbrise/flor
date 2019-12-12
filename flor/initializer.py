@@ -19,19 +19,20 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
 
     flags.NAME = name
-    flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
-                                  "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
-    flags.LOG_DATA_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, "data")
+    flags.LOG_PATH = utils.PATH(os.path.join('.flor', flags.NAME,
+                                             "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S"))))
+
+    flags.LOG_DATA_PATH = utils.PATH(os.path.join('.flor', flags.NAME, "data"))
 
     if mode == 'reexec':
         assert memo is not None, "[FLOR] On Re-execution, please specify a memoized file"
-        flags.MEMO_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, memo)
-        assert os.path.exists(flags.MEMO_PATH)
+        flags.MEMO_PATH = utils.PATH(os.path.join('.flor', flags.NAME, memo))
+        assert os.path.exists(flags.MEMO_PATH.absolute)
         flags.MODE = REEXEC
 
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor'))
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
-    utils.cond_mkdir(flags.LOG_DATA_PATH)
+    utils.cond_mkdir(flags.LOG_DATA_PATH.absolute)
 
     # FINISH INITIALIZATION
     from flor.writer import Writer, pin_state, random_seed, flush
