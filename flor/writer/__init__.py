@@ -185,7 +185,7 @@ class Writer:
 
     @staticmethod
     def pin_state(library):
-        if MODE is EXEC:
+        if flags.MODE is EXEC:
             if library is numpy:
                 d = {'source': 'pin_state',
                      'library': 'numpy',
