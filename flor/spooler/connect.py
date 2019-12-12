@@ -24,7 +24,7 @@ def receive_from_S3():
                         word = word.strip('\"')
                         index = word.rindex('/')
                         pkl_name = word[index+1:]
-                        Process = Popen('bash %s %s %s %s' % (path, str(word),str(flags.NAME),str(pkl_name),), shell=True)
+                        Process = Popen('bash %s %s %s %s' % (path, os.path.expanduser(str(word)),str(flags.NAME),str(pkl_name),), shell=True)
             line = fp.readline()
     finally:
         fp.close()
