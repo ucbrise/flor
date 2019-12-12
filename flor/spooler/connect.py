@@ -25,3 +25,5 @@ def receive_from_S3():
     finally:
         fp.close()
 
+
+__all__ = ['send_to_S3', 'receive_from_S3']
