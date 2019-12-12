@@ -10,9 +10,8 @@ def send_to_S3():
     subprocess.run(['bash', path, str(flags.NAME)], check=True)
 
 def receive_from_S3():
-    try:
-        path = os.path.join(flor_dir, 'receive_from_S3.sh')
-        fp = open(flags.LOG_PATH.absolute, 'r')
+    path = os.path.join(flor_dir, 'receive_from_S3.sh')
+    with open(flags.LOG_PATH.absolute, 'r') as fp:
         line = fp.readline()
         while line:
             re_pkl = re.search(r'\.pkl', line)
@@ -26,5 +25,3 @@ def receive_from_S3():
                         pkl_name = word[index+1:]
                         subprocess.run(['bash', path, os.path.expanduser(str(word)), str(flags.NAME), str(pkl_name)], check=True)
             line = fp.readline()
-    finally:
-        fp.close()
