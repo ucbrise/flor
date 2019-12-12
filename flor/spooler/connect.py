@@ -2,10 +2,10 @@ from subprocess import Popen
 from .. import stateful as flags
 import re
 
-def send_to_S3():
+def to_S3():
     Process = Popen('./send_to_S3.sh %s' % (str(flags.NAME),), shell=True)
 
-def receive_from_S3():
+def from_S3():
     try:
         #fp = open('../.flor/resnet18-s3/20191121-202158.json', 'r')
         fp = open(flags.LOG_PATH, 'r')
@@ -24,6 +24,3 @@ def receive_from_S3():
             line = fp.readline()
     finally:
         fp.close()
-
-
-__all__ = ['send_to_S3', 'receive_from_S3']
