@@ -11,7 +11,7 @@ def send_to_S3():
 
 def receive_from_S3():
     path = os.path.join(flor_dir, 'receive_from_S3.sh')
-    with open(flags.LOG_PATH.absolute, 'r') as fp:
+    with open(flags.MEMO_PATH.absolute, 'r') as fp:
         line = fp.readline()
         while line:
             re_pkl = re.search(r'\.pkl', line)
