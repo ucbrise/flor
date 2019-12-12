@@ -3,7 +3,7 @@ from .. import stateful as flags
 import re
 
 def send_to_S3():
-    Process = Popen('../flor/flor/spooler/send_to_S3.sh %s' % (str(flags.NAME),), shell=True)
+    Process = Popen('./send_to_S3.sh %s' % (str(flags.NAME),), shell=True)
 
 def receive_from_S3():
     try:
@@ -20,7 +20,7 @@ def receive_from_S3():
                         word = word.strip('\"')
                         index = word.rindex('/')
                         pkl_name = word[index+1:]
-                        Process = Popen('../flor/flor/spooler/receive_from_S3.sh %s %s %s' % (str(word),str(flags.NAME),str(pkl_name),), shell=True)
+                        Process = Popen('./receive_from_S3.sh %s %s %s' % (str(word),str(flags.NAME),str(pkl_name),), shell=True)
             line = fp.readline()
     finally:
         fp.close()
