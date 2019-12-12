@@ -1,4 +1,4 @@
-from subprocess import Popen
+import subprocess
 from .. import stateful as flags
 import re
 import os
@@ -7,7 +7,7 @@ flor_dir = os.path.expanduser(os.path.join('~', '.flor'))
 
 def send_to_S3():
     path = os.path.join(flor_dir, 'send_to_S3.sh')
-    Process = Popen('bash %s %s' % (path, str(flags.NAME),), shell=True)
+    subprocess.run(['bash', path, str(flags.NAME)], check=True)
 
 def receive_from_S3():
     try:
@@ -24,7 +24,7 @@ def receive_from_S3():
                         word = word.strip('\"')
                         index = word.rindex('/')
                         pkl_name = word[index+1:]
-                        Process = Popen('bash %s %s %s %s' % (path, os.path.expanduser(str(word)),str(flags.NAME),str(pkl_name),), shell=True)
+                        subprocess.run(['bash', path, os.path.expanduser(str(word)), str(flags.NAME), str(pkl_name)], check=True)
             line = fp.readline()
     finally:
         fp.close()
