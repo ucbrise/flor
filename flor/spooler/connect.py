@@ -1,5 +1,5 @@
 from subprocess import Popen
-import flor.stateful as flags
+from .. import stateful as flags
 import re
 
 def send_to_S3():
