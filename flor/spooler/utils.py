@@ -1,10 +1,7 @@
 import re
 
 def convert_to_int(s):
-    if s.isdigit():
-        return int(s)
-    else:
-        return s
+    return int(s) if s.isdigit() else s
     
 def natural_key(s):
     """ Turn a string into a list of string and number chunks.
