@@ -1,7 +1,8 @@
+import os
+import re
 import subprocess
 from .. import stateful as flags
-import re
-import os
+from flor.spooler.utils import natural_key, convert_to_int
 
 flor_dir = os.path.expanduser(os.path.join('~', '.flor'))
 
@@ -12,8 +13,8 @@ def send_to_S3():
     index_name = flags.LOG_PATH.absolute[index+1:]
 
     file_names = os.listdir(index_path)
-    file_names.sort()
-    
+    file_names.sort(key=natural_key)
+
     index_file = open(flags.LOG_PATH.absolute, 'a+')
     for fn in file_names:
         if fn[:-5].find('.') != -1 and fn.find(index_name[:-5]) != -1:
