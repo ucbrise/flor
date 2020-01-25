@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+import flor.common.copy
 import copy
 
 
@@ -62,21 +63,5 @@ def get_partitions(iterator, num_gpu):
 
 
 def deepcopy_cpu(x):
-    try:
-        if hasattr(x, 'cpu'):
-            return x.cpu()
-
-        if isinstance(x, list):
-            x_copy = [deepcopy_cpu(e) for e in x]
-            return x_copy
-        elif isinstance(x, tuple):
-            x_copy = tuple([deepcopy_cpu(e) for e in x])
-            return x_copy
-        elif isinstance(x, dict):
-            x_copy = {}
-            for k, v in x.items():
-                x_copy[k] = deepcopy_cpu(v)
-            return x_copy
-
-    except Exception:
-        return copy.deepcopy(x)
+    copy.deepcopy = flor.common.copy.deepcopy
+    return copy.deepcopy(x)
