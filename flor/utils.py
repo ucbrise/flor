@@ -1,6 +1,9 @@
 import math
 import os
 import shutil
+import flor.common.copy
+import copy
+
 
 class PATH:
     def __init__(self, path_from_home):
@@ -37,6 +40,7 @@ def cond_rmdir(path):
 
 def fprint(dir_tree_list, device_id):
     root_path = os.path.sep + os.path.join(*dir_tree_list)
+
     def write(s):
         with open(os.path.join(root_path, "flor_output_{}.txt".format(device_id)), 'a') as f:
             f.write(s + '\n')
@@ -56,3 +60,8 @@ def get_partitions(iterator, num_gpu):
         partitions.append(iterator[i * work_per_gpu: (i + 1) * work_per_gpu])
         i += 1
     return partitions
+
+
+def deepcopy_cpu(x):
+    copy.deepcopy = flor.common.copy.deepcopy
+    return copy.deepcopy(x)

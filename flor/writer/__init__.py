@@ -90,7 +90,8 @@ class Writer:
                 cloudpickle.dump(obj, f)
 
             return unique_filename_sqg
-        except:
+        except Exception as e:
+            print(f"Failed to serialize: {e}")
             return "ERROR: failed to serialize"
         finally:
             Writer.serializing = False
@@ -235,4 +236,3 @@ random_seed = Writer.random_seed
 flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'Writer', 'flush']
-

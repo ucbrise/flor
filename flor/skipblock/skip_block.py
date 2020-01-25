@@ -1,6 +1,7 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
+from flor.utils import deepcopy_cpu
 
 from .. import stateful as state
 
@@ -75,12 +76,7 @@ class SkipBlock:
                             Writer.store(arg.cpu(), self.static_key, self.global_key)
                     else:
                         sd = arg.state_dict()
-                        sd_copy = {}
-                        for k in sd:
-                            if hasattr(sd[k], 'cpu'):
-                                sd_copy[k] = sd[k].cpu()
-                            else:
-                                sd_copy[k] = copy.deepcopy(sd[k])
+                        sd_copy = deepcopy_cpu(sd)
                         Writer.store(sd_copy, self.static_key, self.global_key)
                 else:
                     Writer.store(REDUNDANT, self.static_key, self.global_key)
@@ -121,6 +117,7 @@ class SkipBlock:
             NamespaceStack.set_forced(forced)
 
             mixed_args = []
+
             for i, arg in enumerate(raw_args):
                 if arg is REDUNDANT:
                     mixed_args.append(self.args[i])
