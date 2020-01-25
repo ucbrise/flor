@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+import copy
 
 
 class PATH:
@@ -61,14 +62,21 @@ def get_partitions(iterator, num_gpu):
 
 
 def deepcopy_cpu(x):
-    if hasattr(x, 'cpu'):
-        return x.cpu()
+    try:
+        if hasattr(x, 'cpu'):
+            return x.cpu()
 
-    if isinstance(x, dict):
-        x_copy = {}
-        for k, v in x.items():
-            x_copy[k] = deepcopy_cpu(v)
-        assert id(x_copy) != id(x)
-        return x_copy
+        if isinstance(x, list):
+            x_copy = [deepcopy_cpu(e) for e in x]
+            return x_copy
+        elif isinstance(x, tuple):
+            x_copy = tuple([deepcopy_cpu(e) for e in x])
+            return x_copy
+        elif isinstance(x, dict):
+            x_copy = {}
+            for k, v in x.items():
+                x_copy[k] = deepcopy_cpu(v)
+            return x_copy
 
-    return x
+    except Exception:
+        return copy.deepcopy(x)
