@@ -27,7 +27,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
     if mode == 'reexec':
         assert memo is not None, "[FLOR] On Re-execution, please specify a memoized file"
         flags.MEMO_PATH = utils.PATH(os.path.join('.flor', flags.NAME, memo))
-        assert os.path.exists(flags.MEMO_PATH.absolute)
+        assert os.path.exists(flags.MEMO_PATH.absolute), f"{flags.MEMO_PATH.absolute} does not exist"
         flags.MODE = REEXEC
 
     utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor'))

@@ -180,9 +180,11 @@ class Writer:
 
     @staticmethod
     def lbrack_load():
-        skey, gkey, [v, ] = Writer.store_load.pop(0)
-        assert v == 'LBRACKET', str(v)
-        return gkey
+        while Writer.store_load:
+            skey, gkey, v = Writer.store_load.pop(0)
+            if 'LBRACKET' in v:
+                return gkey
+        assert False, 'LBRACKET load failed'
 
     @staticmethod
     def pin_state(library):

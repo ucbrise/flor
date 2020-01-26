@@ -40,7 +40,7 @@ class SkipBlock:
 
     def should_execute(self, predicate):
         self.block_executed = predicate
-        if state.MODE is REEXEC and not predicate:
+        if state.MODE is REEXEC:
             # Re-execution that skips loads
             self.global_key = int(Writer.lbrack_load())
         return predicate
