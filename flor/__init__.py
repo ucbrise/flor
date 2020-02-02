@@ -3,7 +3,7 @@ import sys
 from flor.constants import *
 from flor.initializer import initialize, is_initialized
 import flor.utils as utils
-import flor.spooler as spooler
+# import flor.spooler as spooler
 
 class NotInitializedError(RuntimeError):
     pass
@@ -89,5 +89,5 @@ __all__ = ['pin_state',
            'initialize',
            'is_initialized',
            'user_settings',
-           'utils',
-           'spooler']
+           'utils'
+           ]
