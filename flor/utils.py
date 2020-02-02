@@ -6,10 +6,14 @@ import copy
 
 
 class PATH:
-    def __init__(self, path_from_home):
+    def __init__(self, root_path, path_from_home):
+        root_path = '~' if root_path is None else root_path
         self.path_from_home = path_from_home
-        self.squiggles = os.path.join('~', path_from_home)
-        self.absolute = os.path.join(os.path.expanduser('~'), path_from_home)
+        self.squiggles = os.path.join(root_path, path_from_home)
+        if root_path == '~':
+            self.absolute = os.path.join(os.path.expanduser('~'), path_from_home)
+        else:
+            self.absolute = os.path.join(os.path.abspath(root_path), path_from_home)
 
 
 def cond_mkdir(path):

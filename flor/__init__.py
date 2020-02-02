@@ -51,7 +51,8 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
         'mode': ['exec', 'reexec'], # default: exec
         'name': ANY,
         'memo': ANY,
-        'maxb': ANY, #buffer limit
+        'maxb': ANY,  # buffer limit
+        'rd': ANY     # root directory for .flor subdir
     }
 
     argvs = []

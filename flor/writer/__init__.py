@@ -168,7 +168,7 @@ class Writer:
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
             elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
-                path = os.path.expanduser(path)
+                path = os.path.expanduser(path) if '~' in path[0:2] else os.path.abspath(path)
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
             else:
