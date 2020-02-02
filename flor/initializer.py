@@ -7,7 +7,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, root_path=None):
+def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -17,7 +17,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, roo
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
-
+    root_path = rd
     flor_path = utils.PATH(root_path, '.flor')
 
     flags.NAME = name
