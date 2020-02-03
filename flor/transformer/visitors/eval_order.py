@@ -6,10 +6,18 @@ class EvalOrderVisitor(ast.NodeVisitor, abc.ABC):
 
     @abc.abstractmethod
     def set_checkpoint(self):
+        """
+        Returns a copy of the  current state of the Node Visitor
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def branch_to(self, state):
+        """
+        counter-part to set_checkpoint
+        Sets the Node Visitor state to the argument
+        Returns the current state in case the caller wants to save it
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -18,7 +26,7 @@ class EvalOrderVisitor(ast.NodeVisitor, abc.ABC):
 
     @abc.abstractmethod
     def do_unimplemented_behavior(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def visit_AnnAssign(self, node):
         self.do_unimplemented_behavior()
@@ -55,7 +63,7 @@ class EvalOrderVisitor(ast.NodeVisitor, abc.ABC):
         [self.visit(s) for s in node.body]
         state2 = self.branch_to(state1)
         [self.visit(s) for s in node.orelse]
-        self.merge_branches(state1, state2)
+        self.merge_branches(state2, self.set_checkpoint())
 
     def visit_For(self, node):
         self.visit(node.iter)
