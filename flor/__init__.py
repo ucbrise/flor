@@ -3,6 +3,7 @@ import sys
 from flor.constants import *
 from flor.initializer import initialize, is_initialized
 import flor.utils as utils
+# import flor.spooler as spooler
 
 class NotInitializedError(RuntimeError):
     pass
@@ -50,7 +51,8 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
         'mode': ['exec', 'reexec'], # default: exec
         'name': ANY,
         'memo': ANY,
-        'maxb': ANY, #buffer limit
+        'maxb': ANY,  # buffer limit
+        'rd': ANY     # root directory for .flor subdir
     }
 
     argvs = []
@@ -87,4 +89,5 @@ __all__ = ['pin_state',
            'initialize',
            'is_initialized',
            'user_settings',
-           'utils']
+           'utils'
+           ]

@@ -9,14 +9,14 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
      name='pyflor',
-     version='0.0.8a7',
+     version='0.0.8a8',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
      description="A diagnostics and sharing system for ML",
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
-     packages=['flor', 'flor.transformer', 'flor.transformer.visitors', 'flor.writer', 'flor.skipblock'],
+     packages=['flor', 'flor.transformer', 'flor.transformer.visitors', 'flor.writer', 'flor.skipblock', 'flor.spooler', 'flor.common'],
      install_requires = requirements,
      classifiers = [
          "Programming Language :: Python :: 3",

@@ -7,7 +7,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
+def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -17,21 +17,24 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None):
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
+    root_path = rd
+    flor_path = utils.PATH(root_path, '.flor')
 
     flags.NAME = name
-    flags.LOG_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME,
-                                  "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S")))
-    flags.LOG_DATA_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, "data")
+    flags.LOG_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME,
+                                             "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S"))))
+
+    flags.LOG_DATA_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME, "data"))
 
     if mode == 'reexec':
         assert memo is not None, "[FLOR] On Re-execution, please specify a memoized file"
-        flags.MEMO_PATH = os.path.join(os.path.expanduser('~'), '.flor', flags.NAME, memo)
-        assert os.path.exists(flags.MEMO_PATH)
+        flags.MEMO_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME, memo))
+        assert os.path.exists(flags.MEMO_PATH.absolute), f"{flags.MEMO_PATH.absolute} does not exist"
         flags.MODE = REEXEC
 
-    utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor'))
-    utils.cond_mkdir(os.path.join(os.path.expanduser('~'), '.flor', flags.NAME))
-    utils.cond_mkdir(flags.LOG_DATA_PATH)
+    utils.cond_mkdir(flor_path.absolute)
+    utils.cond_mkdir(os.path.join(flor_path.absolute, flags.NAME))
+    utils.cond_mkdir(flags.LOG_DATA_PATH.absolute)
 
     # FINISH INITIALIZATION
     from flor.writer import Writer, pin_state, random_seed, flush

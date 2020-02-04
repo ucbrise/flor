@@ -25,7 +25,7 @@ class Writer:
             # fd = open(LOG_PATH, 'w')
             fd = None
         else:
-            with open(flags.MEMO_PATH, 'r') as f:
+            with open(flags.MEMO_PATH.absolute, 'r') as f:
                 for line in f:
                     log_record = json.loads(line.strip())
                     if 'source' in log_record:
@@ -81,15 +81,17 @@ class Writer:
 
             while True:
                 unique_filename = uuid.uuid4().hex + '.pkl'
-                unique_filename = os.path.join(flags.LOG_DATA_PATH, unique_filename)
-                if not os.path.exists(unique_filename):
+                unique_filename_abs = os.path.join(flags.LOG_DATA_PATH.absolute, unique_filename)
+                unique_filename_sqg = os.path.join(flags.LOG_DATA_PATH.squiggles, unique_filename)
+                if not os.path.exists(unique_filename_abs):
                     break
 
-            with open(unique_filename, 'wb') as f:
+            with open(unique_filename_abs, 'wb') as f:
                 cloudpickle.dump(obj, f)
 
-            return unique_filename
-        except:
+            return unique_filename_sqg
+        except Exception as e:
+            print(f"Failed to serialize: {e}")
             return "ERROR: failed to serialize"
         finally:
             Writer.serializing = False
@@ -108,7 +110,7 @@ class Writer:
         cuda.synchronize()
         pid = os.fork()
         if not pid:
-            path = flags.LOG_PATH.split('.')
+            path = flags.LOG_PATH.absolute.split('.')
             path.insert(-1, str(Writer.lsn))
             path = '.'.join(path)
             fd = open(path, 'w')
@@ -166,6 +168,7 @@ class Writer:
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
             elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
+                path = os.path.expanduser(path) if '~' in path[0:2] else os.path.abspath(path)
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
             else:
@@ -177,13 +180,15 @@ class Writer:
 
     @staticmethod
     def lbrack_load():
-        skey, gkey, [v, ] = Writer.store_load.pop(0)
-        assert v == 'LBRACKET', str(v)
-        return gkey
+        while Writer.store_load:
+            skey, gkey, v = Writer.store_load.pop(0)
+            if 'LBRACKET' in v:
+                return gkey
+        assert False, 'LBRACKET load failed'
 
     @staticmethod
     def pin_state(library):
-        if MODE is EXEC:
+        if flags.MODE is EXEC:
             if library is numpy:
                 d = {'source': 'pin_state',
                      'library': 'numpy',
@@ -233,4 +238,3 @@ random_seed = Writer.random_seed
 flush = Writer.flush
 
 __all__ = ['pin_state', 'random_seed', 'Writer', 'flush']
-
