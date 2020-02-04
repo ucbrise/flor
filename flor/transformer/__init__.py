@@ -9,11 +9,25 @@ class Transformer(ast.NodeTransformer):
     class RefuseTransformError(RuntimeError):
         pass
 
+    @staticmethod
+    def transform(filepath):
+        import astor
+        import os
+        with open(filepath, 'r') as f:
+            contents = f.read()
+        transformer = Transformer()
+        new_contents = transformer.visit(ast.parse(contents))
+        new_contents = astor.to_source(new_contents)
+        new_filepath, ext = os.path.splitext(filepath)
+        new_filepath += '_transformed' + ext
+        with open(new_filepath, 'w') as f:
+            f.write(new_contents)
+        print(f"wrote {new_filepath}")
+
     def __init__(self):
-        # Assign_Updates
-        #   These are names (LHS of assign) with the following assign semantics:
-        #   On re-assign, the value of the name is _updated_
-        #       (rather than a new value with a same name being created that shadows the first)
+        # These are names defined before the loop
+        # If these values are updated in the loop body, we want to save them
+        #       Even if they look like "blind writes"
         self.assign_updates = []
 
         # Loop_Context
@@ -41,7 +55,7 @@ class Transformer(ast.NodeTransformer):
         temp = self.assign_updates
         self.assign_updates = []
         lsd = LoadStoreDetector(writes=self.assign_updates)
-        lsd.visit(node.args)
+        lsd.visit(node.args)                                # This is possibly redundant but harmless because of set semantics of lsd
         output = self.generic_visit(node)
         self.assign_updates = temp
 
@@ -63,13 +77,13 @@ class Transformer(ast.NodeTransformer):
     def _vistit_loop(self, node):
         lsd_change_set, mcd_change_set, read_set = get_change_and_read_set(node)
         change_set = set_union(lsd_change_set, mcd_change_set)
-        memoization_set = set_intersection(set_union(self.assign_updates, read_set), change_set)
+        memoization_set = set_intersection(set_union(self.assign_updates, read_set), change_set)    # read_set: unmatched_reads
 
         new_node = self.generic_visit(node)
 
         underscored_memoization_set = []
         for element in memoization_set:
-            if node_in_nodes(element, lsd_change_set):
+            if node_in_nodes(element, lsd_change_set) or node_in_nodes(element, self.assign_updates):
                 underscored_memoization_set.append(element)
             else:
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
@@ -95,11 +109,13 @@ class Transformer(ast.NodeTransformer):
             if temp:
                 raise
             return ast.NodeTransformer().generic_visit(node)
-        except AssertionError:
-            print("Assertion Error")
+        except AssertionError as e:
+            print(f"Assertion Error: {e}")
             return ast.NodeTransformer().generic_visit(node)
         finally:
             self.loop_context = temp
+
+
 
     def visit_For(self, node):
         return self.proc_loop(node)
