@@ -9,6 +9,21 @@ class Transformer(ast.NodeTransformer):
     class RefuseTransformError(RuntimeError):
         pass
 
+    @staticmethod
+    def transform(filepath):
+        import astor
+        import os
+        with open(filepath, 'r') as f:
+            contents = f.read()
+        transformer = Transformer()
+        new_contents = transformer.visit(ast.parse(contents))
+        new_contents = astor.to_source(new_contents)
+        new_filepath, ext = os.path.splitext(filepath)
+        new_filepath += '_transformed' + ext
+        with open(new_filepath, 'w') as f:
+            f.write(new_contents)
+        print(f"wrote {new_filepath}")
+
     def __init__(self):
         # These are names defined before the loop
         # If these values are updated in the loop body, we want to save them
@@ -99,6 +114,8 @@ class Transformer(ast.NodeTransformer):
             return ast.NodeTransformer().generic_visit(node)
         finally:
             self.loop_context = temp
+
+
 
     def visit_For(self, node):
         return self.proc_loop(node)

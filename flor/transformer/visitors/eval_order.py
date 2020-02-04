@@ -44,10 +44,12 @@ class EvalOrderVisitor(ast.NodeVisitor, abc.ABC):
         self.do_unimplemented_behavior()
 
     def visit_With(self, node):
-        self.do_unimplemented_behavior()
+        [self.visit(i) for i in node.items]
+        [self.visit(s) for s in node.body]
 
     def visit_withitem(self, node):
-        self.do_unimplemented_behavior()
+        self.visit(node.context_expr)
+        self.visit(node.optional_vars)
 
     def visit_Assign(self, node):
         self.visit(node.value)

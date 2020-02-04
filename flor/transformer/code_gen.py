@@ -1,4 +1,5 @@
 import ast
+import astunparse
 from copy import deepcopy
 
 """
@@ -140,7 +141,7 @@ def make_test_force(store_node):
     store_node = deepcopy(store_node)
     store_node.ctx = ast.Load()
 
-    store_node_name = ast.Str(store_node.id)
+    store_node_name = ast.Str(astunparse.unparse(store_node).strip())
 
     namespace_stack_new = make_attr_call('namespace_stack', 'test_force')
     namespace_stack_new.args = [store_node, store_node_name]
