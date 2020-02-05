@@ -5,6 +5,7 @@ from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 
 
 class Transformer(ast.NodeTransformer):
+    static_key = 0
 
     class RefuseTransformError(RuntimeError):
         pass
@@ -34,11 +35,9 @@ class Transformer(ast.NodeTransformer):
         #   Are we in a loop context?
         self.loop_context = False
 
-        self.static_key = 0
-
     def get_incr_static_key(self):
-        sk = self.static_key
-        self.static_key += 1
+        sk = Transformer.static_key
+        Transformer.static_key += 1
         return sk
 
     def visit_Assign(self, node):
