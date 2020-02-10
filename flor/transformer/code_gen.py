@@ -115,8 +115,10 @@ def make_proc_side_effects(left_arg_lsit, right_arg_list):
             each.ctx = ast.Load()
         for each in store_list:
             each.ctx = ast.Store()
+        if len(store_list) > 1:
+            store_list = [ast.Tuple(elts=store_list)]
         return ast.Assign(
-            targets=[ast.Tuple(elts=store_list)],
+            targets=store_list,
             value=ast.Call(
                 func=ast.Attribute(
                     value=make_attr_call('skip_stack','pop'),
