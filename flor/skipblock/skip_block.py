@@ -5,8 +5,7 @@ from flor.utils import deepcopy_cpu
 
 from .. import stateful as state
 
-import torch.nn as nn
-import torch.optim as optim
+from types import ModuleType
 from torch import cuda
 import copy
 
@@ -58,8 +57,14 @@ class SkipBlock:
         self.proc_side_effects_called = True
 
         if args:
-            self.args = args
-        del args                                        # Refer to self.args from now on
+            self.args = args                            # Refer to self.args from now on
+
+        # Filter out ModuleTypes (torch.cuda) so we don't proc-them
+        # We use this solution so we don't disrupt the Writer or the Logs
+        filtered_args = [arg for arg in self.args if not isinstance(arg, ModuleType)]
+
+        args = self.args                            # Store for later restore
+        self.args = filtered_args
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
@@ -67,6 +72,10 @@ class SkipBlock:
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             self._load_side_effects()
+
+        filtered_args = self.args
+        self.args = [arg if isinstance(arg, ModuleType) else filtered_args.pop(0) for arg in args]
+        assert not filtered_args, f"Should have depleted filtered_args, but len: {len(filtered_args)}"
 
         if len(self.args) > 1:
             return self.args
