@@ -66,12 +66,31 @@ class SkipBlock:
         args = self.args                            # Store for later restore
         self.args = filtered_args
 
+        def is_object(a):
+            return all([not isinstance(a, list),
+            not isinstance(a, dict),
+            not isinstance(a, ModuleType),
+            not hasattr(a, 'state_dict'),   # This is a pytorch object, handled separately.
+            hasattr(a, '__dict__')])
+
+        hooks = [arg for arg in self.args]
+        self.args = [arg if not is_object(arg) else arg.__dict__ for arg in self.args]
+
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
             self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             self._load_side_effects()
+            for lhs, rhs in zip(hooks, self.args):
+                if isinstance(lhs, list):
+                    lhs[:] = rhs
+                elif isinstance(lhs, dict):
+                    lhs.update(rhs)
+                elif is_object(lhs):
+                    lhs.__dict__.update(rhs)
+
+
 
         filtered_args = self.args
         self.args = [arg if isinstance(arg, ModuleType) else filtered_args.pop(0) for arg in args]
