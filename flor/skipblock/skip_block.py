@@ -96,6 +96,9 @@ class SkipBlock:
                 elif is_object(lhs):
                     lhs.__dict__.update(rhs.__dict__)
                     next_outpt.append(lhs)
+                else:
+                    next_outpt.append(rhs)
+                    
             self.args = next_outpt
 
         filtered_args = self.args
