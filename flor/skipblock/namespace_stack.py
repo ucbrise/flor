@@ -22,7 +22,7 @@ class NamespaceStack:
         stack = NamespaceStack.stack
         assert stack
         namespace = stack[-1]
-        if isinstance(o, (nn.Module, optim.Optimizer)):
+        if NamespaceStack.is_comparable(o):
             namespace[name] = o
 
     @staticmethod
@@ -49,5 +49,9 @@ class NamespaceStack:
             namespace = stack[int(layer)]
             obj = namespace[k]
             obj.load_state_dict(state_dict)
+
+    @staticmethod
+    def is_comparable(o):
+        return isinstance(o, (nn.Module, optim.Optimizer))
 
 

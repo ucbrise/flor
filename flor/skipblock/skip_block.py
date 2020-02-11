@@ -124,7 +124,7 @@ class SkipBlock:
 
         # First, write everything new in self.args to disk
         for arg in self.args:
-            if arg in forced_objects:
+            if NamespaceStack.is_comparable(arg) and arg in forced_objects:
                 # arg will be written from forced
                 Writer.store(REDUNDANT, self.static_key, self.global_key)
                 # If optimizer was modified, you'll also want to materialize the network
