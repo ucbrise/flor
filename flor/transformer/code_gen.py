@@ -100,17 +100,23 @@ def make_cond_block():
     )
 
 
-def make_proc_side_effects(left_arg_lsit, right_arg_list):
+def make_proc_side_effects(left_arg_list, right_arg_list):
     """
     left_arg_list: list of ASTs, already under_scored
     right_arg_list: list of ASTs
 
     *arg_list = flor.skip_stack.pop().proc_side_effects(*arg_list)
     """
-    assert len(left_arg_lsit) == len(right_arg_list)
-    if left_arg_lsit:
+    assert len(left_arg_list) == len(right_arg_list)
+    if left_arg_list:
+        names = [astunparse.unparse(e).strip() for e in right_arg_list]
+        mask = mask_lattice(names)
+
+        right_arg_list = [arg for i,arg in enumerate(right_arg_list) if i in mask]
+        left_arg_list = [arg for i, arg in enumerate(left_arg_list) if i in mask]
+
         load_list = deepcopy(right_arg_list)
-        store_list = deepcopy(left_arg_lsit)
+        store_list = deepcopy(left_arg_list)
         for each in load_list:
             each.ctx = ast.Load()
         for each in store_list:
@@ -168,3 +174,27 @@ def is_expr_excepted(node):
     if node.func.id == 'print':
         return True
     return False
+
+def mask_lattice(names):
+    """
+    names: [self, self.training, self.model, optimizer]
+    """
+    def is_prefixed_by(name, prefix):
+        if len(prefix) >= len(name):
+            return False
+        name = name[0:len(prefix)]
+        for l,r in zip(name, prefix):
+            if l != r:
+                return False
+        return True
+    names = [name.split('.') for name in names]
+    mask = []
+    for i, out_name in enumerate(names):
+        mask.append(i)
+        for j, in_name in enumerate(names):
+            if i == j:
+                continue
+            if is_prefixed_by(out_name, in_name):
+                mask.pop()
+                break
+    return mask
