@@ -1,6 +1,5 @@
 from .load_store_detector import LoadStoreDetector
 from .method_change_detector import MethodChangeDetector
-from flor.transformer.utils import set_union
 
 
 def get_change_and_read_set(node):

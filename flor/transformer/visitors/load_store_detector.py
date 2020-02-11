@@ -15,9 +15,17 @@ class LoadStoreDetector(EvalOrderVisitor):
         self.unmatched_reads = []
 
     def set_checkpoint(self):
+        """
+        Returns a copy of the  current state of the Node Visitor
+        """
         return list(self.writes), list(self.unmatched_reads)
 
     def branch_to(self, state):
+        """
+        counter-part to set_checkpoint
+        Sets the Node Visitor state to the argument
+        Returns the current state in case the caller wants to save it
+        """
         writes, unmatched_reads = state
         temp = list(self.writes), list(self.unmatched_reads)
         self.writes = writes
@@ -25,6 +33,16 @@ class LoadStoreDetector(EvalOrderVisitor):
         return temp
 
     def merge_branches(self, state1, state2):
+        """
+        if False:
+            x = 10
+        else:
+            y = x
+
+        --------------
+        self.writes = [x, y]
+        self.unmatched_reads = [x]
+        """
         self.writes = set_union(state1[0], state2[0])
         self.unmatched_reads = set_union(state1[1], state2[1])
 
@@ -43,6 +61,7 @@ class LoadStoreDetector(EvalOrderVisitor):
     def visit_Attribute(self, node):
         self.visit(node.value)
         self.proc_node(node)
+
 
     def proc_node(self, node):
         if isinstance(node.ctx, ast.Load):
