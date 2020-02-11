@@ -73,24 +73,32 @@ class SkipBlock:
             not hasattr(a, 'state_dict'),   # This is a pytorch object, handled separately.
             hasattr(a, '__dict__')])
 
-        hooks = [arg for arg in self.args]
-        self.args = [arg if not is_object(arg) else arg.__dict__ for arg in self.args]
-
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
             self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             self._load_side_effects()
-            for lhs, rhs in zip(hooks, self.args):
-                if isinstance(lhs, list):
+            inpt = filtered_args
+            outpt = self.args
+
+            next_outpt = []
+
+            for lhs, rhs in zip(inpt, outpt):
+                if type(lhs) != type(rhs):
+                    next_outpt.append(rhs)
+                elif isinstance(lhs, list):
                     lhs[:] = rhs
+                    next_outpt.append(lhs)
                 elif isinstance(lhs, dict):
                     lhs.update(rhs)
+                    next_outpt.append(lhs)
                 elif is_object(lhs):
-                    lhs.__dict__.update(rhs)
+                    lhs.__dict__.update(rhs.__dict__)
+                    next_outpt.append(lhs)
+            self.args = next_outpt
 
-        filtered_args = hooks # Note the relation between hooks and self.args above
+        filtered_args = self.args
         self.args = [arg if isinstance(arg, ModuleType) else filtered_args.pop(0) for arg in args]
         assert not filtered_args, f"Should have depleted filtered_args, but len: {len(filtered_args)}"
 
