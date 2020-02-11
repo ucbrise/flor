@@ -18,6 +18,11 @@ class MethodChangeDetector(ast.NodeVisitor):
             if not node_in_nodes(mutated_node, self.mutated_objects):
                 self.mutated_objects.append(mutated_node)
 
+    def visit_Subscript(self, node):
+        store_node = node.value
+        if not node_in_nodes(store_node, self.mutated_objects):
+            self.mutated_objects.append(store_node)
+
     # def visit_Expr(self, node):
     #     """
     #     TODO: Missing Additional checks

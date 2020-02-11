@@ -49,7 +49,6 @@ class LoadStoreDetector(EvalOrderVisitor):
     def do_unimplemented_behavior(self):
         raise NotImplementedError()
 
-
     def visit_arg(self, node):
         self.visit(ast.Name(
             id=node.arg,
@@ -62,6 +61,7 @@ class LoadStoreDetector(EvalOrderVisitor):
     def visit_Attribute(self, node):
         self.visit(node.value)
         self.proc_node(node)
+
 
     def proc_node(self, node):
         if isinstance(node.ctx, ast.Load):

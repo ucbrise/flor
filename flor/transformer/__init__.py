@@ -82,7 +82,7 @@ class Transformer(ast.NodeTransformer):
 
         underscored_memoization_set = []
         for element in memoization_set:
-            if node_in_nodes(element, lsd_change_set) or node_in_nodes(element, self.assign_updates):
+            if not node_in_nodes(element, mcd_change_set):
                 underscored_memoization_set.append(element)
             else:
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
