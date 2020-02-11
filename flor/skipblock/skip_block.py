@@ -90,9 +90,7 @@ class SkipBlock:
                 elif is_object(lhs):
                     lhs.__dict__.update(rhs)
 
-
-
-        filtered_args = self.args
+        filtered_args = hooks # Note the relation between hooks and self.args above
         self.args = [arg if isinstance(arg, ModuleType) else filtered_args.pop(0) for arg in args]
         assert not filtered_args, f"Should have depleted filtered_args, but len: {len(filtered_args)}"
 
