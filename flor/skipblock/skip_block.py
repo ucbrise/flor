@@ -98,7 +98,7 @@ class SkipBlock:
                     next_outpt.append(lhs)
                 else:
                     next_outpt.append(rhs)
-                    
+
             self.args = next_outpt
 
         filtered_args = self.args

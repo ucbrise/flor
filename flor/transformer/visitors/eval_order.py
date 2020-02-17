@@ -49,7 +49,8 @@ class EvalOrderVisitor(ast.NodeVisitor, abc.ABC):
 
     def visit_withitem(self, node):
         self.visit(node.context_expr)
-        self.visit(node.optional_vars)
+        if node.optional_vars is not None:
+            self.visit(node.optional_vars)
 
     def visit_Assign(self, node):
         self.visit(node.value)
