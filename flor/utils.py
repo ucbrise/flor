@@ -86,5 +86,22 @@ def copy_for_store(x):
             attr_obj = getattr(x, attr_name)
             if has_method(attr_obj, 'state_dict'):
                 attr_val_dict[attr_name] = deepcopy_cpu(attr_obj.state_dict())
+            elif has_method(attr_obj, 'cpu'):
+                attr_val_dict[attr_name] = x.cpu()
+            else:
+                try:
+                    attr_val_dict[attr_name] = deepcopy_cpu(attr_obj)
+                except Exception:
+                    pass
             attr_val_dict['_flor_stored_by_dict'] = True
         return attr_val_dict
+
+def load_by_dict(x, attr_val_dict):
+    attr_val_dict.pop('_flor_stored_by_dict')
+    for attr_name in attr_val_dict:
+        attr_obj = getattr(x, attr_name)
+        val = attr_val_dict[attr_name]
+        if has_method(attr_obj, 'state_dict'):
+            attr_obj.load_state_dict(val)
+        else:
+            setattr(x, attr_name, val)

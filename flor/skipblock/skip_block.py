@@ -1,7 +1,7 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
-from flor.utils import deepcopy_cpu, copy_for_store
+from flor.utils import deepcopy_cpu, copy_for_store, load_by_dict
 
 from .. import stateful as state
 
@@ -199,11 +199,7 @@ class SkipBlock:
 
             else:
                 if type(arg) == dict and '_flor_stored_by_dict' in arg:
-                    arg.pop('_flor_stored_by_dict')
-                    x = self.args[i]
-                    attr_val_dict = arg
-                    for attr_name in attr_val_dict:
-                        getattr(x, attr_name).load_state_dict(attr_val_dict[attr_name])
+                    load_by_dict(self.args[i], arg)
                     mixed_args.append(self.args[i])
 
                 elif hasattr(self.args[i], 'state_dict'):
