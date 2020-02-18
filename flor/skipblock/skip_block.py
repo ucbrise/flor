@@ -1,7 +1,7 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
-from flor.utils import deepcopy_cpu
+from flor.utils import deepcopy_cpu, copy_for_store
 
 from .. import stateful as state
 
@@ -139,30 +139,8 @@ class SkipBlock:
                 # If optimizer was modified, you'll also want to materialize the network
                 materialize_additionals = True
             else:
-                # write this arg to disk, it's not in forced
-                if hasattr(arg, 'state_dict'):
-                    Writer.store(deepcopy_cpu(arg.state_dict()),
-                                 self.static_key, self.global_key)
-                else:
-                    # Not state_dict()
-                    if hasattr(arg, 'cpu') and (callable(getattr(arg, 'cpu')) or 'method' in str(type(getattr(x, 'cpu')))):
-                        Writer.store(arg.cpu(), self.static_key, self.global_key)
-                    else:
-                        try:
-                            Writer.store(deepcopy_cpu(arg),
-                                         self.static_key, self.global_key)
-                        except:
-                            attr_val_dict = {}
-                            for attr_name in arg.__dict__.keys():
-                                attr_obj = getattr(arg, attr_name)
-                                # if hasattr(attr_obj, 'cpu') and (callable(getattr(attr_obj, 'cpu')) or
-                                #                                  'method' in str(type(getattr(attr_obj, 'cpu')))):
-                                #     attr_val_dict[attr_name] = attr_obj.cpu()
-                                if hasattr(attr_obj, 'state_dict'):
-                                    attr_val_dict[attr_name] = deepcopy_cpu(attr_obj.state_dict())
-                                    print(f"Storing attr: {attr_name}")
-                                attr_val_dict['_flor_stored_by_dict'] = True
-                            Writer.store(attr_val_dict, self.static_key, self.global_key)
+                # Write this arg to disk, it's not in forced
+                Writer.store(copy_for_store(arg), self.static_key, self.global_key)
 
         # Enter a separator
         Writer.store(SEPARATOR, self.static_key, self.global_key)
@@ -174,6 +152,7 @@ class SkipBlock:
                 Writer.store(deepcopy_cpu(v.state_dict()),
                              self.static_key, self.global_key)
         cuda.synchronize()
+
 
     def _load_side_effects(self):
         """
@@ -221,10 +200,10 @@ class SkipBlock:
             else:
                 if type(arg) == dict and '_flor_stored_by_dict' in arg:
                     arg.pop('_flor_stored_by_dict')
-                    temp_arg = self.args[i]
+                    x = self.args[i]
                     attr_val_dict = arg
                     for attr_name in attr_val_dict:
-                        getattr(temp_arg, attr_name).load_state_dict(attr_val_dict[attr_name])
+                        getattr(x, attr_name).load_state_dict(attr_val_dict[attr_name])
                     mixed_args.append(self.args[i])
 
                 elif hasattr(self.args[i], 'state_dict'):

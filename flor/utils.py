@@ -69,3 +69,22 @@ def get_partitions(iterator, num_gpu):
 def deepcopy_cpu(x):
     copy.deepcopy = flor.common.copy.deepcopy
     return copy.deepcopy(x)
+
+def has_method(x, name):
+    return hasattr(x, name) and callable(getattr(x, name))
+
+def copy_for_store(x):
+    if has_method(x, 'state_dict'):
+        return deepcopy_cpu(x.state_dict())
+    elif hasattr(x, 'cpu') and callable(getattr(x, 'cpu')):
+        return x.cpu()
+    try:
+        return deepcopy_cpu(x)
+    except:
+        attr_val_dict = {}
+        for attr_name in x.__dict__.keys():
+            attr_obj = getattr(x, attr_name)
+            if has_method(attr_obj, 'state_dict'):
+                attr_val_dict[attr_name] = deepcopy_cpu(attr_obj.state_dict())
+            attr_val_dict['_flor_stored_by_dict'] = True
+        return attr_val_dict
