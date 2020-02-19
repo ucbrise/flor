@@ -100,7 +100,7 @@ class Writer:
             return unique_filename_sqg
         except Exception as e:
             print(f"Failed to serialize: {e}")
-            return "ERROR: failed to serialize"
+            return f"ERROR: failed to serialize {type(obj)}"
         finally:
             Writer.serializing = False
 
