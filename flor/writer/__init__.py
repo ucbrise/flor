@@ -1,5 +1,4 @@
-import numpy
-import random
+import numpy, random
 import os
 import uuid
 import cloudpickle
@@ -32,8 +31,7 @@ class Writer:
                     log_record = json.loads(line.strip())
                     if 'source' in log_record:
                         if log_record['source'] == 'pin_state':
-                            # THIS IS JUST A FILENAME
-                            Writer.pinned_state.append(log_record['state'])
+                            Writer.pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
                         elif log_record['source'] == 'random_seed':
                             Writer.seeds.append(log_record['seed'])
                         elif log_record['source'] == 'store':
@@ -49,12 +47,10 @@ class Writer:
                     period_head = sk
                 if current_group['key'] != gk or current_group['list'][0] == 'LBRACKET':
                     # New Group
-                    new_store_load.append(
-                        (current_group['skey'], current_group['key'], current_group['list']))
+                    new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
                     current_group = {'key': gk, 'skey': sk, 'list': []}
                 current_group['list'].append(v)
-            new_store_load.append(
-                (current_group['skey'], current_group['key'], current_group['list']))
+            new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
             assert new_store_load.pop(0) == (None, None, None)
 
             Writer.store_load = new_store_load
@@ -87,10 +83,8 @@ class Writer:
 
             while True:
                 unique_filename = uuid.uuid4().hex + '.pkl'
-                unique_filename_abs = os.path.join(
-                    flags.LOG_DATA_PATH.absolute, unique_filename)
-                unique_filename_sqg = os.path.join(
-                    flags.LOG_DATA_PATH.squiggles, unique_filename)
+                unique_filename_abs = os.path.join(flags.LOG_DATA_PATH.absolute, unique_filename)
+                unique_filename_sqg = os.path.join(flags.LOG_DATA_PATH.squiggles, unique_filename)
                 if not os.path.exists(unique_filename_abs):
                     break
 
@@ -100,7 +94,7 @@ class Writer:
             return unique_filename_sqg
         except Exception as e:
             print(f"Failed to serialize: {e}")
-            return f"ERROR: failed to serialize {type(obj)}"
+            return "ERROR: failed to serialize"
         finally:
             Writer.serializing = False
 
@@ -124,8 +118,7 @@ class Writer:
             fd = open(path, 'w')
             os.nice(1)  # child process gets lower priority and starts flushing
             for each in Writer.write_buffer:
-                # the dict can have 'value' or 'state'
-                if 'value' in each and not isinstance(each['value'], str):
+                if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
                     each['value'] = Writer.serialize(each['value'])
                 fd.write(json.dumps(each) + '\n')
             fd.close()
@@ -139,7 +132,7 @@ class Writer:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
         try:
             os.wait()
-        except Exception:
+        except:
             pass
 
     @staticmethod
@@ -175,8 +168,7 @@ class Writer:
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
             elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
-                path = os.path.expanduser(
-                    path) if '~' in path[0:2] else os.path.abspath(path)
+                path = os.path.expanduser(path) if '~' in path[0:2] else os.path.abspath(path)
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
             else:
@@ -208,8 +200,7 @@ class Writer:
                      'state': Writer.serialize(library.getstate())}
                 Writer.write(d)
             else:
-                raise RuntimeError(
-                    "Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
+                raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
         elif flags.MODE is REEXEC:
             path = Writer.pinned_state.pop(0)
             with open(path, 'rb') as f:
@@ -219,8 +210,7 @@ class Writer:
             elif library is random:
                 library.setstate(state)
             else:
-                raise RuntimeError(
-                    "Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
+                raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
         else:
             raise RuntimeError()
 
