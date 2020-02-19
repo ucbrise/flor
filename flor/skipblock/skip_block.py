@@ -1,14 +1,14 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
-from flor.utils import deepcopy_cpu, copy_for_store, load_by_dict
+from flor.utils import deepcopy_cpu, copy_for_store, load_by_dict, is_object
 
 from .. import stateful as state
 
 from types import ModuleType
 from torch import cuda
-import copy
-import pdb
+# import copy
+# import pdb
 
 
 class SkipBlock:
@@ -71,13 +71,7 @@ class SkipBlock:
         args = self.args                            # Store for later restore
         self.args = filtered_args
 
-        def is_object(a):
-            return all([not isinstance(a, list),
-                        not isinstance(a, dict),
-                        not isinstance(a, ModuleType),
-                        # This is a pytorch object, handled separately.
-                        not hasattr(a, 'state_dict'),
-                        hasattr(a, '__dict__')])
+
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects

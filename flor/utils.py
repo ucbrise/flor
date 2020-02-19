@@ -1,6 +1,8 @@
 import math
 import os
 import shutil
+from types import ModuleType
+
 import flor.common.copy
 import copy
 
@@ -66,6 +68,14 @@ def get_partitions(iterator, num_gpu):
     return partitions
 
 
+def is_object(a):
+    return all([not isinstance(a, list),
+                not isinstance(a, dict),
+                not isinstance(a, ModuleType),
+                # This is a pytorch object, handled separately.
+                not hasattr(a, 'state_dict'),
+                hasattr(a, '__dict__')])
+
 def deepcopy_cpu(x):
     return flor.common.copy.deepcopy(x)
 
@@ -77,9 +87,7 @@ def copy_for_store(x):
         return deepcopy_cpu(x.state_dict())
     elif hasattr(x, 'cpu') and callable(getattr(x, 'cpu')):
         return x.cpu()
-    try:
-        return copy.deepcopy(x)
-    except:
+    elif is_object(x):
         attr_val_dict = {}
         for attr_name in x.__dict__.keys():
             attr_obj = getattr(x, attr_name)
@@ -94,6 +102,9 @@ def copy_for_store(x):
                     pass
         attr_val_dict['_flor_stored_by_dict'] = True
         return attr_val_dict
+    else:
+        return copy.deepcopy(x)
+
 
 def load_by_dict(x, attr_val_dict):
     attr_val_dict.pop('_flor_stored_by_dict')
