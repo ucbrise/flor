@@ -1,13 +1,14 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
-from flor.utils import deepcopy_cpu
+from flor.utils import deepcopy_cpu, copy_for_store, load_by_dict
 
 from .. import stateful as state
 
 from types import ModuleType
 from torch import cuda
 import copy
+import pdb
 
 
 class SkipBlock:
@@ -51,9 +52,12 @@ class SkipBlock:
         # TODO: For selective replay, we will want to skip some loads. Add predicate for skipping.
         # TODO: Bug, the cpu() call won't copy if object is already in CPU
         # WARNING: MAY ONLY BE CALLED ONCE
-        assert not self.args or not args                # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
-        assert self.args or args                        # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
-        assert not self.proc_side_effects_called        # You don't call proc_side_effects twice on the same SkipBlock.
+        # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
+        assert not self.args or not args
+        # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
+        assert self.args or args
+        # You don't call proc_side_effects twice on the same SkipBlock.
+        assert not self.proc_side_effects_called
         self.proc_side_effects_called = True
 
         if args:
@@ -61,17 +65,19 @@ class SkipBlock:
 
         # Filter out ModuleTypes (torch.cuda) so we don't proc-them
         # We use this solution so we don't disrupt the Writer or the Logs
-        filtered_args = [arg for arg in self.args if not isinstance(arg, ModuleType)]
+        filtered_args = [
+            arg for arg in self.args if not isinstance(arg, ModuleType)]
 
         args = self.args                            # Store for later restore
         self.args = filtered_args
 
         def is_object(a):
             return all([not isinstance(a, list),
-            not isinstance(a, dict),
-            not isinstance(a, ModuleType),
-            not hasattr(a, 'state_dict'),   # This is a pytorch object, handled separately.
-            hasattr(a, '__dict__')])
+                        not isinstance(a, dict),
+                        not isinstance(a, ModuleType),
+                        # This is a pytorch object, handled separately.
+                        not hasattr(a, 'state_dict'),
+                        hasattr(a, '__dict__')])
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
@@ -133,15 +139,9 @@ class SkipBlock:
                 # If optimizer was modified, you'll also want to materialize the network
                 materialize_additionals = True
             else:
-                # write this arg to disk, it's not in forced
-                if hasattr(arg, 'state_dict'):
-                    Writer.store(deepcopy_cpu(arg.state_dict()), self.static_key, self.global_key)
-                else:
-                    # Not state_dict()
-                    if hasattr(arg, 'cpu'):
-                        Writer.store(arg.cpu(), self.static_key, self.global_key)
-                    else:
-                        Writer.store(copy.deepcopy(arg), self.static_key, self.global_key)
+                # Write this arg to disk, it's not in forced
+                Writer.store(copy_for_store(arg), self.static_key, self.global_key)
+
         # Enter a separator
         Writer.store(SEPARATOR, self.static_key, self.global_key)
         # If I should materialize a node in a group, materialize the entire group (forced)
@@ -149,8 +149,10 @@ class SkipBlock:
             for l, k, v in forced:
                 Writer.store(str(l), self.static_key, self.global_key)
                 Writer.store(k, self.static_key, self.global_key)
-                Writer.store(deepcopy_cpu(v.state_dict()), self.static_key, self.global_key)
+                Writer.store(deepcopy_cpu(v.state_dict()),
+                             self.static_key, self.global_key)
         cuda.synchronize()
+
 
     def _load_side_effects(self):
         """
@@ -159,7 +161,8 @@ class SkipBlock:
         # Global key is dynamic
         # Packed state is an array of serialized values
         # The logic for interpreting and organizing them is hard-coded here
-        packed_state = Writer.load(self.global_key) # [BLOB, BLOB, ..., SEPARATOR, ..., BLOB]
+        # [BLOB, BLOB, ..., SEPARATOR, ..., BLOB]
+        packed_state = Writer.load(self.global_key)
 
         # Remember from _store_side_effects that the order is
         # state from self.args SEPARATOR state from forced
@@ -193,10 +196,16 @@ class SkipBlock:
             if arg is REDUNDANT:
                 # set_forced already takes care of correctly restoring the state of self.args[i]
                 mixed_args.append(self.args[i])
+
             else:
-                if hasattr(self.args[i], 'state_dict'):
+                if type(arg) == dict and '_flor_stored_by_dict' in arg:
+                    load_by_dict(self.args[i], arg)
+                    mixed_args.append(self.args[i])
+
+                elif hasattr(self.args[i], 'state_dict'):
                     self.args[i].load_state_dict(arg)
                     mixed_args.append(self.args[i])
+
                 else:
                     mixed_args.append(arg)
 

@@ -1,4 +1,5 @@
-import numpy, random
+import numpy
+import random
 import os
 import uuid
 import cloudpickle
@@ -6,6 +7,7 @@ import json
 from flor.constants import *
 from .. import stateful as flags
 from torch import cuda
+
 
 class Writer:
     serializing = False
@@ -30,12 +32,14 @@ class Writer:
                     log_record = json.loads(line.strip())
                     if 'source' in log_record:
                         if log_record['source'] == 'pin_state':
-                            Writer.pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
+                            # THIS IS JUST A FILENAME
+                            Writer.pinned_state.append(log_record['state'])
                         elif log_record['source'] == 'random_seed':
                             Writer.seeds.append(log_record['seed'])
                         elif log_record['source'] == 'store':
                             # THIS IS FILENAME, or LBRACK, or ERROR
-                            Writer.store_load.append((log_record['static_key'], log_record['global_key'], log_record['value']))
+                            Writer.store_load.append(
+                                (log_record['static_key'], log_record['global_key'], log_record['value']))
             # We now do a Group By global_key on store_load
             new_store_load = []
             current_group = {'key': None, 'skey': None, 'list': None}
@@ -45,10 +49,12 @@ class Writer:
                     period_head = sk
                 if current_group['key'] != gk or current_group['list'][0] == 'LBRACKET':
                     # New Group
-                    new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+                    new_store_load.append(
+                        (current_group['skey'], current_group['key'], current_group['list']))
                     current_group = {'key': gk, 'skey': sk, 'list': []}
                 current_group['list'].append(v)
-            new_store_load.append((current_group['skey'], current_group['key'], current_group['list']))
+            new_store_load.append(
+                (current_group['skey'], current_group['key'], current_group['list']))
             assert new_store_load.pop(0) == (None, None, None)
 
             Writer.store_load = new_store_load
@@ -81,8 +87,10 @@ class Writer:
 
             while True:
                 unique_filename = uuid.uuid4().hex + '.pkl'
-                unique_filename_abs = os.path.join(flags.LOG_DATA_PATH.absolute, unique_filename)
-                unique_filename_sqg = os.path.join(flags.LOG_DATA_PATH.squiggles, unique_filename)
+                unique_filename_abs = os.path.join(
+                    flags.LOG_DATA_PATH.absolute, unique_filename)
+                unique_filename_sqg = os.path.join(
+                    flags.LOG_DATA_PATH.squiggles, unique_filename)
                 if not os.path.exists(unique_filename_abs):
                     break
 
@@ -116,7 +124,8 @@ class Writer:
             fd = open(path, 'w')
             os.nice(1)  # child process gets lower priority and starts flushing
             for each in Writer.write_buffer:
-                if 'value' in each and not isinstance(each['value'], str):  # the dict can have 'value' or 'state'
+                # the dict can have 'value' or 'state'
+                if 'value' in each and not isinstance(each['value'], str):
                     each['value'] = Writer.serialize(each['value'])
                 fd.write(json.dumps(each) + '\n')
             fd.close()
@@ -124,16 +133,14 @@ class Writer:
         else:
             Writer.write_buffer = []  # parent process resets buffer
 
-
     @staticmethod
     def flush():
         if Writer.write_buffer:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
         try:
             os.wait()
-        except:
+        except Exception:
             pass
-
 
     @staticmethod
     def store(obj, static_key, global_key):
@@ -168,7 +175,8 @@ class Writer:
                 raise RuntimeError("Necessary state corrupted, unrecoverable")
             elif '.pkl' == os.path.splitext(path)[-1]:
                 # PATH CASE
-                path = os.path.expanduser(path) if '~' in path[0:2] else os.path.abspath(path)
+                path = os.path.expanduser(
+                    path) if '~' in path[0:2] else os.path.abspath(path)
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
             else:
@@ -200,7 +208,8 @@ class Writer:
                      'state': Writer.serialize(library.getstate())}
                 Writer.write(d)
             else:
-                raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
+                raise RuntimeError(
+                    "Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
         elif flags.MODE is REEXEC:
             path = Writer.pinned_state.pop(0)
             with open(path, 'rb') as f:
@@ -210,7 +219,8 @@ class Writer:
             elif library is random:
                 library.setstate(state)
             else:
-                raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
+                raise RuntimeError(
+                    "Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
         else:
             raise RuntimeError()
 
@@ -221,9 +231,9 @@ class Writer:
                 seed = numpy.random.randint(*args, **kwargs)
             else:
                 seed = numpy.random.randint(0, 2 ** 32)
-            d =  {
-            'source': 'random_seed',
-            'seed': seed
+            d = {
+                'source': 'random_seed',
+                'seed': seed
             }
             Writer.write(d)
             return seed
@@ -232,6 +242,7 @@ class Writer:
             return seed
         else:
             raise RuntimeError()
+
 
 pin_state = Writer.pin_state
 random_seed = Writer.random_seed
