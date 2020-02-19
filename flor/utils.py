@@ -89,7 +89,7 @@ def copy_for_store(x):
                 attr_val_dict[attr_name] = x.cpu()
             else:
                 try:
-                    attr_val_dict[attr_name] = deepcopy_cpu(attr_obj)
+                    attr_val_dict[attr_name] = copy.deepcopy(attr_obj)
                 except:
                     pass
         attr_val_dict['_flor_stored_by_dict'] = True
