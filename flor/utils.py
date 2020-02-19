@@ -93,7 +93,7 @@ def copy_for_store(x):
                     attr_val_dict[attr_name] = deepcopy_cpu(attr_obj)
                 except Exception:
                     pass
-            attr_val_dict['_flor_stored_by_dict'] = True
+        attr_val_dict['_flor_stored_by_dict'] = True
         return attr_val_dict
 
 def load_by_dict(x, attr_val_dict):
