@@ -2,7 +2,7 @@ import ast
 from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector
 from flor.transformer.code_gen import *
 from flor.transformer.utils import set_intersection, set_union, node_in_nodes
-
+import copy
 
 class Transformer(ast.NodeTransformer):
     static_key = 0
@@ -80,6 +80,9 @@ class Transformer(ast.NodeTransformer):
 
         new_node = self.generic_visit(node)
 
+        if not memoization_set:
+            return new_node
+
         underscored_memoization_set = []
         for element in memoization_set:
             if not node_in_nodes(element, mcd_change_set):
@@ -99,7 +102,10 @@ class Transformer(ast.NodeTransformer):
 
     def proc_loop(self, node):
         temp = self.loop_context
+        temp_assign_updates = list(self.assign_updates)
         self.loop_context = True
+
+        node_clone = copy.deepcopy(node)
 
         try:
             new_node = self._vistit_loop(node)
@@ -107,7 +113,10 @@ class Transformer(ast.NodeTransformer):
         except self.RefuseTransformError:
             if temp:
                 raise
-            return ast.NodeTransformer().generic_visit(node)
+            self.loop_context = False
+            self.assign_updates = temp_assign_updates
+            new_node = self.generic_visit(node_clone)
+            return [new_node,]
         except AssertionError as e:
             print(f"Assertion Error: {e}")
             return ast.NodeTransformer().generic_visit(node)

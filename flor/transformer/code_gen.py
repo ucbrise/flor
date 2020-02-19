@@ -171,7 +171,7 @@ def is_expr_excepted(node):
     :return:
     """
     node = node.value
-    if node.func.id == 'print':
+    if node.func.id in ['print', 'print_once', 'print_dict']:
         return True
     return False
 
