@@ -143,8 +143,10 @@ def deepcopy(x, memo=None, _nil=[]):
         memo = {}
 
     d = id(x)
-    if hasattr(x, 'cpu'):
+
+    if hasattr(x, 'cpu') and (callable(getattr(x, 'cpu')) or 'method' in str(type(getattr(x, 'cpu')))):
         x = x.cpu()
+
     y = memo.get(d, _nil)
     if y is not _nil:
         return y
