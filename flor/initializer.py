@@ -60,6 +60,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=
 
     if predecessor_id is not None and predecessor_id >= 0:
         assert flags.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(mode)
+        flor.skipblock.skip_block.SkipBlock.parallel = True
         Writer.store_load = Writer.partitioned_store_load[predecessor_id]
 
 

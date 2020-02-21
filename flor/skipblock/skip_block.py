@@ -25,6 +25,8 @@ class SkipBlock:
 
     """
 
+    parallel = False
+
     def __init__(self, static_key, global_key=None):
         """
         """
@@ -40,8 +42,12 @@ class SkipBlock:
     def should_execute(self, predicate):
         self.block_executed = predicate
         if state.MODE is REEXEC:
-            # Re-execution that skips loads
-            self.global_key = int(Writer.lbrack_load())
+            # Re-execution that skips loads\
+            if not SkipBlock.parallel:
+                self.global_key = int(Writer.lbrack_load())
+            else:
+                if not predicate:
+                    self.global_key = int(Writer.lbrack_load())
         return predicate
 
     def register_side_effects(self, *args):
