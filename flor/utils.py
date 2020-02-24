@@ -46,7 +46,7 @@ def fprint(dir_tree_list, device_id):
 
     def write(s):
         with open(os.path.join(root_path, "flor_output_{}.txt".format(device_id)), 'a') as f:
-            f.write(s + '\n')
+            f.write(str(s) + '\n')
 
     return write
 
