@@ -104,8 +104,12 @@ class SkipBlock:
                 #
                 #################################################################################
                 """)
-                with open('/tmp/flor_ratio_calibrate.txt', 'a') as f:
-                    f.write(msg)
+                try:
+                    with open('/data/flor_ratio_calibrate.txt', 'a') as f:
+                        f.write(msg)
+                except:
+                    with open('/tmp/flor_ratio_calibrate.txt', 'a') as f:
+                        f.write(msg)
                 SkipBlock.checked_skipblocks |= {self.static_key}
             self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
