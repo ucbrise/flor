@@ -18,6 +18,7 @@ class Writer:
     max_buffer = 5000
     write_buffer = []
     initialized = False
+    pickler = cloudpickle
 
     @staticmethod
     def initialize():

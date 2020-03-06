@@ -8,6 +8,8 @@ from .. import stateful as state
 from types import ModuleType
 from torch import cuda
 import copy
+import io
+import time
 
 
 class SkipBlock:
@@ -26,6 +28,7 @@ class SkipBlock:
     """
 
     parallel = False
+    checked_skipblocks = set([]) # For Adaptive Checkpointing, contains static keys
 
     def __init__(self, static_key, global_key=None):
         """
@@ -38,11 +41,13 @@ class SkipBlock:
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
+        self.start_time = time.time()
+
 
     def should_execute(self, predicate):
         self.block_executed = predicate
         if state.MODE is REEXEC:
-            # Re-execution that skips loads\
+            # Re-execution that skips loads
             if not SkipBlock.parallel:
                 self.global_key = int(Writer.lbrack_load())
             else:
@@ -57,6 +62,7 @@ class SkipBlock:
         # TODO: For selective replay, we will want to skip some loads. Add predicate for skipping.
         # TODO: Bug, the cpu() call won't copy if object is already in CPU
         # WARNING: MAY ONLY BE CALLED ONCE
+        self.end_time = time.time()
         assert not self.args or not args                # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
         assert self.args or args                        # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
         assert not self.proc_side_effects_called        # You don't call proc_side_effects twice on the same SkipBlock.
@@ -81,6 +87,26 @@ class SkipBlock:
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
+            if self.static_key not in SkipBlock.checked_skipblocks:
+                size_in_bytes, tiempo = self._getsizeof_side_effects()
+                loop_time = self.end_time - self.start_time
+                write_time = tiempo
+                ratio = loop_time / write_time
+
+                msg = f"Static Key: {self.static_key}, Ratio: {ratio}"
+
+                print(f"""
+                #################################################################################
+                #
+                #
+                {msg}
+                #
+                #
+                #################################################################################
+                """)
+                with open('/tmp/flor_ratio_calibrate.txt', 'a') as f:
+                    f.write(msg)
+                SkipBlock.checked_skipblocks |= {self.static_key}
             self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
@@ -117,6 +143,46 @@ class SkipBlock:
             # len(self.args) can't be 0...
             # see integrity constraint above
             return self.args[0]
+
+    def _getsizeof_side_effects(self):
+        start_time = time.time()
+        size_in_bytes = 0
+        pickle = Writer.pickler
+
+        forced = NamespaceStack.get_forced()
+        forced_objects = [each[2] for each in forced]
+        materialize_additionals = False
+        # First, write everything new in self.args to disk
+        for arg in self.args:
+            f = io.BytesIO()
+            if NamespaceStack.is_comparable(arg) and arg in forced_objects:
+                # arg will be written from forced
+                # Writer.store(REDUNDANT, self.static_key, self.global_key)
+                # If optimizer was modified, you'll also want to materialize the network
+                materialize_additionals = True
+            else:
+                # write this arg to disk, it's not in forced
+                if hasattr(arg, 'state_dict'):
+                    pickle.dump(arg.state_dict(), f)
+                    size_in_bytes += f.tell()
+                else:
+                    # Not state_dict()
+                    if hasattr(arg, 'cpu'):
+                        pickle.dump(arg.cpu(), f)
+                        size_in_bytes += f.tell()
+                    else:
+                        pickle.dump(arg, f)
+                        size_in_bytes += f.tell()
+        # Enter a separator
+        # Writer.store(SEPARATOR, self.static_key, self.global_key)
+        # If I should materialize a node in a group, materialize the entire group (forced)
+        if materialize_additionals:
+            for l, k, v in forced:
+                f = io.BytesIO()
+                pickle.dump(v.state_dict(), f)
+                size_in_bytes += f.tell()
+        return size_in_bytes, time.time() - start_time
+
 
     def _store_side_effects(self):
         """
