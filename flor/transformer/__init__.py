@@ -1,5 +1,4 @@
-import ast
-from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector
+from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector, StatementCounter
 from flor.transformer.code_gen import *
 from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 import copy
@@ -102,9 +101,21 @@ class Transformer(ast.NodeTransformer):
 
     def proc_loop(self, node):
         temp = self.loop_context
-        temp_assign_updates = list(self.assign_updates)
+
+        sc = StatementCounter()
+        sc.visit(node)
+        if sc.count <= 3:
+            # import astor
+            # print(astor.to_source(node))
+            self.loop_context = False
+            noud = self.generic_visit(node)
+            self.loop_context = temp
+            return noud
+
+
         self.loop_context = True
 
+        temp_assign_updates = list(self.assign_updates)
         node_clone = copy.deepcopy(node)
 
         try:

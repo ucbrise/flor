@@ -78,6 +78,16 @@ def make_cond_block():
 
     TODO: Extend to accept predicate
     """
+    previous_arg = ast.UnaryOp(
+                op=ast.Not(),
+                operand=ast.Attribute(
+                    value=ast.Name('flor', ast.Load()),
+                    attr='SKIP',
+                    ctx=ast.Load()
+                )
+            )
+    safe_arg = ast.NameConstant(value=True)
+
     return ast.If(
         test=ast.Call(
             func=ast.Attribute(
@@ -85,14 +95,7 @@ def make_cond_block():
                 attr='should_execute',
                 ctx=ast.Load()
             ),
-            args=[ast.UnaryOp(
-                op=ast.Not(),
-                operand=ast.Attribute(
-                    value=ast.Name('flor', ast.Load()),
-                    attr='SKIP',
-                    ctx=ast.Load()
-                )
-            )],
+            args=[safe_arg],
             keywords=[]
         ),
         body=[ast.Pass()],
