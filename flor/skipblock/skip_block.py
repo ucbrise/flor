@@ -12,10 +12,11 @@ import io
 import time
 
 
+CUMULATIVE_RATIO_TOLERANCE= 100
+CUTOFF_RATIO = 15
+
 class SkipBlock:
     """
-    TODO: We've temporarily overfit to PyTorch for agility
-
     USE
 
     block = SkipBlock("my_code")
@@ -26,14 +27,34 @@ class SkipBlock:
     *args = block.proc_side_effects()
 
     """
-
+    # FOR RETRAIN
     parallel = False
-    checked_skipblocks = set([]) # For Adaptive Checkpointing, contains static keys
+
+    # FOR ADAPTIVE CHECKPOINTING
+    # contains static keys, so we only estimate once per loop
+    checked_skipblocks = set([])
+    # the current nesting level of skipblocks relative to previously generated skipblocks.
+    # This is an Optimization. Don't serialize (deeply nested) state that would be inaccessible during parallelism.
+    nesting_level = 0
+    # We need to the number of iterations for the outermost loop
+    # A proxy is how many times a top nested loop is run
+    top_nested_head_sk = -1
+    # We want the max ratio for computing periodicity
+    acc_ratios = []
+    # Some of this state is moved to STATEFUL to avoid circular dependencies
 
     def __init__(self, static_key, global_key=None):
         """
         """
         self.static_key = int(static_key)
+        if SkipBlock.top_nested_head_sk < 0:
+            assert SkipBlock.nesting_level == 0
+            SkipBlock.top_nested_head_sk = self.static_key
+        if self.static_key == SkipBlock.top_nested_head_sk:
+            if state.iterations_count == 1:
+                ratio = max(SkipBlock.acc_ratios)
+                state.period = int(CUMULATIVE_RATIO_TOLERANCE / ratio)
+            state.iterations_count += 1
         if state.MODE is EXEC:
             # Execution stores
             self.global_key = int(global_key)
@@ -41,8 +62,28 @@ class SkipBlock:
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
+        self.my_nesting_level = SkipBlock.nesting_level
+        SkipBlock.nesting_level += 1
+
         self.start_time = time.time()
 
+    @property
+    def top_nested_level(self):
+        """
+        Whether this loop is the top-nested loop in the code
+        We have:
+        Outermost Loop
+        Top nested loop (in outermost loop)
+        Deeply nested loops (in top nested loop)
+        """
+        # TODO: Generalize to cases
+        # 1. Case when outermost loop is successfully transformed
+        # 2. Case when there is more than a single outermost loop
+        return self.my_nesting_level == 0
+
+    @property
+    def period_enabled(self):
+        return state.period > 0 and (state.iterations_count % state.period == 0)
 
     def should_execute(self, predicate):
         self.block_executed = predicate
@@ -63,6 +104,8 @@ class SkipBlock:
         # TODO: Bug, the cpu() call won't copy if object is already in CPU
         # WARNING: MAY ONLY BE CALLED ONCE
         self.end_time = time.time()
+        SkipBlock.nesting_level -= 1
+        assert SkipBlock.nesting_level >= 0
         assert not self.args or not args                # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
         assert self.args or args                        # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
         assert not self.proc_side_effects_called        # You don't call proc_side_effects twice on the same SkipBlock.
@@ -92,26 +135,14 @@ class SkipBlock:
                 loop_time = self.end_time - self.start_time
                 write_time = tiempo
                 ratio = loop_time / write_time
-
-                msg = f"Static Key: {self.static_key}, Ratio: {ratio}"
-
-                print(f"""
-                #################################################################################
-                #
-                #
-                {msg}
-                #
-                #
-                #################################################################################
-                """)
-                try:
-                    with open('/data/flor_ratio_calibrate.txt', 'a') as f:
-                        f.write(msg)
-                except:
-                    with open('/tmp/flor_ratio_calibrate.txt', 'a') as f:
-                        f.write(msg)
-                SkipBlock.checked_skipblocks |= {self.static_key}
-            self._store_side_effects()
+                if self.top_nested_level:
+                    SkipBlock.acc_ratios.append(ratio)
+                self.serialize_all = ratio >= CUTOFF_RATIO
+                if self.serialize_all:
+                    state.pretraining = True
+                SkipBlock.checked_skipblocks |= {self.static_key,}
+            if self.serialize_all or (not state.pretraining and self.period_enabled and self.top_nested_level):
+                self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             self._load_side_effects()
