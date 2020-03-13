@@ -62,6 +62,7 @@ class SkipBlock:
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
+        self.serialize_all = False
         self.my_nesting_level = SkipBlock.nesting_level
         SkipBlock.nesting_level += 1
 

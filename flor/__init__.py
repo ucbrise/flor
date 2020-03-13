@@ -6,6 +6,11 @@ import flor.utils as utils
 from flor.transformer import Transformer
 # import flor.spooler as spooler
 
+from torch import cuda
+
+if not cuda.is_available() and not cuda.is_initialized():
+    cuda.init()
+
 class NotInitializedError(RuntimeError):
     pass
 
