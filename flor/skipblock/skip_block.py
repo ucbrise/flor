@@ -47,18 +47,20 @@ class SkipBlock:
         """
         """
         self.static_key = int(static_key)
-        if SkipBlock.top_nested_head_sk < 0:
-            assert SkipBlock.nesting_level == 0
-            SkipBlock.top_nested_head_sk = self.static_key
-        if self.static_key == SkipBlock.top_nested_head_sk:
-            if state.iterations_count == 1:
-                ratio = max(SkipBlock.acc_ratios)
-                state.period = int(CUMULATIVE_RATIO_TOLERANCE / ratio)
-            state.iterations_count += 1
+
         if state.MODE is EXEC:
             # Execution stores
             self.global_key = int(global_key)
             Writer.store(LBRACKET, self.static_key, self.global_key)
+
+            if SkipBlock.top_nested_head_sk < 0:
+                assert SkipBlock.nesting_level == 0
+                SkipBlock.top_nested_head_sk = self.static_key
+            if self.static_key == SkipBlock.top_nested_head_sk:
+                if state.iterations_count == 1:
+                    ratio = max(SkipBlock.acc_ratios)
+                    state.period = int(CUMULATIVE_RATIO_TOLERANCE / ratio)
+                state.iterations_count += 1
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
