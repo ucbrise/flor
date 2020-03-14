@@ -32,7 +32,7 @@ class SkipBlock:
 
     # FOR ADAPTIVE CHECKPOINTING
     # contains static keys, so we only estimate once per loop
-    checked_skipblocks = set([])
+    skipblock_decisions = {}
     # the current nesting level of skipblocks relative to previously generated skipblocks.
     # This is an Optimization. Don't serialize (deeply nested) state that would be inaccessible during parallelism.
     nesting_level = 0
@@ -62,7 +62,6 @@ class SkipBlock:
         self.block_executed = False
         self.proc_side_effects_called = False
         self.args = []
-        self.serialize_all = False
         self.my_nesting_level = SkipBlock.nesting_level
         SkipBlock.nesting_level += 1
 
@@ -131,18 +130,17 @@ class SkipBlock:
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
-            if self.static_key not in SkipBlock.checked_skipblocks:
+            if self.static_key not in SkipBlock.skipblock_decisions:
                 size_in_bytes, tiempo = self._getsizeof_side_effects()
                 loop_time = self.end_time - self.start_time
                 write_time = tiempo
                 ratio = loop_time / write_time
+                SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
                 if self.top_nested_level:
                     SkipBlock.acc_ratios.append(ratio)
-                self.serialize_all = ratio >= CUTOFF_RATIO
-                if self.serialize_all:
+                if SkipBlock.skipblock_decisions[self.static_key]:
                     state.pretraining = True
-                SkipBlock.checked_skipblocks |= {self.static_key,}
-            if self.serialize_all or (not state.pretraining and self.period_enabled and self.top_nested_level):
+            if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled and self.top_nested_level):
                 self._store_side_effects()
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
