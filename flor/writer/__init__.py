@@ -20,6 +20,7 @@ class Writer:
     initialized = False
     pickler = cloudpickle
 
+
     @staticmethod
     def initialize():
         Writer.initialized = True
@@ -39,6 +40,8 @@ class Writer:
                             # THIS IS FILENAME, or LBRACK, or ERROR
                             Writer.store_load.append(
                                 (log_record['static_key'], log_record['global_key'], log_record['value']))
+                            if log_record['value'] == 'RBRACKET':
+                                flags.rbracket_gk.add(int(log_record['global_key']))
             # We now do a Group By global_key on store_load
             new_store_load = []
             current_group = {'key': None, 'skey': None, 'list': None}
@@ -177,6 +180,9 @@ class Writer:
                 break
         # paths can only contain PATHS or ERRORS
         values = []
+        if len(paths) == 1 and paths[0] == 'RBRACKET':
+            # Adaptive Checkpointing case. We decided not to serialize
+            return values
         for path in paths:
             if 'ERROR' in path[0:len('ERROR')]:
                 # ERROR CASE

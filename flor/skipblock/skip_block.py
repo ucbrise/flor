@@ -92,11 +92,14 @@ class SkipBlock:
         if state.MODE is REEXEC:
             # Re-execution that skips loads
             if not SkipBlock.parallel:
+                # Sequential Replay
                 self.global_key = int(Writer.lbrack_load())
+                self.block_executed = self.block_executed or self.global_key in state.rbracket_gk
             else:
                 if not predicate:
                     self.global_key = int(Writer.lbrack_load())
-        return predicate
+                    assert self.global_key not in state.rbracket_gk
+        return self.block_executed
 
     def register_side_effects(self, *args):
         self.args = args
