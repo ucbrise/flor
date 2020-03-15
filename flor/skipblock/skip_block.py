@@ -144,6 +144,9 @@ class SkipBlock:
                     state.pretraining = True
             if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled and self.top_nested_level):
                 self._store_side_effects()
+            else:
+                # This helps us garbage collect unmatched LBRACKETS
+                Writer.store(RBRACKET, self.static_key, self.global_key)
         elif state.MODE is REEXEC and not self.block_executed:
             # Code did not run, so we need to load the side-effects
             self._load_side_effects()

@@ -145,19 +145,27 @@ class Writer:
     @staticmethod
     def store(obj, static_key, global_key):
         # Store the object in the memo
-        if obj is not LBRACKET:
+        if obj is LBRACKET:
             d = {
                 'source': 'store',
                 'static_key': static_key,
                 'global_key': global_key,
-                'value': obj
+                'value': 'LBRACKET'
+            }
+        elif obj is RBRACKET:
+            # This helps us garbage collect unmatched LBRACKETS
+            d = {
+                'source': 'store',
+                'static_key': static_key,
+                'global_key': global_key,
+                'value': 'RBRACKET'
             }
         else:
             d = {
                 'source': 'store',
                 'static_key': static_key,
                 'global_key': global_key,
-                'value': 'LBRACKET'
+                'value': obj
             }
         Writer.write(d)
 
