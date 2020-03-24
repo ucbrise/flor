@@ -16,11 +16,11 @@ def make_arg(arg):
         raise NotImplementedError()
 
 
-def make_attr_call(attr1, attr2, arg=None):
+def make_attr_call(attr1, attr2, args=None):
     """
     flor._attr1_._attr2_(arg)
     """
-    if arg is None:
+    if args is None:
         return ast.Call(
             func=ast.Attribute(
                 value=ast.Attribute(
@@ -45,19 +45,20 @@ def make_attr_call(attr1, attr2, arg=None):
                 attr=attr2,
                 ctx=ast.Load()
             ),
-            args=[arg],                                     # arg is not None
+            args=args,                                     # arg is not None
             keywords=[]
         )
 
 
-def make_block_initialize(attr, arg=None):
+def make_block_initialize(attr, args=None):
     """
     Traditionally used for initializing namespace blocks and skipblocks
 
     flor._attr_.new(arg)
     """
+    assert args is None or isinstance(args, list)
     return ast.Expr(
-        value=make_attr_call(attr, 'new', arg),
+        value=make_attr_call(attr, 'new', args),
     )
 
 
@@ -154,8 +155,7 @@ def make_test_force(store_node):
 
     store_node_name = ast.Str(astunparse.unparse(store_node).strip())
 
-    namespace_stack_new = make_attr_call('namespace_stack', 'test_force')
-    namespace_stack_new.args = [store_node, store_node_name]
+    namespace_stack_new = make_attr_call('namespace_stack', 'test_force', [store_node, store_node_name])
     return ast.Expr(namespace_stack_new)
 
 

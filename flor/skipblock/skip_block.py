@@ -25,8 +25,10 @@ class SkipBlock:
         ...
         block.register_side_effects(*args)
     *args = block.proc_side_effects()
-
     """
+
+    #TODO: Refactoring move much of this state to the skipstack
+
     # FOR RETRAIN
     parallel = False
 

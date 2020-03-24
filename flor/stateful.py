@@ -14,3 +14,6 @@ pretraining = False
 # For re-exec. Tells us which global keys have RBRACKETS instead of values
 # A global key has an RBRACKET if adaptive checkpointing policy chooses not to serialize args to proc_side_effects
 rbracket_gk = set([])
+
+# FOR AUTOPARALLELISM
+outermost_sk = None

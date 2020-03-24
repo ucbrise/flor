@@ -10,19 +10,24 @@ class Transformer(ast.NodeTransformer):
         pass
 
     @staticmethod
-    def transform(filepath):
+    def transform(filepaths):
         import astor
         import os
-        with open(filepath, 'r') as f:
-            contents = f.read()
-        transformer = Transformer()
-        new_contents = transformer.visit(ast.parse(contents))
-        new_contents = astor.to_source(new_contents)
-        new_filepath, ext = os.path.splitext(filepath)
-        new_filepath += '_transformed' + ext
-        with open(new_filepath, 'w') as f:
-            f.write(new_contents)
-        print(f"wrote {new_filepath}")
+
+        if not isinstance(filepaths, list):
+            filepaths = [filepaths,]
+
+        for filepath in filepaths:
+            with open(filepath, 'r') as f:
+                contents = f.read()
+            transformer = Transformer()
+            new_contents = transformer.visit(ast.parse(contents))
+            new_contents = astor.to_source(new_contents)
+            new_filepath, ext = os.path.splitext(filepath)
+            new_filepath += '_transformed' + ext
+            with open(new_filepath, 'w') as f:
+                f.write(new_contents)
+            print(f"wrote {new_filepath}")
 
     def __init__(self):
         # These are names defined before the loop
@@ -90,7 +95,7 @@ class Transformer(ast.NodeTransformer):
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
 
         # Outer Block
-        block_initialize = make_block_initialize('skip_stack', make_arg(self.get_incr_static_key()))
+        block_initialize = make_block_initialize('skip_stack', [make_arg(self.get_incr_static_key()),])
         cond_block = make_cond_block()
         proc_side_effects = make_proc_side_effects(underscored_memoization_set,
                                                    memoization_set)
@@ -110,7 +115,11 @@ class Transformer(ast.NodeTransformer):
             self.loop_context = False
             noud = self.generic_visit(node)
             self.loop_context = temp
-            return noud
+
+            blinit = make_block_initialize('skip_stack', [make_arg(self.get_incr_static_key()), make_arg(0)])
+            blestroy = make_block_destroy('skip_stack')
+
+            return [blinit, noud, blestroy]
 
 
         self.loop_context = True
@@ -127,7 +136,11 @@ class Transformer(ast.NodeTransformer):
             self.loop_context = False
             self.assign_updates = temp_assign_updates
             new_node = self.generic_visit(node_clone)
-            return [new_node,]
+
+            blinit = make_block_initialize('skip_stack', [make_arg(self.get_incr_static_key()), make_arg(0)])
+            blestroy = make_block_destroy('skip_stack')
+
+            return [blinit, new_node, blestroy]
         except AssertionError as e:
             print(f"Assertion Error: {e}")
             return ast.NodeTransformer().generic_visit(node)

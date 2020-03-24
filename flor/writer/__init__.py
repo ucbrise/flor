@@ -136,7 +136,8 @@ class Writer:
             'source': 'stateful_adaptive_ext',
             'pretraining': str(flags.pretraining),
             'iterations_count': str(flags.iterations_count),
-            'period': str(flags.period)
+            'period': str(flags.period),
+            'outermost_sk': str(flags.outermost_sk)
         })
         if Writer.write_buffer:
             Writer.forked_write()  # at the end of flor execution, flushes buffer to disk
