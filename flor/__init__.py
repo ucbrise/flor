@@ -56,6 +56,7 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     # Fetch the flags we need without disrupting user code
     flor_settings = {
         'mode': ['exec', 'reexec'], # default: exec
+        'predinit': ['weak', 'strong'],
         'name': ANY,
         'memo': ANY,
         'maxb': ANY,  # buffer limit
