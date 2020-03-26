@@ -51,17 +51,21 @@ def fprint(dir_tree_list, device_id):
     return write
 
 
-def get_partitions(iterator, num_gpu):
-    """
-    Returns at most num_gpu partitions.
-    Balances desire to spread work evenly with the interest in using fewer GPUs if possible
-    """
-    work_per_gpu = math.ceil(len(iterator) / num_gpu)
+def get_partitions(listlen, num_gpus):
+    # Roundrobin allocation with pipelining
+    partitions = [[] for _ in range(num_gpus)]
+    for epoch in range(listlen):
+        partitions[epoch % num_gpus].append(-1)
     i = 0
-    partitions = []
-    while i * work_per_gpu < len(iterator):
-        partitions.append(iterator[i * work_per_gpu: (i + 1) * work_per_gpu])
-        i += 1
+    for j in range(num_gpus):
+        for k in range(len(partitions[j])):
+            partitions[j][k] = i
+            i += 1
+    assert i == listlen
+    for part in partitions:
+        for each in part:
+            assert each >= 0
+    assert partitions[-1][-1] == listlen - 1
     return partitions
 
 

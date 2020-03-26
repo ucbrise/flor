@@ -43,6 +43,7 @@ class NullClass:
 pin_state = foo
 random_seed = foo
 flush = foo
+parallelize = foo
 SKIP = False
 SkipBlock = NullClass
 
@@ -96,5 +97,6 @@ __all__ = ['pin_state',
            'is_initialized',
            'user_settings',
            'utils',
-           'Transformer'
+           'Transformer',
+           'parallelize'
            ]

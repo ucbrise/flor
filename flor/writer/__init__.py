@@ -19,6 +19,7 @@ class Writer:
     write_buffer = []
     initialized = False
     pickler = cloudpickle
+    stateful_adaptive_ext = None
 
 
     @staticmethod
@@ -42,6 +43,8 @@ class Writer:
                                 (log_record['static_key'], log_record['global_key'], log_record['value']))
                             if log_record['value'] == 'RBRACKET':
                                 flags.rbracket_gk.add(int(log_record['global_key']))
+                        elif log_record['source'] == 'stateful_adaptive_ext':
+                            Writer.stateful_adaptive_ext = log_record
             # We now do a Group By global_key on store_load
             new_store_load = []
             current_group = {'key': None, 'skey': None, 'list': None}

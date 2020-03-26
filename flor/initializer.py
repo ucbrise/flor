@@ -7,16 +7,18 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=None):
+def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
     :param mode:
     :param memo:
+    :param predinit: Whether to use weakk or strong predecessor initialization for Parallel/Sampling replay
     :return:
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
+    assert predinit in ['weak', 'strong'], "[FLOR] Invalid Predecessor Initialization mode"
     root_path = rd
     flor_path = utils.PATH(root_path, '.flor')
 
@@ -31,6 +33,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=
         flags.MEMO_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME, memo))
         assert os.path.exists(flags.MEMO_PATH.absolute), f"{flags.MEMO_PATH.absolute} does not exist"
         flags.MODE = REEXEC
+        flags.PRED_INIT_MODE = WEAK if predinit == 'weak' else STRONG
 
     utils.cond_mkdir(flor_path.absolute)
     utils.cond_mkdir(os.path.join(flor_path.absolute, flags.NAME))
@@ -58,11 +61,8 @@ def initialize(name, mode='exec', memo=None, maxb=None, predecessor_id=None, rd=
     flor.namespace_stack = NamespaceStack
     flor.skip_stack = SkipStack
 
-    if predecessor_id is not None and predecessor_id >= 0:
-        assert flags.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(mode)
-        flor.skipblock.skip_block.SkipBlock.parallel = True
-        Writer.store_load = Writer.partitioned_store_load[predecessor_id]
-
+    from flor.parallelizer import parallelize
+    flor.parallelize = parallelize
 
 def is_initialized():
     return flags.NAME is not None
