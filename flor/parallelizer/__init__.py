@@ -3,8 +3,9 @@ from flor import stateful, utils
 from flor.skipblock.skip_block import SkipBlock
 from flor.writer import Writer
 
+import sys
+
 def parallelize(iterator, partition_id, num_gpus):
-    #Todo: Generalize to fine-tuning
     assert stateful.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(stateful.MODE)
     assert partition_id >= 0 and partition_id < num_gpus
     partition_id = int(partition_id)
@@ -12,7 +13,6 @@ def parallelize(iterator, partition_id, num_gpus):
 
     log_record = Writer.stateful_adaptive_ext
     pretraining = bool(log_record['pretraining'])
-    assert pretraining
     iterations_count = int(log_record['iterations_count'])
     assert iterations_count == len(iterator)
     period = int(log_record['period'])
@@ -38,9 +38,11 @@ def parallelize(iterator, partition_id, num_gpus):
         Writer.partitioned_store_load = new_psl
     del psl
 
-    epoch_partitions = utils.get_partitions(len(iterator), num_gpus)
+    epoch_partitions = utils.get_partitions(len(iterator), num_gpus, pretraining, period)
 
     our_epochs = epoch_partitions[partition_id]
+    if not our_epochs:
+        sys.exit(0)
 
     predecessor_id = our_epochs[0] - 1
     if predecessor_id >= 0 and stateful.PRED_INIT_MODE is WEAK:
