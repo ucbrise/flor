@@ -13,6 +13,7 @@ def parallelize(iterator, partition_id, num_gpus):
 
     log_record = Writer.stateful_adaptive_ext
     pretraining = bool(log_record['pretraining'])
+    assert pretraining or stateful.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
     iterations_count = int(log_record['iterations_count'])
     assert iterations_count == len(iterator)
     period = int(log_record['period'])
