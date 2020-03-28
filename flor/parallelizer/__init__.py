@@ -19,6 +19,7 @@ def parallelize(iterator, partition_id, num_gpus):
     iterations_count = int(log_record['iterations_count'])
     assert iterations_count == len(iterator)
     period = int(log_record['period'])
+    assert pretraining or period > 0
     outermost_sk = int(log_record['outermost_sk'])
 
 
