@@ -30,7 +30,7 @@ class SkipStack:
             block = SeemBlock(static_key, global_key)
             stack.append(block)
         else:
-            SkipStack.append(None)
+            SkipStack.stack.append(None)
 
     @staticmethod
     def peek():
@@ -43,7 +43,7 @@ class SkipStack:
         stack = SkipStack.stack
         assert stack
         block = stack.pop()
-        if block.static_key not in SkipStack.memory:
+        if block is not None and block.static_key not in SkipStack.memory:
             SkipStack.memory.add(block.static_key)
             tottime = time.time() - block.start_time
             if tottime > SkipStack.worst_time:
