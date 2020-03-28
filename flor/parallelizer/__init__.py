@@ -12,7 +12,9 @@ def parallelize(iterator, partition_id, num_gpus):
     SkipBlock.parallel = True
 
     log_record = Writer.stateful_adaptive_ext
-    pretraining = bool(log_record['pretraining'])
+    pretraining = log_record['pretraining']
+    assert pretraining == "False" or pretraining == "True"
+    pretraining = pretraining == "True"
     assert pretraining or stateful.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
     iterations_count = int(log_record['iterations_count'])
     assert iterations_count == len(iterator)
