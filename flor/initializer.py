@@ -64,5 +64,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     from flor.parallelizer import parallelize
     flor.parallelize = parallelize
 
+    flor.get_epochs = lambda : int(Writer.stateful_adaptive_ext['iterations_count'])
+
 def is_initialized():
     return flags.NAME is not None
