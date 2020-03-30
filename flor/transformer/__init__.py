@@ -2,6 +2,8 @@ from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector
 from flor.transformer.code_gen import *
 from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 import copy
+import astor
+import os
 
 class Transformer(ast.NodeTransformer):
     static_key = 0
@@ -11,8 +13,6 @@ class Transformer(ast.NodeTransformer):
 
     @staticmethod
     def transform(filepaths):
-        import astor
-        import os
 
         if not isinstance(filepaths, list):
             filepaths = [filepaths,]
@@ -155,3 +155,64 @@ class Transformer(ast.NodeTransformer):
     def visit_While(self, node):
         return self.proc_loop(node)
 
+
+class ParallelTransformer(ast.NodeTransformer):
+
+    def __init__(self, outermost_sk, partition_id=0, num_gpus=4):
+        self.outermost_sk = outermost_sk
+        self.enabled = False
+        self.partition_id = partition_id
+        self.num_gpus = num_gpus
+
+    @staticmethod
+    def transform(filepaths, outermost_sk):
+
+        if not isinstance(filepaths, list):
+            filepaths = [filepaths,]
+
+        for filepath in filepaths:
+            with open(filepath, 'r') as f:
+                contents = f.read()
+            transformer = ParallelTransformer(outermost_sk)
+            new_contents = transformer.visit(ast.parse(contents))
+            new_contents = astor.to_source(new_contents)
+            new_filepath, ext = os.path.splitext(filepath)
+            new_filepath += f'_{transformer.partition_id}' + ext
+            with open(new_filepath, 'w') as f:
+                f.write(new_contents)
+            print(f"wrote {new_filepath}")
+
+    def visit_For(self, node):
+        if self.enabled:
+            self.enabled = False
+            node.iter = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='parallelize'),
+                args=[
+                    node.iter,
+                    ast.Num(n=self.partition_id),
+                    ast.Num(n=self.num_gpus)],
+                keywords=[])
+        return node
+
+    def visit_While(self, node):
+        if self.enabled:
+            self.enabled = False
+            # test = ast.Expr(node.test)
+            node = ast.For(target=ast.Name(id='_'),
+                               iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='parallelize'),
+                                    args=[
+                                        ast.Call(func=ast.Name(id='range'),
+                                            args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],
+                                            keywords=[]),
+                                        ast.Num(n=self.partition_id),
+                                        ast.Num(n=self.num_gpus)],
+                                    keywords=[]),
+                               body=[ast.Expr(node.test),] + node.body, orelse=[])
+        return node
+
+
+    def visit_Call(self, node):
+        src = astor.to_source(node)
+        srch = f'flor.skip_stack.new({self.outermost_sk}'
+        if srch == src[0:len(srch)]:
+            self.enabled = True
+        return node
