@@ -1,6 +1,18 @@
-import shutil
-from flor.constants import *
+import math
 import os
+import shutil
+import flor.common.copy
+
+
+class PATH:
+    def __init__(self, root_path, path_from_home):
+        root_path = '~' if root_path is None else root_path
+        self.path_from_home = path_from_home
+        self.squiggles = os.path.join(root_path, path_from_home)
+        if root_path == '~':
+            self.absolute = os.path.join(os.path.expanduser('~'), path_from_home)
+        else:
+            self.absolute = os.path.join(os.path.abspath(root_path), path_from_home)
 
 
 def cond_mkdir(path):
@@ -29,55 +41,56 @@ def cond_rmdir(path):
         shutil.rmtree(path)
 
 
-def check_flor_install():
-    if not os.path.exists(os.path.join(FLOR_DIR, '.conda_map')):
-        print("Flor hasn't been installed.")
-        print("From Python: You may run the function flor.install()")
-        print("From CLI: You may run the pyflor_install script")
-        import sys
-        sys.exit(0)
+def fprint(dir_tree_list, device_id):
+    root_path = os.path.sep + os.path.join(*dir_tree_list)
 
-def write_debug_msg(msg):
-    assert isinstance(msg, str)
-    with open(os.path.join(FLOR_DIR, 'debug_msg.txt'), 'a') as f:
-        f.write(msg + '\n')
+    def write(s):
+        with open(os.path.join(root_path, "flor_output_{}.txt".format(device_id)), 'a') as f:
+            f.write(str(s) + '\n')
 
-def write_failure_msg(msg):
-    assert isinstance(msg, str)
-    with open(os.path.join(FLOR_DIR, 'failures.txt'), 'a') as f:
-        f.write(msg + '\n')
+    return write
 
-# Reliable timestamp from network server
-def get_timestamp(src='time.google.com'):
-    # Adapted from https://www.mattcrampton.com/blog/query_an_ntp_server_from_python/
-    # and https://gist.github.com/guneysus/9f85ab77e1a11d0eebdb
-    import socket
-    from socket import AF_INET, SOCK_DGRAM
-    import struct
-    import time
+def get_partitions(num_epochs, num_gpus, pretraining, period):
+    # Roundrobin allocation with pipelining
+    if pretraining:
+        del period
+        partitions = [[] for _ in range(num_gpus)]
+        for epoch in range(num_epochs):
+            partitions[epoch % num_gpus].append(-1)
+        i = 0
+        for j in range(num_gpus):
+            for k in range(len(partitions[j])):
+                partitions[j][k] = i
+                i += 1
+        assert i == num_epochs
+        for part in partitions:
+            for each in part:
+                assert each >= 0
+        assert partitions[-1][-1] == num_epochs - 1
+        return partitions
+    else:
+        range_regions = []
+        i = 0
+        while i*period < num_epochs:
+            start = i*period
+            stop = min((i+1)*period, num_epochs)
+            range_regions.append(range(start, stop))
+            i+=1
+        partitions = [[] for _ in range(num_gpus)]
+        for range_element in range(len(range_regions)):
+            #roundrobin work allocation, early epochs first
+            partitions[range_element % num_gpus].append(-1)
+        for j in range(num_gpus):
+            for k in range(len(partitions[j])):
+                partitions[j][k] = range_regions.pop(0)
+        assert len(range_regions) == 0
+        partitions = [range(rs[0].start, rs[-1].stop) if rs else [] for rs in partitions]
+        return partitions
 
-    port = 123
-    buf = 1024
-    address = (src, port)
-    msg = '\x1b' + 47 * '\0'
 
-    # reference time (in seconds since 1900-01-01 00:00:00)
-    time1970 = 2208988800  # 1970-01-01 00:00:00
-    timestamp = time.time()
-    # connect to server
-    try:
-        socket.setdefaulttimeout(3)  # set timeout to 3s
-        client = socket.socket(AF_INET, SOCK_DGRAM)
-        client.sendto(msg.encode('utf-8'), address)
-        msg, address = client.recvfrom(buf)
 
-        if msg:
-            # timestamp: seconds since epoch
-            timestamp = struct.unpack('!12I', msg)[10] - time1970
-    except socket.timeout:
-        src = 'local'
 
-    local_time = time.ctime(timestamp).replace('  ', ' ')
-    utc_time = time.strftime('%a %b %d %X %Y %Z', time.gmtime(timestamp))
 
-    return timestamp, local_time, utc_time, src
+
+def deepcopy_cpu(x):
+    return flor.common.copy.deepcopy(x)
