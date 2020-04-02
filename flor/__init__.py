@@ -43,7 +43,7 @@ class NullClass:
 pin_state = foo
 random_seed = foo
 flush = foo
-parallelize = foo
+partition = foo
 get_epochs = foo
 SKIP = False
 SkipBlock = NullClass
@@ -100,6 +100,6 @@ __all__ = ['pin_state',
            'user_settings',
            'utils',
            'Transformer',
-           'parallelize',
+           'partition',
            'get_epochs'
            ]

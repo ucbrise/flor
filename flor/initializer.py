@@ -61,8 +61,8 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     flor.namespace_stack = NamespaceStack
     flor.skip_stack = SkipStack
 
-    from flor.parallelizer import parallelize
-    flor.parallelize = parallelize
+    from flor.parallelizer import partition
+    flor.partition = partition
 
     flor.get_epochs = lambda : int(Writer.stateful_adaptive_ext['iterations_count'])
 

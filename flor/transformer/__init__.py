@@ -185,7 +185,7 @@ class ParallelTransformer(ast.NodeTransformer):
     def visit_For(self, node):
         if self.enabled:
             self.enabled = False
-            node.iter = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='parallelize'),
+            node.iter = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
                 args=[
                     node.iter,
                     ast.Num(n=self.partition_id),
@@ -198,7 +198,7 @@ class ParallelTransformer(ast.NodeTransformer):
             self.enabled = False
             # test = ast.Expr(node.test)
             node = ast.For(target=ast.Name(id='_'),
-                               iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='parallelize'),
+                               iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
                                     args=[
                                         ast.Call(func=ast.Name(id='range'),
                                             args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],

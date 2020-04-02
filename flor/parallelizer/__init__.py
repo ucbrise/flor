@@ -5,9 +5,9 @@ from flor.writer import Writer
 
 import sys
 
-def parallelize(iterator, partition_id, num_gpus):
+def partition(iterator, partition_id, num_partitions):
     assert stateful.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(stateful.MODE)
-    assert partition_id >= 0 and partition_id < num_gpus
+    assert partition_id >= 0 and partition_id < num_partitions
     partition_id = int(partition_id)
     SkipBlock.parallel = True
 
@@ -42,7 +42,7 @@ def parallelize(iterator, partition_id, num_gpus):
         Writer.partitioned_store_load = new_psl
     del psl
 
-    epoch_partitions = utils.get_partitions(len(iterator), num_gpus, pretraining, period)
+    epoch_partitions = utils.get_partitions(len(iterator), num_partitions, pretraining, period)
 
     our_epochs = epoch_partitions[partition_id]
     if not our_epochs:
