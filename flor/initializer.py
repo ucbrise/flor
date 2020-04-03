@@ -1,5 +1,6 @@
 import os
 import flor
+import math
 
 from flor.constants import *
 from . import stateful as flags
@@ -7,7 +8,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'):
+def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak', pid=None, ngpus=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -18,7 +19,9 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     """
     assert flags.NAME is None, "[FLOR] initialized more than once"
     assert mode in ['exec', 'reexec'], "[FLOR] Invalid Mode"
-    assert predinit in ['weak', 'strong'], "[FLOR] Invalid Predecessor Initialization mode"
+    assert predinit in ['weak', 'strong'], f"[FLOR] Invalid Predecessor Initialization mode{predinit}"
+    assert maxb is None or mode == 'exec', "[FLOR] Cannot change Write buffer size on Re-execution"
+
     root_path = rd
     flor_path = utils.PATH(root_path, '.flor')
 
@@ -65,6 +68,17 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     flor.partition = partition
 
     flor.get_epochs = lambda : int(Writer.stateful_adaptive_ext['iterations_count'])
+
+    if pid is not None:
+        # initialize some global variables for parallelism
+        assert ngpus is not None
+        pid = int(pid)
+        ngpus = int(ngpus)
+        assert pid < ngpus
+        flor.PID = pid
+        flor.NPARTS = ngpus
+
+
 
 def is_initialized():
     return flags.NAME is not None

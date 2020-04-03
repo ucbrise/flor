@@ -46,6 +46,8 @@ flush = foo
 partition = foo
 get_epochs = foo
 SKIP = False
+PID = None
+NPARTS = None
 SkipBlock = NullClass
 
 namespace_stack = NullClass
@@ -61,7 +63,9 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
         'name': ANY,
         'memo': ANY,
         'maxb': ANY,  # buffer limit
-        'rd': ANY     # root directory for .flor subdir
+        'rd': ANY,     # root directory for .flor subdir,
+        'pid': ANY,
+        'ngpus': ANY
     }
 
     argvs = []
@@ -90,6 +94,8 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
 
     initialize(**user_settings)
 
+
+
 __all__ = ['pin_state',
            'random_seed',
            'flush',
@@ -101,5 +107,7 @@ __all__ = ['pin_state',
            'utils',
            'Transformer',
            'partition',
-           'get_epochs'
+           'get_epochs',
+           'PID',
+           'NPARTS'
            ]

@@ -158,15 +158,23 @@ class Transformer(ast.NodeTransformer):
 
 class ParallelTransformer(ast.NodeTransformer):
 
-    def __init__(self, outermost_sk, partition_id=0, num_gpus=4):
+    def __init__(self, outermost_sk):
         self.outermost_sk = outermost_sk
         self.enabled = False
-        self.partition_id = partition_id
-        self.num_gpus = num_gpus
+        self.transformed = False
 
     @staticmethod
-    def transform(filepaths, outermost_sk):
+    def transform(filepaths, xp_name=None, memo=None, outermost_sk=None):
 
+        if outermost_sk is None:
+            assert xp_name is not None and memo is not None
+            import flor
+            flor.initialize(xp_name, mode='reexec', memo=memo)
+            from flor.writer import Writer
+            log_record = Writer.stateful_adaptive_ext
+            outermost_sk = int(log_record['outermost_sk'])
+
+        outermost_sk = int(outermost_sk)
         if not isinstance(filepaths, list):
             filepaths = [filepaths,]
 
@@ -175,26 +183,28 @@ class ParallelTransformer(ast.NodeTransformer):
                 contents = f.read()
             transformer = ParallelTransformer(outermost_sk)
             new_contents = transformer.visit(ast.parse(contents))
+            if not transformer.transformed:
+                continue
             new_contents = astor.to_source(new_contents)
-            new_filepath, ext = os.path.splitext(filepath)
-            new_filepath += f'_{transformer.partition_id}' + ext
-            with open(new_filepath, 'w') as f:
+            with open(filepath, 'w') as f:
                 f.write(new_contents)
-            print(f"wrote {new_filepath}")
+            print(f"rewrote {filepath}")
 
     def visit_For(self, node):
         if self.enabled:
+            self.transformed = True
             self.enabled = False
             node.iter = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
                 args=[
                     node.iter,
-                    ast.Num(n=self.partition_id),
-                    ast.Num(n=self.num_gpus)],
+                    ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                    ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
                 keywords=[])
         return node
 
     def visit_While(self, node):
         if self.enabled:
+            self.transformed = True
             self.enabled = False
             # test = ast.Expr(node.test)
             node = ast.For(target=ast.Name(id='_'),
@@ -203,8 +213,8 @@ class ParallelTransformer(ast.NodeTransformer):
                                         ast.Call(func=ast.Name(id='range'),
                                             args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],
                                             keywords=[]),
-                                        ast.Num(n=self.partition_id),
-                                        ast.Num(n=self.num_gpus)],
+                                        ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                                        ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
                                     keywords=[]),
                                body=[ast.Expr(node.test),] + node.body, orelse=[])
         return node
