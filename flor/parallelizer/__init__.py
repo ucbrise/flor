@@ -6,7 +6,9 @@ from flor.writer import Writer
 import sys
 
 def partition(iterator, partition_id, num_partitions):
-    assert stateful.MODE is REEXEC, "Cannot set predecessor_epoch in mode {}".format(stateful.MODE)
+    if stateful.MODE is EXEC:
+        # This method is pass through on exec
+        return iterator
     assert partition_id >= 0 and partition_id < num_partitions
     partition_id = int(partition_id)
     SkipBlock.parallel = True
