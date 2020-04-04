@@ -50,9 +50,11 @@ random_seed = foo
 flush = foo
 partition = foo
 get_epochs = foo
+sample = foo
 SKIP = False
 PID = None
 NPARTS = None
+RATE = None
 SkipBlock = NullClass
 
 namespace_stack = NullClass
@@ -69,8 +71,9 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
         'memo': ANY,
         'maxb': ANY,  # buffer limit
         'rd': ANY,     # root directory for .flor subdir,
-        'pid': ANY,
-        'ngpus': ANY
+        'pid': ANY,     # partition id, for parallelism
+        'ngpus': ANY,   # num_gpus, for parallelism
+        'rate': ANY     # sampling rate
     }
 
     argvs = []
@@ -114,5 +117,7 @@ __all__ = ['pin_state',
            'partition',
            'get_epochs',
            'PID',
-           'NPARTS'
+           'NPARTS',
+           'RATE',
+           'sample'
            ]

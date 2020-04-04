@@ -9,10 +9,10 @@ with open("requirements.txt", 'r') as f:
 
 setuptools.setup(
      name='pyflor',
-     version='0.0.8a8',
+     version='0.0.9a0',
      author="Rolando Garcia",
      author_email="rogarcia@berkeley.edu",
-     description="A diagnostics and sharing system for ML",
+     description="Hindsight logging for ML",
      long_description=long_description,
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
@@ -23,7 +23,8 @@ setuptools.setup(
                'flor.skipblock',
                'flor.spooler',
                'flor.common',
-               'flor.parallelizer'],
+               'flor.parallelizer',
+               'flor.sampler'],
      install_requires = requirements,
      classifiers = [
          "Programming Language :: Python :: 3",

@@ -1,4 +1,4 @@
-import os
+import os, sys
 import flor
 import math
 
@@ -8,7 +8,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak', pid=None, ngpus=None):
+def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak', pid=None, ngpus=None, rate=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
@@ -67,17 +67,29 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     from flor.parallelizer import partition
     flor.partition = partition
 
+    from flor.sampler import sample
+    flor.sample = sample
+
     flor.get_epochs = lambda : int(Writer.stateful_adaptive_ext['iterations_count'])
 
     if pid is not None:
         # initialize some global variables for parallelism
         assert ngpus is not None
+        assert rate is None, "[FLOR] Parallelism and Sampling are mutually compatible but their combination is not yet implemented. Please set `rate` to None."
         pid = int(pid)
         ngpus = int(ngpus)
         assert pid < ngpus
         flor.PID = pid
         flor.NPARTS = ngpus
 
+    if rate is not None:
+        # initialize some global variables for sampling
+        assert ngpus is None and pid is None, "[FLOR] Parallelism and Sampling are mutually compatible but their combination is not yet implemented. Please set `ngpus` and `pid` to None."
+        rate = float(rate)
+        if rate == 0:
+            sys.exit(0)
+        assert rate > 0 and (rate < 1.0 or math.isclose(rate, 1.0)), "[FLOR] Sampling rate must be between 0 and 1.0."
+        flor.RATE = rate
 
 
 def is_initialized():
