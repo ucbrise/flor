@@ -100,7 +100,6 @@ class SkipBlock:
             else:
                 if not predicate:
                     self.global_key = int(Writer.lbrack_load())
-                    assert self.global_key not in state.rbracket_gk
         return self.block_executed
 
     def register_side_effects(self, *args):
