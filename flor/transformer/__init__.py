@@ -156,15 +156,15 @@ class Transformer(ast.NodeTransformer):
         return self.proc_loop(node)
 
 
-class ParallelTransformer(ast.NodeTransformer):
+class PartitionTransformer(ast.NodeTransformer):
 
     def __init__(self, outermost_sk):
         self.outermost_sk = outermost_sk
         self.enabled = False
         self.transformed = False
 
-    @staticmethod
-    def transform(filepaths, xp_name=None, memo=None, outermost_sk=None):
+    @classmethod
+    def transform(cls, filepaths, xp_name=None, memo=None, outermost_sk=None):
 
         if outermost_sk is None:
             assert xp_name is not None and memo is not None
@@ -181,7 +181,7 @@ class ParallelTransformer(ast.NodeTransformer):
         for filepath in filepaths:
             with open(filepath, 'r') as f:
                 contents = f.read()
-            transformer = ParallelTransformer(outermost_sk)
+            transformer = cls(outermost_sk)
             new_contents = transformer.visit(ast.parse(contents))
             if not transformer.transformed:
                 continue
@@ -226,3 +226,26 @@ class ParallelTransformer(ast.NodeTransformer):
         if srch == src[0:len(srch)]:
             self.enabled = True
         return node
+
+class SampleTransformer(PartitionTransformer):
+
+    def visit_For(self, node):
+        if self.enabled:
+            node = ast.For(target=ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                    iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='sample'), args=[node.iter, ast.Attribute(value=ast.Name(id='flor'), attr='RATE')], keywords=[]),
+                    body=[super().visit_For(node),],
+                    orelse=[])
+        return node
+
+    def visit_While(self, node):
+        if self.enabled:
+            node = ast.For(target=ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                           iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='sample'),
+                                         args=[ast.Call(func=ast.Name(id='range'),
+                                                args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],
+                                                keywords=[]),
+                                               ast.Attribute(value=ast.Name(id='flor'), attr='RATE')], keywords=[]),
+                           body=[super().visit_While(node), ],
+                           orelse=[])
+        return node
+
