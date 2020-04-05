@@ -13,17 +13,10 @@ def partition(iterator, partition_id, num_partitions):
     partition_id = int(partition_id)
     SkipBlock.parallel = True
 
-    log_record = Writer.stateful_adaptive_ext
-    pretraining = log_record['pretraining']
-    assert pretraining == "False" or pretraining == "True"
-    pretraining = pretraining == "True"
-    assert pretraining or stateful.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
-    iterations_count = int(log_record['iterations_count'])
-    assert iterations_count == len(iterator)
-    period = int(log_record['period'])
-    assert pretraining or period > 0
-    outermost_sk = int(log_record['outermost_sk'])
-
+    pretraining = stateful.pretraining
+    assert stateful.iterations_count == len(iterator)
+    iterations_count = stateful.iterations_count
+    period = stateful.period
 
     psl = Writer.partitioned_store_load
     if len(psl) > iterations_count:

@@ -92,14 +92,8 @@ class SkipBlock:
     def should_execute(self, predicate):
         self.block_executed = predicate
         if state.MODE is REEXEC:
-            # Re-execution that skips loads
-            if not SkipBlock.parallel:
-                # Sequential Replay
-                self.global_key = int(Writer.lbrack_load())
-                self.block_executed = self.block_executed or self.global_key in state.rbracket_gk
-            else:
-                if not predicate:
-                    self.global_key = int(Writer.lbrack_load())
+            self.global_key = int(Writer.lbrack_load())
+            self.block_executed = self.block_executed or self.global_key in state.rbracket_gk
         return self.block_executed
 
     def register_side_effects(self, *args):
@@ -200,7 +194,6 @@ class SkipBlock:
             f = io.BytesIO()
             if NamespaceStack.is_comparable(arg) and arg in forced_objects:
                 # arg will be written from forced
-                # Writer.store(REDUNDANT, self.static_key, self.global_key)
                 # If optimizer was modified, you'll also want to materialize the network
                 materialize_additionals = True
             else:
@@ -217,7 +210,6 @@ class SkipBlock:
                         pickle.dump(arg, f)
                         size_in_bytes += f.tell()
         # Enter a separator
-        # Writer.store(SEPARATOR, self.static_key, self.global_key)
         # If I should materialize a node in a group, materialize the entire group (forced)
         if materialize_additionals:
             for l, k, v in forced:

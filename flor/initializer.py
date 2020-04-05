@@ -91,6 +91,17 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
         assert rate > 0 and (rate < 1.0 or math.isclose(rate, 1.0)), "[FLOR] Sampling rate must be between 0 and 1.0."
         flor.RATE = rate
 
+    if flags.MODE is REEXEC:
+        log_record = Writer.stateful_adaptive_ext
+        flags.period = int(log_record['period'])
+        flags.pretraining = log_record['pretraining']
+        assert flags.pretraining == "False" or flags.pretraining == "True"
+        flags.pretraining = flags.pretraining == "True"
+        assert flags.pretraining or flags.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
+        flags.outermost_sk = int(log_record['outermost_sk'])
+        flags.iterations_count =  int(log_record['iterations_count'])
+        assert flags.pretraining or flags.period > 0
+
 
 def is_initialized():
     return flags.NAME is not None
