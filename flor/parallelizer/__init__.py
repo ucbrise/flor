@@ -4,6 +4,7 @@ from flor.skipblock.skip_block import SkipBlock
 from flor.writer import Writer
 
 import sys
+import functools
 
 def partition(iterator, partition_id, num_partitions):
     if stateful.MODE is EXEC:
@@ -14,8 +15,7 @@ def partition(iterator, partition_id, num_partitions):
     SkipBlock.parallel = True
 
     pretraining = stateful.pretraining
-    assert stateful.iterations_count == len(iterator)
-    iterations_count = stateful.iterations_count
+    iterations_count = len(iterator)
     period = stateful.period
 
     psl = Writer.partitioned_store_load
@@ -37,6 +37,10 @@ def partition(iterator, partition_id, num_partitions):
         Writer.partitioned_store_load = new_psl
     del psl
 
+
+
+    stateful.iterations_count = iterations_count
+
     epoch_partitions = utils.get_partitions(len(iterator), num_partitions, pretraining, period)
 
     our_epochs = epoch_partitions[partition_id]
@@ -45,7 +49,7 @@ def partition(iterator, partition_id, num_partitions):
 
     predecessor_id = our_epochs[0] - 1
     if predecessor_id >= 0 and stateful.PRED_INIT_MODE is WEAK:
-        Writer.store_load = Writer.partitioned_store_load[predecessor_id]
+        Writer.store_load = functools.reduce(lambda x,y: x+y, Writer.partitioned_store_load[predecessor_id:])
     # In case of STRONG init mode, just leave store_load as it is, it already has
     # What it needs to start from 0. It doesn't need to start at some k.
 
