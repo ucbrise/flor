@@ -222,7 +222,7 @@ class PartitionTransformer(ast.NodeTransformer):
 
     def visit_Call(self, node):
         src = astor.to_source(node)
-        srch = f'flor.skip_stack.new({self.outermost_sk}'
+        srch = f'flor.skip_stack.new({self.outermost_sk},'
         if srch == src[0:len(srch)]:
             self.enabled = True
         return node
