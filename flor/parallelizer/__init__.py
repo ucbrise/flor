@@ -32,7 +32,7 @@ def partition(iterator, partition_id, num_partitions):
                 current_group = []
             current_group += each
         new_psl.append(current_group)
-        assert current_group.pop(0) is None
+        assert new_psl.pop(0) is None
         assert len(new_psl) == iterations_count
         Writer.partitioned_store_load = new_psl
     del psl
