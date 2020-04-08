@@ -222,9 +222,11 @@ class PartitionTransformer(ast.NodeTransformer):
 
     def visit_Call(self, node):
         src = astor.to_source(node)
-        srch = f'flor.skip_stack.new({self.outermost_sk},'
-        if srch == src[0:len(srch)]:
-            self.enabled = True
+        if 'flor.skip_stack.new' in astor.to_source(node.func).strip():
+            if (len(node.args) > 0
+                and isinstance(node.args[0], ast.Num)
+                and node.args[0].n == self.outermost_sk):
+                self.enabled = True
         return node
 
 class SampleTransformer(PartitionTransformer):
@@ -248,4 +250,3 @@ class SampleTransformer(PartitionTransformer):
                            body=[super().visit_While(node), ],
                            orelse=[])
         return node
-
