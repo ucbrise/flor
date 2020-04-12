@@ -48,7 +48,8 @@ def partition(iterator, partition_id, num_partitions):
         i for i in range(1, num_partitions + 1)
         if max([len(x) for x in utils.get_partitions(len(iterator), i, pretraining, period)]) == max_worker_epochs
     ])
-    assert best_num_partitions == num_partitions, f"Use {best_num_partitions} instead of {num_partitions} GPUs for equivalent speedup."
+    if best_num_partitions != num_partitions:
+        print(f"[WARNING] Use {best_num_partitions} instead of {num_partitions} GPUs for equivalent speedup.")
 
     our_epochs = epoch_partitions[partition_id]
     if not our_epochs:
