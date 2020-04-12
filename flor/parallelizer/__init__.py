@@ -6,6 +6,7 @@ from flor.writer import Writer
 import sys
 import functools
 
+
 def partition(iterator, partition_id, num_partitions):
     if stateful.MODE is EXEC:
         # This method is pass through on exec
@@ -26,7 +27,7 @@ def partition(iterator, partition_id, num_partitions):
         new_group_size = int(len(psl) / iterations_count)
         new_psl = []
         current_group = None
-        for i,each in enumerate(psl):
+        for i, each in enumerate(psl):
             if i % new_group_size == 0:
                 new_psl.append(current_group)
                 current_group = []
@@ -37,11 +38,17 @@ def partition(iterator, partition_id, num_partitions):
         Writer.partitioned_store_load = new_psl
     del psl
 
-
-
     stateful.iterations_count = iterations_count
 
     epoch_partitions = utils.get_partitions(len(iterator), num_partitions, pretraining, period)
+    # Maximum number of epochs any one worker handles
+    max_worker_epochs = max([len(x) for x in epoch_partitions])
+    # Minimum number of partitions to acheieve same max_worker_epochs
+    best_num_partitions = min([
+        i for i in range(1, num_partitions + 1)
+        if max([len(x) for x in utils.get_partitions(len(iterator), i, pretraining, period)]) == max_worker_epochs
+    ])
+    assert best_num_partitions == num_partitions, f"Use {best_num_partitions} instead of {num_partitions} GPUs for equivalent speedup."
 
     our_epochs = epoch_partitions[partition_id]
     if not our_epochs:
@@ -49,12 +56,12 @@ def partition(iterator, partition_id, num_partitions):
 
     predecessor_id = our_epochs[0] - 1
     if predecessor_id >= 0 and stateful.PRED_INIT_MODE is WEAK:
-        Writer.store_load = functools.reduce(lambda x,y: x+y, Writer.partitioned_store_load[predecessor_id:])
+        Writer.store_load = functools.reduce(lambda x, y: x + y, Writer.partitioned_store_load[predecessor_id:])
     # In case of STRONG init mode, just leave store_load as it is, it already has
     # What it needs to start from 0. It doesn't need to start at some k.
 
     if stateful.PRED_INIT_MODE is WEAK:
-        predecessor_epochs = [predecessor_id,] if predecessor_id >= 0 else []
+        predecessor_epochs = [predecessor_id, ] if predecessor_id >= 0 else []
     else:
         predecessor_epochs = range(predecessor_id + 1)
 
@@ -68,7 +75,3 @@ def partition(iterator, partition_id, num_partitions):
     for epoch in our_epochs:
         print(f"Executing epoch {epoch}")
         yield iterator[epoch]
-
-
-
-
