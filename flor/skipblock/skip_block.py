@@ -42,7 +42,7 @@ class SkipBlock:
     # A proxy is how many times a top nested loop is run
     top_nested_head_sk = -1
     # We want the max ratio for computing periodicity
-    acc_ratios = []
+    acc_ratios = {}
     # Some of this state is moved to STATEFUL to avoid circular dependencies
 
     def __init__(self, static_key, global_key=None):
@@ -60,8 +60,9 @@ class SkipBlock:
                 SkipBlock.top_nested_head_sk = self.static_key
             if self.static_key == SkipBlock.top_nested_head_sk:
                 if state.iterations_count == 1:
-                    ratio = max(SkipBlock.acc_ratios)
+                    ratio = SkipBlock.acc_ratios[max(SkipBlock.acc_ratios)]
                     state.period = int(CUMULATIVE_RATIO_TOLERANCE / ratio)
+                    state.pretraining = ratio >= CUTOFF_RATIO
                 state.iterations_count += 1
         self.block_executed = False
         self.proc_side_effects_called = False
@@ -136,10 +137,7 @@ class SkipBlock:
                 write_time = tiempo
                 ratio = loop_time / write_time
                 SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
-                if self.top_nested_level:
-                    SkipBlock.acc_ratios.append(ratio)
-                if SkipBlock.skipblock_decisions[self.static_key]:
-                    state.pretraining = True
+                SkipBlock.acc_ratios[loop_time] = max(SkipBlock.acc_ratios.get(loop_time, -float('inf')), ratio)
             if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled and self.top_nested_level):
                 self._store_side_effects()
             else:
