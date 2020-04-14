@@ -14,6 +14,8 @@ import time
 
 CUMULATIVE_RATIO_TOLERANCE= 100
 CUTOFF_RATIO = 15
+# AVG Write Throughout for P3.8xLarge with Batched Background Materialization
+BYTES_PER_SEC = 150627795
 
 class SkipBlock:
     """
@@ -135,7 +137,8 @@ class SkipBlock:
             if self.static_key not in SkipBlock.skipblock_decisions:
                 size_in_bytes, tiempo = self._getsizeof_side_effects()
                 loop_time = self.end_time - self.start_time
-                write_time = tiempo
+                # write_time = tiempo
+                write_time = size_in_bytes / BYTES_PER_SEC
                 ratio = loop_time / write_time
                 SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
                 SkipBlock.acc_ratios[loop_time] = max(SkipBlock.acc_ratios.get(loop_time, -float('inf')), ratio)
