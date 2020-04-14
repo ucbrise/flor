@@ -65,7 +65,6 @@ class SkipBlock:
                     ratio = SkipBlock.acc_ratios[max(SkipBlock.acc_ratios)]
                     state.period = int(CUMULATIVE_RATIO_TOLERANCE / ratio)
                     state.pretraining = ratio >= CUTOFF_RATIO
-                    print(f"training ratio: {ratio}")
                 state.iterations_count += 1
         self.block_executed = False
         self.proc_side_effects_called = False
@@ -142,7 +141,6 @@ class SkipBlock:
                 ratio = loop_time / write_time
                 SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
                 SkipBlock.acc_ratios[loop_time] = max(SkipBlock.acc_ratios.get(loop_time, -float('inf')), ratio)
-                print(f"sizebytes: {size_in_bytes}, loop_time: {loop_time}")
             if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled and self.top_nested_level):
                 self._store_side_effects()
             else:
