@@ -1,4 +1,6 @@
-import os, sys
+import glob
+import os
+import sys
 import flor
 import math
 
@@ -27,12 +29,17 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
 
     flags.NAME = name
     flags.LOG_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME,
-                                             "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S"))))
+                                                        "{}.json".format(datetime.now().strftime("%Y%m%d-%H%M%S"))))
 
     flags.LOG_DATA_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME, "data"))
 
     if mode == 'reexec':
-        assert memo is not None, "[FLOR] On Re-execution, please specify a memoized file"
+        if memo is None:
+            memo_list = glob.glob(utils.PATH(root_path, os.path.join('.flor', flags.NAME)).absolute + '/*.json')
+            assert len(memo_list) > 0, f"[FLOR] [WARNING] No memo file found for {name}"
+            latest_memo = max(memo_list, key=os.path.getctime)
+            memo = os.path.basename(latest_memo)
+            print(f"[FLOR] [WARNING] No memo file specified, using latest {name} memo: {memo}")
         flags.MEMO_PATH = utils.PATH(root_path, os.path.join('.flor', flags.NAME, memo))
         assert os.path.exists(flags.MEMO_PATH.absolute), f"{flags.MEMO_PATH.absolute} does not exist"
         flags.MODE = REEXEC
@@ -70,7 +77,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
     from flor.sampler import sample
     flor.sample = sample
 
-    flor.get_epochs = lambda : int(Writer.stateful_adaptive_ext['iterations_count'])
+    flor.get_epochs = lambda: int(Writer.stateful_adaptive_ext['iterations_count'])
 
     if pid is not None:
         # initialize some global variables for parallelism
@@ -99,7 +106,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
         flags.pretraining = flags.pretraining == "True"
         assert flags.pretraining or flags.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
         flags.outermost_sk = int(log_record['outermost_sk'])
-        flags.iterations_count =  int(log_record['iterations_count'])
+        flags.iterations_count = int(log_record['iterations_count'])
         assert flags.pretraining or flags.period > 0
 
 

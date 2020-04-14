@@ -198,7 +198,7 @@ class PartitionTransformer(ast.NodeTransformer):
     def transform(cls, filepaths, xp_name=None, memo=None, outermost_sk=None):
 
         if outermost_sk is None:
-            assert xp_name is not None and memo is not None
+            assert xp_name is not None
             import flor
             flor.initialize(xp_name, mode='reexec', memo=memo)
             from flor.writer import Writer
