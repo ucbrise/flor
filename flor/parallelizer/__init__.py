@@ -8,6 +8,7 @@ import functools
 
 
 def partition(iterator, partition_id, num_partitions):
+
     if stateful.MODE is EXEC:
         # This method is pass through on exec
         return iterator

@@ -4,6 +4,8 @@ from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 import copy
 import astor
 import os
+from yapf.yapflib.yapf_api import FormatCode
+
 
 class Transformer(ast.NodeTransformer):
     static_key = 0
@@ -15,19 +17,23 @@ class Transformer(ast.NodeTransformer):
     def transform(filepaths):
 
         if not isinstance(filepaths, list):
-            filepaths = [filepaths,]
+            filepaths = [filepaths, ]
 
         for filepath in filepaths:
             with open(filepath, 'r') as f:
                 contents = f.read()
             transformer = Transformer()
             new_contents = transformer.visit(ast.parse(contents))
+            new_contents = transformer.add_imports(new_contents)
+            new_contents = transformer.add_exports(new_contents)
             new_contents = astor.to_source(new_contents)
+            new_contents_formatted = FormatCode(
+                new_contents, style_config=os.path.abspath('flor/flor/common/style.yapf'))[0]
             new_filepath, ext = os.path.splitext(filepath)
             new_filepath += '_transformed' + ext
             with open(new_filepath, 'w') as f:
-                f.write(new_contents)
-            print(f"wrote {new_filepath}")
+                f.write(new_contents_formatted)
+            print(f"Wrote transformed {filepath} to {new_filepath}")
 
     def __init__(self):
         # These are names defined before the loop
@@ -38,6 +44,33 @@ class Transformer(ast.NodeTransformer):
         # Loop_Context
         #   Are we in a loop context?
         self.loop_context = False
+
+    def add_imports(self, node):
+        try:
+            for x in node.body:
+                if isinstance(x, ast.Import) and x.names[0].name == 'flor':
+                    return node
+        except Exception:
+            pass
+
+        try:
+            first_import_idx = [isinstance(x, ast.Import) for x in node.body].index(True)
+        except Exception:
+            first_import_idx = 0
+        node.body.insert(first_import_idx, ast.Import(names=[ast.alias(name='flor', asname=None)]))
+        return node
+
+    def add_exports(self, node):
+        body_to_append = node.body
+        try:
+            for x in node.body:
+                if isinstance(x, ast.If) and x.test.comparators[0].s == '__main__':
+                    body_to_append = x.body
+        except Exception:
+            pass
+        finally:
+            body_to_append.append(ast.parse("if not flor.SKIP: flor.flush()"))
+            return node
 
     def get_incr_static_key(self):
         sk = Transformer.static_key
@@ -58,16 +91,17 @@ class Transformer(ast.NodeTransformer):
         temp = self.assign_updates
         self.assign_updates = []
         lsd = LoadStoreDetector(writes=self.assign_updates)
-        lsd.visit(node.args)                                # This is possibly redundant but harmless because of set semantics of lsd
+        # This is possibly redundant but harmless because of set semantics of lsd
+        lsd.visit(node.args)
         output = self.generic_visit(node)
         self.assign_updates = temp
 
         output.body = [make_block_initialize('namespace_stack'), ] + output.body
 
         output.body = [ast.Try(body=output.body,
-                              handlers=[],
-                              orelse=[],
-                              finalbody=[make_block_destroy('namespace_stack')]), ]
+                               handlers=[],
+                               orelse=[],
+                               finalbody=[make_block_destroy('namespace_stack')]), ]
 
         return output
 
@@ -80,7 +114,8 @@ class Transformer(ast.NodeTransformer):
     def _vistit_loop(self, node):
         lsd_change_set, mcd_change_set, read_set = get_change_and_read_set(node)
         change_set = set_union(lsd_change_set, mcd_change_set)
-        memoization_set = set_intersection(set_union(self.assign_updates, read_set), change_set)    # read_set: unmatched_reads
+        memoization_set = set_intersection(set_union(self.assign_updates, read_set),
+                                           change_set)    # read_set: unmatched_reads
 
         new_node = self.generic_visit(node)
 
@@ -95,7 +130,7 @@ class Transformer(ast.NodeTransformer):
                 underscored_memoization_set.append(ast.Name('_', ast.Store()))
 
         # Outer Block
-        block_initialize = make_block_initialize('skip_stack', [make_arg(self.get_incr_static_key()),])
+        block_initialize = make_block_initialize('skip_stack', [make_arg(self.get_incr_static_key()), ])
         cond_block = make_cond_block()
         proc_side_effects = make_proc_side_effects(underscored_memoization_set,
                                                    memoization_set)
@@ -121,7 +156,6 @@ class Transformer(ast.NodeTransformer):
 
             return [blinit, noud, blestroy]
 
-
         self.loop_context = True
 
         temp_assign_updates = list(self.assign_updates)
@@ -146,8 +180,6 @@ class Transformer(ast.NodeTransformer):
             return ast.NodeTransformer().generic_visit(node)
         finally:
             self.loop_context = temp
-
-
 
     def visit_For(self, node):
         return self.proc_loop(node)
@@ -176,7 +208,7 @@ class PartitionTransformer(ast.NodeTransformer):
 
         outermost_sk = int(outermost_sk)
         if not isinstance(filepaths, list):
-            filepaths = [filepaths,]
+            filepaths = [filepaths, ]
 
         for filepath in filepaths:
             with open(filepath, 'r') as f:
@@ -195,10 +227,10 @@ class PartitionTransformer(ast.NodeTransformer):
             self.transformed = True
             self.enabled = False
             node.iter = ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
-                args=[
-                    node.iter,
-                    ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
-                    ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
+                                 args=[
+                node.iter,
+                ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
                 keywords=[])
         return node
 
@@ -208,35 +240,37 @@ class PartitionTransformer(ast.NodeTransformer):
             self.enabled = False
             # test = ast.Expr(node.test)
             node = ast.For(target=ast.Name(id='_'),
-                               iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
-                                    args=[
-                                        ast.Call(func=ast.Name(id='range'),
-                                            args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],
-                                            keywords=[]),
-                                        ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
-                                        ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
-                                    keywords=[]),
-                               body=[ast.Expr(node.test),] + node.body, orelse=[])
+                           iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='partition'),
+                                         args=[
+                               ast.Call(func=ast.Name(id='range'),
+                                        args=[ast.Call(func=ast.Attribute(value=ast.Name(
+                                            id='flor'), attr='get_epochs'), args=[], keywords=[])],
+                                        keywords=[]),
+                               ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
+                               ast.Attribute(value=ast.Name(id='flor'), attr='NPARTS')],
+                keywords=[]),
+                body=[ast.Expr(node.test), ] + node.body, orelse=[])
         return node
-
 
     def visit_Call(self, node):
         src = astor.to_source(node)
         if 'flor.skip_stack.new' in astor.to_source(node.func).strip():
             if (len(node.args) > 0
                 and isinstance(node.args[0], ast.Num)
-                and node.args[0].n == self.outermost_sk):
+                    and node.args[0].n == self.outermost_sk):
                 self.enabled = True
         return node
+
 
 class SampleTransformer(PartitionTransformer):
 
     def visit_For(self, node):
         if self.enabled:
             node = ast.For(target=ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
-                    iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='sample'), args=[node.iter, ast.Attribute(value=ast.Name(id='flor'), attr='RATE')], keywords=[]),
-                    body=[super().visit_For(node),],
-                    orelse=[])
+                           iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='sample'), args=[
+                                         node.iter, ast.Attribute(value=ast.Name(id='flor'), attr='RATE')], keywords=[]),
+                           body=[super().visit_For(node), ],
+                           orelse=[])
         return node
 
     def visit_While(self, node):
@@ -244,8 +278,9 @@ class SampleTransformer(PartitionTransformer):
             node = ast.For(target=ast.Attribute(value=ast.Name(id='flor'), attr='PID'),
                            iter=ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='sample'),
                                          args=[ast.Call(func=ast.Name(id='range'),
-                                                args=[ast.Call(func=ast.Attribute(value=ast.Name(id='flor'), attr='get_epochs'), args=[], keywords=[])],
-                                                keywords=[]),
+                                                        args=[ast.Call(func=ast.Attribute(value=ast.Name(
+                                                            id='flor'), attr='get_epochs'), args=[], keywords=[])],
+                                                        keywords=[]),
                                                ast.Attribute(value=ast.Name(id='flor'), attr='RATE')], keywords=[]),
                            body=[super().visit_While(node), ],
                            orelse=[])

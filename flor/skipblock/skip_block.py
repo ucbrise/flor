@@ -135,6 +135,7 @@ class SkipBlock:
                 loop_time = self.end_time - self.start_time
                 write_time = tiempo
                 ratio = loop_time / write_time
+                print("\n" + f"static_key: {self.static_key}, ratio: {ratio}" + "\n")
                 SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
                 if self.top_nested_level:
                     SkipBlock.acc_ratios.append(ratio)
