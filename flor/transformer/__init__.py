@@ -4,6 +4,7 @@ from flor.transformer.utils import set_intersection, set_union, node_in_nodes
 import copy
 import astor
 import os
+import flor
 from yapf.yapflib.yapf_api import FormatCode
 
 
@@ -27,8 +28,9 @@ class Transformer(ast.NodeTransformer):
             new_contents = transformer.add_imports(new_contents)
             new_contents = transformer.add_exports(new_contents)
             new_contents = astor.to_source(new_contents)
+            yapf_config_path = os.path.join(os.path.dirname(flor.__file__), 'common/style.yapf')
             new_contents_formatted = FormatCode(
-                new_contents, style_config=os.path.abspath('flor/flor/common/style.yapf'))[0]
+                new_contents, style_config=yapf_config_path)[0]
             new_filepath, ext = os.path.splitext(filepath)
             new_filepath += '_transformed' + ext
             with open(new_filepath, 'w') as f:
