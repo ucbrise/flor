@@ -1,9 +1,8 @@
 import ast
 from copy import deepcopy
 
-
-class False_Break(ValueError): pass  # Dummy exception used by node_eq
-
+class False_Break(ValueError):
+    pass  # Dummy exception used by node_eq
 
 def node_eq(node1, node2):
     """

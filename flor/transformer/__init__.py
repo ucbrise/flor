@@ -1,11 +1,10 @@
 from flor.transformer.visitors import get_change_and_read_set, LoadStoreDetector, StatementCounter
 from flor.transformer.code_gen import *
 from flor.transformer.utils import set_intersection, set_union, node_in_nodes
+from flor.utils import format_code
 import copy
 import astor
 import os
-import flor
-from yapf.yapflib.yapf_api import FormatCode
 
 
 class Transformer(ast.NodeTransformer):
@@ -28,9 +27,7 @@ class Transformer(ast.NodeTransformer):
             new_contents = transformer.add_imports(new_contents)
             new_contents = transformer.add_exports(new_contents)
             new_contents = astor.to_source(new_contents)
-            yapf_config_path = os.path.join(os.path.dirname(flor.__file__), 'common/style.yapf')
-            new_contents_formatted = FormatCode(
-                new_contents, style_config=yapf_config_path)[0]
+            new_contents_formatted = format_code(new_contents)
             new_filepath, ext = os.path.splitext(filepath)
             new_filepath += '_transformed' + ext
             with open(new_filepath, 'w') as f:
@@ -220,9 +217,10 @@ class PartitionTransformer(ast.NodeTransformer):
             if not transformer.transformed:
                 continue
             new_contents = astor.to_source(new_contents)
+            new_contents_formatted = format_code(new_contents)
             with open(filepath, 'w') as f:
-                f.write(new_contents)
-            print(f"rewrote {filepath}")
+                f.write(new_contents_formatted)
+            print(f"Transformed and overwritten {filepath}")
 
     def visit_For(self, node):
         if self.enabled:
