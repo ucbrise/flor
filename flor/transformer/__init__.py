@@ -85,6 +85,7 @@ class Transformer(ast.NodeTransformer):
         new_node = self.generic_visit(node)
 
         if not memoization_set:
+            #TODO: should probably raise a RefuseTransformError
             return new_node
 
         underscored_memoization_set = []
