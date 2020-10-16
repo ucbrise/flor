@@ -1,4 +1,0 @@
-#!/usr/bin/env zsh
-rm -rf build/ dist/
-python setup.py bdist_wheel
-python -m twine upload dist/*
