@@ -24,14 +24,6 @@ Hindsight logging is an optimistic logging practice favored by agile model devel
 4. An instrumentation library.
 
 
-# How do I use FLOR?
-
-https://flor.readthedocs.io/
-
-
-
-
-
 
 ## License
 Flor is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
