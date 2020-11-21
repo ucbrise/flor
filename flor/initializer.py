@@ -80,7 +80,9 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
         ngpus = int(ngpus)
         assert pid < ngpus
         flor.PID = pid
+        flags.PID = pid
         flor.NPARTS = ngpus
+        flags.NPARTS = ngpus
 
     if rate is not None:
         # initialize some global variables for sampling

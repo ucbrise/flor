@@ -8,6 +8,9 @@ MEMO_PATH = None
 PRED_INIT_MODE = None # Predecessor Initialization Mode: for Parallel/Sampling replay
 PSEUDORESUMING = False
 
+PID = None
+NPARTS = None
+
 # For Adaptive Checkpointing
 iterations_count = 0
 period = -1

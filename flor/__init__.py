@@ -4,7 +4,7 @@ from flor.constants import *
 from flor.initializer import initialize, is_initialized
 import flor.utils as utils
 from flor.transformer import Transformer
-# import flor.spooler as spooler
+from flor.parallelizer import partition as part
 
 import torch
 from torch import cuda
@@ -102,10 +102,18 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
 
     initialize(**user_settings)
 
-
 def it(iterator):
-    for each in iterator:
-        yield each
+    assert is_initialized(), "Please initialize flor first"
+    from . import stateful as flags
+    if flags.MODE is REEXEC:
+        for each in part(iterator, flags.PID, flags.NPARTS):
+            yield each
+    else:
+        for each in iterator:
+            yield each
+    from flor.writer import flush
+    if flags.MODE is EXEC:
+        flush()
 
 __all__ = ['pin_state',
            'random_seed',
