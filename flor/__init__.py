@@ -102,16 +102,29 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
 
     initialize(**user_settings)
 
-def it(iterator):
+def it(iterator_or_predicate):
     assert is_initialized(), "Please initialize flor first"
     from . import stateful as flags
-    if flags.MODE is REEXEC and flags.PID is not None:
-        assert flags.NPARTS is not None
-        for each in part(iterator, flags.PID, flags.NPARTS):
-            yield each
+
+    if isinstance(iterator_or_predicate, bool):
+        predicate = iterator_or_predicate
+        if flags.MODE is REEXEC and flags.PID is not None:
+            assert flags.NPARTS is not None
+            assert flags.iterations_count >= 0
+            for _ in part(range(flags.iterations_count), flags.PID, flags.NPARTS):
+                yield True
+            return False
+        else:
+            return predicate
     else:
-        for each in iterator:
-            yield each
+        iterator = iterator_or_predicate
+        if flags.MODE is REEXEC and flags.PID is not None:
+            assert flags.NPARTS is not None
+            for each in part(iterator, flags.PID, flags.NPARTS):
+                yield each
+        else:
+            for each in iterator:
+                yield each
     from flor.writer import flush
     if flags.MODE is EXEC:
         flush()

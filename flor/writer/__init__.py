@@ -6,6 +6,8 @@ import json
 from flor.constants import *
 from .. import stateful as flags
 from torch import cuda
+import shutil
+import glob
 
 
 class Writer:
@@ -20,7 +22,6 @@ class Writer:
     initialized = False
     pickler = cloudpickle
     stateful_adaptive_ext = None
-
 
     @staticmethod
     def initialize():
@@ -149,6 +150,16 @@ class Writer:
             os.wait()
         except:
             pass
+        our_indices = [x for x in glob.glob(os.path.join(os.path.dirname(flags.LOG_PATH.absolute), '*'))
+                       if len(os.path.basename(x).split('.')) >= 3]
+        our_indices.sort()
+        with open(flags.LOG_PATH.absolute, 'wb') as wfd:
+            for f in our_indices:
+                with open(f, 'rb') as fd:
+                    shutil.copyfileobj(fd, wfd)
+                os.remove(f)
+        shutil.copy2(flags.LOG_PATH.absolute, os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json'))
+
 
     @staticmethod
     def store(obj, static_key, global_key):
