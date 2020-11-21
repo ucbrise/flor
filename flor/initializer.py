@@ -8,7 +8,7 @@ from datetime import datetime
 import flor.utils as utils
 
 
-def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak', pid=None, ngpus=None, rate=None):
+def initialize(name, mode='exec', memo='latest.json', maxb=None, rd=None, predinit='weak', pid=None, ngpus=None, rate=None):
     """
     Flor won't work properly unless these values are set correctly
     :param name:
