@@ -158,7 +158,10 @@ class Writer:
                 with open(f, 'rb') as fd:
                     shutil.copyfileobj(fd, wfd)
                 os.remove(f)
-        shutil.copy2(flags.LOG_PATH.absolute, os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json'))
+        latest_path = os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json')
+        if os.path.exists(latest_path):
+            os.remove(latest_path)
+        os.symlink(flags.LOG_PATH.absolute, os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json'))
 
 
     @staticmethod

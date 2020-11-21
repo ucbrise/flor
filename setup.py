@@ -17,7 +17,6 @@ setuptools.setup(
      long_description_content_type="text/markdown",
      url="https://github.com/ucbrise/flor",
      packages=['flor',
-               'flor.logger',
                'flor.transformer',
                'flor.skipblock'],
      install_requires = requirements,
