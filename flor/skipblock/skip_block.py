@@ -47,6 +47,10 @@ class SkipBlock:
     acc_ratios = {}
     # Some of this state is moved to STATEFUL to avoid circular dependencies
 
+    # Added for Expert mode pending refactor
+    global_key = 0
+    stack = []
+
     def __init__(self, static_key, global_key=None):
         """
         """
@@ -73,6 +77,21 @@ class SkipBlock:
         SkipBlock.nesting_level += 1
 
         self.start_time = time.time()
+
+    @classmethod
+    def step_into(cls, cond=True, uid=0):
+        cond = state.MODE is EXEC or (not state.PSEUDORESUMING and cond)
+        skipblock = cls(uid, cls.global_key)
+        pred = skipblock.should_execute(cond)
+        cls.global_key += 1
+        SkipBlock.stack.append(skipblock)
+        return pred
+
+    @classmethod
+    def end(cls, *args):
+        skipblock = cls.stack.pop()
+        skipblock.proc_side_effects(*args)
+
 
     @property
     def top_nested_level(self):

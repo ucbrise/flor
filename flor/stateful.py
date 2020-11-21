@@ -6,6 +6,7 @@ LOG_PATH = None
 LOG_DATA_PATH = None
 MEMO_PATH = None
 PRED_INIT_MODE = None # Predecessor Initialization Mode: for Parallel/Sampling replay
+PSEUDORESUMING = False
 
 # For Adaptive Checkpointing
 iterations_count = 0

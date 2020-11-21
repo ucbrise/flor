@@ -11,6 +11,7 @@ def partition(iterator, partition_id, num_partitions):
         # This method is pass through on exec
         return iterator
     assert partition_id >= 0 and partition_id < num_partitions
+    stateful.PSEUDORESUMING = True
     partition_id = int(partition_id)
     SkipBlock.parallel = True
 
@@ -64,6 +65,7 @@ def partition(iterator, partition_id, num_partitions):
 
     import flor
     flor.SKIP = False
+    stateful.PSEUDORESUMING = False
 
     for epoch in our_epochs:
         print(f"Executing epoch {epoch}")

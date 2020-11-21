@@ -103,6 +103,9 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
     initialize(**user_settings)
 
 
+def it(iterator):
+    for each in iterator:
+        yield each
 
 __all__ = ['pin_state',
            'random_seed',
