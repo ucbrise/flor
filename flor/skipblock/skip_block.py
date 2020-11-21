@@ -90,7 +90,7 @@ class SkipBlock:
     @classmethod
     def end(cls, *args):
         skipblock = cls.stack.pop()
-        skipblock.proc_side_effects(*args)
+        return skipblock.proc_side_effects(*args)
 
 
     @property
