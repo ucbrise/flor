@@ -116,7 +116,8 @@ class Writer:
 
     @staticmethod
     def forked_write():
-        cuda.synchronize()
+        if cuda.is_available():
+            cuda.synchronize()
         pid = os.fork()
         if not pid:
             path = flags.LOG_PATH.absolute.split('.')

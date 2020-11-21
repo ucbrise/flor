@@ -79,8 +79,8 @@ class SkipBlock:
         self.start_time = time.time()
 
     @classmethod
-    def step_into(cls, cond=True, uid=0):
-        cond = state.MODE is EXEC or (not state.PSEUDORESUMING and cond)
+    def step_into(cls, probed=False, uid=0):
+        cond = state.MODE is EXEC or (not state.PSEUDORESUMING and probed)
         skipblock = cls(uid, cls.global_key)
         pred = skipblock.should_execute(cond)
         cls.global_key += 1
@@ -277,7 +277,8 @@ class SkipBlock:
                 Writer.store(str(l), self.static_key, self.global_key)
                 Writer.store(k, self.static_key, self.global_key)
                 Writer.store(deepcopy_cpu(v.state_dict()), self.static_key, self.global_key)
-        cuda.synchronize()
+        if cuda.is_available():
+            cuda.synchronize()
 
     def _load_side_effects(self):
         """

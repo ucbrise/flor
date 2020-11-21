@@ -100,7 +100,7 @@ def initialize(name, mode='exec', memo=None, maxb=None, rd=None, predinit='weak'
         assert flags.pretraining == "False" or flags.pretraining == "True"
         flags.pretraining = flags.pretraining == "True"
         assert flags.pretraining or flags.PRED_INIT_MODE is WEAK, "Cannot use Strong initialization with Funetuning runs because checkpoints are sparse"
-        flags.outermost_sk = int(log_record['outermost_sk'])
+        flags.outermost_sk = log_record['outermost_sk']
         flags.iterations_count =  int(log_record['iterations_count'])
         assert flags.pretraining or flags.period > 0
 

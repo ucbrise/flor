@@ -105,7 +105,8 @@ if [each for each in sys.argv if '--flor' == each[0:len('--flor')]]:
 def it(iterator):
     assert is_initialized(), "Please initialize flor first"
     from . import stateful as flags
-    if flags.MODE is REEXEC:
+    if flags.MODE is REEXEC and flags.PID is not None:
+        assert flags.NPARTS is not None
         for each in part(iterator, flags.PID, flags.NPARTS):
             yield each
     else:
