@@ -98,7 +98,7 @@ def main():
 
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             finish_episode()
-        flor.SkipBlock.end(running_reward, state, ep_reward)
+        running_reward, state, ep_reward = flor.SkipBlock.end(running_reward, state, ep_reward)
 
         if i_episode % args.log_interval == 0:
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(

@@ -272,3 +272,5 @@ for epoch in flor.it(range(opt.niter)):
             if opt.dry_run:
                 break
     flor.SkipBlock.end(netG, netD, optimizerG, optimizerD)
+
+flor.flush()
