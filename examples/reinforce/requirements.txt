@@ -1,4 +1,3 @@
 torch
 numpy
 gym
-flor
