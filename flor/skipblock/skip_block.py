@@ -87,6 +87,8 @@ class SkipBlock:
         SkipBlock.stack.append(skipblock)
         return pred
 
+    start = step_into
+
     @classmethod
     def end(cls, *args):
         skipblock = cls.stack.pop()

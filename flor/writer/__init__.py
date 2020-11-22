@@ -8,6 +8,7 @@ from .. import stateful as flags
 from torch import cuda
 import shutil
 import glob
+import re
 
 
 class Writer:
@@ -150,10 +151,9 @@ class Writer:
             os.wait()
         except:
             pass
-        our_indices = [x for x in glob.glob(os.path.join(os.path.dirname(flags.LOG_PATH.absolute), '*'))
-                       if len(os.path.basename(x).split('.')) >= 3]
-        our_indices.sort()
-        with open(flags.LOG_PATH.absolute, 'wb') as wfd:
+        our_indices = glob.glob(flags.LOG_PATH.absolute.split('.json')[0] + '.*.json')
+        our_indices.sort(key=lambda x: int(re.findall(r"\.(\d+)\.json", x)[0]))
+        with open(flags.LOG_PATH.absolute, 'ab') as wfd:
             for f in our_indices:
                 with open(f, 'rb') as fd:
                     shutil.copyfileobj(fd, wfd)
@@ -161,7 +161,7 @@ class Writer:
         latest_path = os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json')
         if os.path.exists(latest_path):
             os.remove(latest_path)
-        os.symlink(flags.LOG_PATH.absolute, os.path.join(os.path.dirname(flags.LOG_PATH.absolute), 'latest.json'))
+        os.symlink(flags.LOG_PATH.absolute, latest_path)
 
 
     @staticmethod
