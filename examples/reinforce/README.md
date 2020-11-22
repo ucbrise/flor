@@ -15,5 +15,5 @@ python reinforce.py --flor=name:reinforce_cartpole
 ##### Replay
 
 ```shell
-python reinforce.py --flor=name:reinforce_cartpole,mode:reexec,memo:latest.json
+python reinforce.py --flor=name:reinforce_cartpole,mode:reexec
 ```

@@ -24,7 +24,7 @@ python main.py --cuda --dataset cifar10 --dataroot ~/data --flor=name:dcgan_cifa
 ##### Replay
 
 ```shell
-python main.py --cuda --dataset cifar10 --dataroot ~/data --flor=name:dcgan_cifar10,mode:reexec,memo:latest.json
+python main.py --cuda --dataset cifar10 --dataroot ~/data --flor=name:dcgan_cifar10,mode:reexec
 ```
 
 ## Usage
@@ -40,7 +40,7 @@ required arguments:
   --dataset DATASET     cifar10 | lsun | mnist |imagenet | folder | lfw | fake
 
 optional arguments:
-  -h, --help            show this help message and exit  
+  -h, --help            show this help message and exit
   --dataroot DATAROOT   path to dataset
   --workers WORKERS     number of data loading workers
   --batchSize BATCHSIZE input batch size
