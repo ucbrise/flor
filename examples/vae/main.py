@@ -130,6 +130,9 @@ def test(epoch):
     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 if __name__ == "__main__":
+    if not os.path.exists('results'):
+        os.mkdir('results')
+
     for epoch in flor.it(range(1, args.epochs + 1)):
         train(epoch)
         test(epoch)
