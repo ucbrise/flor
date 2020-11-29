@@ -17,7 +17,7 @@ Model developers log training metrics such as the loss and accuracy by default,
 and selectively restore additional training data --- like tensor histograms, images, and overlays --- post-hoc, 
 if and when there is evidence of a problem. 
 
-FLOR is software developer for research purposes, 
+FLOR is software developed at UC Berkeley's RISE Lab, 
 and is being released as part of an accompanying [VLDB](https://vldb.org/2021/) publication.
 
 # Installation
