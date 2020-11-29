@@ -12,19 +12,27 @@ class Transformer(ast.NodeTransformer):
         pass
 
     @staticmethod
-    def transform(filepaths):
+    def transform(filepaths, inplace=False, root_script=None):
 
         if not isinstance(filepaths, list):
+            root_script = filepaths
             filepaths = [filepaths,]
+        elif len(filepaths) == 1:
+            root_script = filepaths[0]
 
         for filepath in filepaths:
             with open(filepath, 'r') as f:
                 contents = f.read()
             transformer = Transformer()
             new_contents = transformer.visit(ast.parse(contents))
+            new_contents.body.insert(0, ast.Import(names=[ast.alias('flor', asname=None)]))
+            if root_script and os.path.samefile(filepath, root_script):
+                new_contents.body.append(ast.If(test=ast.UnaryOp(op=ast.Not(), operand=ast.Attribute(value=ast.Name('flor'), attr='SKIP')),
+                                                body=[ast.Expr(value=ast.Call(func=ast.Attribute(value=ast.Name('flor'), attr='flush'),
+                                                                              args=[], keywords=[]))], orelse=[]))
             new_contents = astor.to_source(new_contents)
             new_filepath, ext = os.path.splitext(filepath)
-            new_filepath += '_transformed' + ext
+            new_filepath += ('_transformed' if not inplace else '') + ext
             with open(new_filepath, 'w') as f:
                 f.write(new_contents)
             print(f"wrote {new_filepath}")

@@ -88,6 +88,7 @@ def make_cond_block():
                 )
             )
     safe_arg = ast.NameConstant(value=True)
+    safe_arg = previous_arg
 
     return ast.If(
         test=ast.Call(
