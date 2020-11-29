@@ -45,7 +45,7 @@ FLOR includes utilities for spooling its checkpoints to [S3](https://aws.amazon.
 
 # Preparing your Training Script
 
-```pythonstub
+```python
 import flor
 for epoch in flor.it(range(...)):
     ...
@@ -55,7 +55,7 @@ First, wrap the iterator of the main loop with FLOR's generator: ``flor.it``.
 The generator enables FLOR to parallelize replay of the main loop,
 and to jump to an arbitrary epoch for data recovery.
 
-```pythonstub
+```python
 import flor
 import torch
 
@@ -111,7 +111,7 @@ associates the checkpoints as versions of the same experiment.
 
 # Hindsight Logging
 
-```pythonstub
+```python
 import flor
 import torch
 
@@ -144,7 +144,7 @@ In our example, FLOR will compute your confusion matrix
 and automatically skip the nested training loop 
 by loading its checkpoints.
 
-```pythonstub
+```python
 import flor
 import torch
 
