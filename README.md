@@ -189,4 +189,4 @@ Suppose you want to run the tenth epoch of a training job that ran for 200 epoch
 We provide additional examples in the ``examples`` directory. A good starting point is ``linear.py``. 
 
 ## License
-Flor is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
+FLOR is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
