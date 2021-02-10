@@ -48,7 +48,7 @@ class Writer:
                     if 'source' in log_record:
                         if log_record['source'] == 'pin_state':
                             Writer.pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
-                        elif log_record['source'] == '  random_seed':
+                        elif log_record['source'] == 'random_seed':
                             Writer.seeds.append(log_record['seed'])
                         elif log_record['source'] == 'store':
                             # THIS IS FILENAME, directory (tensorflow saved_model), LBRACK, or ERROR
