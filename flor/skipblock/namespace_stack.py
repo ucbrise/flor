@@ -10,7 +10,9 @@ class NamespaceStack:
     TODO: We've temporarily overfit to PyTorch for agility
     """
 
-    stack = [{}, ]
+    stack = [
+        {},
+    ]
 
     @staticmethod
     def new():
@@ -53,5 +55,3 @@ class NamespaceStack:
     @staticmethod
     def is_comparable(o):
         return isinstance(o, (nn.Module, optim.Optimizer))
-
-

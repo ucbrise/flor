@@ -1,21 +1,22 @@
 from flor.writer import Writer
 from flor.skipblock.namespace_stack import NamespaceStack
 from flor.constants import *
-from flor.utils import deepcopy_cpu
+from flor.utils import deepcopy_cpu, get_dir_size
 
 from .. import stateful as state
 
 from types import ModuleType
 from torch import cuda
+import tensorflow as tf
 import copy
 import io
 import time
 
-
-CUMULATIVE_RATIO_TOLERANCE= 100
+CUMULATIVE_RATIO_TOLERANCE = 100
 CUTOFF_RATIO = 15
 # AVG Write Throughout for P3.8xLarge with Batched Background Materialization
 BYTES_PER_SEC = 150627795
+
 
 class SkipBlock:
     """
@@ -29,7 +30,7 @@ class SkipBlock:
     *args = block.proc_side_effects()
     """
 
-    #TODO: Refactoring move much of this state to the skipstack
+    # TODO: Refactoring move much of this state to the skipstack
 
     # FOR RETRAIN
     parallel = False
@@ -94,7 +95,6 @@ class SkipBlock:
         skipblock = cls.stack.pop()
         return skipblock.proc_side_effects(*args)
 
-
     @property
     def top_nested_level(self):
         """
@@ -130,27 +130,29 @@ class SkipBlock:
         self.end_time = time.time()
         SkipBlock.nesting_level -= 1
         assert SkipBlock.nesting_level >= 0
-        assert not self.args or not args                # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
-        assert self.args or args                        # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
-        assert not self.proc_side_effects_called        # You don't call proc_side_effects twice on the same SkipBlock.
+        assert not self.args or not args  # The caller does not register_side_effects and proc_side_effects, maybe remove with refactor
+        assert self.args or args  # The caller registers_side_effects xor proc_side_effects. We just want to make sure that by this point we have state to proc
+        assert not self.proc_side_effects_called  # You don't call proc_side_effects twice on the same SkipBlock.
         self.proc_side_effects_called = True
 
         if args:
-            self.args = args                            # Refer to self.args from now on
+            self.args = args  # Refer to self.args from now on
 
         # Filter out ModuleTypes (torch.cuda) so we don't proc-them
         # We use this solution so we don't disrupt the Writer or the Logs
         filtered_args = [arg for arg in self.args if not isinstance(arg, ModuleType)]
 
-        args = self.args                            # Store for later restore
+        args = self.args  # Store for later restore
         self.args = filtered_args
 
         def is_object(a):
-            return all([not isinstance(a, list),
-            not isinstance(a, dict),
-            not isinstance(a, ModuleType),
-            not hasattr(a, 'state_dict'),   # This is a pytorch object, handled separately.
-            hasattr(a, '__dict__')])
+            return all([
+                not isinstance(a, list),
+                not isinstance(a, dict),
+                not isinstance(a, ModuleType),
+                not hasattr(a, 'state_dict'),  # This is a pytorch object, handled separately.
+                hasattr(a, '__dict__')
+            ])
 
         if state.MODE is EXEC:
             # Code ran so we need to store the side-effects
@@ -162,7 +164,8 @@ class SkipBlock:
                 ratio = loop_time / write_time
                 SkipBlock.skipblock_decisions[self.static_key] = ratio >= CUTOFF_RATIO
                 SkipBlock.acc_ratios[loop_time] = max(SkipBlock.acc_ratios.get(loop_time, -float('inf')), ratio)
-            if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled and self.top_nested_level):
+            if SkipBlock.skipblock_decisions[self.static_key] or (not state.pretraining and self.period_enabled
+                                                                  and self.top_nested_level):
                 self._store_side_effects()
             else:
                 # This helps us garbage collect unmatched LBRACKETS
@@ -229,8 +232,17 @@ class SkipBlock:
                         pickle.dump(arg.cpu(), f)
                         size_in_bytes += f.tell()
                     else:
-                        pickle.dump(arg, f)
-                        size_in_bytes += f.tell()
+                        try:
+                            if isinstance(arg, tf.Module):
+                                p_abs, p_rel = Writer._gen_unique_dir()
+                                tf.saved_model.save(arg, p_abs)
+                                size_in_bytes += get_dir_size(p_abs)
+                            else:
+                                pickle.dump(arg, f)
+                                size_in_bytes += f.tell()
+                        except Exception as e:
+                            print(f'Cannot get size for adaptive checkpointing, {e}')
+
         # Enter a separator
         # If I should materialize a node in a group, materialize the entire group (forced)
         if materialize_additionals:
@@ -239,7 +251,6 @@ class SkipBlock:
                 pickle.dump(v.state_dict(), f)
                 size_in_bytes += f.tell()
         return size_in_bytes, time.time() - start_time
-
 
     def _store_side_effects(self):
         """
@@ -267,7 +278,9 @@ class SkipBlock:
                     Writer.store(deepcopy_cpu(arg.state_dict()), self.static_key, self.global_key)
                 else:
                     # Not state_dict()
-                    if hasattr(arg, 'cpu'):
+                    if isinstance(arg, tf.Module):
+                        Writer.store(arg, self.static_key, self.global_key)
+                    elif hasattr(arg, 'cpu'):
                         Writer.store(arg.cpu(), self.static_key, self.global_key)
                     else:
                         Writer.store(copy.deepcopy(arg), self.static_key, self.global_key)
@@ -289,7 +302,7 @@ class SkipBlock:
         # Global key is dynamic
         # Packed state is an array of serialized values
         # The logic for interpreting and organizing them is hard-coded here
-        packed_state = Writer.load(self.global_key) # [BLOB, BLOB, ..., SEPARATOR, ..., BLOB]
+        packed_state = Writer.load(self.global_key)  # [BLOB, BLOB, ..., SEPARATOR, ..., BLOB]
 
         # Remember from _store_side_effects that the order is
         # state from self.args SEPARATOR state from forced

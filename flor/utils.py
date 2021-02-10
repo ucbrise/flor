@@ -15,6 +15,18 @@ class PATH:
             self.absolute = os.path.join(os.path.abspath(root_path), path_from_home)
 
 
+def get_dir_size(start_path='.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
+
+
 def cond_mkdir(path):
     """
     Mkdir if not exists
@@ -50,6 +62,7 @@ def fprint(dir_tree_list, device_id):
 
     return write
 
+
 def get_partitions(num_epochs, num_partitions, pretraining, period):
     # Roundrobin allocation with pipelining
     assert num_partitions <= num_epochs
@@ -72,14 +85,14 @@ def get_partitions(num_epochs, num_partitions, pretraining, period):
     else:
         range_regions = []
         i = 0
-        while i*period < num_epochs:
-            start = i*period
-            stop = min((i+1)*period, num_epochs)
+        while i * period < num_epochs:
+            start = i * period
+            stop = min((i + 1) * period, num_epochs)
             range_regions.append(range(start, stop))
-            i+=1
+            i += 1
         partitions = [[] for _ in range(num_partitions)]
         for range_element in range(len(range_regions)):
-            #roundrobin work allocation, early epochs first
+            # roundrobin work allocation, early epochs first
             partitions[range_element % num_partitions].append(-1)
         for j in range(num_partitions):
             for k in range(len(partitions[j])):
@@ -90,11 +103,7 @@ def get_partitions(num_epochs, num_partitions, pretraining, period):
             return partitions
         else:
             # For when you sample a Fine-tuning run with sparse checkpoints
-            return [range(p.start, s+1) for p in partitions for s in p]
-
-
-
-
+            return [range(p.start, s + 1) for p in partitions for s in p]
 
 
 def deepcopy_cpu(x):

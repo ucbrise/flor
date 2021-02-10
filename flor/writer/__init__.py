@@ -6,6 +6,7 @@ import json
 from flor.constants import *
 from .. import stateful as flags
 from torch import cuda
+import tensorflow as tf
 import shutil
 import glob
 import re
@@ -25,6 +26,16 @@ class Writer:
     stateful_adaptive_ext = None
 
     @staticmethod
+    def _gen_unique_dir():
+        p = uuid.uuid4().hex
+        p_abs = os.path.join(flags.LOG_DATA_PATH.absolute, p)
+        while os.path.exists(p_abs):
+            p = uuid.uuid4().hex
+            p_abs = os.path.join(flags.LOG_DATA_PATH.absolute, p)
+        p_rel = os.path.join(flags.LOG_DATA_PATH.squiggles, p)
+        return p_abs, p_rel
+
+    @staticmethod
     def initialize():
         Writer.initialized = True
         if flags.MODE is EXEC:
@@ -37,10 +48,10 @@ class Writer:
                     if 'source' in log_record:
                         if log_record['source'] == 'pin_state':
                             Writer.pinned_state.append(log_record['state'])  # THIS IS JUST A FILENAME
-                        elif log_record['source'] == 'random_seed':
+                        elif log_record['source'] == '  random_seed':
                             Writer.seeds.append(log_record['seed'])
                         elif log_record['source'] == 'store':
-                            # THIS IS FILENAME, or LBRACK, or ERROR
+                            # THIS IS FILENAME, directory (tensorflow saved_model), LBRACK, or ERROR
                             Writer.store_load.append(
                                 (log_record['static_key'], log_record['global_key'], log_record['value']))
                             if log_record['value'] == 'RBRACKET':
@@ -84,6 +95,10 @@ class Writer:
 
     @staticmethod
     def serialize(obj):
+        """
+        :param obj: object to serialize
+        :return: path to serialized object
+        """
         try:
             Writer.serializing = True
 
@@ -108,9 +123,9 @@ class Writer:
             Writer.serializing = False
 
     @staticmethod
-    def write(obj):
-        obj['global_lsn'] = Writer.lsn
-        Writer.write_buffer.append(obj)
+    def write(obj_dict):
+        obj_dict['global_lsn'] = Writer.lsn
+        Writer.write_buffer.append(obj_dict)
         Writer.lsn += 1  # append to buffer and increment lsn
         if len(Writer.write_buffer) >= Writer.max_buffer:
             Writer.forked_write()  # if buffer exceeds a certain size, or fork_now is triggered
@@ -163,32 +178,22 @@ class Writer:
             os.remove(latest_path)
         os.symlink(flags.LOG_PATH.absolute, latest_path)
 
-
     @staticmethod
     def store(obj, static_key, global_key):
         # Store the object in the memo
         if obj is LBRACKET:
-            d = {
-                'source': 'store',
-                'static_key': static_key,
-                'global_key': global_key,
-                'value': 'LBRACKET'
-            }
+            d = {'source': 'store', 'static_key': static_key, 'global_key': global_key, 'value': 'LBRACKET'}
         elif obj is RBRACKET:
             # This helps us garbage collect unmatched LBRACKETS
-            d = {
-                'source': 'store',
-                'static_key': static_key,
-                'global_key': global_key,
-                'value': 'RBRACKET'
-            }
+            d = {'source': 'store', 'static_key': static_key, 'global_key': global_key, 'value': 'RBRACKET'}
         else:
-            d = {
-                'source': 'store',
-                'static_key': static_key,
-                'global_key': global_key,
-                'value': obj
-            }
+            # Otherwise
+            d = {'source': 'store', 'static_key': static_key, 'global_key': global_key, 'value': obj}
+            # TODO: Tensorflow
+            if isinstance(obj, tf.Module):
+                p_abs, p_rel = Writer._gen_unique_dir()
+                tf.saved_model.save(obj, p_abs)
+                d['value'] = p_rel
         Writer.write(d)
 
     @staticmethod
@@ -212,8 +217,13 @@ class Writer:
                 with open(path, 'rb') as f:
                     values.append(cloudpickle.load(f))
             else:
-                # Raw value
-                value = path
+                path = os.path.expanduser(path) if '~' in path[0:2] else os.path.abspath(path)
+                if os.path.exists(path) and os.path.isdir(path):
+                    # TODO: Tensorflow
+                    value = tf.saved_model.load(path)
+                else:
+                    # Raw value
+                    value = path
                 values.append(value)
 
         return values
@@ -230,14 +240,10 @@ class Writer:
     def pin_state(library):
         if flags.MODE is EXEC:
             if library is numpy:
-                d = {'source': 'pin_state',
-                     'library': 'numpy',
-                     'state': Writer.serialize(library.random.get_state())}
+                d = {'source': 'pin_state', 'library': 'numpy', 'state': Writer.serialize(library.random.get_state())}
                 Writer.write(d)
             elif library is random:
-                d = {'source': 'pin_state',
-                     'library': 'random',
-                     'state': Writer.serialize(library.getstate())}
+                d = {'source': 'pin_state', 'library': 'random', 'state': Writer.serialize(library.getstate())}
                 Writer.write(d)
             else:
                 raise RuntimeError("Library must be `numpy` or `random`, but `{}` was given".format(library.__name__))
@@ -260,11 +266,8 @@ class Writer:
             if args or kwargs:
                 seed = numpy.random.randint(*args, **kwargs)
             else:
-                seed = numpy.random.randint(0, 2 ** 32)
-            d = {
-                'source': 'random_seed',
-                'seed': seed
-            }
+                seed = numpy.random.randint(0, 2**32)
+            d = {'source': 'random_seed', 'seed': seed}
             Writer.write(d)
             return seed
         elif flags.MODE is REEXEC:
