@@ -53,7 +53,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 for epoch in flor.it(range(2)):
     running_loss = 0.0
-    if flor.SkipBlock.step_into(probed=False):
+    if flor.SkipBlock.step_into('training_loop'):
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
             optimizer.zero_grad()

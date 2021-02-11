@@ -1,3 +1,4 @@
+import flags
 from record import *
 from typing import Union, List
 from collections import OrderedDict
@@ -110,7 +111,7 @@ class Tree:
 
 class File:
     def __init__(self, path: str):
-        assert os.path.isfile(path)
+        assert not flags.REPLAY or os.path.isfile(path)
         self.path = path
         self.records: List[Union[DataRef, DataVal, Bracket, EOF]] = []
 
@@ -126,6 +127,8 @@ class File:
     def write(self):
         with open(self.path, 'w') as f:
             for log_record in self.records:
+                if isinstance(log_record, DataRef):
+                    log_record.set_ref_and_dump()
                 f.write(json.dumps(log_record.jsonify()) + os.linesep)
         self.records = []
 

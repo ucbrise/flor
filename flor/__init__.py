@@ -1,14 +1,11 @@
-from pathlib import Path
 import flags
+from interface import it, SkipBlock
+from pathlib import Path
 
-_p = Path.home()
-_p = _p / '.flor'
-_p.mkdir(exist_ok=True)
-del _p, Path
 
 flags.Parser.parse_name()
 flags.Parser.parse_replay()
 
 
-__all__ = ['flags']
+__all__ = ['flags', 'it', 'SkipBlock']
 

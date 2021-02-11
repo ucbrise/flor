@@ -1,3 +1,5 @@
+import florin
+
 import os
 import cloudpickle
 from typing import Union
@@ -86,10 +88,11 @@ class DataRef(Record):
         self.v = v
         self.ref = r
 
-    def set_ref_and_dump(self, path):
+    def set_ref_and_dump(self):
         """
         The caller is responsible for serializing val into ref
         """
+        path = florin.get_pkl_ref()
         self.ref = path
         with open(path, 'wb') as f:
             cloudpickle.dump(self.v, f)
@@ -237,6 +240,6 @@ def make_record(json_dict: dict) -> Union[DataRef, DataVal, Bracket, EOF]:
             return DataRef.cons(json_dict)
 
 
-
-__all__ = ['DataRef', 'DataVal', 'Bracket', 'EOF', 'make_record',
+__all__ = ['DataRef', 'DataVal',
+           'Bracket', 'EOF', 'make_record',
            'LBRACKET', 'RBRACKET']

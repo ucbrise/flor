@@ -282,7 +282,7 @@ def _keep_alive(x, memo):
     the memo itself...
     """
     try:
-        memo[id(memo)].buffer(x)
+        memo[id(memo)].append(x)
     except KeyError:
         # aha, this is the first one :-)
         memo[id(memo)] = [x]
@@ -318,10 +318,10 @@ def _reconstruct(x, memo, func, args,
         if deep:
             for item in listiter:
                 item = deepcopy(item, memo)
-                y.buffer(item)
+                y.append(item)
         else:
             for item in listiter:
-                y.buffer(item)
+                y.append(item)
     if dictiter is not None:
         if deep:
             for key, value in dictiter:
