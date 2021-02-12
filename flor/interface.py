@@ -27,7 +27,15 @@ def it(value: Union[Iterable, bool]):
                 yield each
             SkipBlock.LogFile.close()
     else:
-        pass
+        if isinstance(value, bool):
+            if not value:
+                # Clean up
+                ...
+            return value
+        else:
+            for each in value:
+                yield each
+            # Clean up
 
 
 def init(_nil=[]):

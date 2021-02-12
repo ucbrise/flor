@@ -61,6 +61,9 @@ class DataVal(Record):
         d[VAL] = self.value
         return d
 
+    def make_val(self):
+        ...
+
     @staticmethod
     def is_superclass(json_dict):
         assert bool(VAL in json_dict) != bool(REF in json_dict)
@@ -85,7 +88,7 @@ class DataRef(Record):
     def __init__(self, sk, gk, v=None, r=None):
         assert bool(v is not None) != bool(r is not None)
         super().__init__(sk, gk)
-        self.v = v
+        self.value = v
         self.ref = r
 
     def set_ref_and_dump(self):
@@ -95,12 +98,12 @@ class DataRef(Record):
         path = florin.get_pkl_ref()
         self.ref = path
         with open(path, 'wb') as f:
-            cloudpickle.dump(self.v, f)
-        del self.v
+            cloudpickle.dump(self.value, f)
+        del self.value
 
     def make_val(self):
         with open(self.ref, 'rb') as f:
-            self.v = cloudpickle.load(f)
+            self.value = cloudpickle.load(f)
 
     @staticmethod
     def is_left():
@@ -153,9 +156,11 @@ class Bracket(Metadata):
     """
     LEGAL_BRACKETS = [LBRACKET, RBRACKET]
 
-    def __init__(self, sk, gk, mode=None):
+    def __init__(self, sk, gk, mode=None, predicate=None, timestamp=None):
         assert mode in Bracket.LEGAL_BRACKETS
         super().__init__(sk, gk, mode)
+        self.predicate = predicate
+        self.timestamp = timestamp
 
     def is_left(self):
         return self.meta == LBRACKET

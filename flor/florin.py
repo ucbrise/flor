@@ -1,4 +1,4 @@
-import os
+import flags
 import uuid
 from pathlib import Path, PurePath
 from datetime import datetime
@@ -23,7 +23,9 @@ def mk_job(name: str):
 
 
 def get_index():
-    return job / PurePath(timestamp).with_suffix('.json')
+    return job / PurePath(
+        flags.INDEX if flags.REPLAY else timestamp
+    ).with_suffix('.json')
 
 
 def get_latest():

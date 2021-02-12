@@ -1,10 +1,12 @@
 import flags
+import florin
 from record import *
 from typing import Union, List
 from collections import OrderedDict
 
 import json
 import os
+
 
 
 class Block:
@@ -98,7 +100,8 @@ class Tree:
             if self.block.belongs_in_block(log_record):
                 self.block.feed_record(log_record)
             else:
-                assert self.block.parent is not None and self.block.parent.belongs_in_block(log_record)
+                assert self.block.parent is not None \
+                       and self.block.parent.belongs_in_block(log_record)
                 self.block = self.block.parent
                 self.block.feed_record(log_record)
         else:
@@ -107,6 +110,13 @@ class Tree:
             self.iterations_count = log_record.iterations_count
             self.period = log_record.period
             self.outermost_sk = log_record.outermost_sk
+
+
+def merge():
+    """
+    Stitch together parallel-written files
+    """
+    florin.get_latest().symlink_to(florin.get_index())
 
 
 class File:
@@ -138,16 +148,6 @@ class File:
             tree.feed_record(log_record)
         return tree
 
-    def merge(self):
-        """
-        Stitch together parallel-written files
-        """
-        ...
-
     def close(self):
         self.write()
-        self.merge()
-
-
-class EpochSeq:
-    pass
+        merge()

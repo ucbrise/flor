@@ -1,6 +1,5 @@
 import flags
 from interface import it, SkipBlock
-from pathlib import Path
 
 
 flags.Parser.parse_name()
