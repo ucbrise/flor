@@ -1,4 +1,3 @@
-import flags
 import florin
 from record import *
 from typing import Union, List
@@ -8,11 +7,13 @@ import json
 import os
 
 
-
 class Block:
     """
     Possibly belongs in separate file
     """
+
+    scaling_factor = 1.38
+
     def __init__(self, log_record: Bracket, parent=None):
         assert log_record.is_left()
 
@@ -24,6 +25,12 @@ class Block:
         self.global_key = log_record.gk
         self.data_records: List[Union[DataVal, DataRef]] = []
         self.right_fed = False
+
+        # Adaptive checkpointing
+        self.materialization_time = None
+        self.computation_time = None
+        self.executions_count = None
+        self.materializations_count = None
 
     def belongs_in_block(self, data_record: Union[DataVal, DataRef, Bracket]):
         assert data_record.is_right()
@@ -45,7 +52,7 @@ class Tree:
         """
         LBRACKET creates new Tree
         """
-        self.hash = dict()
+        self.hash = OrderedDict()
         self.block = None
 
         if log_record is not None:
@@ -112,6 +119,37 @@ class Tree:
             self.outermost_sk = log_record.outermost_sk
 
 
+def read():
+    with open(florin.get_index(), 'r') as f:
+        for line in f:
+            log_record = make_record(json.loads(line.strip()))
+            records.append(log_record)
+
+
+def feed_record(log_record: Union[DataRef, DataVal, Bracket, EOF]):
+    records.append(log_record)
+    TREE.feed_record(log_record)
+
+
+def write():
+    with open(florin.get_index(), 'w') as f:
+        for log_record in records:
+            if isinstance(log_record, DataRef):
+                log_record.set_ref_and_dump()
+            f.write(json.dumps(log_record.jsonify()) + os.linesep)
+    records[:] = []
+
+
+def parse():
+    for log_record in records:
+        TREE.feed_record(log_record)
+
+
+def close():
+    write()
+    merge()
+
+
 def merge():
     """
     Stitch together parallel-written files
@@ -119,35 +157,5 @@ def merge():
     florin.get_latest().symlink_to(florin.get_index())
 
 
-class File:
-    def __init__(self, path: str):
-        assert not flags.REPLAY or os.path.isfile(path)
-        self.path = path
-        self.records: List[Union[DataRef, DataVal, Bracket, EOF]] = []
-
-    def read(self):
-        with open(self.path, 'r') as f:
-            for line in f:
-                log_record = make_record(json.loads(line.strip()))
-                self.buffer(log_record)
-
-    def buffer(self, log_record: Union[DataRef, DataVal, Bracket, EOF]):
-        self.records.append(log_record)
-
-    def write(self):
-        with open(self.path, 'w') as f:
-            for log_record in self.records:
-                if isinstance(log_record, DataRef):
-                    log_record.set_ref_and_dump()
-                f.write(json.dumps(log_record.jsonify()) + os.linesep)
-        self.records = []
-
-    def parse(self) -> Tree:
-        tree = Tree(self.records[0])
-        for log_record in self.records[1:]:
-            tree.feed_record(log_record)
-        return tree
-
-    def close(self):
-        self.write()
-        merge()
+records: List[Union[DataRef, DataVal, Bracket, EOF]] = []
+TREE = Tree()

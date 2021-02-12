@@ -6,6 +6,7 @@ REPLAY = False
 INDEX = 'latest.json'
 MODE = 'weak'
 PID = (1, 1)
+EPSILON = 1/15
 
 
 def set_NAME(name: str):

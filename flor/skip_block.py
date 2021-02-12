@@ -2,10 +2,9 @@
 TODO: Add values (literals/atomics) support to SkipBlock.end()
 """
 import flags
-import florin
+import file
 from record import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 from copy import deepcopy
-from file import File
 
 import time
 from typing import List, Union
@@ -36,7 +35,7 @@ class WriteBlock(SeemBlock):
 
         lbracket = Bracket(block_name, dynamic_id, LBRACKET,
                            predicate=True, timestamp=time.time())
-        SkipBlock.LogFile.buffer(lbracket)
+        file.feed_record(lbracket)
         WriteBlock.pda.append(lbracket)
         return lbracket.predicate
 
@@ -46,11 +45,15 @@ class WriteBlock(SeemBlock):
         running_time = lbracket.timestamp - time.time()
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
-            SkipBlock.LogFile.buffer(rbracket)
+            file.feed_record(rbracket)
         else:
             for arg in args:
                 data_record = val_to_record(arg, lbracket)
-                SkipBlock.LogFile.buffer(data_record)
+                file.feed_record(data_record)
+
+
+def preserves_joint_invariant():
+    ...
 
 
 def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:
@@ -66,7 +69,6 @@ def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:
 class ReadBlock(SeemBlock):
     dynamic_identifiers = dict()
     pda: List[Bracket] = []
-    tree = None
 
     @staticmethod
     def step_into(block_name: str, probed=False):
@@ -81,7 +83,7 @@ class ReadBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
-        block = ReadBlock.tree.hash[lbracket.sk][lbracket.gk]
+        block = file.TREE.hash[lbracket.sk][lbracket.gk]
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()
@@ -106,8 +108,6 @@ class ReadBlock(SeemBlock):
 
 
 class SkipBlock(SeemBlock):
-    LogFile = None
-
     @staticmethod
     def step_into(block_name: str, probed=False):
         raise RuntimeError("SkipBlock missing dynamic linking")
@@ -118,15 +118,9 @@ class SkipBlock(SeemBlock):
 
     @staticmethod
     def bind():
-        SkipBlock.LogFile = File(florin.get_index())
-        if flags.REPLAY:
-            SkipBlock.step_into = ReadBlock.step_into
-            SkipBlock.end = ReadBlock.end
-            SkipBlock.LogFile.read()
-            ReadBlock.tree = SkipBlock.LogFile.parse()
-        else:
-            SkipBlock.step_into = WriteBlock.step_into
-            SkipBlock.end = WriteBlock.end
+        block = ReadBlock if flags.REPLAY else WriteBlock
+        SkipBlock.step_into = block.step_into
+        SkipBlock.end = block.end
 
 
 __all__ = ['SkipBlock']
