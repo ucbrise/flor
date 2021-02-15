@@ -8,12 +8,6 @@ import os
 
 
 class Block:
-    """
-    Possibly belongs in separate file
-    """
-
-    scaling_factor = 1.38
-
     def __init__(self, log_record: Bracket, parent=None):
         assert log_record.is_left()
 
@@ -29,8 +23,10 @@ class Block:
         # Adaptive checkpointing
         self.materialization_time = None
         self.computation_time = None
-        self.executions_count = None
-        self.materializations_count = None
+        self.executions_count = 0
+        self.materializations_count = 0
+
+        self.force_mat = False
 
     def belongs_in_block(self, data_record: Union[DataVal, DataRef, Bracket]):
         assert data_record.is_right()
@@ -45,14 +41,37 @@ class Block:
             # If it's not a RBRACKET then it's a data record
             self.data_records.append(data_record)
 
+    def tick_execution(self, t):
+        self.executions_count += 1
+        if self.computation_time is None:
+            self.computation_time = t
+
+    def should_time_mat(self):
+        assert self.executions_count > 0
+        return self.executions_count == 1
+
+    def tick_materialization(self):
+        self.materializations_count += 1
+
+    def set_mat_time(self, t):
+        if self.materialization_time is None:
+            self.materialization_time = t
+
+    def force_mat_successors(self):
+        assert self.parent is None
+        first_static_key = self.static_key
+        block = self.successor
+        while block is not None and block.static_key != first_static_key:
+            block.force_mat = True
+            block = block.successor
+
 
 class Tree:
-
     def __init__(self, log_record: Bracket = None):
         """
         LBRACKET creates new Tree
         """
-        self.hash = OrderedDict()
+        self.hash: OrderedDict[str, OrderedDict[int, Block]] = OrderedDict()
         self.block = None
 
         if log_record is not None:
@@ -62,10 +81,8 @@ class Tree:
 
         self.root = self.block
 
-        self.pre_training = None
-        self.iterations_count = None
-        self.period = None
-        self.outermost_sk = None
+        self.sparse_checkpoints = False
+        self.iterations_count = 0
 
     def _hash(self, block: Block):
         if block.static_key in self.hash:
@@ -113,10 +130,9 @@ class Tree:
                 self.block.feed_record(log_record)
         else:
             assert isinstance(log_record, EOF)
-            self.pre_training = log_record.pretraining
-            self.iterations_count = log_record.iterations_count
-            self.period = log_record.period
-            self.outermost_sk = log_record.outermost_sk
+
+        if log_record.is_left() and log_record.sk == self.root.static_key:
+            self.iterations_count += 1
 
 
 def read():
@@ -135,7 +151,7 @@ def write():
     with open(florin.get_index(), 'w') as f:
         for log_record in records:
             if isinstance(log_record, DataRef):
-                log_record.set_ref_and_dump()
+                log_record.set_ref_and_dump(florin.get_pkl_ref())
             f.write(json.dumps(log_record.jsonify()) + os.linesep)
     records[:] = []
 
@@ -146,6 +162,7 @@ def parse():
 
 
 def close():
+    feed_record(EOF(TREE.sparse_checkpoints, TREE.iterations_count))
     write()
     merge()
 
@@ -154,6 +171,8 @@ def merge():
     """
     Stitch together parallel-written files
     """
+    if florin.get_latest().exists():
+        florin.get_latest().unlink()
     florin.get_latest().symlink_to(florin.get_index())
 
 

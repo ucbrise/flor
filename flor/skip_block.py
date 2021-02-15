@@ -24,6 +24,7 @@ class SeemBlock(ABC):
 
 
 class WriteBlock(SeemBlock):
+    scaling_factor = 1.38
     dynamic_identifiers = dict()
     pda: List[Bracket] = []
 
@@ -42,18 +43,54 @@ class WriteBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = WriteBlock.pda.pop()
-        running_time = lbracket.timestamp - time.time()
+        block = file.TREE.hash[lbracket.sk][lbracket.gk]
+        block.tick_execution(lbracket.timestamp - time.time())
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
             file.feed_record(rbracket)
+            block.set_mat_time(0)
         else:
+            data_records = []
+
+            start_time = time.time()
             for arg in args:
                 data_record = val_to_record(arg, lbracket)
-                file.feed_record(data_record)
+                data_records.append(data_record)
+                block.should_time_mat() and data_record.would_mat()
+            block.set_mat_time(start_time - time.time())
 
+            if WriteBlock._should_materialize(block):
+                for data_record in data_records:
+                    file.feed_record(data_record)
+                block.tick_materialization()
+            else:
+                rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
+                file.feed_record(rbracket)
 
-def preserves_joint_invariant():
-    ...
+    @staticmethod
+    def _should_materialize(block):
+        assert block.materialization_time is not None
+        assert block.computation_time is not None
+
+        # Must align successor checkpoints for periodic checkpointing
+        if block.force_mat:
+            return True
+
+        # First consider atomic case (always/never)
+        ratio = block.materialization_time / block.computation_time
+        threshold = min(1 / (1 + WriteBlock.scaling_factor), flags.EPSILON)
+        if ratio < threshold:
+            return True
+
+        # Then account for parallelism speedup
+        if block.parent is None:
+            threshold *= block.executions_count / (block.materializations_count + 1)
+            if ratio < threshold:
+                file.TREE.sparse_checkpoints = True
+                block.force_mat_successors()
+                return True
+
+        return False
 
 
 def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:

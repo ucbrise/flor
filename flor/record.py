@@ -1,7 +1,6 @@
-import florin
-
 import os
 import cloudpickle
+import json
 from typing import Union
 
 STATIC_KEY = 'static_key'
@@ -12,10 +11,8 @@ REF = 'ref'
 LBRACKET = 'LBRACKET'
 RBRACKET = 'RBRACKET'
 METADATA = 'metadata'
-PRE_TRAINING = 'pre_training'
+SPARSE_CHECKPOINTS = 'sparse_checkpoints'
 ITERATIONS_COUNT = 'iterations_count'
-PERIOD = 'period'
-OUTERMOST_SK = 'outermost_sk'
 
 
 class Record:
@@ -64,6 +61,13 @@ class DataVal(Record):
     def make_val(self):
         ...
 
+    def would_mat(self):
+        """
+        For timing serialization costs
+        """
+        d = self.jsonify()
+        json.dumps(d)
+
     @staticmethod
     def is_superclass(json_dict):
         assert bool(VAL in json_dict) != bool(REF in json_dict)
@@ -91,13 +95,12 @@ class DataRef(Record):
         self.value = v
         self.ref = r
 
-    def set_ref_and_dump(self):
+    def set_ref_and_dump(self, pkl_ref: str):
         """
         The caller is responsible for serializing val into ref
         """
-        path = florin.get_pkl_ref()
-        self.ref = path
-        with open(path, 'wb') as f:
+        self.ref = pkl_ref
+        with open(pkl_ref, 'wb') as f:
             cloudpickle.dump(self.value, f)
         del self.value
 
@@ -112,6 +115,14 @@ class DataRef(Record):
     @staticmethod
     def is_right():
         return True
+
+    def would_mat(self):
+        """
+        For timing serialization costs
+        """
+        d = super().jsonify()
+        cloudpickle.dumps(self.value)
+        json.dumps(d)
 
     def jsonify(self):
         assert (self.ref is not None
@@ -183,28 +194,22 @@ class Bracket(Metadata):
 class EOF:
     """
     {
-        pre_training: true | false,
+        sparse_checkpoints: true | false,
         iterations_count: ...,
-        period: ...,
-        outermost_sk: ...,
         metadata: EOF
     }
     """
     NAME = "EOF"
 
-    def __init__(self, prt, itc, prd, osk):
-        self.pretraining = prt
+    def __init__(self, sparse, itc):
+        self.sparse_checkpoints = sparse
         self.iterations_count = itc
-        self.period = prd
-        self.outermost_sk = osk
 
     def jsonify(self):
         d = dict()
         d[METADATA] = EOF.NAME
-        d[PRE_TRAINING] = bool(self.pretraining)
+        d[SPARSE_CHECKPOINTS] = bool(self.sparse_checkpoints)
         d[ITERATIONS_COUNT] = int(self.iterations_count)
-        d[PERIOD] = int(self.period)
-        d[OUTERMOST_SK] = str(self.outermost_sk)
         return d
 
     @staticmethod
@@ -222,10 +227,12 @@ class EOF:
 
     @classmethod
     def cons(cls, json_dict):
-        return cls(json_dict[PRE_TRAINING],
-                   json_dict[ITERATIONS_COUNT],
-                   json_dict[PERIOD],
-                   json_dict[OUTERMOST_SK])
+        pred = json_dict[SPARSE_CHECKPOINTS]
+        if isinstance(pred, str):
+            pred = pred == 'True'
+        assert isinstance(pred, bool)
+        return cls(pred,
+                   int(json_dict[ITERATIONS_COUNT]))
 
 
 def make_record(json_dict: dict) -> Union[DataRef, DataVal, Bracket, EOF]:
