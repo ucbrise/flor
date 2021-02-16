@@ -43,7 +43,8 @@ class WriteBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = WriteBlock.pda.pop()
-        block = file.TREE.hash[lbracket.sk][lbracket.gk]
+        block = file.TREE.hash[lbracket.sk][-1]
+        assert block.global_key == lbracket.gk
         block.tick_execution(lbracket.timestamp - time.time())
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
@@ -120,7 +121,8 @@ class ReadBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
-        block = file.TREE.hash[lbracket.sk][lbracket.gk]
+        block = file.TREE.hash[lbracket.sk][-1]
+        assert block.global_key == lbracket.gk
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()

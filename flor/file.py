@@ -1,4 +1,5 @@
 import florin
+import needle
 from record import *
 from typing import Union, List
 from collections import OrderedDict
@@ -71,7 +72,7 @@ class Tree:
         """
         LBRACKET creates new Tree
         """
-        self.hash: OrderedDict[str, OrderedDict[int, Block]] = OrderedDict()
+        self.hash: OrderedDict[str, List[Block]] = OrderedDict()
         self.block = None
 
         if log_record is not None:
@@ -86,21 +87,9 @@ class Tree:
 
     def _hash(self, block: Block):
         if block.static_key in self.hash:
-            self.hash[block.static_key][block.global_key] = block
+            self.hash[block.static_key].append(block)
         else:
-            d = OrderedDict()
-            d[block.global_key] = block
-            self.hash[block.static_key] = d
-
-    @staticmethod
-    def _depth_first_walk(block: Block):
-        while True:
-            if block.child is not None:
-                Tree._depth_first_walk(block.child)
-            yield block
-            if block.successor is None:
-                break
-            block = block.successor
+            self.hash[block.static_key] = [block, ]
 
     def feed_record(self, log_record: Union[DataRef, DataVal, Bracket, EOF]):
         if self.root is None:
@@ -130,6 +119,8 @@ class Tree:
                 self.block.feed_record(log_record)
         else:
             assert isinstance(log_record, EOF)
+            self.sparse_checkpoints = log_record.sparse_checkpoints
+            self.iterations_count = log_record.iterations_count
 
         if log_record.is_left() and log_record.sk == self.root.static_key:
             self.iterations_count += 1
@@ -140,6 +131,9 @@ def read():
         for line in f:
             log_record = make_record(json.loads(line.strip()))
             records.append(log_record)
+    log_record: EOF = records[-1]
+    for log_record in records[needle.seek(log_record):]:
+        TREE.feed_record(log_record)
 
 
 def feed_record(log_record: Union[DataRef, DataVal, Bracket, EOF]):
@@ -154,11 +148,6 @@ def write():
                 log_record.set_ref_and_dump(florin.get_pkl_ref())
             f.write(json.dumps(log_record.jsonify()) + os.linesep)
     records[:] = []
-
-
-def parse():
-    for log_record in records:
-        TREE.feed_record(log_record)
 
 
 def close():

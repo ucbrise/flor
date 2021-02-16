@@ -9,13 +9,15 @@ PID = (1, 1)
 EPSILON = 1/15
 
 
-def set_NAME(name: str):
+def set_RECORD(name: str, eps=1/15):
     """
     When set: enables FLOR RECORD
     """
-    global NAME
+    global NAME, EPSILON
     assert isinstance(name, str)
+    assert isinstance(eps, float)
     NAME = name
+    EPSILON = eps
 
 
 def set_REPLAY(index=None, mode=None, pid=None):
@@ -40,7 +42,8 @@ def set_REPLAY(index=None, mode=None, pid=None):
 
 class Parser:
     """
-    [--flor NAME [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
+    [--flor NAME [EPSILON] [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
+    TODO: parse epsilon
     """
 
     @staticmethod
@@ -64,7 +67,7 @@ class Parser:
         if flor_flags:
             assert flor_flags.pop(0) == '--flor'
             assert flor_flags, "Missing NAME argument in --flor NAME"
-            set_NAME(name=flor_flags.pop(0))
+            set_RECORD(name=flor_flags.pop(0))
 
     @staticmethod
     def parse_replay():
@@ -108,6 +111,6 @@ __all__ = ['NAME',
            'INDEX',
            'MODE',
            'PID',
-           'set_NAME',
+           'set_RECORD',
            'set_REPLAY',
            'Parser']
