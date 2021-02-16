@@ -149,11 +149,14 @@ class ReadBlock(SeemBlock):
 class SkipBlock(SeemBlock):
     @staticmethod
     def step_into(block_name: str, probed=False):
-        raise RuntimeError("SkipBlock missing dynamic linking")
+        if flags.NAME is not None:
+            raise RuntimeError("SkipBlock missing dynamic linking")
+        return True
 
     @staticmethod
     def end(*args, values=None):
-        raise RuntimeError("SkipBlock missing dynamic linking")
+        if flags.NAME is not None:
+            raise RuntimeError("SkipBlock missing dynamic linking")
 
     @staticmethod
     def bind():

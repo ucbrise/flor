@@ -13,7 +13,13 @@ def it(value: Union[Iterable, bool]):
         Bool when looping with while
     """
     if flags.NAME is None:
-        return value
+        if isinstance(value, bool):
+            return value
+        else:
+            assert isinstance(value, Iterable)
+            for each in value:
+                yield each
+            return
     assert isinstance(value, (Iterable, bool))
 
     init()
