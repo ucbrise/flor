@@ -20,13 +20,6 @@ class Block:
         self.global_key = log_record.gk
         self.data_records: List[Union[DataVal, DataRef]] = []
         self.right_fed = False
-
-        # Adaptive checkpointing
-        self.materialization_time = None
-        self.computation_time = None
-        self.executions_count = 0
-        self.materializations_count = 0
-
         self.force_mat = False
 
     def belongs_in_block(self, data_record: Union[DataVal, DataRef, Bracket]):
@@ -41,6 +34,25 @@ class Block:
         if not isinstance(data_record, Bracket):
             # If it's not a RBRACKET then it's a data record
             self.data_records.append(data_record)
+
+
+    def force_mat_successors(self):
+        assert self.parent is None
+        first_static_key = self.static_key
+        block = self.successor
+        while block is not None and block.static_key != first_static_key:
+            block.force_mat = True
+            block = block.successor
+
+
+class BlockGroup:
+    def __init__(self, first: Block):
+        self.blocks = [first, ]
+
+        self.materialization_time = None
+        self.computation_time = None
+        self.executions_count = 0
+        self.materializations_count = 0
 
     def tick_execution(self, t):
         self.executions_count += 1
@@ -58,13 +70,11 @@ class Block:
         if self.materialization_time is None:
             self.materialization_time = t
 
-    def force_mat_successors(self):
-        assert self.parent is None
-        first_static_key = self.static_key
-        block = self.successor
-        while block is not None and block.static_key != first_static_key:
-            block.force_mat = True
-            block = block.successor
+    def add_block(self, block: Block):
+        self.blocks.append(block)
+
+    def peek_block(self) -> Block:
+        return self.blocks[-1]
 
 
 class Tree:
@@ -72,7 +82,7 @@ class Tree:
         """
         LBRACKET creates new Tree
         """
-        self.hash: OrderedDict[str, List[Block]] = OrderedDict()
+        self.hash: OrderedDict[str, BlockGroup] = OrderedDict()
         self.block = None
 
         if log_record is not None:
@@ -87,12 +97,13 @@ class Tree:
 
     def _hash(self, block: Block):
         if block.static_key in self.hash:
-            self.hash[block.static_key].append(block)
+            self.hash[block.static_key].add_block(block)
         else:
-            self.hash[block.static_key] = [block, ]
+            self.hash[block.static_key] = BlockGroup(block)
 
     def add_sparse_checkpoint(self):
-        self.sparse_checkpoints.append(self.iterations_count)
+        # print(f"SPARSE CHECKPOINT at {self.iterations_count - 1}")
+        self.sparse_checkpoints.append(self.iterations_count - 1)
 
     def feed_record(self, log_record: Union[DataRef, DataVal, Bracket, EOF]):
         if self.root is None:
@@ -137,7 +148,7 @@ def read():
             feed_record(log_record)
     epoch_to_init: Union[int, None] = needle.seek(TREE.sparse_checkpoints, TREE.iterations_count)
     if epoch_to_init is not None:
-        target: Block = TREE.hash[TREE.root.static_key][epoch_to_init]
+        target: Block = TREE.hash[TREE.root.static_key].blocks[epoch_to_init]
         TREE = Tree()
         feeding = False
         for log_record in records:

@@ -87,9 +87,9 @@ def get_segment(sparse_checkpoints: List[int], iterations_count: int) -> List[Ca
         assert our_segment, "TODO: Handle case when user allocs more partitions than there is work."
         if flags.MODE == flags.WEAK:
             # Asks to initialize predecessor
-            return [Capsule(True, weak_epoch.dense()),] + [Capsule(False, e) for e in our_segment]
+            return [Capsule(True, weak_epoch.dense()), ] + [Capsule(False, e) for e in our_segment]
         else:
-            return [Capsule(False, e) for e in range(our_segment[-1] + 1)]
+            return [Capsule(True, e) for e in range(our_segment[0])] + [Capsule(False, e) for e in our_segment]
     else:
         # Only a subset of epochs are valid entries
         # Only weak initialization is possible
@@ -97,5 +97,5 @@ def get_segment(sparse_checkpoints: List[int], iterations_count: int) -> List[Ca
         lo = weak_epoch.sparse()
         hi = weak_epoch.sparse(hi=True)
         assert hi is not NO_INIT
-        return [Capsule(True, lo),] + \
+        return [Capsule(True, lo), ] + \
                [Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)]
