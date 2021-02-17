@@ -39,6 +39,9 @@ def set_REPLAY(index=None, mode=None, pid=None):
         assert isinstance(pid, tuple) and len(pid) == 2
         p, n = pid
         assert isinstance(p, int) and isinstance(n, int)
+        assert p >= 1
+        assert n >= 1
+        assert p <= n
         PID = pid
 
 
