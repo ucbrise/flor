@@ -18,7 +18,7 @@ and selectively restore additional training data --- like tensor histograms, ima
 if and when there is evidence of a problem. 
 
 FLOR is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab, 
-and is being released as part of an accompanying [VLDB](https://vldb.org/2021/) publication.
+and is being released as part of an accompanying [VLDB publication](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf).
 
 # Installation
 
@@ -28,7 +28,7 @@ pip install pyflor
 FLOR expects a recent version of Python (3.6+) and PyTorch (1.0+).
 
 ```bash
-python3 examples/linear.py --flor=name:linear
+python3 examples/linear.py --flor linear
 ```
 Run the ``linear.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
@@ -54,6 +54,7 @@ for epoch in flor.it(range(...)):
 First, wrap the iterator of the main loop with FLOR's generator: ``flor.it``. 
 The generator enables FLOR to parallelize replay of the main loop,
 and to jump to an arbitrary epoch for data recovery.
+FLOR also relies on this generator for initialization and clean-up, so don't skip this step.
 
 ```python
 import flor
@@ -66,7 +67,7 @@ net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
 for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into():
+    if flor.SkipBlock.step_into('training_loop'):
         for data in trainloader:
             inputs, labels = data
             optimizer.zero_grad()
@@ -83,25 +84,34 @@ Then, wrap the nested training loop inside a ``flor.SkipBlock`` as shown above.
 Add the stateful ``torch`` objects to ``flor.SkipBlock.end`` so FLOR checkpoints them
 periodically.  
 
+You can use SkipBlocks to memoize long-running code. 
+Just make sure you give each SkipBlock a unique name (e.g. `training_loop`).
+
 **That's it!** Your code is now ready for record-replay.
 
-### Hands-Free Mode
+[comment]: <> (### Hands-Free Mode)
 
-If you prefer for FLOR to instrument your code for record-replay without your help,
-you can ask FLOR to do so.
+[comment]: <> (Hands-Free mode is a research prototype )
 
-```bash
-python3 -c "import flor; flor.transformer.Transformer.transform(['examples/linear_raw.py'])"
-```
+[comment]: <> (If you prefer for FLOR to instrument your code for record-replay without your help,)
 
-Tell FLOR which files you'd like for it to transform for efficient record replay.
-Then run the transformed file to capture and load checkpoints automatically.
+[comment]: <> (you can ask FLOR to do so.)
+
+[comment]: <> (```bash)
+
+[comment]: <> (python3 -c "import flor; flor.transformer.Transformer.transform&#40;['examples/linear_raw.py']&#41;")
+
+[comment]: <> (```)
+
+[comment]: <> (Tell FLOR which files you'd like for it to transform for efficient record replay.)
+
+[comment]: <> (Then run the transformed file to capture and load checkpoints automatically.)
 
 
 # Training your model
 
 ```bash
-python3 training_script.py --flor=name:my_exp [your_flags]
+python3 training_script.py --flor NAME [your_script_flags]
 ```
 
 In FLOR, all experiments need a name. 
@@ -122,7 +132,7 @@ net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
 for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into():
+    if flor.SkipBlock.step_into('training_loop'):
         ...
     flor.SkipBlock.end(net, optimizer)
     eval(net, testloader)
@@ -134,10 +144,10 @@ throughout training.
 Add the code to generate the confusion matrix, as sugared above.
 
 ```bash
-python3 training_script.py --flor=name:my_exp,mode:reexec [your_flags]
+python3 training_script.py --flor NAME --replay_flor [your_script_flags]
 ```
 
-And tell FLOR to run in replay or ``mode:reexec``. 
+And tell FLOR to replay by setting the flag ``--replay_flor``. 
 FLOR is performing fast replay, so you may generalize this
 example to recover ad-hoc training data.
 In our example, FLOR will compute your confusion matrix 
@@ -155,7 +165,7 @@ net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
 for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into(probed=True):
+    if flor.SkipBlock.step_into('training_loop', probed=True):
         ...
         log_tensor_histograms(net.parameters())
     flor.SkipBlock.end(net, optimizer)
@@ -167,19 +177,20 @@ Now, suppose you also want [TensorBoard](https://www.tensorflow.org/tensorboard)
 to plot the tensor histograms.
 In this case, it is not possible to skip the nested training loop
 because we are probing intermediate data.
-We tell FLOR to step into the nested training loop by setting ``probed=True``.
+We tell FLOR to step into the nested training loop by setting ``probed=True`` 
+(an argument to the training loop's SkipBlock).
 
 Although we can't skip the nested training loop, we can parallelize replay or
 re-execute just a fraction of the epochs (e.g. near the epoch where we see a loss anomaly).
 
 ```bash
-python3 training_script.py --flor=name:my_exp,mode:reexec,pid:<int>,ngpus:<int> [your_flags]
+python3 training_script.py --flor NAME --replay_flor PID/NGPUS [your_flags]
 ```
 
-As before, you tell FLOR to run in replay mode by setting ``mode:reexec``.
+As before, you tell FLOR to run in replay mode by setting ``--replay_flor``.
 You'll also tell FLOR how many GPUs from the pool to use for parallelism,
 and you'll dispatch this script simultaneously, varying the ``pid:<int>``
-to span all the GPUs.
+to span all the GPUs. To run segment 3 out of 5 segments, you would write: ``--replay_flor 3/5``.
 
 If instead of replaying all of training you wish to re-execute only a fraction of the epochs
 you can do this by setting the value of ``ngpus`` and ``pid`` respectively.

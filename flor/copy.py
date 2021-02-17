@@ -144,11 +144,10 @@ def deepcopy(x, memo=None, _nil=[]):
 
     d = id(x)
 
-    if hasattr(x, 'cpu') and (callable(getattr(x, 'cpu')) or 'method' in str(type(getattr(x, 'cpu')))):
-        x = x.cpu()
-
     y = memo.get(d, _nil)
+    # y is the unique identifier (address) of x IF X in memo; else it is NILL
     if y is not _nil:
+        # x has already been copied and is stored in the memo
         return y
 
     cls = type(x)
@@ -159,6 +158,10 @@ def deepcopy(x, memo=None, _nil=[]):
     else:
         if issubclass(cls, type):
             y = _deepcopy_atomic(x, memo)
+        elif str(cls) == "<class 'torch.Tensor'>" and 'cpu' not in x.device.type:
+            # Using a string so we don't have to import torch
+            # We have to ensure tensor is not already in CPU -- else .cpu() is no-op
+            y = x.cpu()  # This achieves a fast copy
         else:
             copier = getattr(x, "__deepcopy__", None)
             if copier is not None:
