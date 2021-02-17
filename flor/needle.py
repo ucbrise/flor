@@ -2,13 +2,8 @@ import flags
 from record import EOF
 from typing import List, Union
 
-pid = flags.PID
 
-current = start = 0
-
-"""
-TODO: Keep record of which epochs contain sparse checkpoints
-"""
+STRONG_EPOCH = 0
 
 
 class WeakEpoch:
@@ -16,10 +11,14 @@ class WeakEpoch:
         self.iterations_count = iterations_count
         self.sparse_checkpoints = sparse_checkpoints
 
-    def sparse(self):
-        ...
+    def sparse(self) -> int:
+        temp = self.iterations_count
+        self.iterations_count = len(self.sparse_checkpoints)
+        idx = self.dense() + 1
+        self.iterations_count = temp
+        return self.sparse_checkpoints[idx]
 
-    def dense(self):
+    def dense(self) -> int:
         segments: List[List[Union[int, None]]] = [[] for _ in range(flags.PID[1])]
         for epoch in range(self.iterations_count):
             segments[epoch % flags.PID[1]].append(None)
@@ -37,20 +36,24 @@ class WeakEpoch:
         return our_first_epoch - 1
 
 
-def seek(log_record: EOF):
+def seek(log_record: EOF) -> int:
     sparse_checkpoints = log_record.sparse_checkpoints
     assert isinstance(sparse_checkpoints, List)
     iterations_count = log_record.iterations_count
     assert isinstance(iterations_count, int)
+    weak_epoch = WeakEpoch(iterations_count, sparse_checkpoints)
 
     if not sparse_checkpoints:
         # All epochs are valid entries
-        ...
+        if flags.MODE == flags.WEAK:
+            return weak_epoch.dense()
+        else:
+            return STRONG_EPOCH
     else:
         # Only a subset of epochs are valid entries
         # Only weak initialization is possible
         assert flags.MODE == flags.WEAK
-        ...
+        return weak_epoch.sparse()
 
 def get_partitions(num_epochs, num_partitions, pretraining, period):
     # Roundrobin allocation with pipelining
