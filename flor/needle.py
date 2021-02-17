@@ -1,9 +1,14 @@
 import flags
-from record import EOF
 from typing import List, Union
 
 
 NO_INIT = None
+
+
+class Capsule:
+    def __init__(self, init_only: bool, epoch: Union[int, None]):
+        self.init_only = init_only
+        self.epoch = epoch
 
 
 class WeakEpoch:
@@ -24,25 +29,33 @@ class WeakEpoch:
         assert segments[-1][-1] == self.iterations_count - 1
         return segments[idx]
 
-    def sparse(self) -> int:
+    def sparse(self, hi=False) -> int:
         temp = self.iterations_count
         self.iterations_count = len(self.sparse_checkpoints)
         our_segment = self.get_segment(flags.PID[0] - 1)
         self.iterations_count = temp
+        # TODO: ...
         assert our_segment, "TODO: Handle case when user allocs more partitions than there is work."
-        return self.sparse_checkpoints[our_segment[0]]
+        if not hi:
+            return self.sparse_checkpoints[our_segment[0]]
+        else:
+            if flags.PID[0] == flags.PID[1]:
+                # This is the last segment
+                return self.iterations_count
+            else:
+                # There exists a greater segment
+                return self.sparse_checkpoints[our_segment[-1] + 1]
 
     def dense(self) -> int:
         our_segment = self.get_segment(flags.PID[0] - 1)
+        # TODO: ...
         assert our_segment, "TODO: Handle case when user allocs more partitions than there is work."
         pred_epoch = our_segment[0] - 1 if our_segment[0] else NO_INIT
         return pred_epoch
 
 
-def seek(log_record: EOF) -> Union[int, None]:
-    sparse_checkpoints = log_record.sparse_checkpoints
+def seek(sparse_checkpoints: List[int], iterations_count: int) -> Union[int, None]:
     assert isinstance(sparse_checkpoints, List)
-    iterations_count = log_record.iterations_count
     assert isinstance(iterations_count, int)
     weak_epoch = WeakEpoch(iterations_count, sparse_checkpoints)
 
@@ -57,3 +70,32 @@ def seek(log_record: EOF) -> Union[int, None]:
         # Only weak initialization is possible
         assert flags.MODE == flags.WEAK
         return weak_epoch.sparse()
+
+
+def get_segment(sparse_checkpoints: List[int], iterations_count: int) -> List[Capsule]:
+    """
+    The first element in the range corresponds to the predecessor and is only for initialization purposes
+    """
+    assert isinstance(sparse_checkpoints, List)
+    assert isinstance(iterations_count, int)
+    weak_epoch = WeakEpoch(iterations_count, sparse_checkpoints)
+
+    if not sparse_checkpoints:
+        # All epochs are valid entries
+        our_segment = weak_epoch.get_segment(flags.PID[0] - 1)
+        # TODO: ...
+        assert our_segment, "TODO: Handle case when user allocs more partitions than there is work."
+        if flags.MODE == flags.WEAK:
+            # Asks to initialize predecessor
+            return [Capsule(True, weak_epoch.dense()),] + [Capsule(False, e) for e in our_segment]
+        else:
+            return [Capsule(False, e) for e in range(our_segment[-1] + 1)]
+    else:
+        # Only a subset of epochs are valid entries
+        # Only weak initialization is possible
+        assert flags.MODE == flags.WEAK
+        lo = weak_epoch.sparse()
+        hi = weak_epoch.sparse(hi=True)
+        assert hi is not NO_INIT
+        return [Capsule(True, lo),] + \
+               [Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)]

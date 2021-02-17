@@ -130,13 +130,23 @@ class Tree:
 
 
 def read():
+    global TREE
     with open(florin.get_index(), 'r') as f:
         for line in f:
             log_record = make_record(json.loads(line.strip()))
-            records.append(log_record)
-    log_record: EOF = records[-1]
-    for log_record in records[needle.seek(log_record):]:
-        TREE.feed_record(log_record)
+            feed_record(log_record)
+    epoch_to_init: Union[int, None] = needle.seek(TREE.sparse_checkpoints, TREE.iterations_count)
+    if epoch_to_init is not None:
+        target: Block = TREE.hash[TREE.root.static_key][epoch_to_init]
+        TREE = Tree()
+        feeding = False
+        for log_record in records:
+            if (not feeding and log_record.is_left() and
+                    log_record.sk == target.static_key and
+                    log_record.gk == target.global_key):
+                feeding = True
+            if feeding:
+                TREE.feed_record(log_record)
 
 
 def feed_record(log_record: Union[DataRef, DataVal, Bracket, EOF]):

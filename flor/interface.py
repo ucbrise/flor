@@ -1,6 +1,7 @@
 import flags
 import florin
 import file
+import needle
 from typing import Iterable, Union
 from skip_block import SkipBlock
 
@@ -12,6 +13,8 @@ def it(value: Union[Iterable, bool]):
         Iterable when iterating over a for loop
         Bool when looping with while
     """
+    assert isinstance(value, (Iterable, bool))
+
     if flags.NAME is None:
         if isinstance(value, bool):
             return value
@@ -20,11 +23,11 @@ def it(value: Union[Iterable, bool]):
             for each in value:
                 yield each
             return
-    assert isinstance(value, (Iterable, bool))
 
     init()
 
     if not flags.REPLAY:
+        # Record mode
         if isinstance(value, bool):
             if not value:
                 file.close()
@@ -34,15 +37,26 @@ def it(value: Union[Iterable, bool]):
                 yield each
             file.close()
     else:
-        if isinstance(value, bool):
-            if not value:
-                # Clean up
-                ...
-            return value
-        else:
-            for each in value:
-                yield each
-            # Clean up
+        # Replay mode
+        segment = needle.get_segment(file.TREE.sparse_checkpoints, file.TREE.iterations_count)
+        for capsule in segment:
+            flags.RESUMING = capsule.init_only
+            if isinstance(value, bool):
+                yield True
+            else:
+                assert isinstance(value, Iterable)
+                if flags.RESUMING:
+                    if capsule.epoch is needle.NO_INIT:
+                        continue
+                    else:
+                        # TODO: ...
+                        assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
+                        yield value[capsule.epoch]
+                else:
+                    assert capsule.epoch is not needle.NO_INIT
+                    # TODO: ...
+                    assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
+                    yield value[capsule.epoch]
 
 
 def init(_nil=[]):
