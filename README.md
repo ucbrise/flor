@@ -89,25 +89,6 @@ Just make sure you give each SkipBlock a unique name (e.g. `training_loop`).
 
 **That's it!** Your code is now ready for record-replay.
 
-[comment]: <> (### Hands-Free Mode)
-
-[comment]: <> (Hands-Free mode is a research prototype )
-
-[comment]: <> (If you prefer for FLOR to instrument your code for record-replay without your help,)
-
-[comment]: <> (you can ask FLOR to do so.)
-
-[comment]: <> (```bash)
-
-[comment]: <> (python3 -c "import flor; flor.transformer.Transformer.transform&#40;['examples/linear_raw.py']&#41;")
-
-[comment]: <> (```)
-
-[comment]: <> (Tell FLOR which files you'd like for it to transform for efficient record replay.)
-
-[comment]: <> (Then run the transformed file to capture and load checkpoints automatically.)
-
-
 # Training your model
 
 ```bash
