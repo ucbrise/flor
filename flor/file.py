@@ -82,7 +82,7 @@ class Tree:
 
         self.root = self.block
 
-        self.sparse_checkpoints = False
+        self.sparse_checkpoints: List[int] = []
         self.iterations_count = 0
 
     def _hash(self, block: Block):
@@ -90,6 +90,9 @@ class Tree:
             self.hash[block.static_key].append(block)
         else:
             self.hash[block.static_key] = [block, ]
+
+    def add_sparse_checkpoint(self):
+        self.sparse_checkpoints.append(self.iterations_count)
 
     def feed_record(self, log_record: Union[DataRef, DataVal, Bracket, EOF]):
         if self.root is None:

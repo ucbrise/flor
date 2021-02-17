@@ -1,38 +1,45 @@
 import flags
 from record import EOF
+from typing import List, Union
 
 pid = flags.PID
 
 current = start = 0
 
+"""
+TODO: Keep record of which epochs contain sparse checkpoints
+"""
+
 
 class WeakEpoch:
-    def __init__(self):
-        ...
+    def __init__(self, iterations_count: int, sparse_checkpoints: List[int]):
+        self.iterations_count = iterations_count
+        self.sparse_checkpoints = sparse_checkpoints
 
     def sparse(self):
         ...
 
     def dense(self):
-        segments = [[] for _ in range(flags.PID[1])]
-        for epoch in range(iterations_count):
-            segments[epoch % flags.PID[1]].append(-1)
+        segments: List[List[Union[int, None]]] = [[] for _ in range(flags.PID[1])]
+        for epoch in range(self.iterations_count):
+            segments[epoch % flags.PID[1]].append(None)
+
         i = 0
         for j in range(flags.PID[1]):
             for k in range(len(segments[j])):
                 segments[j][k] = i
                 i += 1
-        assert i == iterations_count
-        for segment in segments:
-            for epoch in segment:
-                assert epoch >= 0
-        assert segments[-1][-1] == iterations_count - 1
-        return segments[flags.PID[0] - 1][0]
+        assert i == self.iterations_count
+        assert segments[-1][-1] == self.iterations_count - 1
+
+        our_segment = segments[flags.PID[0] - 1]
+        our_first_epoch = our_segment[0]
+        return our_first_epoch - 1
 
 
 def seek(log_record: EOF):
     sparse_checkpoints = log_record.sparse_checkpoints
-    assert isinstance(sparse_checkpoints, bool)
+    assert isinstance(sparse_checkpoints, List)
     iterations_count = log_record.iterations_count
     assert isinstance(iterations_count, int)
 
@@ -41,6 +48,8 @@ def seek(log_record: EOF):
         ...
     else:
         # Only a subset of epochs are valid entries
+        # Only weak initialization is possible
+        assert flags.MODE == flags.WEAK
         ...
 
 def get_partitions(num_epochs, num_partitions, pretraining, period):

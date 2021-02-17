@@ -1,7 +1,8 @@
 import os
 import cloudpickle
 import json
-from typing import Union
+from typing import Union, List
+
 
 STATIC_KEY = 'static_key'
 GLOBAL_KEY = 'global_key'
@@ -192,23 +193,16 @@ class Bracket(Metadata):
 
 
 class EOF:
-    """
-    {
-        sparse_checkpoints: true | false,
-        iterations_count: ...,
-        metadata: EOF
-    }
-    """
     NAME = "EOF"
 
-    def __init__(self, sparse, itc):
+    def __init__(self, sparse: List[int], itc: int):
         self.sparse_checkpoints = sparse
         self.iterations_count = itc
 
     def jsonify(self):
         d = dict()
         d[METADATA] = EOF.NAME
-        d[SPARSE_CHECKPOINTS] = bool(self.sparse_checkpoints)
+        d[SPARSE_CHECKPOINTS] = self.sparse_checkpoints
         d[ITERATIONS_COUNT] = int(self.iterations_count)
         return d
 
@@ -227,11 +221,9 @@ class EOF:
 
     @classmethod
     def cons(cls, json_dict):
-        pred = json_dict[SPARSE_CHECKPOINTS]
-        if isinstance(pred, str):
-            pred = pred == 'True'
-        assert isinstance(pred, bool)
-        return cls(pred,
+        sparse = json_dict[SPARSE_CHECKPOINTS]
+        assert isinstance(sparse, List)
+        return cls(sparse,
                    int(json_dict[ITERATIONS_COUNT]))
 
 

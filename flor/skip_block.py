@@ -87,7 +87,7 @@ class WriteBlock(SeemBlock):
         if block.parent is None:
             threshold *= block.executions_count / (block.materializations_count + 1)
             if ratio < threshold:
-                file.TREE.sparse_checkpoints = True
+                file.TREE.add_sparse_checkpoint()
                 block.force_mat_successors()
                 return True
 
@@ -122,7 +122,7 @@ class ReadBlock(SeemBlock):
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
         block = file.TREE.hash[lbracket.sk][-1]
-        assert block.global_key == lbracket.gk
+        assert block.global_key == lbracket.gk, f"Blocks: {block.global_key} -- Brackets: {lbracket.gk}"
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()

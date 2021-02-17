@@ -4,7 +4,9 @@ from pathlib import PurePath
 NAME = None
 REPLAY = False
 INDEX = 'latest.json'
-MODE = 'weak'
+WEAK = 'weak'
+STRONG = 'strong'
+MODE = WEAK
 PID = (1, 1)
 EPSILON = 1/15
 
@@ -31,7 +33,7 @@ def set_REPLAY(index=None, mode=None, pid=None):
         assert PurePath(index).suffix == '.json'
         INDEX = index
     if mode is not None:
-        assert mode in ('weak', 'strong')
+        assert mode in (WEAK, STRONG)
         MODE = mode
     if pid is not None:
         assert isinstance(pid, tuple) and len(pid) == 2
@@ -95,7 +97,7 @@ class Parser:
             for flor_flag in flor_flags:
                 if PurePath(flor_flag).suffix == '.json':
                     index = flor_flag
-                elif flor_flag in ['weak', 'strong']:
+                elif flor_flag in (WEAK, STRONG):
                     mode = flor_flag
                 elif len(flor_flag.split('/')) == 2:
                     p, n = flor_flag.split('/')
@@ -109,8 +111,11 @@ class Parser:
 __all__ = ['NAME',
            'REPLAY',
            'INDEX',
+           'WEAK',
+           'STRONG',
            'MODE',
            'PID',
+           'EPSILON',
            'set_RECORD',
            'set_REPLAY',
            'Parser']
