@@ -1,5 +1,5 @@
-import flags
-from interface import it, SkipBlock
+from . import flags
+from .interface import it, SkipBlock
 
 
 flags.Parser.parse_name()
