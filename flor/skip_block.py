@@ -1,6 +1,6 @@
-import flags
-import file
-from record import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
+from . import flags
+from . import file
+from .record import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 from copy import deepcopy
 
 import time

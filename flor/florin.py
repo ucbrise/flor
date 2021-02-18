@@ -1,4 +1,4 @@
-import flags
+from . import flags
 import uuid
 from pathlib import Path, PurePath
 from datetime import datetime
