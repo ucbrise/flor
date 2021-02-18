@@ -1,7 +1,7 @@
-from . import flags
-from . import file
-from .copy import deepcopy
-from .journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
+from flor import flags
+from journal import file
+from logger.copy import deepcopy
+from journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 
 import time
 from typing import List, Union

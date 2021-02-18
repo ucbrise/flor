@@ -1,10 +1,9 @@
-from . import flags
-from . import florin
-from . import file
-from . import needle
-from .skip_block import SkipBlock
+from flor import flags
+from flor.journal import file, needle
+from flor.shelf import florin
+from .skipblock.skip_block import SkipBlock
 
-from typing import Iterable, Union
+from typing import Union, Iterable
 
 
 def it(value: Union[Iterable, bool]):
@@ -15,7 +14,6 @@ def it(value: Union[Iterable, bool]):
         Bool when looping with while
     """
     assert isinstance(value, (Iterable, bool))
-
     if flags.NAME is None:
         if isinstance(value, bool):
             return value
@@ -25,7 +23,7 @@ def it(value: Union[Iterable, bool]):
                 yield each
             return
 
-    init()
+    _deferred_init()
 
     if not flags.REPLAY:
         # Record mode
@@ -60,7 +58,7 @@ def it(value: Union[Iterable, bool]):
                     yield value[capsule.epoch]
 
 
-def init(_nil=[]):
+def _deferred_init(_nil=[]):
     """
     At most once execution
     """
@@ -73,4 +71,4 @@ def init(_nil=[]):
         _nil.append(True)
 
 
-__all__ = ['it', 'SkipBlock']
+__all__ = ['it']

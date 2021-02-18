@@ -1,4 +1,4 @@
-from . import flags
+from flor import flags
 
 from typing import List, Union
 
