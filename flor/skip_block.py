@@ -65,6 +65,9 @@ class WriteBlock(SeemBlock):
             else:
                 rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
                 file.feed_record(rbracket)
+        if len(args) == 1:
+            return args[0]
+        return args
 
     @staticmethod
     def _should_materialize(block_group):
@@ -122,10 +125,12 @@ class ReadBlock(SeemBlock):
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
         block = file.TREE.hash[lbracket.sk].blocks[lbracket.gk]
+        return_args = []
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()
                 value_serialized = data_record.value
+                return_args.append(arg)
                 if hasattr(arg, 'load_state_dict'):
                     # PyTorch support
                     arg.load_state_dict(value_serialized)
@@ -141,11 +146,17 @@ class ReadBlock(SeemBlock):
                     else:
                         assert type(arg) == type(value_serialized)
                         arg.__dict__.update(value_serialized.__dict__)
+                elif type(arg) in [int, float, str, bool]:
+                    return_args.pop()
+                    return_args.append(value_serialized)
                 else:
                     # TODO: ...
                     raise RuntimeError("TODO: add hooks for user-defined de-serialization")
         # TODO: ...
         assert values is None, "TODO: Add support for literals/atomics"
+        if len(return_args) == 1:
+            return return_args[0]
+        return return_args
 
 
 class SkipBlock(SeemBlock):
@@ -159,6 +170,9 @@ class SkipBlock(SeemBlock):
     def end(*args, values=None):
         if flags.NAME is not None:
             raise RuntimeError("SkipBlock missing dynamic linking")
+        if len(args) == 1:
+            return args[0]
+        return args
 
     @staticmethod
     def bind():
