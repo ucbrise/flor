@@ -1,9 +1,10 @@
-import flags
-import florin
-import file
-import needle
+from . import flags
+from . import florin
+from . import file
+from . import needle
+from .skip_block import SkipBlock
+
 from typing import Iterable, Union
-from skip_block import SkipBlock
 
 
 def it(value: Union[Iterable, bool]):

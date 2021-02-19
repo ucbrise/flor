@@ -1,4 +1,5 @@
-import flags
+from . import flags
+
 import uuid
 from pathlib import Path, PurePath
 from datetime import datetime
@@ -32,7 +33,7 @@ def get_latest():
     return job / PurePath('latest').with_suffix('.json')
 
 
-def get_pkl_ref():
+def get_pkl_ref() -> PurePath:
     while True:
         candidate = data / PurePath(uuid.uuid4().hex).with_suffix('.pkl')
         if not candidate.exists():

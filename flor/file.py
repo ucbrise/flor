@@ -1,20 +1,20 @@
-import florin
-import needle
-from record import *
-from typing import Union, List
-from collections import OrderedDict
+from . import florin
+from . import needle
+from .journal.entry import DataVal, DataRef, Bracket, EOF, make_entry
 
 import json
-import os
+import pathlib
+from typing import Union, List
+from collections import OrderedDict
 
 
 class Block:
     def __init__(self, log_record: Bracket, parent=None):
         assert log_record.is_left()
 
-        self.child: 'Block' = None
-        self.parent: 'Block' = parent
-        self.successor: 'Block' = None
+        self.child: Union['Block', None] = None
+        self.parent: Union['Block', None] = parent
+        self.successor: Union['Block', None] = None
 
         self.static_key = log_record.sk
         self.global_key = log_record.gk
@@ -34,7 +34,6 @@ class Block:
         if not isinstance(data_record, Bracket):
             # If it's not a RBRACKET then it's a data record
             self.data_records.append(data_record)
-
 
     def force_mat_successors(self):
         assert self.parent is None
@@ -144,7 +143,7 @@ def read():
     global TREE
     with open(florin.get_index(), 'r') as f:
         for line in f:
-            log_record = make_record(json.loads(line.strip()))
+            log_record = make_entry(json.loads(line.strip()))
             feed_record(log_record)
     epoch_to_init: Union[int, None] = needle.seek(TREE.sparse_checkpoints, TREE.iterations_count)
     if epoch_to_init is not None:
@@ -170,7 +169,7 @@ def write():
         for log_record in records:
             if isinstance(log_record, DataRef):
                 log_record.set_ref_and_dump(florin.get_pkl_ref())
-            f.write(json.dumps(log_record.jsonify()) + os.linesep)
+            f.write(json.dumps(log_record.jsonify()) + pathlib.os.linesep)
     records[:] = []
 
 
