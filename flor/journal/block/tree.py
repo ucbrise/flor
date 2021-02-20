@@ -1,5 +1,6 @@
 from .block import Block
 from .group import BlockGroup
+from .window import Window
 from ..entry import DataVal, DataRef, Bracket, EOF
 
 from collections import OrderedDict
@@ -76,3 +77,15 @@ class Tree:
         for rec in records:
             self.feed_entry(rec)
 
+    def get_resume_epoch(self):
+        """
+        Gets the predecessor epoch for weak initialization,
+            if such epoch exists, else None.
+        """
+        return Window(self.iterations_count, self.sparse_checkpoints).get_resume_epoch()
+
+    def get_segment(self):
+        """
+        Gets the relevant work segment, including tagged initialization epochs
+        """
+        return Window(self.iterations_count, self.sparse_checkpoints).get_work_segment()

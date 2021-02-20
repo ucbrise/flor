@@ -1,7 +1,7 @@
 from flor import flags
-from flor.journal import file, needle
-from flor.shelf import florin
-from .skipblock.skip_block import SkipBlock
+from flor import journal
+from flor import shelf
+from .skipblock import SkipBlock
 
 from typing import Union, Iterable
 
@@ -29,15 +29,15 @@ def it(value: Union[Iterable, bool]):
         # Record mode
         if isinstance(value, bool):
             if not value:
-                file.close()
+                journal.close()
             return value
         else:
             for each in value:
                 yield each
-            file.close()
+            journal.close()
     else:
         # Replay mode
-        segment = needle.get_segment(file.TREE.sparse_checkpoints, file.TREE.iterations_count)
+        segment = journal.get_segment()
         for capsule in segment:
             flags.RESUMING = capsule.init_only
             if isinstance(value, bool):
@@ -45,14 +45,14 @@ def it(value: Union[Iterable, bool]):
             else:
                 assert isinstance(value, Iterable)
                 if flags.RESUMING:
-                    if capsule.epoch is needle.NO_INIT:
+                    if capsule.epoch is None:
                         continue
                     else:
                         # TODO: ...
                         assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
                         yield value[capsule.epoch]
                 else:
-                    assert capsule.epoch is not needle.NO_INIT
+                    assert capsule.epoch is not None
                     # TODO: ...
                     assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
                     yield value[capsule.epoch]
@@ -64,9 +64,9 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
-        florin.mk_job(flags.NAME)
+        shelf.mk_job(flags.NAME)
         if flags.REPLAY:
-            file.read()
+            journal.read()
         SkipBlock.bind()
         _nil.append(True)
 

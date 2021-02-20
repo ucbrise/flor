@@ -1,6 +1,7 @@
 from . import file
-from . import needle
 from .block import Tree
+from .entry import DataRef, DataVal, Bracket, EOF
+from flor import flags
 
 from typing import Union
 
@@ -13,7 +14,7 @@ def read():
     tree.parse(file.entries)
 
 
-def feed(journal_entry):
+def feed(journal_entry: Union[DataRef, DataVal, Bracket, EOF]):
     file.feed(journal_entry)
     tree.feed_entry(journal_entry)
 
@@ -26,13 +27,35 @@ def close():
     file.close(tree.get_eof())
 
 
+def get_segment():
+    assert flags.PID[1] <= tree.iterations_count
+    if tree.sparse_checkpoints:
+        assert flags.PID[1] <= len(tree.sparse_checkpoints) + 1, \
+            f"Not enough checkpoints. Max degree of parallelism: {len(tree.sparse_checkpoints) + 1}"
+    if flags.MODE == flags.WEAK and flags.PID[0] > 1:
+        advance_head()
+        return sub_tree.get_segment()
+    return tree.get_segment()
+
+
+def as_tree():
+    if not flags.REPLAY or flags.MODE == flags.STRONG or flags.PID[0] == 1:
+        return tree
+    else:
+        return sub_tree
+
+
+def add_sparse_checkpoint():
+    tree.add_sparse_checkpoint()
+
+
 def advance_head():
     """
     Used for checkpoint resume,
     ignores journal entries that precede the first epoch of work
     """
     assert sub_tree.root is None, "Need a fresh Tree to feed"
-    epoch_to_init: Union[int, None] = needle.seek(tree.sparse_checkpoints, tree.iterations_count)
+    epoch_to_init: Union[int, None] = tree.get_resume_epoch()
     if epoch_to_init is not None:
         target = tree[tree.root.static_key].blocks[epoch_to_init]
         feeding = False

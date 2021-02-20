@@ -22,7 +22,7 @@ class Block:
             data_record.sk == self.static_key and
             data_record.gk == self.global_key)
 
-    def feed_record(self, data_record: Union[DataVal, DataRef, Bracket]):
+    def feed_entry(self, data_record: Union[DataVal, DataRef, Bracket]):
         assert self.belongs_in_block(data_record)
         self.right_fed = True
         if not isinstance(data_record, Bracket):

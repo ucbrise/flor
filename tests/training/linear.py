@@ -54,7 +54,7 @@ optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 for epoch in flor.it(range(3)):
     print(f'epoch: {epoch}')
     running_loss = 0.0
-    if flor.SkipBlock.step_into('training_loop', probed=False):
+    if flor.SkipBlock.step_into('training_loop', probed=True):
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
             optimizer.zero_grad()
