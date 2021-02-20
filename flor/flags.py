@@ -1,3 +1,5 @@
+from flor import shelf
+
 import sys
 from pathlib import PurePath
 
@@ -11,16 +13,9 @@ PID = (1, 1)
 EPSILON = 1/15
 RESUMING = False
 
-
-def set_RECORD(name: str, eps=1/15):
-    """
-    When set: enables FLOR RECORD
-    """
-    global NAME, EPSILON
-    assert isinstance(name, str)
-    assert isinstance(eps, float)
-    NAME = name
-    EPSILON = eps
+"""
+[--flor NAME [EPSILON] [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
+"""
 
 
 def set_REPLAY(index=None, mode=None, pid=None):
@@ -32,6 +27,7 @@ def set_REPLAY(index=None, mode=None, pid=None):
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == '.json'
+        assert shelf.verify(PurePath(index))
         INDEX = index
     if mode is not None:
         assert mode in (WEAK, STRONG)
@@ -49,11 +45,11 @@ def set_REPLAY(index=None, mode=None, pid=None):
 class Parser:
     """
     [--flor NAME [EPSILON] [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
-    TODO: parse epsilon
     """
 
     @staticmethod
     def parse_name():
+        global NAME, EPSILON
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -69,11 +65,15 @@ class Parser:
             else:
                 sys.argv.append(arg)
 
-        assert len(flor_flags) <= 2
+        assert len(flor_flags) <= 3
         if flor_flags:
             assert flor_flags.pop(0) == '--flor'
             assert flor_flags, "Missing NAME argument in --flor NAME"
-            set_RECORD(name=flor_flags.pop(0))
+            for flag in flor_flags:
+                if flag[0:2] == '0.':
+                    EPSILON = float(flag)
+                else:
+                    NAME = flag
 
     @staticmethod
     def parse_replay():
@@ -120,6 +120,5 @@ __all__ = ['NAME',
            'MODE',
            'PID',
            'EPSILON',
-           'set_RECORD',
            'set_REPLAY',
            'Parser']

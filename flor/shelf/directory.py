@@ -39,3 +39,10 @@ def get_pkl_ref() -> PurePath:
         if not candidate.exists():
             return candidate
 
+
+def verify(path: PurePath):
+    assert flags.NAME is not None
+    resolved_path = florin / flags.NAME / path  
+    return Path(resolved_path).exists()
+
+
