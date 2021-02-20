@@ -1,4 +1,4 @@
-from . import flags
+from flor import flags
 
 import uuid
 from pathlib import Path, PurePath
