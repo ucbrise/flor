@@ -5,6 +5,8 @@ from flor import journal
 from flor.journal.entry import Bracket, LBRACKET
 
 from typing import List
+import types
+import weakref
 
 
 class ReadBlock(SeemBlock):
@@ -25,10 +27,12 @@ class ReadBlock(SeemBlock):
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
         block = journal.as_tree()[lbracket.sk].blocks[lbracket.gk]
+        return_args = []
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()
                 value_serialized = data_record.value
+                return_args.append(arg)
                 if hasattr(arg, 'load_state_dict'):
                     # PyTorch support
                     arg.load_state_dict(value_serialized)
@@ -44,8 +48,16 @@ class ReadBlock(SeemBlock):
                     else:
                         assert type(arg) == type(value_serialized)
                         arg.__dict__.update(value_serialized.__dict__)
+                elif type(arg) in (type(None), int, float, bool, complex, str, tuple,
+                                   bytes, frozenset, type, range, slice, property,
+                                   types.BuiltinFunctionType, type(Ellipsis), type(NotImplemented),
+                                   types.FunctionType, weakref.ref):
+                    return_args[-1] = value_serialized
                 else:
                     # TODO: ...
                     raise RuntimeError("TODO: add hooks for user-defined de-serialization")
         # TODO: ...
         assert values is None, "TODO: Add support for literals/atomics"
+        if len(return_args) == 1:
+            return return_args[0]
+        return return_args
