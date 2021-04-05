@@ -54,6 +54,9 @@ class WriteBlock(SeemBlock):
             else:
                 rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
                 journal.feed(rbracket)
+        if len(args) == 1:
+            return args[0]
+        return args
 
     @staticmethod
     def _should_materialize(block_group):

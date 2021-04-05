@@ -16,6 +16,9 @@ class SkipBlock(SeemBlock):
     def end(*args, values=None):
         if flags.NAME is not None:
             raise RuntimeError("SkipBlock missing dynamic linking")
+        if len(args) == 1:
+            return args[0]
+        return args
 
     @staticmethod
     def bind():
