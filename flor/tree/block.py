@@ -1,4 +1,4 @@
-from ..entry import DataVal, DataRef, Bracket
+from flor.journal.entry import DataVal, DataRef, Bracket
 from typing import Union, List
 
 

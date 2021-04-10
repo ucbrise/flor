@@ -30,14 +30,21 @@ class Reference(Data):
         del d[VAL]
         d[REF] = str(self.ref)
         return d
-
-    def set_ref_and_dump(self, pkl_ref: PurePath):
+    
+    def set_ref(self, pkl_ref: PurePath):
         self.ref = pkl_ref
-        with open(pkl_ref, 'wb') as f:
+
+    def dump(self):
+        assert isinstance(self.ref, PurePath) and self.ref.suffix == PKL_SFX, \
+            "Must first set a reference path with a `.pkl` suffix"
+        with open(self.ref, 'wb') as f:
             cloudpickle.dump(self.value, f)
         self.val_saved = True
         self.value = None
 
+    def set_ref_and_dump(self, pkl_ref: PurePath):
+        self.set_ref(pkl_ref)
+        self.dump()
 
     @staticmethod
     def is_superclass(json_dict: dict):

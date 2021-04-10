@@ -26,11 +26,12 @@ def mk_job(name: str):
 def get_index():
     return job / PurePath(
         flags.INDEX if flags.REPLAY else timestamp
-    ).with_suffix('.json')
+    ).with_suffix('.json') if job is not None else None
 
 
 def get_latest():
-    return job / PurePath('latest').with_suffix('.json')
+    return (job / PurePath('latest').with_suffix('.json') 
+                if job is not None else None)
 
 
 def get_pkl_ref() -> PurePath:

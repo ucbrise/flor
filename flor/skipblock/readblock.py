@@ -1,7 +1,6 @@
 from .seemblock import SeemBlock
 
 from flor import flags
-from flor import journal
 from flor.journal.entry import Bracket, LBRACKET
 
 from typing import List
@@ -24,7 +23,7 @@ class ReadBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
-        block = journal.as_tree()[lbracket.sk].blocks[lbracket.gk]
+        block = ReadBlock.journal.as_tree()[lbracket.sk].blocks[lbracket.gk]
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()

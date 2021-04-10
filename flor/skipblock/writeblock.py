@@ -1,12 +1,17 @@
 from .seemblock import SeemBlock
 
 from flor import flags
-from flor import journal
-from flor.logger import deepcopy
+from flor import shelf
 from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 
 import time
 from typing import List, Union
+
+"""
+TODO:
+Use the logger
+use the journal for the tree
+"""
 
 
 class WriteBlock(SeemBlock):
@@ -22,20 +27,20 @@ class WriteBlock(SeemBlock):
 
         lbracket = Bracket(block_name, dynamic_id, LBRACKET,
                            predicate=True, timestamp=time.time())
-        journal.feed(lbracket)
+        WriteBlock.journal.as_tree().feed_entry(lbracket)
         WriteBlock.pda.append(lbracket)
         return lbracket.predicate
 
     @staticmethod
     def end(*args, values=None):
         lbracket = WriteBlock.pda.pop()
-        block_group = journal.as_tree()[lbracket.sk]
+        block_group = WriteBlock.journal.as_tree()[lbracket.sk]
         block = block_group.peek_block()
         assert block.global_key == lbracket.gk
         block_group.tick_execution(lbracket.timestamp - time.time())
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
-            journal.feed(rbracket)
+            WriteBlock.journal.as_tree().feed_entry(rbracket)
             block_group.set_mat_time(0)
         else:
             data_records = []
@@ -49,11 +54,11 @@ class WriteBlock(SeemBlock):
 
             if WriteBlock._should_materialize(block_group):
                 for data_record in data_records:
-                    journal.feed(data_record)
+                    WriteBlock.journal.as_tree().feed_entry(data_record)
                 block_group.tick_materialization()
             else:
                 rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
-                journal.feed(rbracket)
+                WriteBlock.journal.as_tree().feed_entry(rbracket)
 
     @staticmethod
     def _should_materialize(block_group):
@@ -76,7 +81,7 @@ class WriteBlock(SeemBlock):
         if block.parent is None:
             threshold *= block_group.executions_count / (block_group.materializations_count + 1)
             if ratio < threshold:
-                journal.add_sparse_checkpoint()
+                WriteBlock.journal.as_tree().add_sparse_checkpoint()
                 block.force_mat_successors()
                 return True
 
