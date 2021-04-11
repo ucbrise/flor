@@ -1,10 +1,12 @@
 from ..constants import *
 from .abstract import Data
+from ....logger.copy import deepcopy
+from .... import shelf
 
 import cloudpickle
 from pathlib import PurePath
 from typing import Union
-
+import json
 
 class Reference(Data):
     def __init__(self, sk, gk, v=None, r: Union[None, PurePath] = None):
@@ -57,3 +59,13 @@ class Reference(Data):
                    json_dict[GLOBAL_KEY],
                    v=None,
                    r=json_dict[REF])
+
+    def promise(self):
+        self.promised = deepcopy(self.value)
+        self.value = self.promised
+    
+    def fulfill(self):
+        super().fulfill()
+        self.set_ref_and_dump(shelf.get_pkl_ref())
+        return json.dumps(self.jsonify())
+

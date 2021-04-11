@@ -7,12 +7,6 @@ from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 import time
 from typing import List, Union
 
-"""
-TODO:
-Use the logger
-use the journal for the tree
-"""
-
 
 class WriteBlock(SeemBlock):
     scaling_factor = 1.38
@@ -28,6 +22,8 @@ class WriteBlock(SeemBlock):
         lbracket = Bracket(block_name, dynamic_id, LBRACKET,
                            predicate=True, timestamp=time.time())
         WriteBlock.journal.as_tree().feed_entry(lbracket)
+
+        WriteBlock.logger.append(lbracket)
         WriteBlock.pda.append(lbracket)
         return lbracket.predicate
 
@@ -41,6 +37,7 @@ class WriteBlock(SeemBlock):
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
             WriteBlock.journal.as_tree().feed_entry(rbracket)
+            WriteBlock.logger.append(rbracket)
             block_group.set_mat_time(0)
         else:
             data_records = []
@@ -55,10 +52,12 @@ class WriteBlock(SeemBlock):
             if WriteBlock._should_materialize(block_group):
                 for data_record in data_records:
                     WriteBlock.journal.as_tree().feed_entry(data_record)
+                    WriteBlock.logger.append(data_record)
                 block_group.tick_materialization()
             else:
                 rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
                 WriteBlock.journal.as_tree().feed_entry(rbracket)
+                WriteBlock.logger.append(rbracket)
 
     @staticmethod
     def _should_materialize(block_group):
@@ -95,4 +94,4 @@ def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:
     if type(arg) in [type(None), int, float, bool, str]:
         return DataVal(lbracket.sk, lbracket.gk, arg)
     else:
-        return DataRef(lbracket.sk, lbracket.gk, deepcopy(arg))
+        return DataRef(lbracket.sk, lbracket.gk, arg)

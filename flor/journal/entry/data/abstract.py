@@ -1,12 +1,14 @@
 from ..constants import *
 from ..abstract import Entry
+from ....logger import Future
 
 from abc import ABC, abstractmethod
 
 
-class Data(Entry, ABC):
+class Data(Entry, Future, ABC):
     def __init__(self, sk, gk, v):
-        super().__init__(sk, gk)
+        Entry.__init__(self, sk, gk)
+        Future.__init__(self, v)
         self.value = v
 
     def is_left(self):
