@@ -29,3 +29,9 @@ class Value(Data):
                    json_dict[GLOBAL_KEY],
                    json_dict[VAL])
 
+    def promise(self):
+        self.promised = self.value
+    
+    def fulfill(self):
+        super().fulfill()
+        return json.dumps(self.jsonify())

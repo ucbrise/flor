@@ -1,6 +1,5 @@
-from flor import flags
-from flor import journal
-from flor import shelf
+from . import flags
+from . import shelf
 from .skipblock import SkipBlock
 
 from typing import Union, Iterable
@@ -29,15 +28,17 @@ def it(value: Union[Iterable, bool]):
         # Record mode
         if isinstance(value, bool):
             if not value:
-                journal.close()
+                SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
+                SkipBlock.logger.close()
             return value
         else:
             for each in value:
                 yield each
-            journal.close()
+            SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
+            SkipBlock.logger.close()
     else:
         # Replay mode
-        segment = journal.get_segment()
+        segment = SkipBlock.journal.get_segment_window()
         for capsule in segment:
             flags.RESUMING = capsule.init_only
             if isinstance(value, bool):
@@ -57,7 +58,6 @@ def it(value: Union[Iterable, bool]):
                     assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
                     yield value[capsule.epoch]
 
-
 def _deferred_init(_nil=[]):
     """
     At most once execution
@@ -65,10 +65,12 @@ def _deferred_init(_nil=[]):
     if not _nil:
         assert flags.NAME is not None
         shelf.mk_job(flags.NAME)
-        if flags.REPLAY:
-            journal.read()
         SkipBlock.bind()
+        if flags.REPLAY:
+            SkipBlock.journal.read()
+        else:
+            SkipBlock.logger.set_path(shelf.get_index())
+            assert SkipBlock.logger.path is not None
         _nil.append(True)
-
 
 __all__ = ['it']

@@ -1,10 +1,12 @@
 from ..constants import *
 from .abstract import Data
+from ....logger.copy import deepcopy
+from .... import shelf
 
 import cloudpickle
 from pathlib import PurePath
 from typing import Union
-
+import json
 
 class Reference(Data):
     def __init__(self, sk, gk, v=None, r: Union[None, PurePath] = None):
@@ -30,14 +32,21 @@ class Reference(Data):
         del d[VAL]
         d[REF] = str(self.ref)
         return d
-
-    def set_ref_and_dump(self, pkl_ref: PurePath):
+    
+    def set_ref(self, pkl_ref: PurePath):
         self.ref = pkl_ref
-        with open(pkl_ref, 'wb') as f:
+
+    def dump(self):
+        assert isinstance(self.ref, PurePath) and self.ref.suffix == PKL_SFX, \
+            "Must first set a reference path with a `.pkl` suffix"
+        with open(self.ref, 'wb') as f:
             cloudpickle.dump(self.value, f)
         self.val_saved = True
         self.value = None
 
+    def set_ref_and_dump(self, pkl_ref: PurePath):
+        self.set_ref(pkl_ref)
+        self.dump()
 
     @staticmethod
     def is_superclass(json_dict: dict):
@@ -50,3 +59,13 @@ class Reference(Data):
                    json_dict[GLOBAL_KEY],
                    v=None,
                    r=json_dict[REF])
+
+    def promise(self):
+        self.promised = deepcopy(self.value)
+        self.value = self.promised
+    
+    def fulfill(self):
+        super().fulfill()
+        self.set_ref_and_dump(shelf.get_pkl_ref())
+        return json.dumps(self.jsonify())
+

@@ -1,15 +1,15 @@
 from .block import Block
 from .group import BlockGroup
 from .window import Window
-from ..entry import DataVal, DataRef, Bracket, EOF
+from flor.journal.entry import DataVal, DataRef, Bracket, EOF
 
-from collections import OrderedDict
-from typing import List, Union
+from collections import OrderedDict as ODict
+from typing import List, Union, OrderedDict
 
 
 class Tree:
     def __init__(self, log_entry: Bracket = None):
-        self.hash: OrderedDict[str, BlockGroup] = OrderedDict()
+        self.hash: OrderedDict[str, BlockGroup] = ODict()
         self.block = None
 
         if log_entry is not None:
