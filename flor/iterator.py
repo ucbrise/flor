@@ -28,11 +28,13 @@ def it(value: Union[Iterable, bool]):
         # Record mode
         if isinstance(value, bool):
             if not value:
+                SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
                 SkipBlock.logger.close()
             return value
         else:
             for each in value:
                 yield each
+            SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
             SkipBlock.logger.close()
     else:
         # Replay mode

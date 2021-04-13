@@ -7,14 +7,6 @@ import glob
 from pathlib import PurePath
 from typing import List, Tuple, Any
 
-#%%
-import glob
-from pathlib import Path
-d = Path.home() / 'sd_card' / 'sandbox' / 'foo.txt'
-read_files = glob.glob(d.with_name(d.stem + '_*' +  d.suffix).as_posix())
-read_files
-
-#%%
 
 class Logger:
     def __init__(self, path=None, buf_size=None):
@@ -39,6 +31,8 @@ class Logger:
             self.flush()
 
     def close(self):
+        if len(self.buffer) > 0:
+            self.flush()
         p = self.path.with_name(self.path.stem + '_*' + self.path.suffix)
         with open(self.path, 'wb') as out_f:
             for pi in glob.glob(p.as_posix()):
@@ -78,7 +72,7 @@ class Buffer:
     def append(self, o: Future):
         assert isinstance(o, Future), "object passed to flor Logger must implement Future interface"
         o.promise()
-        self._b.append((len(o), o))
+        self._b.append(o)
 
     def is_full(self):
         return len(self._b) >= self.size
@@ -93,23 +87,3 @@ class Buffer:
 
     def __len__(self):
         return len(self._b)
-
-# def merge():
-#     """
-#     Stitch together parallel-written files
-#     """
-#     if shelf.get_latest().exists():
-#         shelf.get_latest().unlink()
-#     shelf.get_latest().symlink_to(shelf.get_index())
-
-
-# def close(eof_entry: EOF):
-#     feed(eof_entry)
-#     write()
-#     merge()
-
-
-# Add feed and write
-# there used to be a tree feed entry. Why?
-
-# %%
