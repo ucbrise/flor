@@ -28,12 +28,12 @@ def it(value: Union[Iterable, bool]):
         # Record mode
         if isinstance(value, bool):
             if not value:
-                SkipBlock.logger.flush()
+                SkipBlock.logger.close()
             return value
         else:
             for each in value:
                 yield each
-            SkipBlock.logger.flush()
+            SkipBlock.logger.close()
     else:
         # Replay mode
         segment = SkipBlock.journal.get_segment_window()
