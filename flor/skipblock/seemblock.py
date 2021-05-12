@@ -10,7 +10,7 @@ class SeemBlock(ABC):
 
     @staticmethod
     @abstractmethod
-    def step_into(block_name: str, probed=False):
+    def step_into(block_name: str, probed=None):
         ...
 
     @staticmethod

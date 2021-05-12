@@ -7,7 +7,7 @@ from flor import flags
 
 class SkipBlock(SeemBlock):
     @staticmethod
-    def step_into(block_name: str, probed=False):
+    def step_into(block_name: str, probed=None):
         if flags.NAME is not None:
             raise RuntimeError("SkipBlock missing dynamic linking")
         return True

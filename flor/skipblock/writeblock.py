@@ -14,7 +14,7 @@ class WriteBlock(SeemBlock):
     pda: List[Bracket] = []
 
     @staticmethod
-    def step_into(block_name: str, probed=False):
+    def step_into(block_name: str, probed=None):
         assert isinstance(block_name, str)
         dynamic_id = WriteBlock.dynamic_identifiers.get(block_name, 0)
         WriteBlock.dynamic_identifiers[block_name] = dynamic_id + 1

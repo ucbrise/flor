@@ -11,7 +11,9 @@ class ReadBlock(SeemBlock):
     pda: List[Bracket] = []
 
     @staticmethod
-    def step_into(block_name: str, probed=False):
+    def step_into(block_name: str, probed=None):
+        if probed is None:
+            probed = flags.PID[1] > 1
         assert isinstance(block_name, str)
         dynamic_id = ReadBlock.dynamic_identifiers.get(block_name, 0)
         ReadBlock.dynamic_identifiers[block_name] = dynamic_id + 1
