@@ -218,7 +218,7 @@ if opt.dry_run:
     opt.niter = 1
 
 for epoch in flor.it(range(opt.niter)):
-    if flor.SkipBlock.step_into(probed=False):
+    if flor.SkipBlock.step_into('training_loop', probed=False):
         for i, data in enumerate(dataloader, 0):
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))

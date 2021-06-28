@@ -88,7 +88,7 @@ def train(epoch):
     model.train()
     train_loss = 0
 
-    if flor.SkipBlock.step_into():
+    if flor.SkipBlock.step_into('training_loop', probed=False):
         for batch_idx, (data, _) in enumerate(train_loader):
             data = data.to(device)
             optimizer.zero_grad()

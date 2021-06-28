@@ -85,7 +85,7 @@ def main():
     for i_episode in flor.it(count(1)):
         state, ep_reward = env.reset(), 0
 
-        if flor.SkipBlock.step_into(probed=False):
+        if flor.SkipBlock.step_into('training_loop', probed=False):
             for t in range(1, 10000):  # Don't infinite loop while learning
                 action = select_action(state)
                 state, reward, done, _ = env.step(action)
