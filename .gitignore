@@ -32,3 +32,4 @@ presentations/sysml_fall_2020/data
 presentations/sysml_fall_2020/mnist
 tests/training/mnist
 venv/
+examples/mnist/MNIST/*

@@ -32,24 +32,25 @@ class Logger:
 
     def close(self):
         if len(self.buffer) > 0:
-            self.flush()
-        p = self.path.with_name(self.path.stem + "_*" + self.path.suffix)
-        with open(self.path, "wb") as out_f:
-            for pi in glob.glob(p.as_posix()):
-                with open(pi, "rb") as in_f:
-                    out_f.write(in_f.read())
-                os.remove(pi)
+            self.flush(is_final=True)
         latest = shelf.get_latest()
         if latest.exists():
             latest.unlink()
         latest.symlink_to(self.path)
         # TODO: spool
 
-    def flush(self):
+    def flush(self, is_final=False):
         self.flush_count += 1
         pid = os.fork()
         if not pid:
             self._flush_buffer()
+            if is_final:
+                p = self.path.with_name(self.path.stem + "_*" + self.path.suffix)
+                with open(self.path, "wb") as out_f:
+                    for pi in glob.glob(p.as_posix()):
+                        with open(pi, "rb") as in_f:
+                            out_f.write(in_f.read())
+                        os.remove(pi)
         else:
             self.buffer.clear()
 
