@@ -4,12 +4,12 @@ from .window import Window
 from flor.journal.entry import DataVal, DataRef, Bracket, EOF
 
 from collections import OrderedDict as ODict
-from typing import List, Union, OrderedDict
+from typing import List, Union, Dict
 
 
 class Tree:
     def __init__(self, log_entry: Bracket = None):
-        self.hash: OrderedDict[str, BlockGroup] = ODict()
+        self.hash: Dict[str, BlockGroup] = ODict()
         self.block = None
 
         if log_entry is not None:
