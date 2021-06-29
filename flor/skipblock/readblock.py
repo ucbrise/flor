@@ -18,7 +18,9 @@ class ReadBlock(SeemBlock):
         dynamic_id = ReadBlock.dynamic_identifiers.get(block_name, 0)
         ReadBlock.dynamic_identifiers[block_name] = dynamic_id + 1
 
-        lbracket = Bracket(block_name, dynamic_id, LBRACKET, predicate=not flags.RESUMING and probed)
+        lbracket = Bracket(
+            block_name, dynamic_id, LBRACKET, predicate=not flags.RESUMING and probed
+        )
         ReadBlock.pda.append(lbracket)
         return lbracket.predicate
 
@@ -30,7 +32,7 @@ class ReadBlock(SeemBlock):
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()
                 value_serialized = data_record.value
-                if hasattr(arg, 'load_state_dict'):
+                if hasattr(arg, "load_state_dict"):
                     # PyTorch support
                     arg.load_state_dict(value_serialized)
                 elif isinstance(arg, list):
@@ -39,7 +41,7 @@ class ReadBlock(SeemBlock):
                 elif isinstance(arg, dict):
                     assert isinstance(value_serialized, dict)
                     arg.update(value_serialized)
-                elif hasattr(arg, '__dict__'):
+                elif hasattr(arg, "__dict__"):
                     if isinstance(value_serialized, dict):
                         arg.__dict__.update(arg)
                     else:
@@ -47,6 +49,8 @@ class ReadBlock(SeemBlock):
                         arg.__dict__.update(value_serialized.__dict__)
                 else:
                     # TODO: ...
-                    raise RuntimeError("TODO: add hooks for user-defined de-serialization")
+                    raise RuntimeError(
+                        "TODO: add hooks for user-defined de-serialization"
+                    )
         # TODO: ...
         assert values is None, "TODO: Add support for literals/atomics"

@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 
+
 class Future(ABC):
     def __init__(self, v):
         self.value = v
         self.promised = None
-    
+
     @abstractmethod
     def promise(self):
         """

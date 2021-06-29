@@ -6,9 +6,9 @@ class Block:
     def __init__(self, log_record: Bracket, parent=None):
         assert log_record.is_left()
 
-        self.child: Union['Block', None] = None
-        self.parent: Union['Block', None] = parent
-        self.successor: Union['Block', None] = None
+        self.child: Union["Block", None] = None
+        self.parent: Union["Block", None] = parent
+        self.successor: Union["Block", None] = None
 
         self.static_key = log_record.sk
         self.global_key = log_record.gk
@@ -18,9 +18,7 @@ class Block:
 
     def belongs_in_block(self, data_record: Union[DataVal, DataRef, Bracket]):
         assert data_record.is_right()
-        return (
-            data_record.sk == self.static_key and
-            data_record.gk == self.global_key)
+        return data_record.sk == self.static_key and data_record.gk == self.global_key
 
     def feed_entry(self, data_record: Union[DataVal, DataRef, Bracket]):
         assert self.belongs_in_block(data_record)

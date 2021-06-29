@@ -23,15 +23,17 @@ class Net(nn.Module):
 
 
 transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5,), (0.5,))])
+    [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
+)
 
-trainset = torchvision.datasets.MNIST(root='./mnist', train=True,
-                                        download=True, transform=transform)
+trainset = torchvision.datasets.MNIST(
+    root="./mnist", train=True, download=True, transform=transform
+)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, num_workers=2)
 
-testset = torchvision.datasets.MNIST(root='./mnist', train=False,
-                                       download=True, transform=transform)
+testset = torchvision.datasets.MNIST(
+    root="./mnist", train=False, download=True, transform=transform
+)
 testloader = torch.utils.data.DataLoader(testset, batch_size=4, num_workers=2)
 
 
@@ -46,19 +48,22 @@ def eval(net):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print('Accuracy of the network on the 10000 test images: %d %%' % (
-        100 * correct / total))
+    print(
+        "Accuracy of the network on the 10000 test images: %d %%"
+        % (100 * correct / total)
+    )
+
 
 net = Net()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 for epoch in flor.it(range(80)):
-    print(f'epoch: {epoch}')
+    print(f"epoch: {epoch}")
     running_loss = 0.0
-    if flor.SkipBlock.step_into('training_loop', probed=True):
-        print('foo')
+    if flor.SkipBlock.step_into("training_loop", probed=True):
+        print("foo")
         time.sleep(0.002)
     flor.SkipBlock.end(net, optimizer)
     eval(net)
 
-print('Finished Training')
+print("Finished Training")

@@ -23,6 +23,4 @@ class Bracket(Metadata):
 
     @classmethod
     def cons(cls, json_dict: dict):
-        return cls(json_dict[STATIC_KEY],
-                   json_dict[GLOBAL_KEY],
-                   json_dict[METADATA])
+        return cls(json_dict[STATIC_KEY], json_dict[GLOBAL_KEY], json_dict[METADATA])

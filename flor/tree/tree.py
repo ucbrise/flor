@@ -60,8 +60,10 @@ class Tree:
             if self.block.belongs_in_block(log_entry):
                 self.block.feed_entry(log_entry)
             else:
-                assert self.block.parent is not None \
-                       and self.block.parent.belongs_in_block(log_entry)
+                assert (
+                    self.block.parent is not None
+                    and self.block.parent.belongs_in_block(log_entry)
+                )
                 self.block = self.block.parent
                 self.block.feed_entry(log_entry)
         else:

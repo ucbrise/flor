@@ -31,7 +31,4 @@ class EOF(Metadata):
     def cons(cls, json_dict: dict):
         sparse = json_dict[SPARSE_CHECKPOINTS]
         assert isinstance(sparse, List)
-        return cls(sparse,
-                   int(json_dict[ITERATIONS_COUNT]))
-
-
+        return cls(sparse, int(json_dict[ITERATIONS_COUNT]))

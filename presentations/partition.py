@@ -23,7 +23,6 @@ def partition(iterator, partition_id, num_gpus):
     # [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]]  --- 12 epochs on 4 GPUs
     #   ^                                                 for partition_id = 1, PRED_INIT_MODE STRONG
 
-
     if PRED_INIT_MODE is WEAK:
         predecessor_epochs = [predecessor_id,] if predecessor_id >= 0 else []
         # [2]         for weak initialization
@@ -38,6 +37,7 @@ def partition(iterator, partition_id, num_gpus):
 
     # Set a global Flor flag to force full re-execution
     import flor
+
     flor.SKIP = False
 
     # Do the work in your partition

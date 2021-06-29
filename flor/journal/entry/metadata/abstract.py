@@ -5,6 +5,7 @@ from ....logger import Future
 from abc import ABC
 import json
 
+
 class Metadata(Entry, Future, ABC):
     def __init__(self, sk, gk, meta):
         Entry.__init__(self, sk, gk)
@@ -19,5 +20,4 @@ class Metadata(Entry, Future, ABC):
         ...
 
     def fulfill(self):
-        return json.dumps(self.jsonify()) 
-
+        return json.dumps(self.jsonify())

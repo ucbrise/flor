@@ -50,13 +50,18 @@ def it(value: Union[Iterable, bool]):
                         continue
                     else:
                         # TODO: ...
-                        assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
+                        assert hasattr(
+                            value, "__getitem__"
+                        ), "TODO: Implement next() calls to consume iterator"
                         yield value[capsule.epoch]
                 else:
                     assert capsule.epoch is not None
                     # TODO: ...
-                    assert hasattr(value, '__getitem__'), "TODO: Implement next() calls to consume iterator"
+                    assert hasattr(
+                        value, "__getitem__"
+                    ), "TODO: Implement next() calls to consume iterator"
                     yield value[capsule.epoch]
+
 
 def _deferred_init(_nil=[]):
     """
@@ -73,4 +78,5 @@ def _deferred_init(_nil=[]):
             assert SkipBlock.logger.path is not None
         _nil.append(True)
 
-__all__ = ['it']
+
+__all__ = ["it"]

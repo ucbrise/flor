@@ -57,7 +57,7 @@ class Error(Exception):
     pass
 
 
-error = Error   # backward compatibility
+error = Error  # backward compatibility
 
 try:
     from org.python.core import PyStringMap
@@ -113,10 +113,26 @@ def _copy_immutable(x):
     return x
 
 
-for t in (type(None), int, float, bool, complex, str, tuple,
-          bytes, frozenset, type, range, slice, property,
-          types.BuiltinFunctionType, type(Ellipsis), type(NotImplemented),
-          types.FunctionType, weakref.ref):
+for t in (
+    type(None),
+    int,
+    float,
+    bool,
+    complex,
+    str,
+    tuple,
+    bytes,
+    frozenset,
+    type,
+    range,
+    slice,
+    property,
+    types.BuiltinFunctionType,
+    type(Ellipsis),
+    type(NotImplemented),
+    types.FunctionType,
+    weakref.ref,
+):
     d[t] = _copy_immutable
 t = getattr(types, "CodeType", None)
 if t is not None:
@@ -158,7 +174,7 @@ def deepcopy(x, memo=None, _nil=[]):
     else:
         if issubclass(cls, type):
             y = _deepcopy_atomic(x, memo)
-        elif str(cls) == "<class 'torch.Tensor'>" and 'cpu' not in x.device.type:
+        elif str(cls) == "<class 'torch.Tensor'>" and "cpu" not in x.device.type:
             # Using a string so we don't have to import torch
             # We have to ensure tensor is not already in CPU -- else .cpu() is no-op
             y = x.cpu()  # This achieves a fast copy
@@ -179,8 +195,7 @@ def deepcopy(x, memo=None, _nil=[]):
                         if reductor:
                             rv = reductor()
                         else:
-                            raise Error(
-                                "un(deep)copyable object of type %s" % cls)
+                            raise Error("un(deep)copyable object of type %s" % cls)
                 if isinstance(rv, str):
                     y = x
                 else:
@@ -288,9 +303,9 @@ def _keep_alive(x, memo):
         memo[id(memo)] = [x]
 
 
-def _reconstruct(x, memo, func, args,
-                 state=None, listiter=None, dictiter=None,
-                 deepcopy=deepcopy):
+def _reconstruct(
+    x, memo, func, args, state=None, listiter=None, dictiter=None, deepcopy=deepcopy
+):
     deep = memo is not None
     if deep and args:
         args = (deepcopy(arg, memo) for arg in args)
@@ -301,7 +316,7 @@ def _reconstruct(x, memo, func, args,
     if state is not None:
         if deep:
             state = deepcopy(state, memo)
-        if hasattr(y, '__setstate__'):
+        if hasattr(y, "__setstate__"):
             y.__setstate__(state)
         else:
             if isinstance(state, tuple) and len(state) == 2:

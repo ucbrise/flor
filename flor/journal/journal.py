@@ -5,6 +5,7 @@ from flor.tree.window import Window
 
 from typing import Union
 
+
 class Journal:
     def __init__(self):
         self.tree = Tree()
@@ -18,8 +19,9 @@ class Journal:
     def get_segment_window(self) -> Window:
         assert flags.PID[1] <= self.tree.iterations_count
         if self.tree.sparse_checkpoints:
-            assert flags.PID[1] <= len(self.tree.sparse_checkpoints) + 1, \
-                f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
+            assert (
+                flags.PID[1] <= len(self.tree.sparse_checkpoints) + 1
+            ), f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
         if flags.MODE == flags.WEAK and flags.PID[0] > 1:
             self._advance_head()
             return self.sub_tree.get_segment()
@@ -44,9 +46,12 @@ class Journal:
             target = self.tree[self.tree.root.static_key].blocks[epoch_to_init]
             feeding = False
             for journal_entry in self.entries:
-                if (not feeding and journal_entry.is_left() and
-                        journal_entry.sk == target.static_key and
-                        journal_entry.gk == target.global_key):
+                if (
+                    not feeding
+                    and journal_entry.is_left()
+                    and journal_entry.sk == target.static_key
+                    and journal_entry.gk == target.global_key
+                ):
                     feeding = True
                 if feeding:
                     self.sub_tree.feed_entry(journal_entry)

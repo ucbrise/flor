@@ -25,13 +25,11 @@ class Value(Data):
 
     @classmethod
     def cons(cls, json_dict: dict):
-        return cls(json_dict[STATIC_KEY],
-                   json_dict[GLOBAL_KEY],
-                   json_dict[VAL])
+        return cls(json_dict[STATIC_KEY], json_dict[GLOBAL_KEY], json_dict[VAL])
 
     def promise(self):
         self.promised = self.value
-    
+
     def fulfill(self):
         super().fulfill()
         return json.dumps(self.jsonify())

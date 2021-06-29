@@ -4,7 +4,9 @@ from typing import List
 
 class BlockGroup:
     def __init__(self, first: Block):
-        self.blocks: List[Block] = [first, ]
+        self.blocks: List[Block] = [
+            first,
+        ]
 
         self.materialization_time = None
         self.computation_time = None
@@ -32,4 +34,3 @@ class BlockGroup:
 
     def peek_block(self) -> Block:
         return self.blocks[-1]
-

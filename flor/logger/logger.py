@@ -33,13 +33,13 @@ class Logger:
     def close(self):
         if len(self.buffer) > 0:
             self.flush()
-        p = self.path.with_name(self.path.stem + '_*' + self.path.suffix)
-        with open(self.path, 'wb') as out_f:
+        p = self.path.with_name(self.path.stem + "_*" + self.path.suffix)
+        with open(self.path, "wb") as out_f:
             for pi in glob.glob(p.as_posix()):
-                with open(pi, 'rb') as in_f:
-                    out_f.write(in_f.read()) 
+                with open(pi, "rb") as in_f:
+                    out_f.write(in_f.read())
                 os.remove(pi)
-        latest = shelf.get_latest()        
+        latest = shelf.get_latest()
         if latest.exists():
             latest.unlink()
         latest.symlink_to(self.path)
@@ -55,11 +55,13 @@ class Logger:
 
     def force(self):
         self._flush_buffer()
-    
+
     def _flush_buffer(self):
         assert isinstance(self.path, PurePath)
-        p = self.path.with_name(self.path.stem + f'_{self.flush_count}' + self.path.suffix)
-        with open(p, 'w') as f:
+        p = self.path.with_name(
+            self.path.stem + f"_{self.flush_count}" + self.path.suffix
+        )
+        with open(p, "w") as f:
             for o in self.buffer.flush():
                 f.write(o + os.linesep)
 
@@ -70,7 +72,9 @@ class Buffer:
         self.size = size
 
     def append(self, o: Future):
-        assert isinstance(o, Future), "object passed to flor Logger must implement Future interface"
+        assert isinstance(
+            o, Future
+        ), "object passed to flor Logger must implement Future interface"
         o.promise()
         self._b.append(o)
 

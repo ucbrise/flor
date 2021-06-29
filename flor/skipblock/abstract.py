@@ -22,4 +22,3 @@ class SkipBlock(SeemBlock):
         block = ReadBlock if flags.REPLAY else WriteBlock
         SkipBlock.step_into = block.step_into
         SkipBlock.end = block.end
-        

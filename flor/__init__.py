@@ -7,5 +7,4 @@ flags.Parser.parse_name()
 flags.Parser.parse_replay()
 
 
-__all__ = ['flags', 'it', 'SkipBlock', 'Logger']
-
+__all__ = ["flags", "it", "SkipBlock", "Logger"]

@@ -19,8 +19,9 @@ class WriteBlock(SeemBlock):
         dynamic_id = WriteBlock.dynamic_identifiers.get(block_name, 0)
         WriteBlock.dynamic_identifiers[block_name] = dynamic_id + 1
 
-        lbracket = Bracket(block_name, dynamic_id, LBRACKET,
-                           predicate=True, timestamp=time.time())
+        lbracket = Bracket(
+            block_name, dynamic_id, LBRACKET, predicate=True, timestamp=time.time()
+        )
         WriteBlock.journal.as_tree().feed_entry(lbracket)
 
         WriteBlock.logger.append(lbracket)
@@ -78,7 +79,9 @@ class WriteBlock(SeemBlock):
 
         # Then account for parallelism speedup
         if block.parent is None:
-            threshold *= block_group.executions_count / (block_group.materializations_count + 1)
+            threshold *= block_group.executions_count / (
+                block_group.materializations_count + 1
+            )
             if ratio < threshold:
                 WriteBlock.journal.as_tree().add_sparse_checkpoint()
                 block.force_mat_successors()
@@ -88,8 +91,8 @@ class WriteBlock(SeemBlock):
 
 
 def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:
-    if hasattr(arg, 'state_dict'):
-        arg = getattr(arg, 'state_dict')()
+    if hasattr(arg, "state_dict"):
+        arg = getattr(arg, "state_dict")()
 
     if type(arg) in [type(None), int, float, bool, str]:
         return DataVal(lbracket.sk, lbracket.gk, arg)

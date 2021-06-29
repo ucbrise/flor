@@ -5,6 +5,7 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
+
 class Net(nn.Module):
     def __init__(self):
         torch.manual_seed(1217)
@@ -20,15 +21,17 @@ class Net(nn.Module):
 
 
 transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5,), (0.5,))])
+    [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
+)
 
-trainset = torchvision.datasets.MNIST(root='./mnist', train=True,
-                                        download=True, transform=transform)
+trainset = torchvision.datasets.MNIST(
+    root="./mnist", train=True, download=True, transform=transform
+)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, num_workers=2)
 
-testset = torchvision.datasets.MNIST(root='./mnist', train=False,
-                                       download=True, transform=transform)
+testset = torchvision.datasets.MNIST(
+    root="./mnist", train=False, download=True, transform=transform
+)
 testloader = torch.utils.data.DataLoader(testset, batch_size=4, num_workers=2)
 
 
@@ -43,8 +46,11 @@ def eval(net):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print('Accuracy of the network on the 10000 test images: %d %%' % (
-        100 * correct / total))
+    print(
+        "Accuracy of the network on the 10000 test images: %d %%"
+        % (100 * correct / total)
+    )
+
 
 net = Net()
 criterion = nn.CrossEntropyLoss()
@@ -61,10 +67,9 @@ for epoch in range(2):
 
         # print statistics
         running_loss += loss.item()
-        if i % 2000 == 1999:    # print every 2000 mini-batches
-            print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss / 2000))
+        if i % 2000 == 1999:  # print every 2000 mini-batches
+            print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
             running_loss = 0.0
     eval(net)
 
-print('Finished Training')
+print("Finished Training")
