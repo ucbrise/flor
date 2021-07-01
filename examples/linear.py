@@ -13,20 +13,16 @@ class Net(nn.Module):
         super(Net, self).__init__()
 
         self.inpt_dim = 28
-        self.hidden_layer = 96
         self.agg_factor = 2
         self.num_classes = 10
 
         self.pool = nn.MaxPool2d(self.agg_factor, self.agg_factor)
-        self.fc1 = nn.Linear((self.inpt_dim // self.agg_factor)**2, self.hidden_layer)
-        
-        self.fc2 = nn.Linear(self.hidden_layer, self.num_classes)
+        self.fc1 = nn.Linear((self.inpt_dim // self.agg_factor)**2, self.num_classes)
 
     def forward(self, x):
         x = self.pool(x)
         x = x.view(-1, 1, (self.inpt_dim // self.agg_factor) ** 2)        
         x = self.fc1(x)
-        x = self.fc2(x)
         return F.relu(x).view(-1, self.num_classes)
 
 
