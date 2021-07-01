@@ -33,12 +33,12 @@ transform = transforms.Compose(
 trainset = torchvision.datasets.MNIST(
     root="./mnist", train=True, download=True, transform=transform
 )
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=64, num_workers=4)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, num_workers=4)
 
 testset = torchvision.datasets.MNIST(
     root="./mnist", train=False, download=True, transform=transform
 )
-testloader = torch.utils.data.DataLoader(testset, batch_size=64, num_workers=4)
+testloader = torch.utils.data.DataLoader(testset, batch_size=4, num_workers=4)
 
 
 def eval(net):
@@ -82,8 +82,9 @@ for epoch in flor.it(range(2)):
 
             # print statistics
             running_loss += loss.item()
-            if i % 200 == 199:  # print every 200 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
+            if i % 2000 == 1999:  # print every 2000 mini-batches
+                print("[%d, %5d] loss: %.3f" %
+                      (epoch + 1, i + 1, running_loss / 2000))
                 running_loss = 0.0
     flor.SkipBlock.end(net, optimizer)
     eval(net)
