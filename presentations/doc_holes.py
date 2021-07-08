@@ -5,6 +5,11 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 
+# What if all we did with Doc Dr is document the network (Lines 13-33)
+# Basically, just stuff that merits Docstrings... 
+# This is exactly the sort of thing that Jupyter does not support
+# And this can be a major pain point with debugging in Jupyter.
+# E.g. seeing how data changes shape as it moves.
 
 batch_size = 4
 num_classes = 10
@@ -17,7 +22,7 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(196, 10)
         self.pool = nn.MaxPool2d(2, 2)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.FloatTensor:
         """DocDr
         x: 
                 shape: {x.shape} <->  torch.Size([{batch_size} <-> 4, 1, 28, 28])
@@ -59,16 +64,22 @@ def eval(net):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    print(
-        "Accuracy of the network on the 10000 test images: %d %%"
-        % (100 * correct / total)
-    )
+    return 100 * correct / total
 
 
 net = Net()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-for epoch in range(2):
+
+EPOCHS = 2
+
+"""DocDr
+epochs: ...
+lr: ....
+batch_size: ....
+"""
+
+for epoch in range(EPOCHS):
     running_loss = 0.0
     for i, data in enumerate(trainloader, 0):
         inputs, labels = data
@@ -84,6 +95,6 @@ for epoch in range(2):
             print("[%d, %5d] loss: %.3f" %
                   (epoch + 1, i + 1, running_loss / 2000))
             running_loss = 0.0
-    eval(net)
+    acc = eval(net)
 
 print("Finished Training")
