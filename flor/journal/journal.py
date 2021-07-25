@@ -1,9 +1,10 @@
-from . import file
+from typing import Union
+
 from flor import flags
 from flor.tree import Tree
 from flor.tree.window import Window
 
-from typing import Union
+from . import file
 
 
 class Journal:

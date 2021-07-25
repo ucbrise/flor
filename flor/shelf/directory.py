@@ -1,16 +1,18 @@
+import uuid
+from datetime import datetime
+from pathlib import Path, PurePath
+from typing import Optional, Union
+
 from flor import flags
 
-import uuid
-from pathlib import Path, PurePath
-from datetime import datetime
+home: Path = Path.home()
 
-home = Path.home()
-florin = home / ".flor"
+florin: Path = home / ".flor"
 florin.mkdir(exist_ok=True)
 
-job = None
-data = None
-timestamp = None
+job: Optional[Path] = None
+data: Optional[Path] = None
+timestamp: Optional[str] = None
 
 
 def mk_job(name: str):
@@ -19,30 +21,31 @@ def mk_job(name: str):
     timestamp = datetime.now().isoformat()
     job = florin / name
     job.mkdir(exist_ok=True)
-    data = job / PurePath("data")
+    data = job / "data"
     data.mkdir(exist_ok=True)
 
 
-def get_index():
+def get_index() -> Optional[Path]:
     return (
         job / PurePath(flags.INDEX if flags.REPLAY else timestamp).with_suffix(".json")
-        if job is not None
+        if job is not None and timestamp is not None
         else None
     )
 
 
-def get_latest():
+def get_latest() -> Optional[Path]:
     return job / PurePath("latest").with_suffix(".json") if job is not None else None
 
 
-def get_pkl_ref() -> PurePath:
-    while True:
-        candidate = data / PurePath(uuid.uuid4().hex).with_suffix(".pkl")
-        if not candidate.exists():
-            return candidate
+def get_pkl_ref() -> Optional[Path]:
+    return (
+        data / PurePath(uuid.uuid4().hex).with_suffix(".pkl")
+        if data is not None
+        else None
+    )
 
 
-def verify(path: PurePath):
+def verify(path: Union[PurePath, str]) -> bool:
     assert flags.NAME is not None
     resolved_path = florin / flags.NAME / path
-    return Path(resolved_path).exists()
+    return resolved_path.exists()

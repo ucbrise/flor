@@ -7,7 +7,9 @@ NO_INIT = None
 class Window:
     def __init__(self, iterations_count: int, sparse_checkpoints: List[int]):
         self.iterations_count = iterations_count
-        self.extended_sparse_checkpoints = [NO_INIT,] + sparse_checkpoints
+        self.extended_sparse_checkpoints = [
+            NO_INIT,
+        ] + sparse_checkpoints
 
     def get_work_segment(self):
         if self._is_sparse():
@@ -17,9 +19,9 @@ class Window:
             lo = self._sparse()
             hi = self._sparse(hi=True)
             assert hi is not None
-            return [Capsule(True, lo),] + [
-                Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)
-            ]
+            return [
+                Capsule(True, lo),
+            ] + [Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)]
         else:
             # All epochs are valid entries
             our_segment = self._get_segment_helper(self.iterations_count)[
@@ -31,9 +33,9 @@ class Window:
             ), "TODO: Handle case when user allocs more partitions than there is work."
             if flags.MODE == flags.WEAK:
                 # Asks to initialize predecessor
-                return [Capsule(True, self._dense()),] + [
-                    Capsule(False, e) for e in our_segment
-                ]
+                return [
+                    Capsule(True, self._dense()),
+                ] + [Capsule(False, e) for e in our_segment]
             else:
                 return [Capsule(True, e) for e in range(our_segment[0])] + [
                     Capsule(False, e) for e in our_segment
