@@ -17,11 +17,11 @@ class Net(nn.Module):
         self.num_classes = 10
 
         self.pool = nn.MaxPool2d(self.agg_factor, self.agg_factor)
-        self.fc1 = nn.Linear((self.inpt_dim // self.agg_factor)**2, self.num_classes)
+        self.fc1 = nn.Linear((self.inpt_dim // self.agg_factor) ** 2, self.num_classes)
 
     def forward(self, x):
         x = self.pool(x)
-        x = x.view(-1, 1, (self.inpt_dim // self.agg_factor) ** 2)        
+        x = x.view(-1, 1, (self.inpt_dim // self.agg_factor) ** 2)
         x = self.fc1(x)
         return F.relu(x).view(-1, self.num_classes)
 
@@ -83,8 +83,7 @@ for epoch in flor.it(range(2)):
             # print statistics
             running_loss += loss.item()
             if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" %
-                      (epoch + 1, i + 1, running_loss / 2000))
+                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
                 running_loss = 0.0
     flor.SkipBlock.end(net, optimizer)
     eval(net)
