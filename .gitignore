@@ -1,4 +1,5 @@
 .vscode/
+.venv/
 .project
 .pydevproject
 .DS_Store
