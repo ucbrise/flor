@@ -27,12 +27,12 @@ transform = transforms.Compose(
 trainset = torchvision.datasets.MNIST(
     root="./mnist", train=True, download=True, transform=transform
 )
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, num_workers=2)  # type: ignore
 
 testset = torchvision.datasets.MNIST(
     root="./mnist", train=False, download=True, transform=transform
 )
-testloader = torch.utils.data.DataLoader(testset, batch_size=4, num_workers=2)
+testloader = torch.utils.data.DataLoader(testset, batch_size=4, num_workers=2)  # type: ignore
 
 
 def eval(net):
