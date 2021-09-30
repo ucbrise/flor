@@ -85,6 +85,9 @@ def _deferred_init(_nil=[]):
 
 
 def _save_versions() -> str:
+    """
+    This needs to happen at the end of flor.it, not the beginning
+    """
     try:
         repo = Repo()
     except InvalidGitRepositoryError:
