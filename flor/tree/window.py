@@ -1,5 +1,5 @@
 from flor import flags
-from typing import List, Union
+from typing import List, Union, Optional
 
 NO_INIT = None
 
@@ -7,9 +7,8 @@ NO_INIT = None
 class Window:
     def __init__(self, iterations_count: int, sparse_checkpoints: List[int]):
         self.iterations_count = iterations_count
-        self.extended_sparse_checkpoints = [
-            NO_INIT,
-        ] + sparse_checkpoints
+        self.extended_sparse_checkpoints: List[Optional[int]] = list(sparse_checkpoints)
+        self.extended_sparse_checkpoints.insert(0, NO_INIT)
 
     def get_work_segment(self):
         if self._is_sparse():
@@ -27,17 +26,18 @@ class Window:
             our_segment = self._get_segment_helper(self.iterations_count)[
                 flags.PID[0] - 1
             ]
-            # TODO: ...
             assert (
                 our_segment
             ), "TODO: Handle case when user allocs more partitions than there is work."
-            if flags.MODE == flags.WEAK:
+            if flags.MODE is flags.WEAK:
                 # Asks to initialize predecessor
                 return [
                     Capsule(True, self._dense()),
                 ] + [Capsule(False, e) for e in our_segment]
             else:
-                return [Capsule(True, e) for e in range(our_segment[0])] + [
+                idx = our_segment[0]
+                assert idx is not None
+                return [Capsule(True, e) for e in range(idx)] + [
                     Capsule(False, e) for e in our_segment
                 ]
 
@@ -62,7 +62,7 @@ class Window:
         return is_sparse
 
     def _get_segment_helper(self, num_resume_points):
-        segments: List[List[Union[int, None]]] = [[] for _ in range(flags.PID[1])]
+        segments: List[List[Optional[int]]] = [[] for _ in range(flags.PID[1])]
         for pt in range(num_resume_points):
             segments[pt % flags.PID[1]].append(None)
         i = 0
@@ -73,7 +73,7 @@ class Window:
         assert i == num_resume_points
         return segments
 
-    def _sparse(self, hi=False) -> Union[int, None]:
+    def _sparse(self, hi=False) -> Optional[int]:
         our_segment = self._get_segment_helper(len(self.extended_sparse_checkpoints))[
             flags.PID[0] - 1
         ]
@@ -83,6 +83,7 @@ class Window:
         ), "TODO: Handle case when user allocs more partitions than there is work."
         # Re-index the segment with respect to self.sparse_checkpoints
         if not hi:
+            assert our_segment[0] is not None
             return self.extended_sparse_checkpoints[our_segment[0]]
         else:
             if flags.PID[0] == flags.PID[1]:
@@ -90,9 +91,11 @@ class Window:
                 return self.iterations_count
             else:
                 # There exists a greater segment
-                return self.extended_sparse_checkpoints[our_segment[-1] + 1]
+                idx = our_segment[-1]
+                assert idx is not None
+                return self.extended_sparse_checkpoints[idx + 1]
 
-    def _dense(self) -> Union[int, None]:
+    def _dense(self) -> Optional[int]:
         our_segment = self._get_segment_helper(self.iterations_count)[flags.PID[0] - 1]
         # TODO: ...
         assert (
@@ -103,6 +106,6 @@ class Window:
 
 
 class Capsule:
-    def __init__(self, init_only: bool, epoch: Union[int, None]):
+    def __init__(self, init_only: bool, epoch: Optional[int]):
         self.init_only = init_only
         self.epoch = epoch

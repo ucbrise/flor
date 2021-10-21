@@ -5,10 +5,11 @@ from typing import List
 
 
 class EOF(Metadata):
-    def __init__(self, sparse: List[int], itc: int):
+    def __init__(self, sparse: List[int], itc: int, commit_sha: str):
         super().__init__(None, None, EOF_NAME)
         self.sparse_checkpoints = sparse
         self.iterations_count = itc
+        self.commit_sha = commit_sha
 
     def is_left(self):
         return False
@@ -21,6 +22,7 @@ class EOF(Metadata):
         d[METADATA] = EOF_NAME
         d[SPARSE_CHECKPOINTS] = self.sparse_checkpoints
         d[ITERATIONS_COUNT] = int(self.iterations_count)
+        d["COMMIT_SHA"] = self.commit_sha
         return d
 
     @staticmethod
@@ -31,4 +33,4 @@ class EOF(Metadata):
     def cons(cls, json_dict: dict):
         sparse = json_dict[SPARSE_CHECKPOINTS]
         assert isinstance(sparse, List)
-        return cls(sparse, int(json_dict[ITERATIONS_COUNT]))
+        return cls(sparse, int(json_dict[ITERATIONS_COUNT]), json_dict["COMMIT_SHA"])

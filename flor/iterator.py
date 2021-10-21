@@ -1,10 +1,11 @@
-from typing import Iterable, Union
+import json
+import os
+from typing import Iterable, List, Union
 
-from git.repo import Repo
 from git.exc import InvalidGitRepositoryError
+from git.repo import Repo
 
-from . import flags
-from . import shelf
+from . import flags, shelf
 from .skipblock import SkipBlock
 
 
@@ -31,14 +32,12 @@ def it(value: Union[Iterable, bool]):
         # Record mode
         if isinstance(value, bool):
             if not value:
-                SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
-                SkipBlock.logger.close()
+                _close_record()
             return value
         else:
             for each in value:
                 yield each
-            SkipBlock.logger.append(SkipBlock.journal.as_tree().get_eof())
-            SkipBlock.logger.close()
+            _close_record()
     else:
         # Replay mode
         segment = SkipBlock.journal.get_segment_window()
@@ -52,18 +51,16 @@ def it(value: Union[Iterable, bool]):
                     if capsule.epoch is None:
                         continue
                     else:
-                        # TODO: ...
                         assert hasattr(
                             value, "__getitem__"
                         ), "TODO: Implement next() calls to consume iterator"
-                        yield value[capsule.epoch]
+                        yield value[capsule.epoch]  # type: ignore
                 else:
                     assert capsule.epoch is not None
-                    # TODO: ...
                     assert hasattr(
                         value, "__getitem__"
                     ), "TODO: Implement next() calls to consume iterator"
-                    yield value[capsule.epoch]
+                    yield value[capsule.epoch]  # type: ignore
 
 
 def _deferred_init(_nil=[]):
@@ -72,8 +69,6 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
-        commit = _save_versions()
-        print(commit)
         shelf.mk_job(flags.NAME)
         SkipBlock.bind()
         if flags.REPLAY:
@@ -84,10 +79,14 @@ def _deferred_init(_nil=[]):
         _nil.append(True)
 
 
+def _close_record():
+    commit_sha = _save_versions()
+    SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
+    SkipBlock.logger.close()
+    return commit_sha, SkipBlock.logger.path
+
+
 def _save_versions() -> str:
-    """
-    This needs to happen at the end of flor.it, not the beginning
-    """
     try:
         repo = Repo()
     except InvalidGitRepositoryError:
@@ -104,8 +103,12 @@ def _save_versions() -> str:
     repo.git.checkout(flags.NAME)
     stash_msg_list: str = repo.git.stash("list")
 
+    repo.git.merge(active_branch.name, "-X", "theirs", "--squash")
+
     if stash_msg_list:
         repo.git.stash("apply")
+
+    _write_replay_file()
 
     repo.git.add("-A")
     commit = repo.index.commit(
@@ -118,6 +121,14 @@ def _save_versions() -> str:
         repo.git.stash("pop")
 
     return commit_sha
+
+
+def _write_replay_file():
+    d = {}
+    d["NAME"] = flags.NAME
+    d["MEMO"] = str(SkipBlock.logger.path)
+    with open("flor_replay.json", "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=4)
 
 
 __all__ = ["it"]

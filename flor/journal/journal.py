@@ -1,8 +1,9 @@
-from typing import Union
+from typing import Union, List
 
 from flor import flags
+from flor.journal.entry import EOF
 from flor.tree import Tree
-from flor.tree.window import Window
+from flor.tree.window import Capsule
 
 from . import file
 
@@ -17,7 +18,7 @@ class Journal:
         self.entries = file.read()
         self.tree.parse(self.entries)
 
-    def get_segment_window(self) -> Window:
+    def get_segment_window(self) -> List[Capsule]:
         assert flags.PID[1] <= self.tree.iterations_count
         if self.tree.sparse_checkpoints:
             assert (
@@ -25,6 +26,7 @@ class Journal:
             ), f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
         if flags.MODE == flags.WEAK and flags.PID[0] > 1:
             self._advance_head()
+            assert self.sub_tree is not None
             return self.sub_tree.get_segment()
         return self.tree.get_segment()
 
@@ -35,6 +37,10 @@ class Journal:
             assert self.sub_tree is not None
             return self.sub_tree
 
+    def get_eof(self, commit_sha: str):
+        tree = self.as_tree()
+        return EOF(tree.sparse_checkpoints, tree.iterations_count, commit_sha)
+
     def _advance_head(self):
         """
         Used for checkpoint resume,
@@ -44,8 +50,10 @@ class Journal:
         self.sub_tree = Tree()
         epoch_to_init: Union[int, None] = self.tree.get_resume_epoch()
         if epoch_to_init is not None:
+            assert self.tree.root is not None
             target = self.tree[self.tree.root.static_key].blocks[epoch_to_init]
             feeding = False
+            assert self.entries is not None
             for journal_entry in self.entries:
                 if (
                     not feeding

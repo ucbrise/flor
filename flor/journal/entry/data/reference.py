@@ -17,6 +17,7 @@ class Reference(Data):
         self.val_saved = v is None and r is not None
 
     def make_val(self):
+        assert self.ref is not None
         with open(self.ref, "rb") as f:
             self.value = cloudpickle.load(f)
 
@@ -27,6 +28,7 @@ class Reference(Data):
         cloudpickle.dumps(self.value)
 
     def jsonify(self):
+        assert self.ref is not None
         assert (
             self.val_saved and self.ref.suffix == PKL_SFX
         ), "Must call Reference.set_ref_and_dump(...) before jsonify()"
@@ -68,5 +70,7 @@ class Reference(Data):
 
     def fulfill(self):
         super().fulfill()
-        self.set_ref_and_dump(shelf.get_pkl_ref())
+        ref = shelf.get_pkl_ref()
+        assert ref is not None
+        self.set_ref_and_dump(ref)
         return json.dumps(self.jsonify())

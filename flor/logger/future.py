@@ -16,8 +16,9 @@ class Future(ABC):
         ...
 
     @abstractmethod
-    def fulfill(self):
+    def fulfill(self) -> str:
         """
         Finishes intended work on stored version of self.value
         """
         assert self.promised is not None
+        return ""

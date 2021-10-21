@@ -1,7 +1,7 @@
 import glob
 import os
-from pathlib import PurePath
-from typing import Any, List, Tuple
+from pathlib import Path
+from typing import Any, List, Tuple, Generator
 
 from .. import shelf
 from .copy import deepcopy
@@ -10,19 +10,12 @@ from .future import Future
 
 class Logger:
     def __init__(self, path=None, buf_size=None):
-        self.path = PurePath(path) if path is not None else None
+        self.path = Path(path) if path is not None else None
         self.buffer = Buffer() if buf_size is None else Buffer(buf_size)
         self.flush_count = 0
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        self.close()
-        return False
-
     def set_path(self, path):
-        self.path = PurePath(path)
+        self.path = Path(path)
 
     def append(self, o: Future):
         assert self.path is not None, "Logger path not set."
@@ -34,12 +27,15 @@ class Logger:
         if len(self.buffer) > 0:
             self.flush(is_final=True)
         latest = shelf.get_latest()
+        assert latest is not None
+        assert self.path is not None
         if latest.exists():
             latest.unlink()
         latest.symlink_to(self.path)
         # TODO: spool
 
     def flush(self, is_final=False):
+        assert self.path is not None
         self.flush_count += 1
         pid = os.fork()
         if not pid:
@@ -58,12 +54,13 @@ class Logger:
         self._flush_buffer()
 
     def _flush_buffer(self):
-        assert isinstance(self.path, PurePath)
+        assert isinstance(self.path, Path)
         p = self.path.with_name(
             self.path.stem + f"_{self.flush_count}" + self.path.suffix
         )
         with open(p, "w") as f:
             for o in self.buffer.flush():
+                assert o is not None
                 f.write(o + os.linesep)
 
 
@@ -85,7 +82,7 @@ class Buffer:
     def clear(self):
         self._b[:] = []
 
-    def flush(self):
+    def flush(self) -> Generator[str, None, None]:
         for o in self._b:
             yield o.fulfill()
         self.clear()

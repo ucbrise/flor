@@ -31,9 +31,6 @@ class Tree:
         else:
             self.hash[block.static_key] = BlockGroup(block)
 
-    def get_eof(self):
-        return EOF(self.sparse_checkpoints, self.iterations_count)
-
     def add_sparse_checkpoint(self):
         # print(f"SPARSE CHECKPOINT at {self.iterations_count - 1}")
         self.sparse_checkpoints.append(self.iterations_count - 1)
@@ -42,21 +39,27 @@ class Tree:
         if self.root is None:
             assert self.block is None
             assert log_entry.is_left()
+            assert isinstance(log_entry, Bracket)
             self.block = Block(log_entry)
             self.root = self.block
             self._hash(self.block)
         elif log_entry.is_left():
+            assert self.block is not None
             if self.block.right_fed:
+                assert isinstance(log_entry, Bracket)
                 successor = Block(log_entry, self.block.parent)
                 self.block.successor = successor
                 self.block = successor
                 self._hash(successor)
             else:
+                assert isinstance(log_entry, Bracket)
                 child = Block(log_entry, self.block)
                 self.block.child = child
                 self.block = child
                 self._hash(child)
         elif log_entry.is_right():
+            assert self.block is not None
+            assert not isinstance(log_entry, EOF)
             if self.block.belongs_in_block(log_entry):
                 self.block.feed_entry(log_entry)
             else:
