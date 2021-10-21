@@ -8,6 +8,8 @@ from git.repo import Repo
 from . import flags, shelf
 from .skipblock import SkipBlock
 
+SHADOW_BRANCH_PREFIX = "flor.shadow"
+
 
 def it(value: Union[Iterable, bool]):
     """
@@ -69,6 +71,11 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
+        repo = Repo()
+        assert (
+            SHADOW_BRANCH_PREFIX
+            == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
+        ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
         shelf.mk_job(flags.NAME)
         SkipBlock.bind()
         if flags.REPLAY:
@@ -80,46 +87,21 @@ def _deferred_init(_nil=[]):
 
 
 def _close_record():
-    commit_sha = _save_versions()
+    commit_sha = _save_run()
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path
 
 
-def _save_versions() -> str:
-    try:
-        repo = Repo()
-    except InvalidGitRepositoryError:
-        repo = Repo.init()
-
-    if not repo.branches:
-        repo.index.commit("initial commit")
-
-    active_branch = repo.active_branch
-    repo.git.stash("-u")
-    if flags.NAME not in [b.name for b in repo.branches]:
-        repo.create_head(flags.NAME)
-
-    repo.git.checkout(flags.NAME)
-    stash_msg_list: str = repo.git.stash("list")
-
-    repo.git.merge(active_branch.name, "-X", "theirs", "--squash")
-
-    if stash_msg_list:
-        repo.git.stash("apply")
-
+def _save_run() -> str:
+    assert SkipBlock.logger.path is not None
+    repo = Repo()
     _write_replay_file()
-
     repo.git.add("-A")
     commit = repo.index.commit(
-        f"flor::{active_branch.name}@{active_branch.commit.hexsha}"
+        f"{repo.active_branch.name}@{flags.NAME}::{SkipBlock.logger.path.name}"
     )
     commit_sha = commit.hexsha
-
-    repo.git.checkout(active_branch.name)
-    if stash_msg_list:
-        repo.git.stash("pop")
-
     return commit_sha
 
 
