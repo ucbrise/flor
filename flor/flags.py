@@ -30,7 +30,8 @@ def set_REPLAY(name, index=None, mode=None, pid=None):
     """
     When set: enables FLOR REPLAY
     """
-    global REPLAY, INDEX, MODE, PID
+    global NAME, REPLAY, INDEX, MODE, PID
+    NAME = name
     REPLAY = True
     if index is not None:
         assert isinstance(index, str)
