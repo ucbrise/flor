@@ -9,6 +9,7 @@ from . import flags, shelf
 from .skipblock import SkipBlock
 
 SHADOW_BRANCH_PREFIX = "flor.shadow"
+FLORFILE = ".replay.json"
 
 
 def it(value: Union[Iterable, bool]):
@@ -109,8 +110,9 @@ def _write_replay_file():
     d = {}
     d["NAME"] = flags.NAME
     d["MEMO"] = str(SkipBlock.logger.path)
-    with open("flor_replay.json", "w", encoding="utf-8") as f:
+    with open(FLORFILE, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=4)
 
 
 __all__ = ["it"]
+r

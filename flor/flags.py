@@ -1,24 +1,32 @@
+import json
+from typing import Dict
 from flor import shelf
 
 import sys
 from pathlib import PurePath
 
-NAME = None
+# TODO: default values filled from Florfile
+# TODO: flags are record xor replay, not chained settings
+# TODO: replay does not accept index.json, but reads from Florfile
+
+NAME = None  # fill name on replay
 REPLAY = False
-INDEX = "latest.json"
+INDEX = None  # fill index on replay
 WEAK = "weak"
 STRONG = "strong"
 MODE = WEAK
 PID = (1, 1)
 EPSILON = 1 / 15
 RESUMING = False
+FLORFILE = ".replay.json"
 
 """
-[--flor NAME [EPSILON] [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
+--flor NAME [EPSILON]
+--replay_flor [weak | strong] [i/n]
 """
 
 
-def set_REPLAY(index=None, mode=None, pid=None):
+def set_REPLAY(name, index=None, mode=None, pid=None):
     """
     When set: enables FLOR REPLAY
     """
@@ -44,11 +52,15 @@ def set_REPLAY(index=None, mode=None, pid=None):
 
 class Parser:
     """
-    [--flor NAME [EPSILON] [--replay_flor [INDEX.json] [weak | strong] [i/n]]]
+    --flor NAME [EPSILON]
+    --replay_flor [weak | strong] [i/n]
     """
 
     @staticmethod
-    def parse_name():
+    def _parse_name():
+        assert (
+            "--replay_flor" not in sys.argv
+        ), "Pick at most one of `--flor` or `--replay_flor` but not both"
         global NAME, EPSILON
         flor_flags = []
         feeding = False
@@ -76,7 +88,14 @@ class Parser:
                     NAME = flag
 
     @staticmethod
-    def parse_replay():
+    def _parse_replay():
+        assert (
+            "--flor" not in sys.argv
+        ), "Pick at most one of `--flor` or `--replay_flor` but not both"
+        with open(FLORFILE, "r", encoding="utf-8") as f:
+            d: Dict[str, str] = json.load(f)
+        assert "NAME" in d, "check your `.replay.json` file. Missing name."
+        assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -92,16 +111,13 @@ class Parser:
             else:
                 sys.argv.append(arg)
 
-        assert len(flor_flags) <= 4
+        assert len(flor_flags) <= 3
         if flor_flags:
             assert flor_flags.pop(0) == "--replay_flor"
-            index = None
             mode = None
             pid = None
             for flor_flag in flor_flags:
-                if PurePath(flor_flag).suffix == ".json":
-                    index = flor_flag
-                elif flor_flag in (WEAK, STRONG):
+                if flor_flag in (WEAK, STRONG):
                     mode = flor_flag
                 elif len(flor_flag.split("/")) == 2:
                     p, n = flor_flag.split("/")
@@ -109,9 +125,16 @@ class Parser:
                 else:
                     raise RuntimeError(
                         "Invalid argument passed to --replay_flor"
-                        + " [NAME.json] [weak | strong] [I/N]"
+                        + "[weak | strong] [I/N]"
                     )
-            set_REPLAY(index=index, mode=mode, pid=pid)
+            set_REPLAY(d["NAME"], index=d["MEMO"], mode=mode, pid=pid)
+
+    @staticmethod
+    def parse():
+        if "--flor" in sys.argv:
+            Parser._parse_name()
+        elif "--replay_flor" in sys.argv:
+            Parser._parse_replay()
 
 
 __all__ = [
