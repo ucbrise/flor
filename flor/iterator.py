@@ -72,11 +72,12 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
-        repo = Repo()
-        assert (
-            SHADOW_BRANCH_PREFIX
-            == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
-        ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
+        if not flags.REPLAY:
+            repo = Repo()
+            assert (
+                SHADOW_BRANCH_PREFIX
+                == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
+            ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
         shelf.mk_job(flags.NAME)
         SkipBlock.bind()
         if flags.REPLAY:

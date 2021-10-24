@@ -3,7 +3,7 @@ from typing import Dict
 from flor import shelf
 
 import sys
-from pathlib import PurePath
+from pathlib import PurePath, Path
 
 # TODO: default values filled from Florfile
 # TODO: flags are record xor replay, not chained settings
@@ -21,7 +21,7 @@ RESUMING = False
 FLORFILE = ".replay.json"
 
 """
---flor NAME [EPSILON]
+--flor NAME ls[EPSILON]
 --replay_flor [weak | strong] [i/n]
 """
 
@@ -81,20 +81,35 @@ class Parser:
         assert len(flor_flags) <= 3
         if flor_flags:
             assert flor_flags.pop(0) == "--flor"
-            assert flor_flags, "Missing NAME argument in --flor NAME"
+            assert (
+                flor_flags or Path(FLORFILE).exists()
+            ), "Missing NAME argument in --flor NAME"
             for flag in flor_flags:
                 if flag[0:2] == "0.":
                     EPSILON = float(flag)
                 else:
                     NAME = flag
+            if NAME is None:
+                try:
+                    with open(FLORFILE, "r", encoding="utf-8") as f:
+                        d: Dict[str, str] = json.load(f)
+                except FileNotFoundError:
+                    print("No replay file, did you record first?")
+                    raise
+                assert "NAME" in d
+                NAME = d["NAME"]
 
     @staticmethod
     def _parse_replay():
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
-        with open(FLORFILE, "r", encoding="utf-8") as f:
-            d: Dict[str, str] = json.load(f)
+        try:
+            with open(FLORFILE, "r", encoding="utf-8") as f:
+                d: Dict[str, str] = json.load(f)
+        except FileNotFoundError:
+            print("No replay file, did you record first?")
+            raise
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
         assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         flor_flags = []
