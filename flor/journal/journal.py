@@ -1,6 +1,7 @@
-from typing import Union, List
+from typing import List, Union
 
 from flor import flags
+from flor.constants import *
 from flor.journal.entry import EOF
 from flor.tree import Tree
 from flor.tree.window import Capsule
@@ -19,19 +20,19 @@ class Journal:
         self.tree.parse(self.entries)
 
     def get_segment_window(self) -> List[Capsule]:
-        assert flags.PID[1] <= self.tree.iterations_count
+        assert flags.PID.ngpus <= self.tree.iterations_count
         if self.tree.sparse_checkpoints:
             assert (
-                flags.PID[1] <= len(self.tree.sparse_checkpoints) + 1
+                flags.PID.ngpus <= len(self.tree.sparse_checkpoints) + 1
             ), f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
-        if flags.MODE == flags.WEAK and flags.PID[0] > 1:
+        if flags.MODE is REPLAY_MODE.weak and flags.PID.pid > 1:
             self._advance_head()
             assert self.sub_tree is not None
             return self.sub_tree.get_segment()
         return self.tree.get_segment()
 
     def as_tree(self) -> Tree:
-        if not flags.REPLAY or flags.MODE == flags.STRONG or flags.PID[0] == 1:
+        if not flags.REPLAY or flags.MODE is REPLAY_MODE.strong or flags.PID.pid == 1:
             return self.tree
         else:
             assert self.sub_tree is not None

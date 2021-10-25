@@ -9,10 +9,10 @@ with open("requirements.txt", "r") as f:
 
 setuptools.setup(
     name="pyflor",
-    version="2.2.0",
+    version="2.3.0",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
-    description="Fast Low-Overhead Recovery suite",
+    description="Fast Low-Overhead Recovery",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ucbrise/flor",
@@ -23,5 +23,5 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

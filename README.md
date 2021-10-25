@@ -25,14 +25,17 @@ and is being released as part of an accompanying [VLDB publication](http://www.v
 ```bash
 pip install pyflor
 ```
-FLOR expects a recent version of Python (3.6+) and PyTorch (1.0+).
+FLOR expects a recent version of Python (3.7+) and PyTorch (1.0+).
 
 ```bash
+git branch flor.shadow
+git checkout flor.shadow
 python3 examples/linear.py --flor linear
 ```
 Run the ``linear.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
 Think of it as a ''hello world'' of deep learning.
+We will cover FLOR shadow branches later.
 
 ```bash
 ls ~/.flor/linear
@@ -92,13 +95,27 @@ Just make sure you give each SkipBlock a unique name (e.g. `training_loop`).
 # Training your model
 
 ```bash
+git checkout flor.shadow
 python3 training_script.py --flor NAME [your_script_flags]
 ```
+
+Before we train your model, 
+**make sure that your model training code is part of a git repository**.
+Model training is exploratory and it's common to iterate dozens of times
+before finding the right fit.
+We'd hate for you to be manually responsible for managing all those versions.
+Instead, we ask you to create a FLOR shadow branch
+that we can automatically commit changes to.
+Think of it as a sandbox: you get the benefits of autosaving,
+without worrying about us poluting your main branch with frequent & automatic commits.
+Later, you can merge the changes you like.
 
 In FLOR, all experiments need a name. 
 As your training scripts and configurations evolve,
 keep the same experiment name so FLOR 
 associates the checkpoints as versions of the same experiment.
+If you want to re-use the name from the previous run, 
+you may leave the field blank.
 
 # Hindsight Logging
 
@@ -125,10 +142,18 @@ throughout training.
 Add the code to generate the confusion matrix, as sugared above.
 
 ```bash
-python3 training_script.py --flor NAME --replay_flor [your_script_flags]
+git checkout flor.shadow
+python3 training_script.py --replay_flor
 ```
 
-And tell FLOR to replay by setting the flag ``--replay_flor``. 
+You first switch to the FLOR shadow branch,
+and select the version you wish to replay
+from the `git log` list. 
+In our example, we won't checkout version,
+because we want to replay the latest version,
+which is selected by default.
+
+You will tell FLOR to replay by setting the flag ``--replay_flor``. 
 FLOR is performing fast replay, so you may generalize this
 example to recover ad-hoc training data.
 In our example, FLOR will compute your confusion matrix 
@@ -165,7 +190,8 @@ Although we can't skip the nested training loop, we can parallelize replay or
 re-execute just a fraction of the epochs (e.g. near the epoch where we see a loss anomaly).
 
 ```bash
-python3 training_script.py --flor NAME --replay_flor PID/NGPUS [your_flags]
+git checkout flor.shadow
+python3 training_script.py --replay_flor PID/NGPUS [your_flags]
 ```
 
 As before, you tell FLOR to run in replay mode by setting ``--replay_flor``.
@@ -179,6 +205,26 @@ Suppose you want to run the tenth epoch of a training job that ran for 200 epoch
 ``pid:9``and ``ngpus:200``.
 
 We provide additional examples in the ``examples`` directory. A good starting point is ``linear.py``. 
+
+## Publications
+
+To cite this work, please refer to the [Hindsight Logging](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf) paper (VLDB '21).
+
+FLOR is open source software developed at UC Berkeley. 
+[Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
+are the primary faculty members leading this work.
+
+This work is released as part of [Rolando Garcia](https://rlnsanz.github.io/)'s doctoral dissertation at UC Berkeley,
+and has been the subject of study by Eric Liu and Anusha Dandamudi, 
+both of whom completed their master's theses on FLOR.
+Our list of publications are reproduced below.
+Finally, we thank [Vikram Sreekanti](https://www.vikrams.io/), [Dan Crankshaw](https://dancrankshaw.com/), and [Neeraja Yadwadkar](https://cs.stanford.edu/~neeraja/) for guidance, comments, and advice.
+[Bobby Yan](https://bobbyy.org/) was instrumental in the development of FLOR and its corresponding experimental evaluation.
+
+* [Hindsight Logging for Model Training](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf). _R Garcia, E Liu, V Sreekanti, B Yan, A Dandamudi, JE Gonzalez, JM Hellerstein, K Sen_. The VLDB Journal, 2021.
+* [Fast Low-Overhead Logging Extending Time](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2021/EECS-2021-117.html). _A Dandamudi_. EECS Department, UC Berkeley Technical Report, 2021.
+* [Low Overhead Materialization with FLOR](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-79.html). _E Liu_. EECS Department, UC Berkeley Technical Report, 2020. 
+
 
 ## License
 FLOR is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).

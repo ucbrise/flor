@@ -26,11 +26,14 @@ def mk_job(name: str):
 
 
 def get_index() -> Optional[Path]:
-    return (
-        job / PurePath(flags.INDEX if flags.REPLAY else timestamp).with_suffix(".json")
-        if job is not None and timestamp is not None
-        else None
-    )
+    if job is not None and timestamp is not None:
+        if flags.REPLAY:
+            assert flags.INDEX is not None
+            return job / flags.INDEX.with_suffix(".json")
+        else:
+            return job / PurePath(timestamp).with_suffix(".json")
+    else:
+        return None
 
 
 def get_latest() -> Optional[Path]:

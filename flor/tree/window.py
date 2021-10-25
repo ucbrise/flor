@@ -1,5 +1,6 @@
 from flor import flags
 from typing import List, Union, Optional
+from ..constants import *
 
 NO_INIT = None
 
@@ -14,7 +15,7 @@ class Window:
         if self._is_sparse():
             # Only a subset of epochs are valid entries
             # Only weak initialization is possible
-            assert flags.MODE == flags.WEAK
+            assert flags.MODE is REPLAY_MODE.weak
             lo = self._sparse()
             hi = self._sparse(hi=True)
             assert hi is not None
@@ -24,12 +25,12 @@ class Window:
         else:
             # All epochs are valid entries
             our_segment = self._get_segment_helper(self.iterations_count)[
-                flags.PID[0] - 1
+                flags.PID.pid - 1
             ]
             assert (
                 our_segment
             ), "TODO: Handle case when user allocs more partitions than there is work."
-            if flags.MODE is flags.WEAK:
+            if flags.MODE is REPLAY_MODE.weak:
                 # Asks to initialize predecessor
                 return [
                     Capsule(True, self._dense()),
@@ -45,7 +46,7 @@ class Window:
         """
         i : the epoch from which to resume (weak initialization)
         """
-        if flags.MODE == flags.STRONG:
+        if flags.MODE is REPLAY_MODE.strong:
             return None
         if self._is_sparse():
             return self._sparse()
@@ -62,11 +63,11 @@ class Window:
         return is_sparse
 
     def _get_segment_helper(self, num_resume_points):
-        segments: List[List[Optional[int]]] = [[] for _ in range(flags.PID[1])]
+        segments: List[List[Optional[int]]] = [[] for _ in range(flags.PID.ngpus)]
         for pt in range(num_resume_points):
-            segments[pt % flags.PID[1]].append(None)
+            segments[pt % flags.PID.ngpus].append(None)
         i = 0
-        for j in range(flags.PID[1]):
+        for j in range(flags.PID.ngpus):
             for k in range(len(segments[j])):
                 segments[j][k] = i
                 i += 1
@@ -75,7 +76,7 @@ class Window:
 
     def _sparse(self, hi=False) -> Optional[int]:
         our_segment = self._get_segment_helper(len(self.extended_sparse_checkpoints))[
-            flags.PID[0] - 1
+            flags.PID.pid - 1
         ]
         # TODO: ...
         assert (
@@ -86,7 +87,7 @@ class Window:
             assert our_segment[0] is not None
             return self.extended_sparse_checkpoints[our_segment[0]]
         else:
-            if flags.PID[0] == flags.PID[1]:
+            if flags.PID.pid == flags.PID.ngpus:
                 # This is the last segment
                 return self.iterations_count
             else:
@@ -96,7 +97,7 @@ class Window:
                 return self.extended_sparse_checkpoints[idx + 1]
 
     def _dense(self) -> Optional[int]:
-        our_segment = self._get_segment_helper(self.iterations_count)[flags.PID[0] - 1]
+        our_segment = self._get_segment_helper(self.iterations_count)[flags.PID.pid - 1]
         # TODO: ...
         assert (
             our_segment

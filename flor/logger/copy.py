@@ -1,3 +1,4 @@
+# type: ignore
 """Generic (shallow and deep) copying operations.
 
 Interface summary:

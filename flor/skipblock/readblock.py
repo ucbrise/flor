@@ -3,17 +3,17 @@ from .seemblock import SeemBlock
 from flor import flags
 from flor.journal.entry import Bracket, LBRACKET
 
-from typing import List
+from typing import List, Dict
 
 
 class ReadBlock(SeemBlock):
-    dynamic_identifiers = dict()
+    dynamic_identifiers: Dict[str, int] = dict()
     pda: List[Bracket] = []
 
     @staticmethod
     def step_into(block_name: str, probed=None):
         if probed is None:
-            probed = flags.PID[1] > 1
+            probed = flags.PID.ngpus > 1
         assert isinstance(block_name, str)
         dynamic_id = ReadBlock.dynamic_identifiers.get(block_name, 0)
         ReadBlock.dynamic_identifiers[block_name] = dynamic_id + 1

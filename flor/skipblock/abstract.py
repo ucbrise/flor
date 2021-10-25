@@ -20,5 +20,5 @@ class SkipBlock(SeemBlock):
     @staticmethod
     def bind():
         block = ReadBlock if flags.REPLAY else WriteBlock
-        SkipBlock.step_into = block.step_into
+        SkipBlock.step_into = block.step_into  # type: ignore
         SkipBlock.end = block.end

@@ -5,12 +5,12 @@ from flor import shelf
 from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 
 import time
-from typing import List, Union
+from typing import Dict, List, Union
 
 
 class WriteBlock(SeemBlock):
     scaling_factor = 1.38
-    dynamic_identifiers = dict()
+    dynamic_identifiers: Dict[str, int] = dict()
     pda: List[Bracket] = []
 
     @staticmethod
@@ -31,6 +31,7 @@ class WriteBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = WriteBlock.pda.pop()
+        assert lbracket.timestamp is not None
         block_group = WriteBlock.journal.as_tree()[lbracket.sk]
         block = block_group.peek_block()
         assert block.global_key == lbracket.gk

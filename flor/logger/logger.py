@@ -1,10 +1,9 @@
 import glob
 import os
 from pathlib import Path
-from typing import Any, List, Tuple, Generator
+from typing import List, Generator
 
 from .. import shelf
-from .copy import deepcopy
 from .future import Future
 
 

@@ -8,8 +8,7 @@ from git.repo import Repo
 from . import flags, shelf
 from .skipblock import SkipBlock
 
-SHADOW_BRANCH_PREFIX = "flor.shadow"
-FLORFILE = ".replay.json"
+from .constants import *
 
 
 def it(value: Union[Iterable, bool]):

@@ -1,24 +1,20 @@
 import json
-from typing import Dict
+from typing import Dict, Optional, Tuple
 from flor import shelf
 
 import sys
 from pathlib import PurePath, Path
+from .constants import *
 
-# TODO: default values filled from Florfile
-# TODO: flags are record xor replay, not chained settings
-# TODO: replay does not accept index.json, but reads from Florfile
 
-NAME = None  # fill name on replay
-REPLAY = False
-INDEX = None  # fill index on replay
-WEAK = "weak"
-STRONG = "strong"
-MODE = WEAK
-PID = (1, 1)
-EPSILON = 1 / 15
-RESUMING = False
-FLORFILE = ".replay.json"
+NAME: Optional[str] = None
+REPLAY: bool = False
+INDEX: Optional[PurePath] = None
+MODE: REPLAY_MODE = REPLAY_MODE.weak
+PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
+EPSILON: float = 1 / 15
+RESUMING: bool = False
+
 
 """
 --flor NAME ls[EPSILON]
@@ -26,7 +22,12 @@ FLORFILE = ".replay.json"
 """
 
 
-def set_REPLAY(name, index=None, mode=None, pid=None):
+def set_REPLAY(
+    name: str,
+    index: Optional[str] = None,
+    mode: Optional[str] = None,
+    pid: Optional[Tuple[int, int]] = None,
+):
     """
     When set: enables FLOR REPLAY
     """
@@ -37,10 +38,9 @@ def set_REPLAY(name, index=None, mode=None, pid=None):
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
         assert shelf.verify(PurePath(index))
-        INDEX = index
+        INDEX = PurePath(index)
     if mode is not None:
-        assert mode in (WEAK, STRONG)
-        MODE = mode
+        MODE = REPLAY_MODE[mode]
     if pid is not None:
         assert isinstance(pid, tuple) and len(pid) == 2
         p, n = pid
@@ -48,7 +48,7 @@ def set_REPLAY(name, index=None, mode=None, pid=None):
         assert p >= 1
         assert n >= 1
         assert p <= n
-        PID = pid
+        PID = REPLAY_PARALLEL(*pid)
 
 
 class Parser:
@@ -133,7 +133,7 @@ class Parser:
             mode = None
             pid = None
             for flor_flag in flor_flags:
-                if flor_flag in (WEAK, STRONG):
+                if flor_flag in [each.name for each in REPLAY_MODE]:
                     mode = flor_flag
                 elif len(flor_flag.split("/")) == 2:
                     p, n = flor_flag.split("/")
@@ -157,8 +157,6 @@ __all__ = [
     "NAME",
     "REPLAY",
     "INDEX",
-    "WEAK",
-    "STRONG",
     "MODE",
     "PID",
     "EPSILON",
