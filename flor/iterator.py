@@ -9,6 +9,7 @@ from . import flags, shelf
 from .skipblock import SkipBlock
 
 from .constants import *
+from .pin import kvs
 
 
 def it(value: Union[Iterable, bool]):
@@ -110,6 +111,7 @@ def _write_replay_file():
     d = {}
     d["NAME"] = flags.NAME
     d["MEMO"] = str(SkipBlock.logger.path)
+    d["KVS"] = kvs
     with open(FLORFILE, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=4)
 

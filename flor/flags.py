@@ -5,6 +5,7 @@ from flor import shelf
 import sys
 from pathlib import PurePath, Path
 from .constants import *
+from .pin import kvs
 
 
 NAME: Optional[str] = None
@@ -92,7 +93,7 @@ class Parser:
             if NAME is None:
                 try:
                     with open(FLORFILE, "r", encoding="utf-8") as f:
-                        d: Dict[str, str] = json.load(f)
+                        d = json.load(f)
                 except FileNotFoundError:
                     print("No replay file, did you record first?")
                     raise
@@ -106,12 +107,14 @@ class Parser:
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
         try:
             with open(FLORFILE, "r", encoding="utf-8") as f:
-                d: Dict[str, str] = json.load(f)
+                d = json.load(f)
         except FileNotFoundError:
             print("No replay file, did you record first?")
             raise
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
         assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
+        if "KVS" in d:
+            kvs.update(d["KVS"])
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):

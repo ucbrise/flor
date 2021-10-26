@@ -4,12 +4,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
+import random
 import flor
 
 
 class Net(nn.Module):
     def __init__(self):
-        torch.manual_seed(1217)
+        torch.manual_seed(flor.pin("netseed", random.randint(0, 9999)))
         super(Net, self).__init__()
 
         self.inpt_dim = 28

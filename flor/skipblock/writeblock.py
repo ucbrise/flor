@@ -35,7 +35,7 @@ class WriteBlock(SeemBlock):
         block_group = WriteBlock.journal.as_tree()[lbracket.sk]
         block = block_group.peek_block()
         assert block.global_key == lbracket.gk
-        block_group.tick_execution(lbracket.timestamp - time.time())
+        block_group.tick_execution(time.time() - lbracket.timestamp)
         if not args:
             rbracket = Bracket(lbracket.sk, lbracket.gk, RBRACKET)
             WriteBlock.journal.as_tree().feed_entry(rbracket)
@@ -49,7 +49,7 @@ class WriteBlock(SeemBlock):
                 data_record = val_to_record(arg, lbracket)
                 data_records.append(data_record)
                 block_group.should_time_mat() and data_record.would_mat()
-            block_group.set_mat_time(start_time - time.time())
+            block_group.set_mat_time(time.time() - start_time)
 
             if WriteBlock._should_materialize(block_group):
                 for data_record in data_records:
