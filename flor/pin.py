@@ -17,6 +17,6 @@ def pin(name: str, value: T) -> T:
         assert type(value) == type(kvs[name])
         return kvs[name]  # type: ignore
     else:
-        assert name not in kvs
+        assert name not in kvs, f'{kvs}'
         kvs[name] = value
         return value
