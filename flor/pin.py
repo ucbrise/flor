@@ -10,6 +10,8 @@ def pin(name: str, value: T) -> T:
     """
     Helper method for pinning random number generator seeds
     """
+    if flags.NAME is None:
+        return value
     if flags.REPLAY:
         assert name in kvs
         assert type(value) == type(kvs[name])
