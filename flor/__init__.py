@@ -5,6 +5,5 @@ from .logger import Logger
 from .pin import pin
 
 flags.Parser.parse()
-from_string = flags.Parser.from_string
 
-__all__ = ["flags", "it", "pin", "from_string", "SkipBlock", "Logger"]
+__all__ = ["flags", "it", "pin", "SkipBlock", "Logger"]

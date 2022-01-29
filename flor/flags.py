@@ -162,6 +162,8 @@ class Parser:
         Parser.parse()
 
 
+from_string = Parser.from_string
+
 __all__ = [
     "NAME",
     "REPLAY",
@@ -171,4 +173,5 @@ __all__ = [
     "EPSILON",
     "set_REPLAY",
     "Parser",
+    "from_string",
 ]
