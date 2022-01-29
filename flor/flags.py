@@ -64,7 +64,7 @@ class Parser:
         assert (
             "--replay_flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
-        global NAME, EPSILON
+        global NAME, EPSILON, KVS
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -155,6 +155,11 @@ class Parser:
             Parser._parse_name()
         elif "--replay_flor" in sys.argv:
             Parser._parse_replay()
+
+    @staticmethod
+    def from_string(s: str):
+        sys.argv = s.split(" ")
+        Parser.parse()
 
 
 __all__ = [
