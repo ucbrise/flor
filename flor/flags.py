@@ -107,8 +107,10 @@ class Parser:
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
         try:
+            global KVS
             with open(FLORFILE, "r", encoding="utf-8") as f:
                 d = json.load(f)
+                KVS = d["KVS"]
         except FileNotFoundError:
             print("No replay file, did you record first?")
             raise
