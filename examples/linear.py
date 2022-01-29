@@ -56,9 +56,10 @@ def eval(net):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
+    accuracy = 100 * correct / total
     print(
         "Accuracy of the network on the 10000 test images: %d %%"
-        % (100 * correct / total)
+        % flor.pin("acc", accuracy)
     )
 
 
@@ -84,7 +85,10 @@ for epoch in flor.it(range(2)):
             # print statistics
             running_loss += loss.item()
             if i % 2000 == 1999:  # print every 2000 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
+                print(
+                    "[%d, %5d] loss: %.3f"
+                    % (epoch + 1, i + 1, flor.pin("avg_loss", running_loss / 2000))
+                )
                 running_loss = 0.0
     flor.SkipBlock.end(net, optimizer)
     eval(net)

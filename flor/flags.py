@@ -15,10 +15,11 @@ MODE: REPLAY_MODE = REPLAY_MODE.weak
 PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
+KVS = None
 
 
 """
---flor NAME ls[EPSILON]
+--flor NAME [EPSILON]
 --replay_flor [weak | strong] [i/n]
 """
 
@@ -90,15 +91,15 @@ class Parser:
                     EPSILON = float(flag)
                 else:
                     NAME = flag
-            if NAME is None:
-                try:
-                    with open(FLORFILE, "r", encoding="utf-8") as f:
-                        d = json.load(f)
-                except FileNotFoundError:
-                    print("No replay file, did you record first?")
-                    raise
-                assert "NAME" in d
-                NAME = d["NAME"]
+            try:
+                with open(FLORFILE, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                    KVS = d["KVS"]
+            except FileNotFoundError:
+                print("No replay file, did you record first?")
+                raise
+            assert "NAME" in d
+            NAME = d["NAME"] if NAME is None else NAME
 
     @staticmethod
     def _parse_replay():

@@ -31,6 +31,10 @@ class Journal:
             return self.sub_tree.get_segment()
         return self.tree.get_segment()
 
+    def get_iterations_count(self):
+        tree = self.as_tree()
+        return tree.iterations_count
+
     def as_tree(self) -> Tree:
         if not flags.REPLAY or flags.MODE is REPLAY_MODE.strong or flags.PID.pid == 1:
             return self.tree
