@@ -1,7 +1,9 @@
 from . import flags
+from .shelf import get_pkl_ref
 from .skipblock.seemblock import SeemBlock as sb
 from .iterator import replay_clock
 from typing import Any, Dict, TypeVar, Union, Tuple, List
+import cloudpickle
 
 LITERALS = Union[int, float, bool, str]
 T = TypeVar("T", int, float, bool, str)
@@ -28,6 +30,11 @@ def _saved_kvs_pop(k):
         anti_kvs[k].append(kvs[k].pop(0))
     return anti_kvs[k][-1]
 
+def pkl(value: T) -> str:
+    p = str(get_pkl_ref())
+    with open(p, 'wb') as f:
+        cloudpickle.dump(value, f)
+    return p
 
 def pin(name: str, value: T) -> T:
     """
