@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Iterable, List, Union
+import pandas as pd
 
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
@@ -123,5 +124,24 @@ def _write_replay_file(name=None, memo=None):
     with open(FLORFILE, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=4)
 
+def load_kvs():
+    with open(FLORFILE, 'r', encoding='utf-8') as f:
+        d = json.load(f)
+    _kvs = d['KVS']
+    seq = []
+    for k in _kvs:
+        z = k.split('.')
+        e = z.pop(0)
+        r = z.pop(0)
+        n = '.'.join(z)
+        for s,x in enumerate(_kvs[k]):
+            # pvresnx
+            seq.append((d['NAME'], d["MEMO"], r, e, s, n, x))
+    return pd.DataFrame(seq, columns=[
+        'projid', 'vid', 'recrep', 'epoch', 'step', 'name', 'value'
+    ])
+    
+
+    
 
 __all__ = ["it"]

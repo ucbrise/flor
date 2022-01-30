@@ -73,4 +73,3 @@ def log(name: str, value: T) -> T:
             value,
         ]
     return value
-
