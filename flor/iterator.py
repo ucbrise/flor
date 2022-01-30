@@ -5,11 +5,10 @@ from typing import Iterable, List, Union
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from . import flags, shelf
+from . import flags, shelf, pin
 from .skipblock import SkipBlock
 
 from .constants import *
-from .pin import kvs
 
 
 def it(value: Union[Iterable, bool]):
@@ -107,11 +106,12 @@ def _save_run() -> str:
     return commit_sha
 
 
-def _write_replay_file():
+def _write_replay_file(name=None, memo=None):
     d = {}
-    d["NAME"] = flags.NAME
-    d["MEMO"] = str(SkipBlock.logger.path)
-    d["KVS"] = kvs
+    d["NAME"] = flags.NAME if name is None else name
+    d["MEMO"] = str(SkipBlock.logger.path) if memo is None else memo
+    pin.kvs.update(pin.anti_kvs)
+    d["KVS"] = pin.kvs
     with open(FLORFILE, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=4)
 

@@ -15,8 +15,6 @@ MODE: REPLAY_MODE = REPLAY_MODE.weak
 PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
-KVS = None
-
 
 """
 --flor NAME [EPSILON]
@@ -64,7 +62,7 @@ class Parser:
         assert (
             "--replay_flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
-        global NAME, EPSILON, KVS
+        global NAME, EPSILON
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -94,7 +92,6 @@ class Parser:
             try:
                 with open(FLORFILE, "r", encoding="utf-8") as f:
                     d = json.load(f)
-                    KVS = d["KVS"]
             except FileNotFoundError:
                 print("No replay file, did you record first?")
                 raise
@@ -107,10 +104,8 @@ class Parser:
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
         try:
-            global KVS
             with open(FLORFILE, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                KVS = d["KVS"]
         except FileNotFoundError:
             print("No replay file, did you record first?")
             raise
