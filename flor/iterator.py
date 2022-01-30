@@ -6,7 +6,7 @@ from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
 from . import flags, shelf
-import pin
+from . import pin
 from .skipblock import SkipBlock
 
 from .constants import *
