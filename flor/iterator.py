@@ -5,10 +5,15 @@ from typing import Iterable, List, Union
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from . import flags, shelf, pin
+from . import flags, shelf
+import pin
 from .skipblock import SkipBlock
 
 from .constants import *
+
+
+class replay_clock:
+    epoch = 0
 
 
 def it(value: Union[Iterable, bool]):
@@ -42,6 +47,7 @@ def it(value: Union[Iterable, bool]):
             _close_record()
     else:
         # Replay mode
+        replay_clock.epoch = max(1, replay_clock.epoch)
         segment = SkipBlock.journal.get_segment_window()
         for capsule in segment:
             flags.RESUMING = capsule.init_only
@@ -53,12 +59,14 @@ def it(value: Union[Iterable, bool]):
                     if capsule.epoch is None:
                         continue
                     else:
+                        replay_clock.epoch = capsule.epoch
                         assert hasattr(
                             value, "__getitem__"
                         ), "TODO: Implement next() calls to consume iterator"
                         yield value[capsule.epoch]  # type: ignore
                 else:
                     assert capsule.epoch is not None
+                    replay_clock.epoch = capsule.epoch
                     assert hasattr(
                         value, "__getitem__"
                     ), "TODO: Implement next() calls to consume iterator"

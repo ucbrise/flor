@@ -1,5 +1,6 @@
 from . import flags
 from .skipblock.seemblock import SeemBlock as sb
+from .iterator import replay_clock
 from typing import Any, Dict, TypeVar, Union, Tuple, List
 
 LITERALS = Union[int, float, bool, str]
@@ -9,7 +10,7 @@ anti_kvs = dict()
 
 
 def _get_key(name):
-    return f"{sb.journal.get_iterations_count()}.{'b' if flags.REPLAY else 'a'}.{name}"  # TODO: Debug get iterations count
+    return f"{sb.journal.get_iterations_count() if not flags.REPLAY else replay_clock.epoch}.{'b' if flags.REPLAY else 'a'}.{name}"  # TODO: Debug get iterations count
 
 
 def _swap(c):
