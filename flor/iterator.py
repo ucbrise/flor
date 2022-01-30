@@ -47,7 +47,6 @@ def it(value: Union[Iterable, bool]):
             _close_record()
     else:
         # Replay mode
-        replay_clock.epoch = max(1, replay_clock.epoch)
         segment = SkipBlock.journal.get_segment_window()
         for capsule in segment:
             flags.RESUMING = capsule.init_only
@@ -59,18 +58,19 @@ def it(value: Union[Iterable, bool]):
                     if capsule.epoch is None:
                         continue
                     else:
-                        replay_clock.epoch = capsule.epoch
+                        replay_clock.epoch = value[capsule.epoch]  # type: ignore
                         assert hasattr(
                             value, "__getitem__"
                         ), "TODO: Implement next() calls to consume iterator"
                         yield value[capsule.epoch]  # type: ignore
                 else:
                     assert capsule.epoch is not None
-                    replay_clock.epoch = capsule.epoch
+                    replay_clock.epoch = value[capsule.epoch]  # type: ignore
                     assert hasattr(
                         value, "__getitem__"
                     ), "TODO: Implement next() calls to consume iterator"
                     yield value[capsule.epoch]  # type: ignore
+        _write_replay_file(name=flags.NAME, memo=str(flags.INDEX))
 
 
 def _deferred_init(_nil=[]):
