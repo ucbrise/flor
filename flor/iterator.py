@@ -11,6 +11,10 @@ from . import pin
 from .skipblock import SkipBlock
 
 from .constants import *
+from pathlib import Path, PurePath
+
+
+from sh import tail
 
 
 class replay_clock:
@@ -124,24 +128,55 @@ def _write_replay_file(name=None, memo=None):
     with open(FLORFILE, "w", encoding="utf-8") as f:
         json.dump(d, f, ensure_ascii=False, indent=4)
 
-def load_kvs():
-    with open(FLORFILE, 'r', encoding='utf-8') as f:
-        d = json.load(f)
-    _kvs = d['KVS']
-    seq = []
-    for k in _kvs:
-        z = k.split('.')
-        e = z.pop(0)
-        r = z.pop(0)
-        n = '.'.join(z)
-        for s,x in enumerate(_kvs[k]):
-            # pvresnx
-            seq.append((d['NAME'], d["MEMO"], r, e, s, n, x))
-    return pd.DataFrame(seq, columns=[
-        'projid', 'vid', 'recrep', 'epoch', 'step', 'name', 'value'
-    ])
-    
+    p = (Path.home() / ".flor") / flags.NAME / "replay_jsons"  # type: ignore
+    p.mkdir(exist_ok=True)
+    memo = os.path.basename(d["MEMO"])
+    memo, _ = os.path.splitext(memo)
+    memo += ".json"
+    p = p / memo
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=4)
 
-    
+
+def load_kvs():
+    with open(FLORFILE, "r", encoding="utf-8") as f:
+        d = json.load(f)
+
+    p = Path.home()
+    p = p / ".flor"
+    p = p / d["NAME"]  # type: ignore
+    p = p / "replay_jsons"
+
+    seq = []
+
+    for q in p.iterdir():
+        with open(str(q), "r", encoding="utf-8") as f:
+            d = json.load(f)
+
+        _kvs = d["KVS"]
+
+        for k in _kvs:
+            z = k.split(".")
+            e = z.pop(0)
+            r = z.pop(0)
+            n = ".".join(z)
+            for s, x in enumerate(_kvs[k]):
+                # pvresnx
+                seq.append((d["NAME"], d["MEMO"], r, e, s, n, x))
+
+    df1 = pd.DataFrame(
+        seq, columns=["projid", "vid", "recrep", "epoch", "step", "name", "value"]
+    )
+
+    # I want to build a mapper from FLORFILE to GIT HASH
+    vid_mapper = dict()
+    for path in df1["vid"].drop_duplicates().to_list():
+        eof = json.loads(tail("-1", path, _iter=True).next())
+        vid_mapper[path] = eof["COMMIT_SHA"]
+
+    df1["vid"] = df1["vid"].apply(lambda x: vid_mapper[x])
+
+    return df1
+
 
 __all__ = ["it"]
