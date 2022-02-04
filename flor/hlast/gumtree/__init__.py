@@ -2,8 +2,7 @@ from apted import APTED, Config
 from itertools import product, zip_longest
 from collections.abc import Iterable
 from typing import Generic, Optional, TypeVar
-from bidict import MutableBidict
-
+from bidict._mut import MutableBidict
 from .adapter import Adapter
 from .idmap import IdMap
 from .priorityq import PriorityQ
@@ -12,13 +11,18 @@ from .priorityq import PriorityQ
 # pylint: disable=unsubscriptable-object
 
 
-Tree = TypeVar('Tree')
+Tree = TypeVar("Tree")
 
 
 class HeightPQ(PriorityQ[Tree, int]):
-    def __init__(self, adapter: Adapter[Tree], it=[]):
-        super().__init__(it, key=adapter.height, reverse=True)
+    def __init__(self, adapter, it=[]):
         self.adapter = adapter
+
+        def _help(k):
+            assert hasattr(self.adapter, "height"), dir(self.adapter)
+            return self.adapter.height(k)
+
+        super().__init__(it, key=_help, reverse=True)
 
     def peek_max(self) -> int:
         return len(self) and self.adapter.height(self.peek())
@@ -27,9 +31,9 @@ class HeightPQ(PriorityQ[Tree, int]):
         for child in self.adapter.children(tree):
             self.push(child)
 
-    def pop(self) -> list[Tree]:
+    def pop(self) -> "list[Tree]":
         trees = []
-        assert self, 'Empty!'
+        assert self, "Empty!"
         height = self.peek_max()
         while self.peek_max() == height:
             trees.append(super().pop())
@@ -37,11 +41,9 @@ class HeightPQ(PriorityQ[Tree, int]):
 
 
 class Mapping(MutableBidict[Tree, Tree]):
-    _fwdm_cls = IdMap[Tree, Tree]
-    _invm_cls = IdMap[Tree, Tree]
     _repr_delegate = list
 
-    def __init__(self, adapter: Adapter[Tree], it: Iterable[tuple[Tree, Tree]] = ()):
+    def __init__(self, adapter, it=()):
         self.adapter = adapter
         super().__init__(it)
 
@@ -50,25 +52,27 @@ class Mapping(MutableBidict[Tree, Tree]):
 
 
 class GumTree(Generic[Tree]):
-    defaults = {'min_height': 2, 'min_dice': .50, 'max_size': 100}
+    defaults = {"min_height": 2, "min_dice": 0.50, "max_size": 100}
 
-    def __init__(self, adapter: Adapter[Tree], *, opt=None, **params):
-        assert not set(params) - set(self.defaults), 'Invalid parameters!'
+    def __init__(self, adapte, *, opt=None, **params):
+        assert not set(params) - set(self.defaults), "Invalid parameters!"
         self.params = dict(self.defaults, **params)
         self.opt = opt or self.apted
         self.adapter = adapter
 
-    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
+    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree]:
         m = self.topdown(t1, t2)
         self.bottomup(t1, t2, m)
         return m
 
-    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
-        min_height = self.params['min_height']
+    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree]:
+        min_height = self.params["min_height"]
 
-        parent = self.adapter.parent
-        isomorphic = self.adapter.isomorphic
-        def different(l, r): return id(l) != id(r)
+        parent = lambda _n: self.adapter.parent(_n)
+        isomorphic = lambda _x, _y: self.adapter.isomorphic(_x, _y)
+
+        def different(l, r):
+            return id(l) != id(r)
 
         adapter = self.adapter
         l1, l2 = HeightPQ(adapter, [t1]), HeightPQ(adapter, [t2])
@@ -84,8 +88,9 @@ class GumTree(Generic[Tree]):
                 h1, h2 = l1.pop(), l2.pop()
                 for n1, n2 in product(h1, h2):
                     if isomorphic(n1, n2):
-                        if any(isomorphic(n1, t) for t in h2 if different(t, n2)) or \
-                           any(isomorphic(t, n2) for t in h1 if different(t, n1)):
+                        if any(
+                            isomorphic(n1, t) for t in h2 if different(t, n2)
+                        ) or any(isomorphic(t, n2) for t in h1 if different(t, n1)):
                             a.append((n1, n2))
                         else:
                             m.put_tree(n1, n2)
@@ -104,9 +109,9 @@ class GumTree(Generic[Tree]):
 
         return m
 
-    def bottomup(self, t1: Tree, t2: Tree, m: Mapping[Tree, Tree]):
-        min_dice = self.params['min_dice']
-        max_size = self.params['max_size']
+    def bottomup(self, t1: Tree, t2: Tree, m):
+        min_dice = self.params["min_dice"]
+        max_size = self.params["max_size"]
 
         label = self.adapter.label
         postorder = self.adapter.postorder
@@ -117,9 +122,15 @@ class GumTree(Generic[Tree]):
         assert min_dice > 0
 
         def candidate(n1: Tree, m: Mapping[Tree]):
-            return max((c2 for c2 in postorder(t2)
-                        if label(n1) == label(c2) and c2 not in m.inv),
-                       key=lambda c2: self.dice(n1, c2, m), default=None)
+            return max(
+                (
+                    c2
+                    for c2 in postorder(t2)
+                    if label(n1) == label(c2) and c2 not in m.inv
+                ),
+                key=lambda c2: self.dice(n1, c2, m),
+                default=None,
+            )
 
         for n1 in postorder(t1):
             if n1 not in m:
@@ -129,9 +140,13 @@ class GumTree(Generic[Tree]):
                     # Note: Paper mentions removing already matched descendants
                     if max(num_descendants(t) for t in [n1, n2]) < max_size:
                         for ta, tb in self.opt(n1, n2):
-                            if ta is not None and tb is not None \
-                                    and ta not in m and tb not in m.inv \
-                                    and label(ta) == label(tb):
+                            if (
+                                ta is not None
+                                and tb is not None
+                                and ta not in m
+                                and tb not in m.inv
+                                and label(ta) == label(tb)
+                            ):
                                 m.put(ta, tb)
 
     def dice(self, t1: Tree, t2: Tree, m: Mapping[Tree]):
@@ -140,8 +155,11 @@ class GumTree(Generic[Tree]):
         contains = self.adapter.contains
 
         # Note: Formula is unclear, I think this is what they meant ¯\_(ツ)_/¯
-        return (2 * sum(1 for n1 in descendants(t1) if n1 in m and contains(m[n1], t2))
-                / (num_descendants(t1) + num_descendants(t2) or 1))
+        return (
+            2
+            * sum(1 for n1 in descendants(t1) if n1 in m and contains(m[n1], t2))
+            / (num_descendants(t1) + num_descendants(t2) or 1)
+        )
 
     def apted(self, t1: Tree, t2: Tree):
         return APTED(t1, t2, AptedConfig(self.adapter)).compute_edit_mapping()

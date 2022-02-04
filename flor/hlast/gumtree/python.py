@@ -1,5 +1,5 @@
 from ast import AST, iter_fields
-from typing import Any, Iterable, Optional, Union, get_args
+from typing import Any, Iterable, Optional, Union
 
 from .adapter import BaseAdapter, memoize, materialize
 
@@ -7,13 +7,14 @@ from .adapter import BaseAdapter, memoize, materialize
 # pylint: disable=unsubscriptable-object
 
 from ast import expr_context, boolop, operator, unaryop, cmpop
+
 Enums = (expr_context, boolop, operator, unaryop, cmpop)
 
 
 Node = Union[AST, list]
 
 
-class Adapter(BaseAdapter[Node]):
+class Adapter(BaseAdapter):
     def __init__(self, *roots: Node):
         self._parents = {}
         for root in roots:
@@ -49,8 +50,16 @@ class Adapter(BaseAdapter[Node]):
         terminals = []
         if isinstance(n, AST):
             for name, value in iter_fields(n):
-                if isinstance(value, list) and value and all(isinstance(e, Enums) for e in value):
+                if (
+                    isinstance(value, list)
+                    and value
+                    and all(isinstance(e, Enums) for e in value)
+                ):
                     terminals.append((name, value))
-                if value is not None and not isinstance(value, (AST, list)) or isinstance(value, Enums):
+                if (
+                    value is not None
+                    and not isinstance(value, (AST, list))
+                    or isinstance(value, Enums)
+                ):
                     terminals.append((name, value))
         return terminals

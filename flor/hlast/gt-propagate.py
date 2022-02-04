@@ -25,11 +25,8 @@ def add_arguments(parser: ArgumentParser):
 
 
 def propagate(args: Namespace):
-    tree, target = [
-        parse(f.read(), feature_version=(3, args.minor))
-        for f in (args.source, args.target)
-    ]
-    replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)
+    tree, target = [parse(f.read()) for f in (args.source, args.target)]
+    replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)  # type: ignore
     print(unparse(target), file=args.out)
 
 

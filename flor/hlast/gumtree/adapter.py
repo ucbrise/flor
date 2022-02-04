@@ -1,33 +1,37 @@
 from abc import abstractmethod
 from itertools import zip_longest
-from typing import Any, Callable, Iterable, Optional, Protocol, TypeVar
+from typing import Any, Callable, Iterable, Optional, TypeVar
 
 # https://github.com/PyCQA/pylint/issues/3882
 # pylint: disable=unsubscriptable-object
 
 
-Node = TypeVar('Node')
-T = TypeVar('T')
+Node = TypeVar("Node")
+T = TypeVar("T")
 
 
-def memoize(orig: Callable[['Adapter', Node], T]) -> Callable[['Adapter', Node], T]:
+def memoize(orig: Callable[["Adapter", Node], T]) -> Callable[["Adapter", Node], T]:
     memo = {}
 
     def new(self, n: Node) -> T:
-        if (key := id(n)) not in memo:
+        key = id(n)
+        if (key) not in memo:
             memo[key] = orig(self, n)
         return memo[key]
 
     return new
 
 
-def materialize(orig: Callable[['Adapter', Node], Iterable[T]]) -> Callable[['Adapter', Node], tuple[T]]:
-    def new(self, n: Node) -> tuple[T]:
+def materialize(
+    orig: Callable[["Adapter", Node], Iterable[T]]
+) -> Callable[["Adapter", Node], "tuple[T]"]:
+    def new(self, n: Node) -> "tuple[T]":
         return tuple(orig(self, n))
+
     return new
 
 
-class BaseAdapter(Protocol[Node]):
+class BaseAdapter:
     # Implement these for your tree implementation!
 
     @abstractmethod
@@ -50,24 +54,29 @@ class BaseAdapter(Protocol[Node]):
 
     @memoize
     def height(self, n: Node) -> int:
-        return 1 + max(map(self.height, self.children(n)), default=0)
+        return 1 + max(map(lambda _f: self.height(_f), self.children(n)), default=0)
 
     @memoize
     def num_descendants(self, n: Node) -> int:
         return sum(1 + self.num_descendants(c) for c in self.children(n))
 
     def contains(self, n: Node, t: Node) -> bool:
-        while parent := self.parent(n):
+        parent = self.parent(n)
+        while parent:
             if id(parent) == id(t):
                 return True
             n = parent
+            parent = self.parent(n)
         return False
 
     def isomorphic(self, n1: Node, n2: Node) -> bool:
-        return all(prop(n1) == prop(n2) for prop in
-                   [self.label, self.value, self.height, self.num_descendants]) \
-            and all(self.isomorphic(c1, c2) for c1, c2 in
-                    zip_longest(*map(self.children, [n1, n2])))
+        return all(
+            prop(n1) == prop(n2)
+            for prop in [self.label, self.value, self.height, self.num_descendants]
+        ) and all(
+            self.isomorphic(c1, c2)
+            for c1, c2 in zip_longest(*map(self.children, [n1, n2]))
+        )
 
     # These are unlikely to benefit from optimization
 
@@ -86,13 +95,19 @@ class BaseAdapter(Protocol[Node]):
     # These are just a debugging / assertion aids
 
     def root(self, n: Node) -> Node:
-        while parent := self.parent(n):
+        parent = self.parent(n)
+        while parent:
             n = parent
+            parent = self.parent(n)
         return n
 
     def dump(self, n: Node, indent=0):
-        return '\n'.join(['\t'*indent + f'{self.label(n)}: {self.value(n)}',
-                          *(self.dump(c, indent+1) for c in self.children(n))])
+        return "\n".join(
+            [
+                "\t" * indent + f"{self.label(n)}: {self.value(n)}",
+                *(self.dump(c, indent + 1) for c in self.children(n)),
+            ]
+        )
 
 
 # Type export

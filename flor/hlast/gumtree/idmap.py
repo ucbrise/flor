@@ -1,17 +1,13 @@
-
 from collections.abc import MutableMapping
 from typing import Generic, TypeVar, Iterable, NamedTuple
 
 
-K, V = TypeVar('K'), TypeVar('V')
+K, V = TypeVar("K"), TypeVar("V")
 
 
-class IdMap(MutableMapping[K, V]):
-    class Item(NamedTuple):
-        key: K
-        value: V
-
-    def __init__(self, it: Iterable[tuple[K, V]] = ()):
+class IdMap(MutableMapping):
+    def __init__(self, it: Iterable["tuple[K, V]"] = ()):
+        self.Item = NamedTuple("Item", [("key", K), ("value", V)])
         self._map = {}
         for k, v in it:
             self[k] = v
@@ -20,7 +16,7 @@ class IdMap(MutableMapping[K, V]):
         return self._map[id(key)].value
 
     def __setitem__(self, key: K, value: V):
-        self._map[id(key)] = self.Item(key, value)
+        self._map[id(key)] = self.Item(key, value)  # type: ignore
 
     def __delitem__(self, key: K):
         del self._map[id(key)]
@@ -32,5 +28,5 @@ class IdMap(MutableMapping[K, V]):
     def __len__(self) -> int:
         return len(self._map)
 
-    def items(self) -> Iterable[tuple[K, V]]:
+    def items(self) -> Iterable["tuple[K, V]"]:
         return self._map.values()
