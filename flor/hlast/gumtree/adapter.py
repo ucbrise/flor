@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from itertools import zip_longest
-from typing import Any, Callable, Iterable, Optional, TypeVar
+from typing import Any, Callable, Iterable, Optional, Protocol, TypeVar
 
 # https://github.com/PyCQA/pylint/issues/3882
 # pylint: disable=unsubscriptable-object
@@ -14,8 +14,7 @@ def memoize(orig: Callable[["Adapter", Node], T]) -> Callable[["Adapter", Node],
     memo = {}
 
     def new(self, n: Node) -> T:
-        key = id(n)
-        if (key) not in memo:
+        if (key := id(n)) not in memo:
             memo[key] = orig(self, n)
         return memo[key]
 
@@ -24,14 +23,14 @@ def memoize(orig: Callable[["Adapter", Node], T]) -> Callable[["Adapter", Node],
 
 def materialize(
     orig: Callable[["Adapter", Node], Iterable[T]]
-) -> Callable[["Adapter", Node], "tuple[T]"]:
-    def new(self, n: Node) -> "tuple[T]":
+) -> Callable[["Adapter", Node], tuple[T]]:
+    def new(self, n: Node) -> tuple[T]:
         return tuple(orig(self, n))
 
     return new
 
 
-class BaseAdapter:
+class BaseAdapter(Protocol[Node]):
     # Implement these for your tree implementation!
 
     @abstractmethod
@@ -54,19 +53,17 @@ class BaseAdapter:
 
     @memoize
     def height(self, n: Node) -> int:
-        return 1 + max(map(lambda _f: self.height(_f), self.children(n)), default=0)
+        return 1 + max(map(self.height, self.children(n)), default=0)
 
     @memoize
     def num_descendants(self, n: Node) -> int:
         return sum(1 + self.num_descendants(c) for c in self.children(n))
 
     def contains(self, n: Node, t: Node) -> bool:
-        parent = self.parent(n)
-        while parent:
+        while parent := self.parent(n):
             if id(parent) == id(t):
                 return True
             n = parent
-            parent = self.parent(n)
         return False
 
     def isomorphic(self, n1: Node, n2: Node) -> bool:
@@ -95,10 +92,8 @@ class BaseAdapter:
     # These are just a debugging / assertion aids
 
     def root(self, n: Node) -> Node:
-        parent = self.parent(n)
-        while parent:
+        while parent := self.parent(n):
             n = parent
-            parent = self.parent(n)
         return n
 
     def dump(self, n: Node, indent=0):

@@ -45,7 +45,7 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
 
     block, index = find_insert_loc(adapter, node, mapping)
     new = make_contextual_copy(adapter, node, mapping)
-    block.insert(index, new)
+    block.insert(index, new)  # type: ignore
 
 
 def find_insert_loc(adapter, node, mapping):
@@ -80,7 +80,7 @@ def make_contextual_copy(adapter, node, mapping):
     new = deepcopy(node)
     for n in walk(new):
         if isinstance(n, Name) and n.id in renames:
-            n.id = max(renames[n.id], key=renames[n.id].get)
+            n.id = max(renames[n.id], key=renames[n.id].get)  # type: ignore
     return new
 
 

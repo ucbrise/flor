@@ -1,3 +1,5 @@
+# type: ignore
+
 from ast import AST, iter_fields
 from typing import Any, Iterable, Optional, Union
 

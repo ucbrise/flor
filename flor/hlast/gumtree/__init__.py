@@ -1,8 +1,10 @@
+# type: ignore
 from apted import APTED, Config
 from itertools import product, zip_longest
 from collections.abc import Iterable
 from typing import Generic, Optional, TypeVar
 from bidict._mut import MutableBidict
+
 from .adapter import Adapter
 from .idmap import IdMap
 from .priorityq import PriorityQ
@@ -15,14 +17,9 @@ Tree = TypeVar("Tree")
 
 
 class HeightPQ(PriorityQ[Tree, int]):
-    def __init__(self, adapter, it=[]):
+    def __init__(self, adapter: Adapter[Tree], it=[]):
+        super().__init__(it, key=adapter.height, reverse=True)  # type: ignore
         self.adapter = adapter
-
-        def _help(k):
-            assert hasattr(self.adapter, "height"), dir(self.adapter)
-            return self.adapter.height(k)
-
-        super().__init__(it, key=_help, reverse=True)
 
     def peek_max(self) -> int:
         return len(self) and self.adapter.height(self.peek())
@@ -31,7 +28,7 @@ class HeightPQ(PriorityQ[Tree, int]):
         for child in self.adapter.children(tree):
             self.push(child)
 
-    def pop(self) -> "list[Tree]":
+    def pop(self) -> list[Tree]:
         trees = []
         assert self, "Empty!"
         height = self.peek_max()
@@ -41,9 +38,11 @@ class HeightPQ(PriorityQ[Tree, int]):
 
 
 class Mapping(MutableBidict[Tree, Tree]):
+    _fwdm_cls = IdMap[Tree, Tree]
+    _invm_cls = IdMap[Tree, Tree]
     _repr_delegate = list
 
-    def __init__(self, adapter, it=()):
+    def __init__(self, adapter: Adapter[Tree], it: Iterable[tuple[Tree, Tree]] = ()):
         self.adapter = adapter
         super().__init__(it)
 
@@ -54,22 +53,22 @@ class Mapping(MutableBidict[Tree, Tree]):
 class GumTree(Generic[Tree]):
     defaults = {"min_height": 2, "min_dice": 0.50, "max_size": 100}
 
-    def __init__(self, adapte, *, opt=None, **params):
+    def __init__(self, adapter: Adapter[Tree], *, opt=None, **params):
         assert not set(params) - set(self.defaults), "Invalid parameters!"
         self.params = dict(self.defaults, **params)
         self.opt = opt or self.apted
         self.adapter = adapter
 
-    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree]:
+    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
         m = self.topdown(t1, t2)
         self.bottomup(t1, t2, m)
         return m
 
-    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree]:
+    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
         min_height = self.params["min_height"]
 
-        parent = lambda _n: self.adapter.parent(_n)
-        isomorphic = lambda _x, _y: self.adapter.isomorphic(_x, _y)
+        parent = self.adapter.parent
+        isomorphic = self.adapter.isomorphic
 
         def different(l, r):
             return id(l) != id(r)
@@ -109,7 +108,7 @@ class GumTree(Generic[Tree]):
 
         return m
 
-    def bottomup(self, t1: Tree, t2: Tree, m):
+    def bottomup(self, t1: Tree, t2: Tree, m: Mapping[Tree, Tree]):
         min_dice = self.params["min_dice"]
         max_size = self.params["max_size"]
 

@@ -3,7 +3,7 @@ from typing import Callable, Generic, Iterable, TypeVar
 from operator import lt, gt
 
 
-T, I = TypeVar('T'), TypeVar('I')
+T, I = TypeVar("T"), TypeVar("I")
 Key = Callable[[T], I]
 
 
@@ -22,10 +22,10 @@ class PriorityQ(Generic[T, I]):
         heappush(self._heap, item)
 
     def pop(self) -> T:
-        return heappop(self._heap).value
+        return heappop(self._heap).value  # type: ignore
 
     def peek(self) -> T:
-        return self._heap[0].value
+        return self._heap[0].value  # type: ignore
 
     def __len__(self) -> int:
         return len(self._heap)
@@ -37,7 +37,7 @@ class PriorityQ(Generic[T, I]):
             def __init__(self, value):
                 self.key, self.value = key(value), value
 
-            def __lt__(self, other: 'Item'):
+            def __lt__(self, other: "Item"):
                 return op(self.key, other.key)
 
         return Item
