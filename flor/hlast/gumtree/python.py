@@ -18,6 +18,14 @@ Node = Union[AST, list]
 
 class Adapter(BaseAdapter):
     def __init__(self, *roots: Node):
+        """
+        DFS tree generator
+        implements:
+          self[Tree].children(Node)
+          self[Tree].label(Node)
+          self[Tree[.value(Node)
+        """
+
         self._parents = {}
         for root in roots:
             self._save_parents(root)

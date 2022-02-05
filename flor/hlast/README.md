@@ -10,12 +10,12 @@ Here's an example command that should Just Work™
 python dmp-propagate.py --in-dir tests/toy-simple --log-version 2 --out-dir out/dmp/toy-simple --log=DEBUG
 ```
 
-### gt-propagate.py
+### gtpropagate.py
 Based on [Fine-grained and accurate source code differencing](https://doi.org/10.1145/2642937.2642982) GumTree algorithm.
 
 Takes a line number and source file (the statement to propagate) and a target (a different version without).
 ```
-python gt-propagate.py <lineno> <source> <target> [--out <result>]
+python gtpropagate.py <lineno> <source> <target> [--out <result>]
 ```
 
 To run over a set of tests, use the bash script and the codebase/file/version you want to test.

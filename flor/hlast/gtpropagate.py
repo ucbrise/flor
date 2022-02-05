@@ -31,15 +31,21 @@ def propagate(args: Namespace):
 
 
 def replicate(tree: AST, node: stmt, target: AST, **kwargs):
+    """
+    First we do code-block alignment using the GumTree
+    algorithm from Falleri et al.
+    """
     adapter = python.Adapter(tree, target)
     mapping = GumTree(adapter, **kwargs).mapping(tree, target)
+    # asserting `tree` is the root of `node` in the `adapter`
     assert tree == adapter.root(node) and isinstance(node, stmt)
 
-    # print('# TREE', adapter.dump(tree),
-    #       '# TARGET', adapter.dump(target), sep='\n')
-    # print('# MAPPING', '\n'.join('\t->\t'.join(adapter.label(n)
-    #       for n in (l, r)) for l, r in mapping.items()), sep='\n')
-
+    """
+    Then we insert the back-propagated statement into the target block
+    QUERY:
+        Is the back-propagation always intra-block, meaning from
+        same block in version v to same block in version ancestor(v)
+    """
     if node in mapping:
         exit("Already in target!")
 

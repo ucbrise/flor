@@ -51,6 +51,14 @@ class Mapping(MutableBidict[Tree, Tree]):
 
 
 class GumTree(Generic[Tree]):
+
+    """
+
+    Fine-grained and accurate source code differencing
+    Falleri et al., ASE 2014.
+
+    """
+
     defaults = {"min_height": 2, "min_dice": 0.50, "max_size": 100}
 
     def __init__(self, adapter: Adapter[Tree], *, opt=None, **params):

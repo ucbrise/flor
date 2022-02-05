@@ -3,3 +3,5 @@ GitPython>=3.0.0
 astunparse
 apted
 bidict
+pandas
+sh
