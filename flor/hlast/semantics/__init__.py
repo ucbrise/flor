@@ -55,4 +55,7 @@ __all__ = ["in_logging_hotzone"]
 
 if __name__ == "__main__":
     with open("cases/train_rnn/now.py", "r") as f:
-        in_logging_hotzone(194, f.read())
+        content = f.read()
+        for i in range(1,1000):
+            if in_logging_hotzone(i, content):
+            print(i)

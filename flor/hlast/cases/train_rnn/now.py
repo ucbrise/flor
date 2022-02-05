@@ -194,6 +194,7 @@ def train(
                     flor.log("avg_train_loss,avg_val_loss", (average_train_loss, average_valid_loss))  # type: ignore
 
             flor.SkipBlock.end(model, optimizer)
+            flor.log("eval", None)  # type:ignore
 
     # model.load_state_dict(torch.load("best-model.pt"))
     # predict test
