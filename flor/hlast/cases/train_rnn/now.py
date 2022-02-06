@@ -75,6 +75,7 @@ class LSTM(nn.Module):
         super(LSTM, self).__init__()
 
         self.embedding = nn.Embedding(len(text_field.vocab), dimension)
+        flor.log("embedding", self.embedding)
         self.lstm = nn.LSTM(
             input_size=dimension,
             hidden_size=dimension,

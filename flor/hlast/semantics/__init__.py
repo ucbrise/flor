@@ -19,7 +19,7 @@ class StepLoggingVisitor(ast.NodeVisitor):
             self.value_loaded = True
 
 
-class EvalLoggingVisitor(ast.NodeVisitor):
+class EpochLoggingVisitor(ast.NodeVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.value = None
@@ -45,10 +45,14 @@ def in_logging_hotzone(lineno: int, content: str):
     slv = StepLoggingVisitor()
     slv.visit(ast.parse(content))
     assert slv.value_loaded and slv.value is not None
-    elv = EvalLoggingVisitor()
+    elv = EpochLoggingVisitor()
     elv.visit(ast.parse(content))
     assert elv.value_loaded and elv.value is not None
-    return int(lineno) == int(slv.value) or int(lineno) == int(elv.value)
+    if int(lineno) == int(slv.value):
+        return ("step-level", True)
+    elif int(lineno) == int(elv.value):
+        return ("epoch-level", True)
+    return ("garbage", False)
 
 
 __all__ = ["in_logging_hotzone"]
@@ -56,6 +60,6 @@ __all__ = ["in_logging_hotzone"]
 if __name__ == "__main__":
     with open("cases/train_rnn/now.py", "r") as f:
         content = f.read()
-        for i in range(1,1000):
+        for i in range(1, 1000):
             if in_logging_hotzone(i, content):
-            print(i)
+                print(i)

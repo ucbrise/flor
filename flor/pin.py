@@ -30,11 +30,13 @@ def _saved_kvs_pop(k):
         anti_kvs[k].append(kvs[k].pop(0))
     return anti_kvs[k][-1]
 
+
 def pkl(value: T) -> str:
     p = str(get_pkl_ref())
-    with open(p, 'wb') as f:
+    with open(p, "wb") as f:
         cloudpickle.dump(value, f)
     return p
+
 
 def pin(name: str, value: T) -> T:
     """
@@ -56,7 +58,7 @@ def pin(name: str, value: T) -> T:
         return value
 
 
-def log(name: str, value: T) -> T:
+def log(name: str, value):
     """
     Record & Replay grow the kvs written to .replay.json
     """
