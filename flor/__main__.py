@@ -25,20 +25,15 @@ if sys.argv[1] == "transform":
     with open(".replay.json", "r") as f:
         name = json.load(f)["NAME"]
     dst = Path.home() / ".flor" / name / "repo.git"
+    if dst.exists():
+        shutil.rmtree(dst)
     transformed = Path.home() / ".flor" / name / "transformed"
     if not transformed.exists():
         transformed.mkdir()
-    if not dst.exists():
-        r = Repo()
-        assert "flor.shadow" in str(r.active_branch)
-        r.clone(dst)
-        r = Repo(dst)
-    else:
-        r = Repo(dst)
-        # git.Remote(r, "origin").pull()
-        for remote in r.remotes:
-            remote.fetch()
-            remote.pull()
+    r = Repo()
+    assert "flor.shadow" in str(r.active_branch)
+    r.clone(dst)
+    r = Repo(dst)
     commits = [
         c
         for c in r.iter_commits()
