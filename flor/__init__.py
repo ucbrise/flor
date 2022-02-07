@@ -6,4 +6,4 @@ from .pin import pin, kvs, log, pkl
 
 flags.Parser.parse()
 
-__all__ = ["flags", "it", "pin", "kvs", "log", 'pkl', 'load_kvs', "SkipBlock", "Logger"]
+__all__ = ["flags", "it", "pin", "kvs", "log", "pkl", "load_kvs", "SkipBlock", "Logger"]

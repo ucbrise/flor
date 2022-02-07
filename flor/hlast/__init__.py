@@ -3,8 +3,8 @@ from argparse import Namespace
 from os import PathLike
 from sys import stdout
 
-from gtpropagate import propagate
-from semantics import in_logging_hotzone
+from flor.hlast.gtpropagate import propagate
+from flor.hlast.semantics import in_logging_hotzone
 
 _LVL = None
 
@@ -33,12 +33,10 @@ def syntactic_prop(lineno: int, source, target, out=None):
                 )
             )
     else:
-        with open(str(source), "r") as src, open(str(target), "r") as dst, open(
-            out, "r"
-        ) as f:
+        with open(str(source), "r") as src, open(str(target), "r") as dst:
             return propagate(
                 Namespace(
-                    lineno=int(lineno), source=src, target=dst, out=f, gumtree=dict()
+                    lineno=int(lineno), source=src, target=dst, out=out, gumtree=dict()
                 )
             )
 

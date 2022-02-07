@@ -8,7 +8,7 @@ from copy import deepcopy
 from typing import TextIO
 import sys
 
-from gumtree import GumTree, Mapping, python
+from flor.hlast.gumtree import GumTree, Mapping, python
 
 # https://github.com/PyCQA/pylint/issues/3882
 # pylint: disable=unsubscriptable-object

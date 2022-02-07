@@ -89,14 +89,11 @@ class Parser:
                     EPSILON = float(flag)
                 else:
                     NAME = flag
-            try:
+            if Path(FLORFILE).exists():
                 with open(FLORFILE, "r", encoding="utf-8") as f:
                     d = json.load(f)
-            except FileNotFoundError:
-                print("No replay file, did you record first?")
-                raise
-            assert "NAME" in d
-            NAME = d["NAME"] if NAME is None else NAME
+                assert "NAME" in d
+                NAME = d["NAME"] if NAME is None else NAME
 
     @staticmethod
     def _parse_replay():
