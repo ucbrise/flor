@@ -46,6 +46,11 @@ if sys.argv[1] == "transform":
     for version in commits:
         r.git.checkout(version)
         n = transformed / (str(version.hexsha) + "." + str(args.source))
-        backprop(args.lineno, root, args.source, open(n, "w"))
+        try:
+            backprop(args.lineno, root, args.source, open(n, "w"))
+            print(f'transformed {(str(version.hexsha) + "::" + str(args.source))}')
+        except FileNotFoundError:
+            print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
+            continue
     r.git.checkout(active)
     os.chdir(cwd)
