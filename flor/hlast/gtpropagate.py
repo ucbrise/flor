@@ -47,7 +47,8 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
         same block in version v to same block in version ancestor(v)
     """
     if node in mapping:
-        exit("Already in target!")
+        # exit("Already in target!")
+        print("hello")
 
     block, index = find_insert_loc(adapter, node, mapping)
     new = make_contextual_copy(adapter, node, mapping)
