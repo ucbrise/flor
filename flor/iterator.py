@@ -12,6 +12,7 @@ from .skipblock import SkipBlock
 
 from .constants import *
 from pathlib import Path, PurePath
+import numpy as np
 
 
 from sh import tail
@@ -150,6 +151,9 @@ def load_kvs():
     seq = []
 
     for q in p.iterdir():
+        # q will contain the timestamp: 2022-02-07T20:42:25.json
+        tstamp = q.stem
+        # 2022-02-07T20:42:25
         with open(str(q), "r", encoding="utf-8") as f:
             d = json.load(f)
 
@@ -162,10 +166,23 @@ def load_kvs():
             n = ".".join(z)
             for s, x in enumerate(_kvs[k]):
                 # pvresnx
-                seq.append((d["NAME"], d["MEMO"], r, e, s, n, x))
+                seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
 
     df1 = pd.DataFrame(
-        seq, columns=["projid", "vid", "recrep", "epoch", "step", "name", "value"]
+        seq,
+        columns=["projid", "vid", "tstamp", "alpha", "epoch", "step", "name", "value"],
+        # dtype=(str, str, np.datetime64, str, int, int, str, object),
+    ).astype(
+        {
+            "projid": str,
+            "vid": str,
+            "tstamp": np.datetime64,
+            "alpha": str,
+            "epoch": int,
+            "step": int,
+            "name": str,
+            "value": object,
+        }
     )
 
     # I want to build a mapper from FLORFILE to GIT HASH
