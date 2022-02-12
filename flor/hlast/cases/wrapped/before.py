@@ -14,7 +14,7 @@ import flor
 flor.flags.NAME = "kaggle-nlp-disasters-rnn"
 flor.flags.REPLAY = False
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 device
 
 label_field = Field(

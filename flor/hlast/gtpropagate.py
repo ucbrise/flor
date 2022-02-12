@@ -91,9 +91,12 @@ class PairNodeVisitor(ast.NodeTransformer):
             raise NotImplementedError
 
     def equals(self, node1: AST, node2: AST):
-        return node1.__class__ == node2.__class__ and all(
-            [type(getattr(node1, a)) == type(getattr(node2, a)) for a in node1._fields]
-        )
+        if type(node1) != type(node2):
+            return False
+        for a in node1._fields:
+            if type(getattr(node1, a)) != type(getattr(node2, a)):
+                return False
+        return True
 
     def visit(self, node1: AST, node2: AST):
         """Visit a node."""
@@ -161,7 +164,7 @@ class LoggedExpVisitor(ast.NodeVisitor):
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
             self.name = str(node.args[0].value)
         else:
-            raise
+            raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
 
 
 def find_insert_loc(adapter, node, mapping):

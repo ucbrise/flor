@@ -26,7 +26,12 @@ device
 label_field = Field(
     sequential=False, use_vocab=False, batch_first=True, dtype=torch.float
 )
-text_field = Field(tokenize="spacy", lower=True, include_lengths=True, batch_first=True)
+text_field = Field(
+    tokenize=flor.log("tokenizer", "spacy"),
+    lower=True,
+    include_lengths=True,
+    batch_first=True,
+)
 fields = [("words", text_field), ("target", label_field)]
 fields_test = [("words", text_field)]
 
@@ -67,7 +72,7 @@ test_iter = BucketIterator(
     sort_within_batch=True,
 )
 
-text_field.build_vocab(train, min_freq=5)
+text_field.build_vocab(train, min_freq=flor.log("min_freq", 5))
 
 # LSTM model
 class LSTM(nn.Module):

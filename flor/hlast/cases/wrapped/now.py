@@ -20,7 +20,9 @@ except RuntimeError:
 flor.flags.NAME = "kaggle-nlp-disasters-rnn"
 flor.flags.REPLAY = False
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = flor.log(
+    "device", torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+)
 device
 
 label_field = Field(

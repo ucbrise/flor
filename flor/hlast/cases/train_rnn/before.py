@@ -61,7 +61,7 @@ test_iter = BucketIterator(
     sort_within_batch=True,
 )
 
-text_field.build_vocab(train, min_freq=5)
+text_field.build_vocab(train, min_freq=int("5"))
 
 # LSTM model
 class LSTM(nn.Module):
