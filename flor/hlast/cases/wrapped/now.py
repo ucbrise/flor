@@ -44,7 +44,7 @@ test = TabularDataset(
 
 train_iter = BucketIterator(
     train,
-    batch_size=flor.log('batch_size', 200),
+    batch_size=flor.log("batch_size", 200),
     sort_key=lambda x: len(x.words),
     device=device,
     sort=True,
