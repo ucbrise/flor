@@ -16,7 +16,7 @@ from flor.hlast import backprop
 def parse_transform():
     parser = ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
-    parser.add_argument("lineno", type=int)
+    parser.add_argument("lineno", type=int, default=None)
     return parser.parse_args(sys.argv[2:])
 
 

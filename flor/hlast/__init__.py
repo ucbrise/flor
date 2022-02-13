@@ -3,7 +3,7 @@ from argparse import Namespace
 from os import PathLike
 from sys import stdout
 
-from flor.hlast.gtpropagate import propagate
+from flor.hlast.gtpropagate import propagate, LogLinesVisitor
 from flor.hlast.semantics import in_logging_hotzone
 
 _LVL = None
@@ -14,7 +14,7 @@ def backprop(lineno: int, source: str, target: str, out=None):
     with open(source, "r") as src:
         content = src.read()
     _LVL, smt = in_logging_hotzone(lineno, content)
-    if smt:
+    if lineno is not None and smt:
         semantic_prop(lineno, source, target, out)
     else:
         syntactic_prop(lineno, source, target, out)
@@ -25,7 +25,7 @@ def syntactic_prop(lineno: int, source, target, out=None):
         with open(str(source), "r") as src, open(str(target), "r") as dst:
             return propagate(
                 Namespace(
-                    lineno=int(lineno),
+                    lineno=lineno,
                     source=src,
                     target=dst,
                     out=stdout,
@@ -36,17 +36,21 @@ def syntactic_prop(lineno: int, source, target, out=None):
         with open(str(source), "r") as src, open(str(target), "r") as dst:
             return propagate(
                 Namespace(
-                    lineno=int(lineno), source=src, target=dst, out=out, gumtree=dict()
+                    lineno=lineno, source=src, target=dst, out=out, gumtree=dict()
                 )
             )
 
 
 def semantic_prop(lineno: int, source, target, out=None):
+
     with open(source, "r") as src, open(target, "r") as dst:
         src_content = src.read()
         dst_content = dst.read()
     src_tree = ast.parse(src_content)
     dst_tree = ast.parse(dst_content)
+
+    if lineno is None:
+        llv = LogLinesVisitor()
 
     seeker = StmtToPropVisitor(lineno)
     seeker.visit(src_tree)
