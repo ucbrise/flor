@@ -35,11 +35,10 @@ def propagate(args: Namespace):
     fft = FlorFreeTransformer()
     target = fft.visit(target)
     for lineno in llv.linenos:
-        print(f"pre-step {lineno}")
         replicate(tree, find(tree, lineno=lineno), target, **args.gumtree)  # type: ignore
         with open(args.source.name, "r") as f:
             tree = parse(f.read())
-        print(f"post-step {lineno}")
+        print(f"injected logging stmt @ {lineno}")
     print(unparse(target), file=args.out)
 
 
