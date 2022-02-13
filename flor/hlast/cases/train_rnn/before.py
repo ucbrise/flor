@@ -14,7 +14,9 @@ import flor
 flor.flags.NAME = "kaggle-nlp-disasters-rnn"
 flor.flags.REPLAY = False
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = flor.log(
+    "device", torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+)
 device
 
 label_field = Field(
@@ -61,7 +63,7 @@ test_iter = BucketIterator(
     sort_within_batch=True,
 )
 
-text_field.build_vocab(train, min_freq=int("5"))
+text_field.build_vocab(train, min_freq=5)
 
 # LSTM model
 class LSTM(nn.Module):
@@ -179,7 +181,8 @@ def train(
                             average_valid_loss,
                         )
                     )
-        flor.SkipBlock.end(model)
+
+            flor.SkipBlock.end(model)
     # predict test
     y_pred = []
     model.eval()

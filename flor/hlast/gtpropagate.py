@@ -16,7 +16,7 @@ from flor.hlast.gumtree import GumTree, Mapping, python
 
 
 def add_arguments(parser: ArgumentParser):
-    parser.add_argument("lineno", type=int)
+    # parser.add_argument("lineno", type=int)
     parser.add_argument("source", type=FileType("r"))
     parser.add_argument("target", type=FileType("r+"))
     parser.add_argument("--out", type=FileType("w"), default=sys.stdout)
@@ -27,19 +27,31 @@ def add_arguments(parser: ArgumentParser):
 
 def propagate(args: Namespace):
     tree, target = [parse(f.read()) for f in (args.source, args.target)]
-    replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)  # type: ignore
+    args.source.close()
+    args.target.close()
+
+    llv = LogLinesVisitor()
+    llv.visit(tree)
+    fft = FlorFreeTransformer()
+    target = fft.visit(target)
+    for lineno in llv.linenos:
+        print(f"pre-step {lineno}")
+        replicate(tree, find(tree, lineno=lineno), target, **args.gumtree)  # type: ignore
+        with open(args.source.name, "r") as f:
+            tree = parse(f.read())
+        print(f"post-step {lineno}")
     print(unparse(target), file=args.out)
 
 
 def replicate(tree: AST, node: stmt, target: AST, **kwargs):
-    """
+    """`
     First we do code-block alignment using the GumTree
     algorithm from Falleri et al.
     """
     adapter = python.Adapter(tree, target)
     mapping = GumTree(adapter, **kwargs).mapping(tree, target)
     # asserting `tree` is the root of `node` in the `adapter`
-    assert tree == adapter.root(node) and isinstance(node, stmt)
+    # assert tree == adapter.root(node) and isinstance(node, stmt)
 
     """
     Then we insert the back-propagated statement into the target block
@@ -54,23 +66,82 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     The contextual copy ignores content of target
     """
     block, index = find_insert_loc(adapter, node, mapping)
+    # if node in mapping:
+    lev = LoggedExpVisitor()
+    lev.visit(node)
+    pnv = PairNodeVisitor(lev.name)
+
     if node in mapping:
-        lev = LoggedExpVisitor()
-        lev.visit(node)
-        new = block.pop(index)  # type: ignore
-        pnv = PairNodeVisitor(lev.name)
-        new = pnv.visit(node, new)
-        # new = make_contextual_mutate(node, target)
+        # ABORT
+        edon = mapping[node]
+
+        original = block.pop(index)
+        original_s = deepcopy(original)
+        original = pnv.visit(node, original)
+        assert pnv.success
+        block.insert(index, original)
+    elif make_contextual_copy(adapter, node, mapping) in mapping:
+        original = block.pop(index)
+        original_s = deepcopy(original)
+        original = pnv.visit(node, original)
+        assert pnv.success
+        block.insert(index, original)
     else:
         new = make_contextual_copy(adapter, node, mapping)
-    block.insert(index, new)  # type: ignore
-    # block.pop(index - 2)
+        block.insert(index, new)
+
+    # print("done")
+
+
+class FlorFreeTransformer(ast.NodeTransformer):
+    def visit_Call(self, node: ast.Call):
+        pred = (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "flor"
+            and node.func.attr == "log"
+        )
+        if pred:
+            return self.visit(node.args[1])
+        return self.generic_visit(node)
+
+
+class LogLinesVisitor(ast.NodeVisitor):
+    def __init__(self):
+        super().__init__()
+        self.coreline = None
+        self.linenos = set([])
+
+    def visit_Assign(self, node: ast.Assign):
+        self.coreline = node.lineno
+        return self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign):
+        self.coreline = node.lineno
+        return self.generic_visit(node)
+
+    def visit_Expr(self, node: ast.Expr):
+        self.coreline = node.lineno
+        return self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call):
+        pred = (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "flor"
+            and node.func.attr == "log"
+        )
+        if pred:
+            self.linenos.add(self.coreline)
+
+        return self.generic_visit(node)
 
 
 class PairNodeVisitor(ast.NodeTransformer):
     def __init__(self, name):
         super().__init__()
         self.name = name
+        self.success = False
 
     def make_wrapper(self, child):
         if isinstance(child, AST):
@@ -107,14 +178,14 @@ class PairNodeVisitor(ast.NodeTransformer):
             for f in node1._fields:
                 v = getattr(node1, f)
                 s = unparse(v).strip() if isinstance(v, AST) else str(v)
-                if "flor" in s:
+                if "flor.log" in s:
                     field = f
                     break
-            ...
-
+            assert field is not None
             child = getattr(node2, field)
             logging_child = self.make_wrapper(child)
             setattr(node2, field, logging_child)
+            self.success = True
             return node2
         return self.generic_visit(node1, node2)
 

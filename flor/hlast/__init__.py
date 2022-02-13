@@ -41,7 +41,7 @@ def syntactic_prop(lineno: int, source, target, out=None):
             )
 
 
-def semantic_prop(lineno: int, source, target, out=None):    
+def semantic_prop(lineno: int, source, target, out=None):
     with open(source, "r") as src, open(target, "r") as dst:
         src_content = src.read()
         dst_content = dst.read()
