@@ -193,7 +193,7 @@ def load_kvs():
 
     df1["vid"] = df1["vid"].apply(lambda x: vid_mapper[x])
 
-    return df1.sort_values(by=["tstamp", "epoch", "step"], ascending=False)
+    return df1.sort_values(by=["tstamp"], ascending=False)
 
 
 __all__ = ["it"]
