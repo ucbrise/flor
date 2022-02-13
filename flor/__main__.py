@@ -52,5 +52,9 @@ if sys.argv[1] == "transform":
             # print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
             os.remove(n)
             continue
+        except:
+            os.remove(n)
+            continue
+
     r.git.checkout(active)
     os.chdir(cwd)
