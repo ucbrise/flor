@@ -13,7 +13,10 @@ def backprop(lineno: int, source: str, target: str, out=None):
     global _LVL
     with open(source, "r") as src:
         content = src.read()
-    _LVL, smt = in_logging_hotzone(lineno, content)
+    _LVL, smt = (
+        in_logging_hotzone(lineno, content) if lineno is not None else None,
+        None,
+    )
     if lineno is not None and smt:
         semantic_prop(lineno, source, target, out)
     else:
