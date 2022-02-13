@@ -16,7 +16,6 @@ from flor.hlast import backprop
 def parse_transform():
     parser = ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
-    parser.add_argument("lineno", type=int, default=None)
     return parser.parse_args(sys.argv[2:])
 
 
@@ -47,7 +46,7 @@ if sys.argv[1] == "transform":
         r.git.checkout(version)
         n = transformed / (str(version.hexsha) + "." + str(args.source))
         try:
-            backprop(args.lineno, root, args.source, open(n, "w"))
+            backprop(None, root, args.source, open(n, "w"))  # type: ignore
             print(f'transformed {(str(version.hexsha) + "::" + str(args.source))}')
         except FileNotFoundError:
             print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
