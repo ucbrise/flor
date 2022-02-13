@@ -50,6 +50,7 @@ if sys.argv[1] == "transform":
             print(f'transformed {(str(version.hexsha) + "::" + str(args.source))}')
         except FileNotFoundError:
             print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
+            os.remove(n)
             continue
     r.git.checkout(active)
     os.chdir(cwd)
