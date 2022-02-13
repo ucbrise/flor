@@ -80,12 +80,6 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
         original = pnv.visit(node, original)
         assert pnv.success
         block.insert(index, original)
-    elif make_contextual_copy(adapter, node, mapping) in mapping:
-        original = block.pop(index)
-        original_s = deepcopy(original)
-        original = pnv.visit(node, original)
-        assert pnv.success
-        block.insert(index, original)
     else:
         new = make_contextual_copy(adapter, node, mapping)
         block.insert(index, new)
