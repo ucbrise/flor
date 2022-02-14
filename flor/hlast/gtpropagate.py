@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser, FileType, Namespace
-from ast import AST, Name, iter_fields, parse, walk, stmt, literal_eval
-from astunparse import unparse
+from ast import AST, Name, iter_fields, parse, unparse, walk, stmt, literal_eval
 from collections import defaultdict
 from copy import deepcopy
 from typing import Optional, TextIO
@@ -29,6 +28,7 @@ def propagate(args: Namespace):
     tree, target = [parse(f.read()) for f in (args.source, args.target)]
     args.source.close()
     args.target.close()
+    args.out = open(args.out, "w")
 
     llv = LogLinesVisitor()
     llv.visit(tree)

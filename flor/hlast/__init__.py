@@ -31,7 +31,7 @@ def syntactic_prop(lineno: int, source, target, out=None):
                     lineno=lineno,
                     source=src,
                     target=dst,
-                    out=stdout,
+                    out=str(target),
                     gumtree=dict(),
                 )
             )

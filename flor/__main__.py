@@ -6,6 +6,7 @@ import shutil
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
+from typing import Optional
 
 import git
 from git.repo import Repo
@@ -16,6 +17,7 @@ from flor.hlast import backprop
 def parse_transform():
     parser = ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
+    parser.add_argument("lineno", type=int, nargs="?", default=None)
     return parser.parse_args(sys.argv[2:])
 
 
@@ -58,3 +60,21 @@ if sys.argv[1] == "transform":
 
     r.git.checkout(active)
     os.chdir(cwd)
+elif sys.argv[1] == "stage":
+    args = parse_transform()
+    with open(".replay.json", "r") as f:
+        name = json.load(f)["NAME"]
+    dst = Path.home() / ".flor" / name / "staged.py"
+    assert args.source.exists()
+    shutil.copy2(args.source, dst)
+    print(f"{args.source} staged!")
+elif sys.argv[1] == "propagate":
+    args = parse_transform()
+    with open(".replay.json", "r") as f:
+        name = json.load(f)["NAME"]
+    src = Path.home() / ".flor" / name / "staged.py"
+    assert src.exists(), "Did you first stage the file you want to propagate from?"
+    backprop(None, src, target=args.source)  # type: ignore
+    print(f"transformed {str(args.source)}")
+    print(f"{args.source} modified to include logging statements")
+
