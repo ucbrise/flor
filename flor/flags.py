@@ -5,7 +5,7 @@ from flor import shelf
 import sys
 from pathlib import PurePath, Path
 from .constants import *
-from .pin import kvs
+from .pin import kvs, names_in_replay
 
 
 NAME: Optional[str] = None
@@ -97,6 +97,7 @@ class Parser:
 
     @staticmethod
     def _parse_replay():
+        global names_in_replay
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
@@ -109,7 +110,7 @@ class Parser:
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
         assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         if "KVS" in d:
-            kvs.update(d["KVS"])
+            kvs.update({k: v for k, v in d["KVS"].items() if k.split(".")[1] == "a"})
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
