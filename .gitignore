@@ -6,6 +6,7 @@
 build/
 dist/
 flor.egg-info/
+mnist/
 
 *.ipynb_checkpoints/
 *__pycache__/
