@@ -38,7 +38,7 @@ if sys.argv[1] == "transform":
     commits = [
         c
         for c in r.iter_commits()
-        if "flor.shadow" in c.message and ".json" == c.message[-len(".json") :]
+        if "flor.shadow" in str(c.message) and ".json" == c.message[-len(".json") :]
     ]
     root = args.source.absolute()
     cwd = os.getcwd()
