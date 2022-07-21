@@ -60,6 +60,42 @@ if sys.argv[1] == "transform":
 
     r.git.checkout(active)
     os.chdir(cwd)
+elif sys.argv[1] == "unpack":
+    with open(".replay.json", "r") as f:
+        name = json.load(f)["NAME"]
+    dst = Path.home() / ".flor" / name / "repo.git"
+    if dst.exists():
+        shutil.rmtree(dst)
+    replay_jsons = Path.home() / ".flor" / name / "replay_jsons"
+    if not replay_jsons.exists():
+        replay_jsons.mkdir()
+    r = Repo()
+    assert "flor.shadow" in str(r.active_branch)
+    r.clone(dst)
+    r = Repo(dst)
+    commits = [
+        c
+        for c in r.iter_commits()
+        if "flor.shadow" in str(c.message) and ".json" == c.message[-len(".json") :]
+    ]
+    cwd = os.getcwd()
+    os.chdir(dst)
+    active = r.active_branch  # check behavior
+    for version in commits:
+        r.git.checkout(version)
+        hexsha, message = version.hexsha, version.message
+        _, tstamp_json = message.split("::")
+        try:
+            shutil.copy2(".replay.json", os.path.join(replay_jsons, tstamp_json))  # type: ignore
+            print(f'copied {(str(version.hexsha) + "::" + str(tstamp_json))}')
+        except FileNotFoundError:
+            # print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
+            continue
+        except:
+            continue
+
+    r.git.checkout(active)
+    os.chdir(cwd)
 elif sys.argv[1] == "stage":
     args = parse_transform()
     with open(".replay.json", "r") as f:
@@ -77,4 +113,3 @@ elif sys.argv[1] == "propagate":
     backprop(None, src, target=args.source)  # type: ignore
     print(f"transformed {str(args.source)}")
     print(f"{args.source} modified to include logging statements")
-
