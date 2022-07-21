@@ -160,13 +160,17 @@ def load_kvs():
         _kvs = d["KVS"]
 
         for k in _kvs:
-            z = k.split(".")
-            e = z.pop(0)
-            r = z.pop(0)
-            n = ".".join(z)
-            for s, x in enumerate(_kvs[k]):
-                # pvresnx
-                seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
+            try:
+                print(k, _kvs[k])
+                z = k.split(".")
+                e = z.pop(0)
+                r = z.pop(0)
+                n = ".".join(z)
+                for s, x in enumerate(_kvs[k]):
+                    # pvresnx
+                    seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
+            except:
+                print(k, _kvs[k])
 
     df1 = pd.DataFrame(
         seq,
@@ -184,7 +188,7 @@ def load_kvs():
             "value": object,
         }
     )
-
+    # todo: continue work from here
     # I want to build a mapper from FLORFILE to GIT HASH
     vid_mapper = dict()
     for path in df1["vid"].drop_duplicates().to_list():
