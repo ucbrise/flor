@@ -14,8 +14,7 @@ from .constants import *
 from pathlib import Path, PurePath
 import numpy as np
 
-
-from sh import tail
+from utils import gen_commit2tstamp_mapper
 
 
 class replay_clock:
@@ -160,8 +159,7 @@ def load_kvs():
         _kvs = d["KVS"]
 
         for k in _kvs:
-            try:
-                print(k, _kvs[k])
+            if len(k.split(".")) >= 3:
                 z = k.split(".")
                 e = z.pop(0)
                 r = z.pop(0)
@@ -169,8 +167,6 @@ def load_kvs():
                 for s, x in enumerate(_kvs[k]):
                     # pvresnx
                     seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
-            except:
-                print(k, _kvs[k])
 
     df1 = pd.DataFrame(
         seq,
@@ -188,14 +184,10 @@ def load_kvs():
             "value": object,
         }
     )
-    # todo: continue work from here
-    # I want to build a mapper from FLORFILE to GIT HASH
-    vid_mapper = dict()
-    for path in df1["vid"].drop_duplicates().to_list():
-        eof = json.loads(tail("-1", path, _iter=True).next())
-        vid_mapper[path] = eof["COMMIT_SHA"]
+    # TODO: RESUME
+    time2sha, sha2time = gen_commit2tstamp_mapper()
 
-    df1["vid"] = df1["vid"].apply(lambda x: vid_mapper[x])
+    df1["vid"] = df1["vid"].apply(lambda x: time2sha[os.path.basename(x)])
 
     return df1.sort_values(by=["tstamp", "epoch", "step"])
 
