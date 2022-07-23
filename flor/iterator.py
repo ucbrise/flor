@@ -14,7 +14,7 @@ from .constants import *
 from pathlib import Path, PurePath
 import numpy as np
 
-from utils import gen_commit2tstamp_mapper
+from .utils import gen_commit2tstamp_mapper
 
 
 class replay_clock:
@@ -187,7 +187,7 @@ def load_kvs():
     # TODO: RESUME
     time2sha, sha2time = gen_commit2tstamp_mapper()
 
-    df1["vid"] = df1["vid"].apply(lambda x: time2sha[os.path.basename(x)])
+    df1["vid"] = df1["vid"].apply(lambda x: time2sha.get(os.path.basename(x), x))
 
     return df1.sort_values(by=["tstamp", "epoch", "step"])
 

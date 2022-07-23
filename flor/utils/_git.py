@@ -2,14 +2,13 @@ from .. import constants as CONST
 from git.repo import Repo
 import os
 
-r = Repo()
-commits = r.iter_commits(r.active_branch)
-
 
 def gen_commit2tstamp_mapper():
     """
     os.path.basename(absolute)
     """
+    r = Repo()
+    commits = r.iter_commits("--all")
 
     def get_index(message: str):
         return message.split("::")[1]
