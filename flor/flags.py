@@ -37,7 +37,7 @@ def set_REPLAY(
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
-        assert shelf.verify(PurePath(index))
+        index_exists = shelf.verify(PurePath(index))
         INDEX = PurePath(index)
     if mode is not None:
         MODE = REPLAY_MODE[mode]
@@ -49,6 +49,11 @@ def set_REPLAY(
         assert n >= 1
         assert p <= n
         PID = REPLAY_PARALLEL(*pid)
+
+    if not index_exists:
+        # TODO:
+        # I want a RECORD mode
+        raise NotImplementedError()
 
 
 class Parser:
@@ -110,7 +115,13 @@ class Parser:
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
         assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         if "KVS" in d:
-            kvs.update({k: v for k, v in d["KVS"].items() if k.split(".")[1] == "a"})
+            kvs.update(
+                {
+                    k: v
+                    for k, v in d["KVS"].items()
+                    if "." not in k or k.split(".")[1] == "a"
+                }
+            )
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
