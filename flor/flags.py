@@ -40,7 +40,7 @@ def set_REPLAY(
         assert PurePath(index).suffix == ".json"
         index_exists = shelf.verify(PurePath(index).name)
         INDEX = Path.home() / ".flor" / NAME / Path(index).name
-        if not index_exists and :
+        if not index_exists:
             print("MISSING CACHE: Recomputing Checkpoints")
             REPLAY = False
             MODE = RECORD_MODE.chkpt_restore
