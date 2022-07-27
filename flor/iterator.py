@@ -11,11 +11,11 @@ from . import pin
 from .skipblock import SkipBlock
 
 from .constants import *
+from .utils import *
 from pathlib import Path, PurePath
 import numpy as np
 
-
-from sh import tail
+from .utils import gen_commit2tstamp_mapper
 
 
 class replay_clock:
@@ -85,7 +85,7 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
-        if not flags.REPLAY:
+        if not flags.REPLAY and flags.MODE is None:
             repo = Repo()
             assert (
                 SHADOW_BRANCH_PREFIX
@@ -96,13 +96,18 @@ def _deferred_init(_nil=[]):
         if flags.REPLAY:
             SkipBlock.journal.read()
         else:
-            SkipBlock.logger.set_path(shelf.get_index())
+            index_path = (
+                flags.INDEX
+                if flags.MODE is RECORD_MODE.chkpt_restore
+                else shelf.get_index()
+            )
+            SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
         _nil.append(True)
 
 
 def _close_record():
-    commit_sha = _save_run()
+    commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path
@@ -160,13 +165,14 @@ def load_kvs():
         _kvs = d["KVS"]
 
         for k in _kvs:
-            z = k.split(".")
-            e = z.pop(0)
-            r = z.pop(0)
-            n = ".".join(z)
-            for s, x in enumerate(_kvs[k]):
-                # pvresnx
-                seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
+            if len(k.split(".")) >= 3:
+                z = k.split(".")
+                e = z.pop(0)
+                r = z.pop(0)
+                n = ".".join(z)
+                for s, x in enumerate(_kvs[k]):
+                    # pvresnx
+                    seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
 
     df1 = pd.DataFrame(
         seq,
@@ -184,14 +190,10 @@ def load_kvs():
             "value": object,
         }
     )
+    # TODO: RESUME
+    time2sha, sha2time = gen_commit2tstamp_mapper()
 
-    # I want to build a mapper from FLORFILE to GIT HASH
-    vid_mapper = dict()
-    for path in df1["vid"].drop_duplicates().to_list():
-        eof = json.loads(tail("-1", path, _iter=True).next())
-        vid_mapper[path] = eof["COMMIT_SHA"]
-
-    df1["vid"] = df1["vid"].apply(lambda x: vid_mapper[x])
+    df1["vid"] = df1["vid"].apply(lambda x: time2sha.get(os.path.basename(x), x))
 
     return df1.sort_values(by=["tstamp", "epoch", "step"])
 

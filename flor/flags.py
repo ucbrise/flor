@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 from flor import shelf
 
 import sys
@@ -11,7 +11,7 @@ from .pin import kvs
 NAME: Optional[str] = None
 REPLAY: bool = False
 INDEX: Optional[PurePath] = None
-MODE: REPLAY_MODE = REPLAY_MODE.weak
+MODE: Optional[Union[REPLAY_MODE, RECORD_MODE]] = None
 PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
@@ -34,11 +34,16 @@ def set_REPLAY(
     global NAME, REPLAY, INDEX, MODE, PID
     NAME = name
     REPLAY = True
+    MODE = REPLAY_MODE.weak
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
-        assert shelf.verify(PurePath(index))
-        INDEX = PurePath(index)
+        index_exists = shelf.verify(PurePath(index).name)
+        INDEX = Path.home() / ".flor" / NAME / Path(index).name
+        if not index_exists:
+            print("MISSING CACHE: Recomputing Checkpoints")
+            REPLAY = False
+            MODE = RECORD_MODE.chkpt_restore
     if mode is not None:
         MODE = REPLAY_MODE[mode]
     if pid is not None:
@@ -110,7 +115,13 @@ class Parser:
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
         assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         if "KVS" in d:
-            kvs.update({k: v for k, v in d["KVS"].items() if k.split(".")[1] == "a"})
+            kvs.update(
+                {
+                    k: v
+                    for k, v in d["KVS"].items()
+                    if "." not in k or k.split(".")[1] == "a"
+                }
+            )
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):

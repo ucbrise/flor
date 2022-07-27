@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 REPLAY_MODE = Enum("REPLAY_MODE", "weak strong")
+RECORD_MODE = Enum("RECORD_MODE", "chkpt_restore")
 SHADOW_BRANCH_PREFIX = "flor.shadow"
 FLORFILE = ".replay.json"
 
@@ -12,4 +13,10 @@ class REPLAY_PARALLEL:
     ngpus: int
 
 
-__all__ = ["REPLAY_MODE", "SHADOW_BRANCH_PREFIX", "FLORFILE", "REPLAY_PARALLEL"]
+__all__ = [
+    "REPLAY_MODE",
+    "RECORD_MODE",
+    "SHADOW_BRANCH_PREFIX",
+    "FLORFILE",
+    "REPLAY_PARALLEL",
+]
