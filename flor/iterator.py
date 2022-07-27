@@ -11,6 +11,7 @@ from . import pin
 from .skipblock import SkipBlock
 
 from .constants import *
+from .utils import *
 from pathlib import Path, PurePath
 import numpy as np
 
@@ -84,7 +85,7 @@ def _deferred_init(_nil=[]):
     """
     if not _nil:
         assert flags.NAME is not None
-        if not flags.REPLAY:
+        if not flags.REPLAY and flags.MODE is None:
             repo = Repo()
             assert (
                 SHADOW_BRANCH_PREFIX
@@ -95,13 +96,18 @@ def _deferred_init(_nil=[]):
         if flags.REPLAY:
             SkipBlock.journal.read()
         else:
-            SkipBlock.logger.set_path(shelf.get_index())
+            index_path = (
+                flags.INDEX
+                if flags.MODE is RECORD_MODE.chkpt_restore
+                else shelf.get_index()
+            )
+            SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
         _nil.append(True)
 
 
 def _close_record():
-    commit_sha = _save_run()
+    commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path

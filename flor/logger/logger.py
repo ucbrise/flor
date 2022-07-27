@@ -5,6 +5,7 @@ from typing import List, Generator
 
 from .. import shelf
 from .future import Future
+from .. import flags
 
 
 class Logger:
@@ -25,13 +26,14 @@ class Logger:
     def close(self):
         if len(self.buffer) > 0:
             self.flush(is_final=True)
-        latest = shelf.get_latest()
-        assert latest is not None
-        assert self.path is not None
-        if latest.exists():
-            latest.unlink()
-        latest.symlink_to(self.path)
-        # TODO: spool
+        if flags.MODE is None:
+            latest = shelf.get_latest()
+            assert latest is not None
+            assert self.path is not None
+            if latest.exists():
+                latest.unlink()
+            latest.symlink_to(self.path)
+            # TODO: spool
 
     def flush(self, is_final=False):
         assert self.path is not None

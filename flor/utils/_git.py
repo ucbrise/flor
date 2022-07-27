@@ -23,3 +23,8 @@ def gen_commit2tstamp_mapper():
             time2sha[index] = c.hexsha
 
     return time2sha, sha2time
+
+
+def get_active_commit_sha():
+    r = Repo()
+    return r.head.commit.hexsha

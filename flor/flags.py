@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 from flor import shelf
 
 import sys
@@ -11,7 +11,7 @@ from .pin import kvs
 NAME: Optional[str] = None
 REPLAY: bool = False
 INDEX: Optional[PurePath] = None
-MODE: REPLAY_MODE = REPLAY_MODE.weak
+MODE: Optional[Union[REPLAY_MODE, RECORD_MODE]] = None
 PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
@@ -34,11 +34,16 @@ def set_REPLAY(
     global NAME, REPLAY, INDEX, MODE, PID
     NAME = name
     REPLAY = True
+    MODE = REPLAY_MODE.weak
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
-        index_exists = shelf.verify(PurePath(index))
-        INDEX = PurePath(index)
+        index_exists = shelf.verify(PurePath(index).name)
+        INDEX = Path.home() / ".flor" / NAME / Path(index).name
+        if not index_exists and :
+            print("MISSING CACHE: Recomputing Checkpoints")
+            REPLAY = False
+            MODE = RECORD_MODE.chkpt_restore
     if mode is not None:
         MODE = REPLAY_MODE[mode]
     if pid is not None:
@@ -49,11 +54,6 @@ def set_REPLAY(
         assert n >= 1
         assert p <= n
         PID = REPLAY_PARALLEL(*pid)
-
-    if not index_exists:
-        # TODO:
-        # I want a RECORD mode
-        raise NotImplementedError()
 
 
 class Parser:
