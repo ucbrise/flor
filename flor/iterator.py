@@ -22,6 +22,10 @@ class replay_clock:
     epoch = 0
 
 
+ignore_report = False
+runtime_initialized = False
+
+
 def it(value: Union[Iterable, bool]):
     """
     Main loop wrapper
@@ -29,6 +33,7 @@ def it(value: Union[Iterable, bool]):
         Iterable when iterating over a for loop
         Bool when looping with while
     """
+    global ignore_report
     assert isinstance(value, (Iterable, bool))
     if flags.NAME is None:
         if isinstance(value, bool):
@@ -46,11 +51,13 @@ def it(value: Union[Iterable, bool]):
         if isinstance(value, bool):
             if not value:
                 _close_record()
+                ignore_report = True
             return value
         else:
             for each in value:
                 yield each
             _close_record()
+            ignore_report = True
     else:
         # Replay mode
         segment = SkipBlock.journal.get_segment_window()
@@ -83,7 +90,8 @@ def _deferred_init(_nil=[]):
     """
     At most once execution
     """
-    if not _nil:
+    global runtime_initialized
+    if not runtime_initialized:
         assert flags.NAME is not None
         if not flags.REPLAY and flags.MODE is None:
             repo = Repo()
@@ -103,7 +111,32 @@ def _deferred_init(_nil=[]):
             )
             SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
-        _nil.append(True)
+        runtime_initialized = True
+
+
+def report_end():
+    """
+    Call me when the execution finishes
+    """
+    global runtime_initialized, ignore_report
+    if not ignore_report and flags.NAME is not None:
+        if not flags.REPLAY:
+            # Record mode
+            repo = Repo()
+
+            d = {}
+            d["SOURCE"] = "report_end"
+            d["NAME"] = flags.NAME
+            pin.kvs.update(pin.anti_kvs)
+            d["KVS"] = pin.kvs
+            with open(".replay.json", "w", encoding="utf-8") as f:
+                json.dump(d, f, ensure_ascii=False, indent=4)
+            repo.git.add("-A")
+            commit = repo.index.commit(
+                f"{repo.active_branch.name}@{flags.NAME}::report_end"
+            )
+            sha = commit.hexsha
+            print(f"Logged to `.replay.json` and committed to {sha[0:8]}...")
 
 
 def _close_record():
