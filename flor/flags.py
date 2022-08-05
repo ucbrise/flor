@@ -113,7 +113,6 @@ class Parser:
             print("No replay file, did you record first?")
             raise
         assert "NAME" in d, "check your `.replay.json` file. Missing name."
-        assert "MEMO" in d, "check your `.replay.json` file. Missing memo."
         if "KVS" in d:
             kvs.update(
                 {
@@ -153,7 +152,7 @@ class Parser:
                         "Invalid argument passed to --replay_flor"
                         + "[weak | strong] [I/N]"
                     )
-            set_REPLAY(d["NAME"], index=d["MEMO"], mode=mode, pid=pid)
+            set_REPLAY(d["NAME"], index=d.get("MEMO", None), mode=mode, pid=pid)
 
     @staticmethod
     def parse():
