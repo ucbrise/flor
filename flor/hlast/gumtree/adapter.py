@@ -72,7 +72,7 @@ class BaseAdapter(Protocol[Node]):
             for prop in [self.label, self.value, self.height, self.num_descendants]
         ) and all(
             self.isomorphic(c1, c2)
-            for c1, c2 in zip_longest(*map(self.children, [n1, n2]))
+            for c1, c2 in zip_longest(*map(self.children, [n1, n2]))  # type: ignore
         )
 
     # These are unlikely to benefit from optimization
