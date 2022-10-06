@@ -65,6 +65,7 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     The contextual copy ignores content of target
     """
     block, index = find_insert_loc(adapter, node, mapping)
+    assert block is not None
     # if node in mapping:
     lev = LoggedExpVisitor()
     lev.visit(node)
@@ -73,15 +74,15 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     if node in mapping:
         # ABORT
         edon = mapping[node]
-
-        original = block.pop(index)
+        
+        original = block.pop(index)  # type: ignore
         original_s = deepcopy(original)
         original = pnv.visit(node, original)
         assert pnv.success
-        block.insert(index, original)
+        block.insert(index, original)  # type: ignore
     else:
         new = make_contextual_copy(adapter, node, mapping)
-        block.insert(index, new)
+        block.insert(index, new)  # type: ignore
 
     # print("done")
 
