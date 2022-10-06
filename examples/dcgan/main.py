@@ -1,3 +1,4 @@
+# type: ignore
 from __future__ import print_function
 import argparse
 import os
@@ -12,7 +13,6 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import flor
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -146,7 +146,7 @@ elif opt.dataset == "fake":
     )
     nc = 3
 
-assert dataset
+assert dataset is not None
 dataloader = torch.utils.data.DataLoader(
     dataset, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers)
 )

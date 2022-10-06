@@ -1,3 +1,4 @@
+# type: ignore
 import argparse
 import gym
 import numpy as np
@@ -35,7 +36,7 @@ args = parser.parse_args()
 
 
 env = gym.make("CartPole-v1")
-env.seed(args.seed)
+env.seed(args.seed)  # type: ignore
 torch.manual_seed(args.seed)
 
 

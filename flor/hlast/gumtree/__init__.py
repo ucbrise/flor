@@ -1,4 +1,3 @@
-# type: ignore
 from apted import APTED, Config
 from itertools import product, zip_longest
 from collections.abc import Iterable
@@ -37,9 +36,9 @@ class HeightPQ(PriorityQ[Tree, int]):
         return trees
 
 
-class Mapping(MutableBidict[Tree, Tree]):
-    _fwdm_cls = IdMap[Tree, Tree]
-    _invm_cls = IdMap[Tree, Tree]
+class Mapping(MutableBidict[Tree, Tree]):  # type: ignore
+    _fwdm_cls = IdMap[Tree, Tree]  # type: ignore
+    _invm_cls = IdMap[Tree, Tree]  # type: ignore
     _repr_delegate = list
 
     def __init__(self, adapter: Adapter[Tree], it: Iterable[tuple[Tree, Tree]] = ()):
@@ -67,12 +66,12 @@ class GumTree(Generic[Tree]):
         self.opt = opt or self.apted
         self.adapter = adapter
 
-    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
+    def mapping(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:  # type: ignore
         m = self.topdown(t1, t2)
         self.bottomup(t1, t2, m)
         return m
 
-    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:
+    def topdown(self, t1: Tree, t2: Tree) -> Mapping[Tree, Tree]:  # type: ignore
         min_height = self.params["min_height"]
 
         parent = self.adapter.parent
@@ -108,7 +107,7 @@ class GumTree(Generic[Tree]):
                     if t2 not in m.inv:
                         l2.open(t2)
 
-        a.sort(key=lambda ts: self.dice(*map(parent, ts), m), reverse=True)
+        a.sort(key=lambda ts: self.dice(*map(parent, ts), m), reverse=True)  # type: ignore
         for n1, n2 in a:
             # Note: Algorithm removes from A, but I think this is more efficient
             if n1 not in m and n2 not in m.inv:
@@ -116,7 +115,7 @@ class GumTree(Generic[Tree]):
 
         return m
 
-    def bottomup(self, t1: Tree, t2: Tree, m: Mapping[Tree, Tree]):
+    def bottomup(self, t1: Tree, t2: Tree, m: Mapping[Tree, Tree]):  # type: ignore
         min_dice = self.params["min_dice"]
         max_size = self.params["max_size"]
 
@@ -128,7 +127,7 @@ class GumTree(Generic[Tree]):
         # it was hard to do and if min_dice > 0 they will be dropped anyways.
         assert min_dice > 0
 
-        def candidate(n1: Tree, m: Mapping[Tree]):
+        def candidate(n1: Tree, m: Mapping[Tree]):  # type: ignore
             return max(
                 (
                     c2
@@ -156,7 +155,7 @@ class GumTree(Generic[Tree]):
                             ):
                                 m.put(ta, tb)
 
-    def dice(self, t1: Tree, t2: Tree, m: Mapping[Tree]):
+    def dice(self, t1: Tree, t2: Tree, m: Mapping[Tree]):  # type: ignore
         num_descendants = self.adapter.num_descendants
         descendants = self.adapter.descendants
         contains = self.adapter.contains

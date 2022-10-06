@@ -84,7 +84,7 @@ elif sys.argv[1] == "unpack":
     for version in commits:
         r.git.checkout(version)
         hexsha, message = version.hexsha, version.message
-        _, tstamp_json = message.split("::")
+        _, tstamp_json = message.split("::")  # type: ignore
         try:
             shutil.copy2(".replay.json", os.path.join(replay_jsons, tstamp_json))  # type: ignore
             print(f'copied {(str(version.hexsha) + "::" + str(tstamp_json))}')
