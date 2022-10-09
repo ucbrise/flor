@@ -68,10 +68,11 @@ if torch.cuda.is_available():
     net = net.cuda()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-for epoch in flor.it(range(2)):
+flor.checkpoints(net, optimizer)  #type: ignore
+
+for epoch in flor.loop(range(2)): #type: ignore
     running_loss = 0.0
-    if flor.SkipBlock.step_into("training_loop", probed=False):
-        for i, data in enumerate(trainloader, 0):
+    for i, data in flor.loop(enumerate(trainloader, 0)): #type: ignore
             inputs, labels = data
             if torch.cuda.is_available():
                 inputs = inputs.cuda()
@@ -90,6 +91,8 @@ for epoch in flor.it(range(2)):
                     % (epoch + 1, i + 1, flor.pin("avg_loss", running_loss / 2000))
                 )
                 running_loss = 0.0
+
+    if flor.SkipBlock.step_into("training_loop", probed=False):
     flor.SkipBlock.end(net, optimizer)
     eval(net)
 
