@@ -5,12 +5,14 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 import random
+
 import flor
+from flor import Flor
 
 
 class Net(nn.Module):
     def __init__(self):
-        torch.manual_seed(flor.pin("netseed", random.randint(0, 9999)))
+        torch.manual_seed(flor.recall("netseed", random.randint(0, 9999)))
         super(Net, self).__init__()
 
         self.inpt_dim = 28
@@ -59,7 +61,7 @@ def eval(net):
     accuracy = 100 * correct / total
     print(
         "Accuracy of the network on the 10000 test images: %d %%"
-        % flor.pin("acc", accuracy)
+        % flor.recall("acc", accuracy)
     )
 
 
@@ -68,32 +70,27 @@ if torch.cuda.is_available():
     net = net.cuda()
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-flor.checkpoints(net, optimizer)  #type: ignore
 
-for epoch in flor.loop(range(2)): #type: ignore
+
+Flor.checkpoints(net, optimizer)
+for epoch in Flor.loop(range(2)):
     running_loss = 0.0
-    for i, data in flor.loop(enumerate(trainloader, 0)): #type: ignore
-            inputs, labels = data
-            if torch.cuda.is_available():
-                inputs = inputs.cuda()
-                labels = labels.cuda()
-            optimizer.zero_grad()
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+    for i, data in Flor.loop(enumerate(trainloader, 0)):  # type: ignore
+        inputs, labels = data
+        if torch.cuda.is_available():
+            inputs = inputs.cuda()
+            labels = labels.cuda()
+        optimizer.zero_grad()
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print(
-                    "[%d, %5d] loss: %.3f"
-                    % (epoch + 1, i + 1, flor.pin("avg_loss", running_loss / 2000))
-                )
-                running_loss = 0.0
-
-    if flor.SkipBlock.step_into("training_loop", probed=False):
-    flor.SkipBlock.end(net, optimizer)
+        # print statistics
+        running_loss += loss.item()
+        if i % 2000 == 1999:  # print every 2000 mini-batches
+            print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
+            running_loss = 0.0
     eval(net)
 
 print("Finished Training")
