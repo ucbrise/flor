@@ -43,10 +43,7 @@ class Flor:
                 if SkipBlock.step_into(name, probed):
                     for each in iter8r:
                         yield each
-                    SkipBlock.end(*Flor.chckpts)
-                else:
-                    SkipBlock.end(*Flor.chckpts)
-                    return []
+                SkipBlock.end(*Flor.chckpts)
         finally:
             Flor.nesting_lvl -= 1
 
