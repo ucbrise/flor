@@ -13,7 +13,7 @@ class Flor:
 
     nesting_lvl = 0
     load_kvs = load_kvs
-    chckpts = []
+    chckpts = []  # type: ignore
 
     @staticmethod
     def checkpoints(*args):

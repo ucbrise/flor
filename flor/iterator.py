@@ -137,6 +137,7 @@ def report_end():
             )
             sha = commit.hexsha
             print(f"Logged to `.replay.json` and committed to {sha[0:8]}...")
+            ignore_report = True  # idempotency
 
 
 def _close_record():
