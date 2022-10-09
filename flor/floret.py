@@ -1,4 +1,6 @@
 from inspect import stack
+from .iterator import it, load_kvs, report_end
+from .skipblock import SkipBlock
 
 
 class Flor:
@@ -10,36 +12,44 @@ class Flor:
     """
 
     nesting_lvl = 0
+    load_kvs = load_kvs
+    chckpts = []
 
     @staticmethod
-    def loop(iter8r, name=None):
+    def checkpoints(*args):
+        Flor.chckpts.extend(list(args))
+
+    @staticmethod
+    def loop(iter8r, name=None, probed=None):
+        """
+        Commits after every outer loop
+        """
         try:
             Flor.nesting_lvl += 1
-            lineno = stack()[1].lineno
-            src = stack()[1].filename
-            try:
-                iter8r = iter(iter8r)  # type: ignore
-                for each in iter8r:
-                    if Flor.nesting_lvl == 1:
-                        static_id = {
-                            "name": "outer loop" if name is None else name,
-                            "lineno": lineno,
-                            "src": src,
-                        }
-                    elif Flor.nesting_lvl > 1:
-                        static_id = {
-                            "name": "nested loop" if name is None else name,
-                            "lineno": lineno,
-                            "src": src
-                        }
-                    else:
-                        raise ValueError(f"Invalid nesting level {Flor.nesting_lvl}")
-                    print(static_id)  # type: ignore
+            assert Flor.nesting_lvl >= 1
+            static_id = {
+                "name": "outer loop" if Flor.nesting_lvl == 1 else "nested loop",
+                "lineno": stack()[1].lineno,
+                "src": stack()[1].filename,
+            }
+            name = str(static_id) if name is None else name
+            if Flor.nesting_lvl == 1:
+                # Outer loop
+                for each in it(iter8r):
                     yield each
-            except:
-                return iter8r
+            else:
+                assert Flor.nesting_lvl > 1
+                # Nested loop
+                if SkipBlock.step_into(name, probed):
+                    for each in iter8r:
+                        yield each
+                SkipBlock.end(*Flor.chckpts)
         finally:
             Flor.nesting_lvl -= 1
+
+    @staticmethod
+    def commit():
+        report_end()
 
 
 if __name__ == "__main__":
