@@ -21,15 +21,18 @@ class Thing:
 
 
 class Floret:
+    """
+    nesting_lvl == 0 (==>) before loop
+    nesting_lvl >= 1:
+        nesting_lvl == 1 (==>) main loop 
+        nesting_lvl >  1 (==>) nested loop
+    """
+
     nesting_lvl = 0
 
     @staticmethod
     def loop(iter8r):
-        """
-        nesting_lvl >= 1
-            nesting_lvl == 1 (==>) main loop 
-            nesting_lvl >  1 (==>) nested loop
-        """
+
         try:
             Floret.nesting_lvl += 1
             lineno = stack()[1].lineno
