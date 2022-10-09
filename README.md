@@ -49,18 +49,19 @@ FLOR includes utilities for spooling its checkpoints to [S3](https://aws.amazon.
 # Preparing your Training Script
 
 ```python
-import flor
-for epoch in flor.it(range(...)):
+from flor import Flor
+for epoch in Flor.loop(range(...)):
     ...
 ```
 
-First, wrap the iterator of the main loop with FLOR's generator: ``flor.it``. 
+First, wrap the iterator of the main loop with FLOR's generator: ``flor.loop``. 
 The generator enables FLOR to parallelize replay of the main loop,
 and to jump to an arbitrary epoch for data recovery.
 FLOR also relies on this generator for initialization and clean-up, so don't skip this step.
 
 ```python
-import flor
+from flor import Flor
+
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -69,26 +70,21 @@ optimizer:   torch.optim.Optimizer
 net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
-for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into('training_loop'):
-        for data in trainloader:
-            inputs, labels = data
-            optimizer.zero_grad()
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            print(f"loss: {loss.item()}")
-    flor.SkipBlock.end(net, optimizer)
+Flor.checkpoints(net, optimizer)
+for epoch in Flor.loop(range(...)):
+    for data in Flor.loop(trainloader):
+        inputs, labels = data
+        optimizer.zero_grad()
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        print(f"loss: {loss.item()}")
     eval(net, testloader)
 ```
 
 Then, wrap the nested training loop inside a ``flor.SkipBlock`` as shown above.
-Add the stateful ``torch`` objects to ``flor.SkipBlock.end`` so FLOR checkpoints them
-periodically.  
-
-You can use SkipBlocks to memoize long-running code. 
-Just make sure you give each SkipBlock a unique name (e.g. `training_loop`).
+Add the stateful ``torch`` objects to ``flor.checkpoints`` so FLOR checkpoints them periodically.  
 
 **That's it!** Your code is now ready for record-replay.
 
@@ -120,7 +116,7 @@ you may leave the field blank.
 # Hindsight Logging
 
 ```python
-import flor
+from flor import Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -129,10 +125,9 @@ optimizer:   torch.optim.Optimizer
 net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
-for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into('training_loop'):
+for epoch in Flor.loop(range(...)):
+    for batch in Flor.loop(trainloader):
         ...
-    flor.SkipBlock.end(net, optimizer)
     eval(net, testloader)
     log_confusion_matrix(net, testloader)
 ```
@@ -161,7 +156,7 @@ and automatically skip the nested training loop
 by loading its checkpoints.
 
 ```python
-import flor
+from flor import Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -170,11 +165,9 @@ optimizer:   torch.optim.Optimizer
 net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
-for epoch in flor.it(range(...)):
-    if flor.SkipBlock.step_into('training_loop', probed=True):
+for epoch in Flor.loop(range(...)):
+    for batch in Flor.loop(trainloader, probed=True):
         ...
-        log_tensor_histograms(net.parameters())
-    flor.SkipBlock.end(net, optimizer)
     eval(net, testloader)
     log_confusion_matrix(net, testloader)
 ```
