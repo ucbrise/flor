@@ -1,5 +1,5 @@
 from inspect import stack
-from .iterator import it, load_kvs, report_end
+from .iterator import it, load_kvs, report_end, replay_clock
 from .skipblock import SkipBlock
 
 
@@ -36,6 +36,7 @@ class Flor:
             if Flor.nesting_lvl == 1:
                 # Outer loop
                 for each in it(iter8r):
+                    replay_clock.epoch += 1
                     yield each
             else:
                 assert Flor.nesting_lvl > 1

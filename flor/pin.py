@@ -15,10 +15,15 @@ def _get_key(name):
     return f"{sb.journal.get_iterations_count() if not flags.REPLAY else replay_clock.epoch}.{'b' if flags.REPLAY else 'a'}.{name}"  # TODO: Debug get iterations count
 
 
-def _swap(c):
-    e, r, n = c.split(".")
-    r = "a" if r != "a" else "b"
-    return ".".join((e, r, n))
+def _swap(c, force=None):
+    if force is None:
+        e, r, n = c.split(".")
+        r = "a" if r != "a" else "b"
+        c = ".".join((e, r, n))
+    else:
+        e, _, n = c.split(".")
+        c = ".".join((e, force, n))
+    return c
 
 
 def _saved_kvs_pop(k):
@@ -46,8 +51,8 @@ def pin(name: str, value: T) -> T:
         return value
     k = _get_key(name)
     if flags.REPLAY:
-        assert _swap(k) in kvs
-        return _saved_kvs_pop(_swap(k))  # type: ignore
+        assert _swap(k, "a") in kvs, (k, kvs)
+        return _saved_kvs_pop(_swap(k, "a"))  # type: ignore
     else:
         if k in kvs:
             kvs[k].append(value)
