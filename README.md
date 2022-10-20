@@ -82,10 +82,6 @@ for epoch in Flor.loop(range(...)):
         print(f"loss: {loss.item()}")
     eval(net, testloader)
 ```
-
-Then, wrap the nested training loop inside a ``flor.SkipBlock`` as shown above.
-Add the stateful ``torch`` objects to ``flor.checkpoints`` so FLOR checkpoints them periodically.  
-
 **That's it!** Your code is now ready for record-replay.
 
 # Training your model
