@@ -91,7 +91,6 @@ Add the stateful ``torch`` objects to ``flor.checkpoints`` so FLOR checkpoints t
 # Training your model
 
 ```bash
-git checkout flor.shadow
 python3 training_script.py --flor NAME [your_script_flags]
 ```
 
@@ -137,7 +136,6 @@ throughout training.
 Add the code to generate the confusion matrix, as sugared above.
 
 ```bash
-git checkout flor.shadow
 python3 training_script.py --replay_flor
 ```
 
@@ -183,7 +181,6 @@ Although we can't skip the nested training loop, we can parallelize replay or
 re-execute just a fraction of the epochs (e.g. near the epoch where we see a loss anomaly).
 
 ```bash
-git checkout flor.shadow
 python3 training_script.py --replay_flor PID/NGPUS [your_flags]
 ```
 
