@@ -54,10 +54,9 @@ for epoch in Flor.loop(range(...)):
     ...
 ```
 
-First, wrap the iterator of the main loop with FLOR's generator: ``flor.loop``. 
+First, wrap the iterator of the main loop with FLOR's generator: ``Flor.loop``. 
 The generator enables FLOR to parallelize replay of the main loop,
 and to jump to an arbitrary epoch for data recovery.
-FLOR also relies on this generator for initialization and clean-up, so don't skip this step.
 
 ```python
 from flor import Flor
@@ -82,7 +81,7 @@ for epoch in Flor.loop(range(...)):
         print(f"loss: {loss.item()}")
     eval(net, testloader)
 ```
-**That's it!** Your code is now ready for record-replay.
+That's it, your training code is now ready for record-replay.
 
 # Training your model
 
@@ -170,8 +169,7 @@ Now, suppose you also want [TensorBoard](https://www.tensorflow.org/tensorboard)
 to plot the tensor histograms.
 In this case, it is not possible to skip the nested training loop
 because we are probing intermediate data.
-We tell FLOR to step into the nested training loop by setting ``probed=True`` 
-(an argument to the training loop's SkipBlock).
+We tell FLOR to step into the nested training loop by setting ``probed=True``.
 
 Although we can't skip the nested training loop, we can parallelize replay or
 re-execute just a fraction of the epochs (e.g. near the epoch where we see a loss anomaly).
