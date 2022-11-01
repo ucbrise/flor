@@ -8,7 +8,11 @@ def gen_commit2tstamp_mapper():
     os.path.basename(absolute)
     """
     r = Repo()
-    commits = r.iter_commits("--all")
+    commits = [
+        c
+        for c in r.iter_commits()
+        if "flor.shadow" in str(c.message) and ".json" == c.message[-len(".json") :]
+    ]
 
     def get_index(message: str):
         return message.split("::")[1]
@@ -28,3 +32,4 @@ def gen_commit2tstamp_mapper():
 def get_active_commit_sha():
     r = Repo()
     return r.head.commit.hexsha
+

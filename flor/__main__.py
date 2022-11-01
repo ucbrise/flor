@@ -63,7 +63,10 @@ if sys.argv[1] == "transform":
 elif sys.argv[1] == "unpack":
     with open(".replay.json", "r") as f:
         name = json.load(f)["NAME"]
-    dst = Path.home() / ".flor" / name / "repo.git"
+    dst = Path.home() / ".flor" / name
+    if not dst.exists():
+        dst.mkdir()
+    dst = dst / "repo.git"
     if dst.exists():
         shutil.rmtree(dst)
     replay_jsons = Path.home() / ".flor" / name / "replay_jsons"
