@@ -1,6 +1,6 @@
 from ..constants import *
 from ..abstract import Entry
-from ....logger import Future
+from ....async_logger import Future
 
 from abc import ABC
 import json

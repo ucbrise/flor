@@ -1,5 +1,5 @@
 from ..journal import Journal
-from ..logger import Logger
+from ..async_logger import Logger
 
 from abc import ABC, abstractmethod
 

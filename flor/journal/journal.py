@@ -1,22 +1,23 @@
+import json
 from typing import List, Union
 
-from flor import flags
-from flor.constants import *
-from flor.journal.entry import EOF
+from flor.utils import flags
+from flor.utils.constants import *
+from flor.journal.entry import *
 from flor.tree import Tree
 from flor.tree.window import Capsule
 
-from . import file
+import flor.shelf as shelf
 
 
 class Journal:
     def __init__(self):
-        self.tree = Tree()
+        self.tree = Tree()  # type: ignore
         self.sub_tree = None
         self.entries = None
 
     def read(self):
-        self.entries = file.read()
+        self.entries = read_entries()
         self.tree.parse(self.entries)
 
     def get_segment_window(self) -> List[Capsule]:
@@ -52,7 +53,7 @@ class Journal:
         ignores journal entries that precede the first epoch of work
         """
         assert self.sub_tree is None, "Need a fresh Tree to feed"
-        self.sub_tree = Tree()
+        self.sub_tree = Tree()  # type: ignore
         epoch_to_init: Union[int, None] = self.tree.get_resume_epoch()
         if epoch_to_init is not None:
             assert self.tree.root is not None
@@ -69,3 +70,15 @@ class Journal:
                     feeding = True
                 if feeding:
                     self.sub_tree.feed_entry(journal_entry)
+
+
+def read_entries() -> List[Union[DataRef, DataVal, Bracket, EOF]]:
+    entries: List[Union[DataRef, DataVal, Bracket, EOF]] = []
+    index = shelf.get_index()
+    if index is not None:
+        with open(index, "r") as f:
+            for line in f:
+                log_record = make_entry(json.loads(line.strip()))
+                entries.append(log_record)
+        return entries
+    raise RuntimeError("Shelf not initialized. Did you call shelf.mk_job?")

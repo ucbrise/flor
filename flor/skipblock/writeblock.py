@@ -1,6 +1,6 @@
 from .seemblock import SeemBlock
 
-from flor import flags
+from flor.utils import flags
 from flor import shelf
 from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
 

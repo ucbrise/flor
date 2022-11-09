@@ -1,6 +1,6 @@
-from flor import flags
+from flor.utils import flags
 from typing import List, Union, Optional
-from ..constants import *
+from ..utils.constants import *
 
 NO_INIT = None
 
@@ -19,9 +19,9 @@ class Window:
             lo = self._sparse()
             hi = self._sparse(hi=True)
             assert hi is not None
-            return [
-                Capsule(True, lo),
-            ] + [Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)]
+            return [Capsule(True, lo),] + [
+                Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)
+            ]
         else:
             # All epochs are valid entries
             our_segment = self._get_segment_helper(self.iterations_count)[
@@ -32,9 +32,9 @@ class Window:
             ), "TODO: Handle case when user allocs more partitions than there is work."
             if flags.MODE is REPLAY_MODE.weak:
                 # Asks to initialize predecessor
-                return [
-                    Capsule(True, self._dense()),
-                ] + [Capsule(False, e) for e in our_segment]
+                return [Capsule(True, self._dense()),] + [
+                    Capsule(False, e) for e in our_segment
+                ]
             else:
                 idx = our_segment[0]
                 assert idx is not None

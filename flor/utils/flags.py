@@ -5,7 +5,7 @@ from flor import shelf
 import sys
 from pathlib import PurePath, Path
 from .constants import *
-from .pin import kvs
+from ..pin import kvs
 
 
 NAME: Optional[str] = None

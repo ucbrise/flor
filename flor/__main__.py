@@ -1,4 +1,3 @@
-from ast import arg
 import json
 import os
 import pathlib
@@ -6,9 +5,7 @@ import shutil
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional
 
-import git
 from git.repo import Repo
 
 from flor.hlast import backprop

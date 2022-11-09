@@ -1,4 +1,4 @@
-from . import flags
+from .utils import flags
 from .shelf import get_pkl_ref
 from .skipblock.seemblock import SeemBlock as sb
 from .iterator import replay_clock

@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path, PurePath
 from typing import Optional, Union
 
-from flor import flags
+from flor.utils import flags
 
 home: Path = Path.home()
 

@@ -5,7 +5,7 @@ from typing import List, Generator
 
 from .. import shelf
 from .future import Future
-from .. import flags
+from ..utils import flags
 
 
 class Logger:
@@ -38,18 +38,18 @@ class Logger:
     def flush(self, is_final=False):
         assert self.path is not None
         self.flush_count += 1
-        # pid = os.fork()
-        # if not pid:
-        self._flush_buffer()
-        if is_final:
-            p = self.path.with_name(self.path.stem + "_*" + self.path.suffix)
-            with open(self.path, "wb") as out_f:
-                for pi in glob.glob(p.as_posix()):
-                    with open(pi, "rb") as in_f:
-                        out_f.write(in_f.read())
-                    os.remove(pi)
-        # else:
-        self.buffer.clear()
+        pid = os.fork()
+        if not pid:
+            self._flush_buffer()
+            if is_final:
+                p = self.path.with_name(self.path.stem + "_*" + self.path.suffix)
+                with open(self.path, "wb") as out_f:
+                    for pi in glob.glob(p.as_posix()):
+                        with open(pi, "rb") as in_f:
+                            out_f.write(in_f.read())
+                        os.remove(pi)
+        else:
+            self.buffer.clear()
 
     def force(self):
         self._flush_buffer()

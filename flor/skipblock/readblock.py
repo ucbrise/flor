@@ -1,6 +1,6 @@
 from .seemblock import SeemBlock
 
-from flor import flags
+from flor.utils import flags
 from flor.journal.entry import Bracket, LBRACKET
 
 from typing import List, Dict

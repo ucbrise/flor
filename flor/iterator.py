@@ -6,11 +6,13 @@ import pandas as pd
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from . import flags, shelf
+from .utils import flags
+
+from . import shelf
 from . import pin
 from .skipblock import SkipBlock
 
-from .constants import *
+from .utils.constants import *
 from .utils import *
 from pathlib import Path, PurePath
 import numpy as np

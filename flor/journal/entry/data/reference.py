@@ -1,6 +1,6 @@
 from ..constants import *
 from .abstract import Data
-from ....logger.copy import deepcopy  # type: ignore
+from ....async_logger.copy import deepcopy  # type: ignore
 from .... import shelf
 
 import cloudpickle

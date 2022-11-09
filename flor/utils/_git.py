@@ -1,4 +1,4 @@
-from .. import constants as CONST
+from . import constants as CONST
 from git.repo import Repo
 import os
 
