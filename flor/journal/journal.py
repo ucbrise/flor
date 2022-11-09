@@ -11,7 +11,7 @@ from . import file
 
 class Journal:
     def __init__(self):
-        self.tree = Tree()
+        self.tree = Tree()  # type: ignore
         self.sub_tree = None
         self.entries = None
 
@@ -52,7 +52,7 @@ class Journal:
         ignores journal entries that precede the first epoch of work
         """
         assert self.sub_tree is None, "Need a fresh Tree to feed"
-        self.sub_tree = Tree()
+        self.sub_tree = Tree()  # type: ignore
         epoch_to_init: Union[int, None] = self.tree.get_resume_epoch()
         if epoch_to_init is not None:
             assert self.tree.root is not None
