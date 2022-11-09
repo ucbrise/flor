@@ -29,7 +29,8 @@ pip install pyflor
 # Preparing your Training Script
 
 ```python
-for epoch in flor.MTK.loop(range(...)):
+import flor.MTK as Flor
+for epoch in Flor.loop(range(...)):
     ...
 ```
 
