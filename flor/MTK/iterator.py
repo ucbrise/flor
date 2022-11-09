@@ -6,18 +6,16 @@ import pandas as pd
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from .utils import flags
-
 from . import shelf
-from . import pin
+from .. import pin
 from .skipblock import SkipBlock
 
-from .utils.constants import *
-from .utils import *
-from pathlib import Path, PurePath
+from ..utils.constants import *
+from ..utils import *
+from pathlib import Path
 import numpy as np
 
-from .utils import gen_commit2tstamp_mapper
+from ..utils import flags, gen_commit2tstamp_mapper
 
 
 class replay_clock:

@@ -5,7 +5,7 @@ from typing import List, Generator
 
 from .. import shelf
 from .future import Future
-from ..utils import flags
+from ...utils import flags
 
 
 class Logger:

@@ -1,8 +1,9 @@
 from .seemblock import SeemBlock
 
-from flor.utils import flags
-from flor import shelf
-from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
+from ...utils import flags
+from ..journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
+
+from .. import shelf
 
 import time
 from typing import Dict, List, Union

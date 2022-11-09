@@ -1,13 +1,13 @@
 import json
 from typing import List, Union
 
-from flor.utils import flags
-from flor.utils.constants import *
-from flor.journal.entry import *
-from flor.tree import Tree
-from flor.tree.window import Capsule
+from ...utils import flags
+from ...utils.constants import *
+from ..journal.entry import *
+from ..tree import Tree
+from ..tree.window import Capsule
 
-import flor.shelf as shelf
+import flor.MTK.shelf as shelf
 
 
 class Journal:

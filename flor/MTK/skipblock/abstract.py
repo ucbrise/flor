@@ -2,7 +2,7 @@ from .seemblock import SeemBlock
 from .readblock import ReadBlock
 from .writeblock import WriteBlock
 
-from flor.utils import flags
+from ...utils import flags
 
 
 class SkipBlock(SeemBlock):

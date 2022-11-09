@@ -1,7 +1,7 @@
 from .block import Block
 from .group import BlockGroup
 from .window import Window
-from flor.journal.entry import DataVal, DataRef, Bracket, EOF
+from ..journal.entry import DataVal, DataRef, Bracket, EOF
 
 from collections import OrderedDict as ODict
 from typing import List, Optional, Union, Dict
