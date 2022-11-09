@@ -25,41 +25,21 @@ and is being released as part of an accompanying [VLDB publication](http://www.v
 ```bash
 pip install pyflor
 ```
-FLOR expects a recent version of Python (3.7+) and PyTorch (1.0+).
-
-```bash
-git branch flor.shadow
-git checkout flor.shadow
-python3 examples/linear.py --flor linear
-```
-Run the ``linear.py`` script to test your installation. 
-This script will train a small linear model on MNIST.
-Think of it as a ''hello world'' of deep learning.
-We will cover FLOR shadow branches later.
-
-```bash
-ls ~/.flor/linear
-```
-Confirm that FLOR saved checkpoints of the ``linear.py`` execution on your home directory.
-FLOR will access and interpret contents of ``~/.flor`` automatically. 
-Do watch out for storage footprint though. 
-If you see disk space running out, check ``~/.flor``.
-FLOR includes utilities for spooling its checkpoints to [S3](https://aws.amazon.com/s3).
 
 # Preparing your Training Script
 
 ```python
-from flor import Flor
-for epoch in Flor.loop(range(...)):
+for epoch in flor.MTK.loop(range(...)):
     ...
 ```
 
-First, wrap the iterator of the main loop with FLOR's generator: ``Flor.loop``. 
+First, wrap the iterator of the main loop with FLOR's generator: ``MTK.loop``.
+MTK is Flor's model training kit.
 The generator enables FLOR to parallelize replay of the main loop,
-and to jump to an arbitrary epoch for data recovery.
+and to jump to an arbitrary epoch for data recovery at hindsight logging time.
 
 ```python
-from flor import Flor
+import flor.MTK as Flor
 
 import torch
 
@@ -110,7 +90,7 @@ you may leave the field blank.
 # Hindsight Logging
 
 ```python
-from flor import Flor
+import flor.MTK as Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -149,7 +129,7 @@ and automatically skip the nested training loop
 by loading its checkpoints.
 
 ```python
-from flor import Flor
+import flor.MTK as Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -188,7 +168,7 @@ you can do this by setting the value of ``ngpus`` and ``pid`` respectively.
 Suppose you want to run the tenth epoch of a training job that ran for 200 epochs. You would set
 ``pid:9``and ``ngpus:200``.
 
-We provide additional examples in the ``examples`` directory. A good starting point is ``linear.py``. 
+We provide additional examples on the right pane. One example is [kaggle-nlp-disasters](https://github.com/ucbrise/kaggle-nlp-disasters).
 
 ## Publications
 
