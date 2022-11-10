@@ -1,4 +1,4 @@
-from flor import Flor
+from flor import MTK
 import flor
 
 import random
@@ -10,4 +10,4 @@ coin = flor.recall("coin", "HEADS" if random.randint(0, 1) else "TAILS")
 now = flor.recall("time", str(datetime.datetime.now()))
 
 print(f"You flipped a {coin} on {now}")
-Flor.commit()
+MTK.commit()

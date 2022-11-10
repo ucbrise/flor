@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import random
 
 import flor
-from flor import Flor
+from flor import MTK
 
 
 class Net(nn.Module):
@@ -73,10 +73,10 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 
-Flor.checkpoints(net, optimizer)
-for epoch in Flor.loop(range(2)):
+MTK.checkpoints(net, optimizer)
+for epoch in MTK.loop(range(2)):
     running_loss = 0.0
-    for i, data in Flor.loop(enumerate(trainloader, 0)):  # type: ignore
+    for i, data in MTK.loop(enumerate(trainloader, 0)):  # type: ignore
         inputs, labels = data
         if torch.cuda.is_available():
             inputs = inputs.cuda()
