@@ -100,7 +100,7 @@ def val_to_record(arg, lbracket: Bracket) -> d_entry:
     else:
         if hasattr(arg, "state_dict"):
             try:
-                return Torch(lbracket.sk, lbracket.gk, arg)  # type: ignore
+                return Torch(lbracket.sk, lbracket.gk, arg.state_dict())  # type: ignore
             except:
                 pass
         return DataRef(lbracket.sk, lbracket.gk, arg)
