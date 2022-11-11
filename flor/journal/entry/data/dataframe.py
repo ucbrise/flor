@@ -55,10 +55,9 @@ class DataFrame(Data):
 
     @staticmethod
     def is_superclass(json_dict: dict):
-        assert bool(VAL in json_dict) != bool("csv_ref" in json_dict)
-        if "csv_ref" in json_dict and PurePath(json_dict["csv_ref"]).suffix == ".csv":
-            return True
-        return False
+        return "csv_ref" in json_dict or (
+            "ref" in json_dict and PurePath(json_dict["ref"]).suffix == ".csv"
+        )
 
     @classmethod
     def cons(cls, json_dict: dict):

@@ -20,7 +20,6 @@ class Value(Data):
 
     @staticmethod
     def is_superclass(json_dict: dict):
-        assert bool(VAL in json_dict) != bool(REF in json_dict)
         return VAL in json_dict
 
     @classmethod

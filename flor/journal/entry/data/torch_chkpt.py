@@ -51,7 +51,6 @@ class Torch(Data):
 
     @staticmethod
     def is_superclass(json_dict: dict):
-        assert bool(VAL in json_dict) != bool("torch_ref" in json_dict)
         return "torch_ref" in json_dict
 
     @classmethod
