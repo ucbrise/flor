@@ -4,13 +4,13 @@ from typing import Union
 import json
 
 from ..constants import *
-from .abstract import Data
+from .reference import Reference
 from flor import shelf
 
 import torch
 
 
-class Torch(Data):
+class Torch(Reference):
     def __init__(self, sk, gk, v=None, r: Union[None, PurePath] = None):
         assert bool(v is not None) != bool(r is not None)
         super().__init__(sk, gk, v)
@@ -31,7 +31,7 @@ class Torch(Data):
         ), "Must call Reference.set_ref_and_dump(...) before jsonify()"
         d = super().jsonify()
         del d[VAL]
-        d[REF] = str(self.ref)
+        d["torch_ref"] = str(self.ref)
         return d
 
     def set_ref(self, pkl_ref: PurePath):
@@ -51,21 +51,24 @@ class Torch(Data):
 
     @staticmethod
     def is_superclass(json_dict: dict):
-        assert bool(VAL in json_dict) != bool(REF in json_dict)
-        return REF in json_dict
+        assert bool(VAL in json_dict) != bool("torch_ref" in json_dict)
+        return "torch_ref" in json_dict
 
     @classmethod
     def cons(cls, json_dict: dict):
         return cls(
-            json_dict[STATIC_KEY], json_dict[GLOBAL_KEY], v=None, r=json_dict[REF]
+            json_dict[STATIC_KEY],
+            json_dict[GLOBAL_KEY],
+            v=None,
+            r=json_dict["torch_ref"],
         )
 
     def promise(self):
         ref = shelf.get_pkl_ref()
         assert ref is not None
         self.set_ref_and_dump(ref)
-        self.promised = json.dumps(self.jsonify())
+        self.promised = self.jsonify()
 
     def fulfill(self):
         super().fulfill()
-        return self.promised
+        return json.dumps(self.promised)
