@@ -23,6 +23,7 @@ def mk_job(name: str):
     job.mkdir(exist_ok=True)
     data = job / "data"
     data.mkdir(exist_ok=True)
+    (job / "csv").mkdir(exist_ok=True)
 
 
 def get_index() -> Optional[Path]:
@@ -44,6 +45,14 @@ def get_pkl_ref() -> Optional[Path]:
     return (
         data / PurePath(uuid.uuid4().hex).with_suffix(".pkl")
         if data is not None
+        else None
+    )
+
+
+def get_csv_ref() -> Optional[Path]:
+    return (
+        job / PurePath("csv") / PurePath(uuid.uuid4().hex).with_suffix(".csv")
+        if job is not None
         else None
     )
 
