@@ -1,7 +1,9 @@
 from .seemblock import SeemBlock
 
 from flor import flags
-from flor.journal.entry import Bracket, LBRACKET
+from flor.journal.entry import *
+
+import pandas as pd
 
 from typing import List, Dict
 
@@ -35,6 +37,11 @@ class ReadBlock(SeemBlock):
                 if hasattr(arg, "load_state_dict"):
                     # PyTorch support
                     arg.load_state_dict(value_serialized)
+                elif isinstance(arg, pd.DataFrame):
+                    assert value_serialized is not None
+                    arg.update(value_serialized)
+                    arg = arg[value_serialized.columns]
+                    arg = arg[: len(value_serialized)]
                 elif isinstance(arg, list):
                     assert isinstance(value_serialized, list)
                     arg[:] = value_serialized

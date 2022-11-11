@@ -1,17 +1,15 @@
 import json
-from typing import List, Union
+from typing import List, Union, Optional
 
 from flor import flags, shelf
 from flor.constants import *
 
-from .entry import EOF, Bracket, DataRef, DataVal, make_entry
+from .entry import *
 from .tree import Tree
 from .tree.window import Capsule
 
-t_journal_entry = Union[DataRef, DataVal, Bracket, EOF]
 
-
-def read_entries() -> List[t_journal_entry]:
+def read_entries() -> List[Union[d_entry, md_entry]]:
     assert flags.REPLAY
     index = shelf.get_index()
     assert index is not None, "FileNotFound. Missing checkpoint directory, or job name"

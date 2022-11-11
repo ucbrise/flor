@@ -4,13 +4,13 @@ from typing import Union
 import json
 
 from ..constants import *
-from .reference import Reference
+from .abstract import Data
 from flor import shelf
 
 import torch
 
 
-class Torch(Reference):
+class Torch(Data):
     def __init__(self, sk, gk, v=None, r: Union[None, PurePath] = None):
         assert bool(v is not None) != bool(r is not None)
         super().__init__(sk, gk, v)
