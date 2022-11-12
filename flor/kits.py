@@ -75,16 +75,15 @@ class DPK:
             start_time = time.time()
             if DPK.lbracket is None:
                 _deferred_init()
-                DPK.lbracket = Bracket(
-                    static_id,
-                    DPK.next_id,
-                    LBRACKET,
-                    predicate=True,
-                    timestamp=start_time,
-                )
-                SkipBlock.journal.as_tree().feed_entry(DPK.lbracket)
-                SkipBlock.logger.append(DPK.lbracket)
-            assert DPK.lbracket is not None
+            DPK.lbracket = Bracket(
+                static_id,
+                DPK.next_id,
+                LBRACKET,
+                predicate=True,
+                timestamp=start_time,
+            )
+            SkipBlock.journal.as_tree().feed_entry(DPK.lbracket)
+            SkipBlock.logger.append(DPK.lbracket)
 
             for a in args:
                 data_record = DPK._val_to_record(a, static_id)
