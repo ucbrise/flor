@@ -1,8 +1,9 @@
 from inspect import stack
 import time
+from typing import Optional
 import pandas as pd
 
-from .iterator import it, load_kvs, Repo, replay_clock, _close_record
+from .iterator import it, load_kvs, Repo, replay_clock, _close_record, _deferred_init
 from .skipblock import SkipBlock
 from .constants import *
 
@@ -59,8 +60,8 @@ class DPK:
     """
 
     load_kvs = load_kvs
-    lsn = 0
-    initialized = False
+    next_id = 0
+    lbracket = None
 
     @staticmethod
     def checkpoints(*args):
@@ -69,45 +70,29 @@ class DPK:
             RECORD-only
                 For replay we skip execution and just load checkpoint
             """
+            static_id = f"{stack()[1].lineno}@{stack()[1].filename}"
             start_time = time.time()
-            DPK._defer_init()
+            _deferred_init()
+            lbracket = Bracket(
+                static_id, DPK.next_id, LBRACKET, predicate=True, timestamp=start_time
+            )
+            SkipBlock.journal.as_tree().feed_entry(lbracket)
+            SkipBlock.logger.append(lbracket)
+            DPK.lbracket = lbracket
 
             for a in args:
-                data_record = DPK._val_to_record(a)
+                data_record = DPK._val_to_record(a, static_id)
                 SkipBlock.journal.as_tree().feed_entry(data_record)  # type: ignore
                 SkipBlock.logger.append(data_record)
             commit_sha, index_path = _close_record()
+
+            DPK.next_id += 1
             print(f"committed {commit_sha[0:6]}... at {index_path}")
             print(f"---------------- {time.time() - start_time} ---------------------")
 
     @staticmethod
-    def _defer_init():
-        assert flags.NAME is not None
-        if not DPK.initialized:
-            if not flags.REPLAY and flags.MODE is None:
-                repo = Repo()
-                assert (
-                    SHADOW_BRANCH_PREFIX
-                    == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
-                ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
-            shelf.mk_job(flags.NAME)
-            if flags.REPLAY:
-                SkipBlock.journal.read()
-            else:
-                index_path = (
-                    flags.INDEX
-                    if flags.MODE is RECORD_MODE.chkpt_restore
-                    else shelf.get_index()
-                )
-                SkipBlock.logger.set_path(index_path)
-
-            DPK.initialized = True
-
-    @staticmethod
-    def _val_to_record(arg):
-        static_id = f"{stack()[1].lineno}@{stack()[1].filename}"
-        my_lsn = DPK.lsn
-        DPK.lsn += 1
+    def _val_to_record(arg, static_id):
+        my_lsn = DPK.next_id
 
         if type(arg) in [type(None), int, float, bool, str]:
             return DataVal(static_id, my_lsn, arg)
