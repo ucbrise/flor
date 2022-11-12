@@ -23,8 +23,7 @@ class MTK:
 
     @staticmethod
     def checkpoints(*args):
-        filtered_args = [a for a in args if a not in MTK.chckpts]
-        MTK.chckpts.extend(list(args))
+        MTK.chckpts.extend([a for a in args])
 
     @staticmethod
     def loop(iter8r, name=None, probed=None):
@@ -63,6 +62,7 @@ class DPK:
 
     load_kvs = load_kvs
     next_id = 0
+    lbracket = None
 
     @staticmethod
     def checkpoints(*args):
@@ -73,22 +73,34 @@ class DPK:
             """
             static_id = f"{stack()[1].lineno}@{stack()[1].filename}"
             start_time = time.time()
-            _deferred_init()
-            lbracket = Bracket(
-                static_id, DPK.next_id, LBRACKET, predicate=True, timestamp=start_time
-            )
-            SkipBlock.journal.as_tree().feed_entry(lbracket)
-            SkipBlock.logger.append(lbracket)
+            if DPK.lbracket is None:
+                _deferred_init()
+                DPK.lbracket = Bracket(
+                    static_id,
+                    DPK.next_id,
+                    LBRACKET,
+                    predicate=True,
+                    timestamp=start_time,
+                )
+                SkipBlock.journal.as_tree().feed_entry(DPK.lbracket)
+                SkipBlock.logger.append(DPK.lbracket)
+            assert DPK.lbracket is not None
 
             for a in args:
                 data_record = DPK._val_to_record(a, static_id)
                 SkipBlock.journal.as_tree().feed_entry(data_record)  # type: ignore
                 SkipBlock.logger.append(data_record)
-            commit_sha, index_path = _close_record()
-
             DPK.next_id += 1
+
+    @staticmethod
+    def commit():
+        if DPK.lbracket is not None:
+            assert DPK.lbracket.timestamp
+            commit_sha, index_path = _close_record()
             print(f"committed {commit_sha[0:6]}... at {index_path}")
-            print(f"---------------- {time.time() - start_time} ---------------------")
+            print(
+                f"---------------- {time.time() - DPK.lbracket.timestamp} ---------------------"
+            )
 
     @staticmethod
     def _val_to_record(arg, static_id):
