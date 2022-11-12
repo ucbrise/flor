@@ -18,10 +18,12 @@ class MTK:
 
     nesting_lvl = 0
     load_kvs = load_kvs
+    SkipBlock = SkipBlock
     chckpts = []  # type: ignore
 
     @staticmethod
     def checkpoints(*args):
+        filtered_args = [a for a in args if a not in MTK.chckpts]
         MTK.chckpts.extend(list(args))
 
     @staticmethod
@@ -61,7 +63,6 @@ class DPK:
 
     load_kvs = load_kvs
     next_id = 0
-    lbracket = None
 
     @staticmethod
     def checkpoints(*args):
@@ -78,7 +79,6 @@ class DPK:
             )
             SkipBlock.journal.as_tree().feed_entry(lbracket)
             SkipBlock.logger.append(lbracket)
-            DPK.lbracket = lbracket
 
             for a in args:
                 data_record = DPK._val_to_record(a, static_id)
