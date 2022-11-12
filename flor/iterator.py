@@ -141,22 +141,23 @@ def report_end():
 
 
 def _close_record():
+    def _save_run() -> str:
+        assert SkipBlock.logger.path is not None
+        repo = Repo()
+        _write_replay_file()
+        repo.git.add("-A")
+        commit = repo.index.commit(
+            f"{repo.active_branch.name}@{flags.NAME}::{SkipBlock.logger.path.name}"
+        )
+        commit_sha = commit.hexsha
+        return commit_sha
     commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path
 
 
-def _save_run() -> str:
-    assert SkipBlock.logger.path is not None
-    repo = Repo()
-    _write_replay_file()
-    repo.git.add("-A")
-    commit = repo.index.commit(
-        f"{repo.active_branch.name}@{flags.NAME}::{SkipBlock.logger.path.name}"
-    )
-    commit_sha = commit.hexsha
-    return commit_sha
+
 
 
 def _write_replay_file(name=None, memo=None):

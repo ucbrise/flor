@@ -1,8 +1,14 @@
 from inspect import stack
+import time
+from typing import Optional
 import pandas as pd
 
-from .iterator import it, load_kvs, report_end, replay_clock
+from .iterator import it, load_kvs, Repo, replay_clock, _close_record, _deferred_init
 from .skipblock import SkipBlock
+from .constants import *
+
+from flor.journal.entry import *
+from flor import flags, shelf
 
 
 class MTK:
@@ -47,28 +53,58 @@ class MTK:
         finally:
             MTK.nesting_lvl -= 1
 
-    @staticmethod
-    def commit():
-        report_end()
-
 
 class DPK:
     """
     DATA PREP KIT
     """
 
+    load_kvs = load_kvs
+    next_id = 0
+    lbracket = None
+
     @staticmethod
     def checkpoints(*args):
-        """
-        TODO: add dataframe type to Journal Entries
-        """
-        logger = SkipBlock.logger
-        for a in args:
-            if isinstance(a, pd.DataFrame):
-                ...
-            else:
-                ...
-        report_end()
+        if flags.NAME is not None and not flags.REPLAY:
+            """
+            RECORD-only
+                For replay we skip execution and just load checkpoint
+            """
+            static_id = f"{stack()[1].lineno}@{stack()[1].filename}"
+            start_time = time.time()
+            _deferred_init()
+            lbracket = Bracket(
+                static_id, DPK.next_id, LBRACKET, predicate=True, timestamp=start_time
+            )
+            SkipBlock.journal.as_tree().feed_entry(lbracket)
+            SkipBlock.logger.append(lbracket)
+            DPK.lbracket = lbracket
+
+            for a in args:
+                data_record = DPK._val_to_record(a, static_id)
+                SkipBlock.journal.as_tree().feed_entry(data_record)  # type: ignore
+                SkipBlock.logger.append(data_record)
+            commit_sha, index_path = _close_record()
+
+            DPK.next_id += 1
+            print(f"committed {commit_sha[0:6]}... at {index_path}")
+            print(f"---------------- {time.time() - start_time} ---------------------")
+
+    @staticmethod
+    def _val_to_record(arg, static_id):
+        my_lsn = DPK.next_id
+
+        if type(arg) in [type(None), int, float, bool, str]:
+            return DataVal(static_id, my_lsn, arg)
+        elif isinstance(arg, pd.DataFrame):
+            return DataFrame(static_id, my_lsn, arg)
+        else:
+            if hasattr(arg, "state_dict"):
+                try:
+                    return Torch(static_id, my_lsn, arg.state_dict())  # type: ignore
+                except:
+                    pass
+            return DataRef(static_id, my_lsn, arg)
 
 
 if __name__ == "__main__":

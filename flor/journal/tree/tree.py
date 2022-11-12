@@ -1,7 +1,7 @@
 from .block import Block
 from .group import BlockGroup
 from .window import Window
-from flor.journal.entry import DataVal, DataRef, Bracket, EOF
+from ..entry import *
 
 from collections import OrderedDict as ODict
 from typing import List, Optional, Union, Dict
@@ -35,7 +35,7 @@ class Tree:
         # print(f"SPARSE CHECKPOINT at {self.iterations_count - 1}")
         self.sparse_checkpoints.append(self.iterations_count - 1)
 
-    def feed_entry(self, log_entry: Union[DataRef, DataVal, Bracket, EOF]):
+    def feed_entry(self, log_entry: Union[d_entry, md_entry]):
         if self.root is None:
             assert self.block is None
             assert log_entry.is_left()
@@ -77,7 +77,7 @@ class Tree:
         if log_entry.is_left() and log_entry.sk == self.root.static_key:
             self.iterations_count += 1
 
-    def parse(self, records: List[Union[DataRef, DataVal, Bracket, EOF]]):
+    def parse(self, records: List[Union[d_entry, md_entry]]):
         assert self.block is None, "Need a new Tree for parsing"
         for rec in records:
             self.feed_entry(rec)

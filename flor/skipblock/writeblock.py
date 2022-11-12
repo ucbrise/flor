@@ -2,7 +2,9 @@ from .seemblock import SeemBlock
 
 from flor import flags
 from flor import shelf
-from flor.journal.entry import DataRef, DataVal, Bracket, LBRACKET, RBRACKET
+from flor.journal.entry import *
+
+import pandas as pd
 
 import time
 from typing import Dict, List, Union
@@ -48,7 +50,6 @@ class WriteBlock(SeemBlock):
             for arg in args:
                 data_record = val_to_record(arg, lbracket)
                 data_records.append(data_record)
-                block_group.should_time_mat() and data_record.would_mat()
             block_group.set_mat_time(time.time() - start_time)
 
             if WriteBlock._should_materialize(block_group):
@@ -91,11 +92,15 @@ class WriteBlock(SeemBlock):
         return False
 
 
-def val_to_record(arg, lbracket: Bracket) -> Union[DataRef, DataVal]:
-    if hasattr(arg, "state_dict"):
-        arg = getattr(arg, "state_dict")()
-
+def val_to_record(arg, lbracket: Bracket) -> d_entry:
     if type(arg) in [type(None), int, float, bool, str]:
         return DataVal(lbracket.sk, lbracket.gk, arg)
+    elif isinstance(arg, pd.DataFrame):
+        return DataFrame(lbracket.sk, lbracket.gk, arg)
     else:
+        if hasattr(arg, "state_dict"):
+            try:
+                return Torch(lbracket.sk, lbracket.gk, arg.state_dict())  # type: ignore
+            except:
+                pass
         return DataRef(lbracket.sk, lbracket.gk, arg)

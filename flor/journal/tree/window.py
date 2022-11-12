@@ -1,6 +1,7 @@
 from flor import flags
+from flor.constants import *
+
 from typing import List, Union, Optional
-from ..constants import *
 
 NO_INIT = None
 

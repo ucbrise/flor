@@ -1,6 +1,8 @@
 from .constants import *
 from abc import ABC, abstractmethod
 
+import json
+
 
 class Entry(ABC):
     next_lsn = 0
