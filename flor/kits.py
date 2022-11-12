@@ -1,5 +1,5 @@
 from inspect import stack
-from time import time
+import time
 import pandas as pd
 
 from .iterator import it, load_kvs, Repo, replay_clock, _close_record
