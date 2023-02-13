@@ -49,7 +49,7 @@ FLOR includes utilities for spooling its checkpoints to [S3](https://aws.amazon.
 # Preparing your Training Script
 
 ```python
-from flor import Flor
+from flor import MTK as Flor
 for epoch in Flor.loop(range(...)):
     ...
 ```
@@ -59,7 +59,7 @@ The generator enables FLOR to parallelize replay of the main loop,
 and to jump to an arbitrary epoch for data recovery.
 
 ```python
-from flor import Flor
+from flor import MTK as Flor
 
 import torch
 
@@ -110,7 +110,7 @@ you may leave the field blank.
 # Hindsight Logging
 
 ```python
-from flor import Flor
+from flor import MTK as Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
@@ -149,7 +149,7 @@ and automatically skip the nested training loop
 by loading its checkpoints.
 
 ```python
-from flor import Flor
+from flor import MTK as Flor
 import torch
 
 trainloader: torch.utils.data.DataLoader
