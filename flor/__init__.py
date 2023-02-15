@@ -1,7 +1,7 @@
 from . import flags
-from .logger import log
-from .kits import MTK, load_kvs
+from .logger import log, pinned
+from .kits import MTK
 
 flags.Parser.parse()
 
-__all__ = ["MTK", "flags", "log", "load_kvs"]
+__all__ = ["MTK", "flags", "log", "pinned"]

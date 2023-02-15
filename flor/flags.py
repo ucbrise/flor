@@ -89,7 +89,8 @@ class Parser:
             assert (
                 flor_flags or exp_json.exists()
             ), "Missing NAME argument in --flor NAME"
-            exp_json.deferred_init()
+            if exp_json.exists():
+                exp_json.deferred_init()
             for flag in flor_flags:
                 if flag[0:2] == "0.":
                     EPSILON = float(flag)
