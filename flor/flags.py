@@ -111,6 +111,9 @@ class Parser:
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
+        assert (
+            cwd_shelf.in_shadow_branch()
+        ), "Please invoke --replay_flor from a `flor.shadow` branch."
         try:
             assert exp_json.exists()
             exp_json.deferred_init()
