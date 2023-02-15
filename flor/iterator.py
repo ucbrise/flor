@@ -121,6 +121,7 @@ def _close_record():
         return commit_sha
 
     commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
+    exp_json.put("COMMIT", commit_sha)
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path

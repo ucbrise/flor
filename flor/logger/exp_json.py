@@ -15,7 +15,6 @@ def deferred_init():
     global replay_d
     with open(REPLAY_JSON, "r", encoding="utf-8") as f:
         replay_d = json.load(f)
-    atexit.register(flush)
 
 
 def exists():
@@ -28,13 +27,13 @@ def put(name, value, ow=True):
 
 
 def get(name):
-    if flags.REPLAY:
-        assert replay_d is not None
-        return replay_d.get(name, None)
-    else:
-        return record_d.get(name, None)
+    """Get from previous run"""
+    assert replay_d is not None
+    return replay_d.get(name, None)
 
 
+@atexit.register
 def flush():
-    with open(REPLAY_JSON, "w", encoding="utf-8") as f:
-        json.dump(record_d, f, ensure_ascii=False, indent=4)
+    if not flags.REPLAY:
+        with open(REPLAY_JSON, "w", encoding="utf-8") as f:
+            json.dump(record_d, f, ensure_ascii=False, indent=4)

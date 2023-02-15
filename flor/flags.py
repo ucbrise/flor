@@ -92,8 +92,9 @@ class Parser:
             if NAME is None:
                 assert exp_json.exists()
                 exp_json.deferred_init()
-                NAME = exp_json.get("NAME")
+                NAME = exp_json.get("NAME")  # take from past
         assert NAME is not None
+        exp_json.put("NAME", NAME)  # put in present
 
     @staticmethod
     def _parse_replay():
