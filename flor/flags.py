@@ -1,4 +1,4 @@
-from flor import shelf
+from flor.shelf import home_shelf, cwd_shelf
 from flor.constants import *
 from flor.logger import exp_json
 
@@ -38,7 +38,7 @@ def set_REPLAY(
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
-        assert shelf.verify(PurePath(index).name)
+        assert home_shelf.verify(PurePath(index).name)
     if mode is not None:
         MODE = REPLAY_MODE[mode]
     if pid is not None:
@@ -93,8 +93,7 @@ class Parser:
                 assert exp_json.exists()
                 exp_json.deferred_init()
                 NAME = exp_json.get("NAME")  # take from past
-        assert NAME is not None
-        shelf.mk_job(NAME)
+        home_shelf.mk_job(cwd_shelf.get_projid())
 
     @staticmethod
     def _parse_replay():

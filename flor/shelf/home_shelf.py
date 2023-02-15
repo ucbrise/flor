@@ -8,8 +8,6 @@ from flor.state import State
 from flor.logger import exp_json
 from flor.skipblock import SkipBlock
 
-import atexit
-
 home: Path = Path.home()
 
 florin: Path = home / ".flor"

@@ -1,10 +1,11 @@
 import json
 from pathlib import PurePath
 from typing import Union
+import uuid
 
 import pandas as pd
 
-from flor import shelf
+from flor.shelf import home_shelf
 
 from ..constants import *
 from .abstract import Data
@@ -66,7 +67,7 @@ class DataFrame(Data):
         )
 
     def promise(self):
-        ref = shelf.get_csv_ref()
+        ref = home_shelf.get_csv_ref(uuid.uuid4().hex, home_shelf.timestamp)
         assert ref is not None
         self.set_ref_and_dump(ref)
         self.promised = self.jsonify()

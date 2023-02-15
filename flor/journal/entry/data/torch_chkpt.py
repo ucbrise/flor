@@ -5,7 +5,7 @@ import json
 
 from ..constants import *
 from .abstract import Data
-from flor import shelf
+from flor.shelf import home_shelf
 
 import torch
 
@@ -63,7 +63,7 @@ class Torch(Data):
         )
 
     def promise(self):
-        ref = shelf.get_pkl_ref()
+        ref = home_shelf.get_pkl_ref()
         assert ref is not None
         self.set_ref_and_dump(ref)
         self.promised = self.jsonify()

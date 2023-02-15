@@ -1,4 +1,4 @@
-from flor import flags, shelf
+from flor.shelf import home_shelf
 from flor.state import State
 from typing import Dict, List
 
@@ -17,7 +17,7 @@ class CSV_Writer:
         self.records.extend([{col:v} for values in batch for col, v in zip(self.cols, values) ])
 
     def flush(self):
-        path = shelf.get_csv_ref(self.name, State.timestamp)
+        path = home_shelf.get_csv_ref(self.name, State.timestamp)
         assert path is not None
         pd.DataFrame(self.records).to_csv(path, index=False)
     

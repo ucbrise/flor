@@ -9,7 +9,6 @@ from flor.skipblock import SkipBlock
 
 from flor.constants import *
 from flor.utils import *
-from flor.logger import exp_json
 from pathlib import Path
 import numpy as np
 
