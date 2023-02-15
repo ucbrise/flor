@@ -5,8 +5,6 @@ from typing import Optional, Dict, Any
 import json
 from pathlib import Path
 
-import atexit
-
 replay_d: Optional[Dict[str, Any]] = None
 record_d = {}
 
@@ -32,7 +30,6 @@ def get(name):
     return replay_d.get(name, None)
 
 
-@atexit.register
 def flush():
     if not flags.REPLAY:
         with open(REPLAY_JSON, "w", encoding="utf-8") as f:

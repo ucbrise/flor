@@ -6,6 +6,9 @@ from typing import Optional, Union
 from flor import flags
 from flor.state import State
 from flor.logger import exp_json
+from flor.skipblock import SkipBlock
+
+import atexit
 
 home: Path = Path.home()
 
@@ -65,3 +68,17 @@ def verify(path: Union[PurePath, str]) -> bool:
     assert flags.NAME is not None
     resolved_path = florin / flags.NAME / path
     return resolved_path.exists()
+
+
+def close():
+    path = get_index()
+    assert path is not None
+    if len(SkipBlock.logger.buffer) > 0:
+        SkipBlock.logger.flush(is_final=True)
+    if flags.MODE is None:
+        latest = get_latest()
+        assert latest is not None
+        if latest.exists():
+            latest.unlink()
+        latest.symlink_to(path)
+    return path

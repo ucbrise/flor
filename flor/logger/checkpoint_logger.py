@@ -23,18 +23,6 @@ class Logger:
         if self.buffer.is_full():
             self.flush()
 
-    def close(self):
-        if len(self.buffer) > 0:
-            self.flush(is_final=True)
-        if flags.MODE is None:
-            latest = shelf.get_latest()
-            assert latest is not None
-            assert self.path is not None
-            if latest.exists():
-                latest.unlink()
-            latest.symlink_to(self.path)
-            # TODO: spool
-
     def flush(self, is_final=False):
         assert self.path is not None
         self.flush_count += 1

@@ -1,4 +1,4 @@
-from .directory import (
+from .home_shelf import (
     mk_job,
     get_index,
     get_latest,

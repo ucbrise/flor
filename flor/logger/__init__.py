@@ -1,5 +1,5 @@
 from typing import Dict
-from flor.logger.logger import Logger
+from flor.logger.checkpoint_logger import Logger
 from flor.logger.future import Future
 from copy import deepcopy
 
@@ -7,9 +7,9 @@ from flor.logger import exp_json, log_records
 from flor.logger.csv import CSV_Writer
 from flor.state import State
 
-csv_writers: Dict[str, CSV_Writer] = {}
-
 import atexit
+
+csv_writers: Dict[str, CSV_Writer] = {}
 
 
 def log(name, value, **kwargs):

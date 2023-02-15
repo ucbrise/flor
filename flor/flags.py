@@ -94,7 +94,6 @@ class Parser:
                 exp_json.deferred_init()
                 NAME = exp_json.get("NAME")  # take from past
         assert NAME is not None
-        exp_json.put("NAME", NAME)  # put in present
         shelf.mk_job(NAME)
 
     @staticmethod

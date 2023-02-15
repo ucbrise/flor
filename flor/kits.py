@@ -47,6 +47,7 @@ class MTK:
                 assert State.loop_nesting_level > 1
                 # Nested loop
                 if SkipBlock.step_into(name, probed):
+                    assert State.step is not None
                     for each in iter8r:
                         State.step += 1
                         yield each

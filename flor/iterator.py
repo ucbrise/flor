@@ -3,10 +3,8 @@ import os
 from typing import Iterable, List, Union
 import pandas as pd
 
-from git.exc import InvalidGitRepositoryError
-from git.repo import Repo
-
-from flor import flags, shelf
+from flor import flags
+from flor.shelf import home_shelf as shelf, cwd_shelf
 from flor.skipblock import SkipBlock
 
 from flor.constants import *
@@ -19,7 +17,6 @@ from flor.utils import gen_commit2tstamp_mapper
 from flor.state import State
 
 
-ignore_report = False
 runtime_initialized = False
 
 
@@ -30,7 +27,6 @@ def it(value: Union[Iterable, bool]):
         Iterable when iterating over a for loop
         Bool when looping with while
     """
-    global ignore_report
     assert isinstance(value, (Iterable, bool))
     if flags.NAME is None:
         if isinstance(value, bool):
@@ -46,15 +42,10 @@ def it(value: Union[Iterable, bool]):
     if not flags.REPLAY:
         # Record mode
         if isinstance(value, bool):
-            if not value:
-                _close_record()
-                ignore_report = True
             return value
         else:
             for each in value:
                 yield each
-            _close_record()
-            ignore_report = True
     else:
         # Replay mode
         segment = SkipBlock.journal.get_segment_window()
@@ -80,7 +71,6 @@ def it(value: Union[Iterable, bool]):
                         value, "__getitem__"
                     ), "TODO: Implement next() calls to consume iterator"
                     yield value[capsule.epoch]  # type: ignore
-        _write_replay_file(name=flags.NAME, memo=str(flags.INDEX))
 
 
 def _deferred_init(_nil=[]):
@@ -91,10 +81,8 @@ def _deferred_init(_nil=[]):
     if not runtime_initialized:
         assert flags.NAME is not None
         if not flags.REPLAY and flags.MODE is None:
-            repo = Repo()
             assert (
-                SHADOW_BRANCH_PREFIX
-                == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
+                cwd_shelf.in_shadow_branch()
             ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
         SkipBlock.bind()
         if flags.REPLAY:
@@ -106,35 +94,10 @@ def _deferred_init(_nil=[]):
         runtime_initialized = True
 
 
-def _close_record():
-    def _save_run() -> str:
-        assert SkipBlock.logger.path is not None
-        repo = Repo()
-        _write_replay_file()
-        repo.git.add("-A")
-        commit = repo.index.commit(
-            f"{repo.active_branch.name}@{flags.NAME}::{SkipBlock.logger.path.name}"
-        )
-        commit_sha = commit.hexsha
-        return commit_sha
-
-    commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
-    exp_json.put("COMMIT", commit_sha)
-    SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
-    SkipBlock.logger.close()
-    return commit_sha, SkipBlock.logger.path
-
-
-def _write_replay_file(name=None, memo=None):
-    if name is not None:
-        exp_json.put("NAME", name)
-    if memo is not None:
-        exp_json.put("MEMO", memo)
-    elif SkipBlock.logger.path is not None:
-        exp_json.put("MEMO", str(SkipBlock.logger.path))
-
-
 def load_kvs():
+    """
+    TODO: Move to other file
+    """
     with open(REPLAY_JSON, "r", encoding="utf-8") as f:
         d = json.load(f)
 
