@@ -13,10 +13,12 @@ import atexit
 
 
 def log(name, value, **kwargs):
-    if "csv" in kwargs:
+    if "csv" in kwargs or name in csv_writers:
         if not csv_writers.get(name, False):
             csv_writers[name] = CSV_Writer(name, kwargs["csv"])
-            atexit.register(csv_writers[name].flush)
+        assert name in csv_writers
+        csv_writers[name].put(value)
+        return value
     else:
         # default case, treat as plaintext
         if State.loop_nesting_level:
@@ -24,3 +26,9 @@ def log(name, value, **kwargs):
         else:
             exp_json.put(name, value, ow=False)
         return value
+
+
+@atexit.register
+def flush():
+    for name in csv_writers:
+        csv_writers[name].flush()

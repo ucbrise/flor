@@ -18,5 +18,6 @@ class CSV_Writer:
 
     def flush(self):
         path = shelf.get_csv_ref(self.name, State.timestamp)
-        pd.DataFrame(self.records).to_csv(path)
+        assert path is not None
+        pd.DataFrame(self.records).to_csv(path, index=False)
     

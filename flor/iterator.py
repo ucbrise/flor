@@ -96,7 +96,6 @@ def _deferred_init(_nil=[]):
                 SHADOW_BRANCH_PREFIX
                 == repo.active_branch.name[0 : len(SHADOW_BRANCH_PREFIX)]
             ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
-        shelf.mk_job(flags.NAME)
         SkipBlock.bind()
         if flags.REPLAY:
             SkipBlock.journal.read()
@@ -104,7 +103,6 @@ def _deferred_init(_nil=[]):
             index_path = shelf.get_index()
             SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
-        State.epoch = 0
         runtime_initialized = True
 
 
