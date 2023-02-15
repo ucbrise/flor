@@ -69,13 +69,15 @@ def verify(path: Union[PurePath, str]) -> bool:
 
 
 def close():
-    path = get_index()
-    assert path is not None
-    if len(SkipBlock.logger.buffer) > 0:
-        SkipBlock.logger.flush(is_final=True)
+    if not flags.REPLAY and flags.NAME and SkipBlock.logger.flush_count:
+        path = get_index()
+        assert path is not None
+        if len(SkipBlock.logger.buffer) > 0:
+            SkipBlock.logger.flush(is_final=True)
         if flags.MODE is None:
             latest = get_latest()
             assert latest is not None
+            assert path.exists()
             if latest.exists():
                 latest.unlink()
             latest.symlink_to(path)
