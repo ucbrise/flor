@@ -6,16 +6,16 @@ import pandas as pd
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from . import flags, shelf
-from . import pin
-from .skipblock import SkipBlock
+from flor import flags, shelf
+from flor.skipblock import SkipBlock
 
-from .constants import *
-from .utils import *
+from flor.constants import *
+from flor.utils import *
+from flor.logger import exp_json
 from pathlib import Path, PurePath
 import numpy as np
 
-from .utils import gen_commit2tstamp_mapper
+from flor.utils import gen_commit2tstamp_mapper
 
 
 class replay_clock:
@@ -104,40 +104,10 @@ def _deferred_init(_nil=[]):
         if flags.REPLAY:
             SkipBlock.journal.read()
         else:
-            index_path = (
-                flags.INDEX
-                if flags.MODE is RECORD_MODE.chkpt_restore
-                else shelf.get_index()
-            )
+            index_path = shelf.get_index()
             SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
         runtime_initialized = True
-
-
-def report_end():
-    """
-    Call me when the execution finishes
-    """
-    global runtime_initialized, ignore_report
-    if not ignore_report and flags.NAME is not None:
-        if not flags.REPLAY:
-            # Record mode
-            repo = Repo()
-
-            d = {}
-            d["SOURCE"] = "report_end"
-            d["NAME"] = flags.NAME
-            pin.kvs.update(pin.anti_kvs)
-            d["KVS"] = pin.kvs
-            with open(".replay.json", "w", encoding="utf-8") as f:
-                json.dump(d, f, ensure_ascii=False, indent=4)
-            repo.git.add("-A")
-            commit = repo.index.commit(
-                f"{repo.active_branch.name}@{flags.NAME}::report_end"
-            )
-            sha = commit.hexsha
-            print(f"Logged to `.replay.json` and committed to {sha[0:8]}...")
-            ignore_report = True  # idempotency
 
 
 def _close_record():
@@ -151,36 +121,25 @@ def _close_record():
         )
         commit_sha = commit.hexsha
         return commit_sha
+
     commit_sha = _save_run() if flags.MODE is None else get_active_commit_sha()
     SkipBlock.logger.append(SkipBlock.journal.get_eof(commit_sha))
     SkipBlock.logger.close()
     return commit_sha, SkipBlock.logger.path
 
 
-
-
-
 def _write_replay_file(name=None, memo=None):
-    d = {}
-    d["NAME"] = flags.NAME if name is None else name
-    d["MEMO"] = str(SkipBlock.logger.path) if memo is None else memo
-    pin.kvs.update(pin.anti_kvs)
-    d["KVS"] = pin.kvs
-    with open(FLORFILE, "w", encoding="utf-8") as f:
-        json.dump(d, f, ensure_ascii=False, indent=4)
-
-    p = (Path.home() / ".flor") / flags.NAME / "replay_jsons"  # type: ignore
-    p.mkdir(exist_ok=True)
-    memo = os.path.basename(d["MEMO"])
-    memo, _ = os.path.splitext(memo)
-    memo += ".json"
-    p = p / memo
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(d, f, ensure_ascii=False, indent=4)
+    if name is not None:
+        exp_json.put("NAME", name)
+    if memo is not None:
+        exp_json.put("MEMO", memo)
+    elif SkipBlock.logger.path is not None:
+        exp_json.put("MEMO", str(SkipBlock.logger.path))
+    exp_json.flush()
 
 
 def load_kvs():
-    with open(FLORFILE, "r", encoding="utf-8") as f:
+    with open(REPLAY_JSON, "r", encoding="utf-8") as f:
         d = json.load(f)
 
     p = Path.home()
