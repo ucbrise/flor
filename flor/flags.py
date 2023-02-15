@@ -93,6 +93,7 @@ class Parser:
                 assert exp_json.exists()
                 exp_json.deferred_init()
                 NAME = exp_json.get("NAME")  # take from past
+        exp_json.put("NAME", NAME)
         home_shelf.mk_job(cwd_shelf.get_projid())
 
     @staticmethod
