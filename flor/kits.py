@@ -1,14 +1,8 @@
 from inspect import stack
-import time
-from typing import Optional
-import pandas as pd
 
-from .iterator import it, load_kvs, Repo, _close_record, _deferred_init
+from .iterator import it, load_kvs
 from .skipblock import SkipBlock
 from .constants import *
-
-from flor.journal.entry import *
-from flor import flags, shelf
 
 from flor.state import State
 
@@ -44,8 +38,9 @@ class MTK:
             name = str(static_id) if name is None else name
             if State.loop_nesting_level == 1:
                 # Outer loop
+                State.epoch = 0
                 for each in it(iter8r):
-                    assert State.epoch is not None
+                    State.step = 0
                     State.epoch += 1
                     yield each
             else:
@@ -53,13 +48,8 @@ class MTK:
                 # Nested loop
                 if SkipBlock.step_into(name, probed):
                     for each in iter8r:
+                        State.step += 1
                         yield each
                 SkipBlock.end(*MTK.chckpts)
         finally:
             State.loop_nesting_level -= 1
-
-
-if __name__ == "__main__":
-    for epoch in MTK.loop(range(5)):
-        for batch in MTK.loop(range(10)):
-            pass

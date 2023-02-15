@@ -9,31 +9,33 @@ from pathlib import Path
 
 import atexit
 
-records: List[Dict[str, Any]] = []
+replay_logs: List[Dict[str, Any]] = []
+record_logs: List[Dict[str, Any]] = []
 
 
 def deferred_init():
     with open(FLORFILE, "r") as f:
-        records.extend(list(csv.DictReader(f)))
-    atexit.register(flush)
+        replay_logs.extend(list(csv.DictReader(f)))
 
 
-def put(name, value, ow=True):
+def put(name, value):
     assert State.epoch is not None
     d = {
         "epoch": int(State.epoch),
-        "step": len(records) + 1,
+        "step": int(State.step) if State.step is not None else None,
         "name": name,
         "value": value,
     }
+    record_logs.append(d)
 
 
 def get(name):
-    pass
+    return [d for d in replay_logs if d["name"] == name]
 
 
+@atexit.register
 def flush():
-    pd.DataFrame(records).to_csv(FLORFILE)
+    pd.DataFrame(record_logs).to_csv(FLORFILE, index=False)
 
 
 def exists():
@@ -41,8 +43,8 @@ def exists():
 
 
 def eval(select, where=None) -> pd.DataFrame:
-    assert records is not None
-    df = pd.DataFrame(records)
+    assert replay_logs is not None
+    df = pd.DataFrame(replay_logs)
     if where is not None:
         df = df.query(where)
     return df[select]

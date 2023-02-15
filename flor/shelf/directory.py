@@ -4,6 +4,8 @@ from pathlib import Path, PurePath
 from typing import Optional, Union
 
 from flor import flags
+from flor.state import State
+from flor.logger import exp_json
 
 home: Path = Path.home()
 
@@ -19,6 +21,8 @@ def mk_job(name: str):
     global timestamp, job, data
     assert isinstance(name, str)
     timestamp = datetime.now().isoformat()
+    exp_json.put("tstamp", timestamp)
+    State.timestamp = timestamp
     job = florin / name
     job.mkdir(exist_ok=True)
     data = job / "data"
@@ -49,9 +53,9 @@ def get_pkl_ref() -> Optional[Path]:
     )
 
 
-def get_csv_ref() -> Optional[Path]:
+def get_csv_ref(name, tstamp) -> Optional[Path]:
     return (
-        job / PurePath("csv") / PurePath(uuid.uuid4().hex).with_suffix(".csv")
+        job / PurePath("csv") / PurePath(f"{name}_{tstamp}").with_suffix(".csv")
         if job is not None
         else None
     )
