@@ -100,7 +100,7 @@ class Parser:
                 assert exp_json.exists()
                 NAME = exp_json.get("NAME")  # take from past
         assert NAME is not None
-        if exp_json.get("NAME") == NAME:
+        if exp_json.exists() and exp_json.get("NAME") == NAME:
             # IF previous name is same as this name
             DATALOGGING = False
         exp_json.put("NAME", NAME)
