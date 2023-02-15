@@ -1,4 +1,5 @@
 from git.repo import Repo
+from git.exc import InvalidGitRepositoryError
 import os
 
 from flor import flags
@@ -18,9 +19,12 @@ def get_projid():
 
 
 def in_shadow_branch():
-    r = Repo()
-    active_branch = str(r.active_branch)
-    return SHADOW_BRANCH_PREFIX == active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
+    try:
+        r = Repo()
+        active_branch = str(r.active_branch)
+        return SHADOW_BRANCH_PREFIX == active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
+    except InvalidGitRepositoryError:
+        return False
 
 
 @atexit.register
@@ -28,7 +32,10 @@ def flush():
     # This is the last flush
     path = home_shelf.close()
     if flags.NAME:
-        repo = Repo()
+        try:
+            repo = Repo()
+        except InvalidGitRepositoryError:
+            return
         repo.git.add("-A")
         commit = repo.index.commit(
             f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"

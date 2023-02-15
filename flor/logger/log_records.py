@@ -35,7 +35,8 @@ def get(name):
 
 @atexit.register
 def flush():
-    pd.DataFrame(record_logs).to_csv(FLORFILE, index=False)
+    if record_logs:
+        pd.DataFrame(record_logs).to_csv(FLORFILE, index=False)
 
 
 def exists():
