@@ -31,6 +31,6 @@ def get(name):
 
 
 def flush():
-    if not flags.REPLAY:
+    if flags.NAME and not flags.REPLAY:
         with open(REPLAY_JSON, "w", encoding="utf-8") as f:
             json.dump(record_d, f, ensure_ascii=False, indent=4)

@@ -27,12 +27,13 @@ def in_shadow_branch():
 def flush():
     # This is the last flush
     path = home_shelf.close()
-    repo = Repo()
-    repo.git.add("-A")
-    commit = repo.index.commit(
-        f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"
-    )
-    commit_sha = commit.hexsha
-    exp_json.put("COMMIT", commit_sha)
-    exp_json.put("PROJID", get_projid())
-    exp_json.flush()
+    if flags.NAME:
+        repo = Repo()
+        repo.git.add("-A")
+        commit = repo.index.commit(
+            f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"
+        )
+        commit_sha = commit.hexsha
+        exp_json.put("COMMIT", commit_sha)
+        exp_json.put("PROJID", get_projid())
+        exp_json.flush()
