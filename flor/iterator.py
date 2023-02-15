@@ -12,14 +12,11 @@ from flor.skipblock import SkipBlock
 from flor.constants import *
 from flor.utils import *
 from flor.logger import exp_json
-from pathlib import Path, PurePath
+from pathlib import Path
 import numpy as np
 
 from flor.utils import gen_commit2tstamp_mapper
-
-
-class replay_clock:
-    epoch = 0
+from flor.state import State
 
 
 ignore_report = False
@@ -71,14 +68,14 @@ def it(value: Union[Iterable, bool]):
                     if capsule.epoch is None:
                         continue
                     else:
-                        replay_clock.epoch = value[capsule.epoch]  # type: ignore
+                        State.epoch = value[capsule.epoch]  # type: ignore
                         assert hasattr(
                             value, "__getitem__"
                         ), "TODO: Implement next() calls to consume iterator"
                         yield value[capsule.epoch]  # type: ignore
                 else:
                     assert capsule.epoch is not None
-                    replay_clock.epoch = value[capsule.epoch]  # type: ignore
+                    State.epoch = value[capsule.epoch]  # type: ignore
                     assert hasattr(
                         value, "__getitem__"
                     ), "TODO: Implement next() calls to consume iterator"
@@ -107,6 +104,7 @@ def _deferred_init(_nil=[]):
             index_path = shelf.get_index()
             SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
+        State.epoch = 0
         runtime_initialized = True
 
 
@@ -135,7 +133,6 @@ def _write_replay_file(name=None, memo=None):
         exp_json.put("MEMO", memo)
     elif SkipBlock.logger.path is not None:
         exp_json.put("MEMO", str(SkipBlock.logger.path))
-    exp_json.flush()
 
 
 def load_kvs():

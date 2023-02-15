@@ -5,6 +5,8 @@ from typing import Optional, Dict, Any
 import json
 from pathlib import Path
 
+import atexit
+
 replay_d: Optional[Dict[str, Any]] = None
 record_d = {}
 
@@ -13,6 +15,7 @@ def deferred_init():
     global replay_d
     with open(REPLAY_JSON, "r", encoding="utf-8") as f:
         replay_d = json.load(f)
+    atexit.register(flush)
 
 
 def exists():
