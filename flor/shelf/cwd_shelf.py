@@ -47,7 +47,7 @@ def flush():
         repo = Repo(State.common_dir)
         repo.git.add("-A")
         commit = repo.index.commit(
-            f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"
+            f"{'REPLAY' if flags.REPLAY else 'RECORD'}::{get_projid()}@{flags.NAME}::{path if path else 'None'}"
         )
         commit_sha = commit.hexsha
         exp_json.put("COMMIT", commit_sha)
