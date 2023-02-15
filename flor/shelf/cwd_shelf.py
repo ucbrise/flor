@@ -29,7 +29,9 @@ def flush():
     path = home_shelf.close()
     repo = Repo()
     repo.git.add("-A")
-    commit = repo.index.commit(f"{get_projid()}@{flags.NAME}::{path}")
+    commit = repo.index.commit(
+        f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"
+    )
     commit_sha = commit.hexsha
     exp_json.put("COMMIT", commit_sha)
     exp_json.put("PROJID", get_projid())

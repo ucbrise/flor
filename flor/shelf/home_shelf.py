@@ -73,10 +73,10 @@ def close():
     assert path is not None
     if len(SkipBlock.logger.buffer) > 0:
         SkipBlock.logger.flush(is_final=True)
-    if flags.MODE is None:
-        latest = get_latest()
-        assert latest is not None
-        if latest.exists():
-            latest.unlink()
-        latest.symlink_to(path)
-    return path
+        if flags.MODE is None:
+            latest = get_latest()
+            assert latest is not None
+            if latest.exists():
+                latest.unlink()
+            latest.symlink_to(path)
+        return path
