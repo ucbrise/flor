@@ -16,6 +16,8 @@ PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
 
+DATALOGGING = True
+
 """
 --flor NAME [EPSILON]
 --replay_flor [weak | strong] [i/n]
@@ -62,7 +64,10 @@ class Parser:
         assert (
             "--replay_flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
-        global NAME, EPSILON
+        assert (
+            cwd_shelf.in_shadow_branch()
+        ), "Please invoke --flor from a `flor.shadow` branch."
+        global NAME, EPSILON, DATALOGGING
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -82,8 +87,9 @@ class Parser:
         if flor_flags:
             assert flor_flags.pop(0) == "--flor"
             assert (
-                flor_flags or Path(FLORFILE).exists()
+                flor_flags or exp_json.exists()
             ), "Missing NAME argument in --flor NAME"
+            exp_json.deferred_init()
             for flag in flor_flags:
                 if flag[0:2] == "0.":
                     EPSILON = float(flag)
@@ -91,11 +97,11 @@ class Parser:
                     NAME = flag
             if NAME is None:
                 assert exp_json.exists()
-                exp_json.deferred_init()
                 NAME = exp_json.get("NAME")  # take from past
-        assert (
-            cwd_shelf.in_shadow_branch()
-        ), "Please invoke --flor from a `flor.shadow` branch."
+        assert NAME is not None
+        if exp_json.get("NAME") == NAME:
+            # IF previous name is same as this name
+            DATALOGGING = False
         exp_json.put("NAME", NAME)
         home_shelf.mk_job(cwd_shelf.get_projid())
 
@@ -164,6 +170,7 @@ __all__ = [
     "MODE",
     "PID",
     "EPSILON",
+    "DATALOGGING",
     "set_REPLAY",
     "Parser",
 ]

@@ -56,7 +56,9 @@ def get_pkl_ref() -> Optional[Path]:
 
 def get_csv_ref(name, tstamp) -> Optional[Path]:
     return (
-        job / PurePath("csv") / PurePath(f"{name}_{tstamp}").with_suffix(".csv")
+        job
+        / PurePath("csv")
+        / PurePath(f"{name}_{flags.NAME}_{tstamp}").with_suffix(".csv")
         if job is not None
         else None
     )

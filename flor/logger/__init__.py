@@ -15,10 +15,11 @@ csv_writers: Dict[str, CSV_Writer] = {}
 
 def log(name, value, **kwargs):
     if "csv" in kwargs or name in csv_writers:
-        if not csv_writers.get(name, False):
-            csv_writers[name] = CSV_Writer(name, kwargs["csv"])
-        assert name in csv_writers
-        csv_writers[name].put(value)
+        if flags.NAME and flags.DATALOGGING:
+            if not csv_writers.get(name, False):
+                csv_writers[name] = CSV_Writer(name, kwargs["csv"])
+            assert name in csv_writers
+            csv_writers[name].put(value)
         return value
     else:
         # default case, treat as plaintext

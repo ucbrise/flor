@@ -3,26 +3,38 @@ from git.exc import InvalidGitRepositoryError
 import os
 
 from flor import flags
+from flor.state import State
 
 from flor.constants import *
 from flor.logger import exp_json
 from flor.shelf import home_shelf
+from pathlib import Path
 
 import atexit
 
 
 def get_projid():
-    r = Repo()
-    active_branch = str(r.active_branch)
-    common_dir = os.path.basename(os.path.dirname(str(r.common_dir)))
-    return common_dir + ":" + active_branch
+    if State.common_dir is None:
+        r = Repo()
+        State.common_dir = Path(r.common_dir)
+    return (
+        os.path.basename(os.path.dirname(str(State.common_dir)))
+        + ":"
+        + str(State.active_branch)
+    )
 
 
 def in_shadow_branch():
     try:
-        r = Repo()
-        active_branch = str(r.active_branch)
-        return SHADOW_BRANCH_PREFIX == active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
+        if State.active_branch is None:
+            r = Repo()
+            State.active_branch = str(r.active_branch)
+        cond = (
+            SHADOW_BRANCH_PREFIX == State.active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
+        )
+        if cond:
+            get_projid()
+        return cond
     except InvalidGitRepositoryError:
         return False
 
@@ -31,11 +43,8 @@ def in_shadow_branch():
 def flush():
     # This is the last flush
     path = home_shelf.close()
-    if flags.NAME:
-        try:
-            repo = Repo()
-        except InvalidGitRepositoryError:
-            return
+    if flags.NAME and in_shadow_branch():
+        repo = Repo(State.common_dir)
         repo.git.add("-A")
         commit = repo.index.commit(
             f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"

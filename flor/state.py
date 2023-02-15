@@ -1,4 +1,5 @@
 from typing import Optional
+from pathlib import Path
 
 
 class State:
@@ -6,3 +7,5 @@ class State:
     epoch: Optional[int] = None
     step: Optional[int] = None
     timestamp: Optional[str] = None
+    common_dir: Optional[Path] = None
+    active_branch: Optional[str] = None
