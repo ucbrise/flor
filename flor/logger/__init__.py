@@ -6,6 +6,7 @@ from copy import deepcopy
 from flor.logger import exp_json, log_records
 from flor.logger.csv import CSV_Writer
 from flor.state import State
+from flor import flags
 
 import atexit
 
@@ -30,5 +31,6 @@ def log(name, value, **kwargs):
 
 @atexit.register
 def flush():
-    for name in csv_writers:
-        csv_writers[name].flush()
+    if flags.NAME:
+        for name in csv_writers:
+            csv_writers[name].flush()
