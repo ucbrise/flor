@@ -6,11 +6,13 @@ from flor import flags
 from flor.state import State
 
 from flor.constants import *
-from flor.logger import exp_json
+from flor.logger import exp_json, log_records
 from flor.shelf import home_shelf
 from pathlib import Path
 
 import atexit
+
+PATH = Path(".flor")
 
 
 def get_projid():
@@ -25,6 +27,9 @@ def get_projid():
 
 
 def in_shadow_branch():
+    """
+    Initialize
+    """
     try:
         if State.active_branch is None:
             r = Repo()
@@ -33,6 +38,7 @@ def in_shadow_branch():
             SHADOW_BRANCH_PREFIX == State.active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
         )
         if cond:
+            PATH.mkdir(exist_ok=True)
             get_projid()
         return cond
     except InvalidGitRepositoryError:
@@ -43,13 +49,16 @@ def in_shadow_branch():
 def flush():
     # This is the last flush
     path = home_shelf.close()
+    try:
+        log_records.flush()
+    except Exception as e:
+        print(e)
     if flags.NAME and in_shadow_branch():
+        exp_json.put("PROJID", get_projid())
+        exp_json.flush()
         repo = Repo(State.common_dir)
         repo.git.add("-A")
         commit = repo.index.commit(
             f"{get_projid()}@{flags.NAME}::{path if path else 'None'}"
         )
         commit_sha = commit.hexsha
-        exp_json.put("COMMIT", commit_sha)
-        exp_json.put("PROJID", get_projid())
-        exp_json.flush()

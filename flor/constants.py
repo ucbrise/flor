@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 REPLAY_MODE = Enum("REPLAY_MODE", "weak strong")
 SHADOW_BRANCH_PREFIX = "flor.shadow"
-FLORFILE = "log_records.csv"
-REPLAY_JSON = ".replay.json"
+FLORFILE = Path(".flor") / "log_records.csv"
+REPLAY_JSON = Path(".flor") / ".replay.json"
 
 
 @dataclass

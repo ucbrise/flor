@@ -7,8 +7,6 @@ import csv
 import pandas as pd
 from pathlib import Path
 
-import atexit
-
 replay_logs: List[Dict[str, Any]] = []
 record_logs: List[Dict[str, Any]] = []
 
@@ -33,7 +31,6 @@ def get(name):
     return [d for d in replay_logs if d["name"] == name]
 
 
-@atexit.register
 def flush():
     if record_logs:
         pd.DataFrame(record_logs).to_csv(FLORFILE, index=False)
