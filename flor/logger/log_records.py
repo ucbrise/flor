@@ -1,5 +1,5 @@
 from flor.state import State
-from flor.constants import FLORFILE
+from flor.constants import LOG_RECORDS
 from typing import Optional, List, Dict, Any
 
 
@@ -12,7 +12,7 @@ record_logs: List[Dict[str, Any]] = []
 
 
 def deferred_init():
-    with open(FLORFILE, "r") as f:
+    with open(LOG_RECORDS, "r") as f:
         replay_logs.extend(list(csv.DictReader(f)))
 
 
@@ -33,11 +33,11 @@ def get(name):
 
 def flush():
     if record_logs:
-        pd.DataFrame(record_logs).to_csv(FLORFILE, index=False)
+        pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
 
 
 def exists():
-    return Path(FLORFILE).exists()
+    return Path(LOG_RECORDS).exists()
 
 
 def eval(select, where=None) -> pd.DataFrame:

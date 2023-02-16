@@ -120,7 +120,7 @@ class Parser:
         except FileNotFoundError:
             print("No replay file, did you record first?")
             raise
-        assert exp_json.get("NAME"), f"check your `{FLORFILE}` file. Missing name."
+        assert exp_json.get("NAME"), f"check your `{LOG_RECORDS}` file. Missing name."
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):

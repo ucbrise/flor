@@ -56,6 +56,7 @@ def flush():
         print(e)
     if flags.NAME and in_shadow_branch():
         exp_json.put("PROJID", get_projid())
+        exp_json.put("EPOCHS", State.epoch)
         exp_json.flush()
         repo = Repo(State.common_dir)
         repo.git.add("-A")

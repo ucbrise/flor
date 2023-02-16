@@ -4,7 +4,7 @@ from pathlib import Path
 
 REPLAY_MODE = Enum("REPLAY_MODE", "weak strong")
 SHADOW_BRANCH_PREFIX = "flor.shadow"
-FLORFILE = Path(".flor") / "log_records.csv"
+LOG_RECORDS = Path(".flor") / "log_records.csv"
 REPLAY_JSON = Path(".flor") / ".replay.json"
 
 

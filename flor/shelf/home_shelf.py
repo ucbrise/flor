@@ -42,6 +42,11 @@ def get_index() -> Optional[Path]:
         return None
 
 
+def get_job():
+    assert job is not None
+    return job
+
+
 def get_latest() -> Optional[Path]:
     return job / PurePath("latest").with_suffix(".json") if job is not None else None
 

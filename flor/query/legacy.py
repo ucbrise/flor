@@ -1,10 +1,15 @@
 from flor.constants import *
 from flor.state import State
 
+from flor.shelf import home_shelf, cwd_shelf
+
 import os
 import json
+import shutil
 import pandas as pd
 import numpy as np
+
+from git.repo import Repo
 
 
 def load_kvs():
@@ -88,3 +93,49 @@ def gen_commit2tstamp_mapper():
             time2sha[index] = c.hexsha
 
     return (time2sha, sha2time)
+
+
+def unpack():
+    with open(REPLAY_JSON, "r") as f:
+        name = json.load(f)["NAME"]
+    dst = home_shelf.get_job()
+    dst.mkdir(exist_ok=True)
+
+    dst = dst / "repo.git"
+    if dst.exists():
+        shutil.rmtree(dst)
+
+    replay_jsons = home_shelf.get_job() / "replay_jsons"
+    if not replay_jsons.exists():
+        replay_jsons.mkdir()
+
+    r = State.repo
+    assert r is not None
+    assert cwd_shelf.in_shadow_branch()
+
+    r.clone(dst)
+    r = Repo(dst)
+    commits = [c for c in r.iter_commits()]
+    cwd = os.getcwd()
+    os.chdir(dst)
+    active = r.active_branch  # check behavior
+    for version in commits:
+        r.git.checkout(version)
+        hexsha, message = version.hexsha, version.message
+        messages = message.split("::")  # type: ignore
+        if len(messages) != 2:
+            print(f"Did not parse >>{messages}<<")
+            continue
+        else:
+            _, tstamp_json = messages
+        try:
+            shutil.copy2(".replay.json", os.path.join(replay_jsons, tstamp_json))  # type: ignore
+            print(f'copied {(str(version.hexsha) + "::" + str(tstamp_json))}')
+        except FileNotFoundError:
+            # print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
+            continue
+        except:
+            continue
+
+    r.git.checkout(active)
+    os.chdir(cwd)
