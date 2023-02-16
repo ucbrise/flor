@@ -89,7 +89,8 @@ class Parser:
             assert (
                 flor_flags or exp_json.exists()
             ), "Missing NAME argument in --flor NAME"
-            exp_json.deferred_init()
+            if exp_json.exists():
+                exp_json.deferred_init()
             for flag in flor_flags:
                 if flag[0:2] == "0.":
                     EPSILON = float(flag)
@@ -99,7 +100,7 @@ class Parser:
                 assert exp_json.exists()
                 NAME = exp_json.get("NAME")  # take from past
         assert NAME is not None
-        if exp_json.get("NAME") == NAME:
+        if exp_json.exists() and exp_json.get("NAME") == NAME:
             # IF previous name is same as this name
             DATALOGGING = False
         exp_json.put("NAME", NAME)
@@ -110,6 +111,9 @@ class Parser:
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
+        assert (
+            cwd_shelf.in_shadow_branch()
+        ), "Please invoke --replay_flor from a `flor.shadow` branch."
         try:
             assert exp_json.exists()
             exp_json.deferred_init()

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Any
 from flor.logger.checkpoint_logger import Logger
 from flor.logger.future import Future
 from copy import deepcopy
@@ -28,6 +28,16 @@ def log(name, value, **kwargs):
         else:
             exp_json.put(name, value, ow=False)
         return value
+
+
+def pinned(name, callback, *args):
+    if not flags.REPLAY:
+        value = callback(*args)
+        if flags.NAME:
+            exp_json.put(name, value, ow=False)
+    else:
+        value = exp_json.get(name)
+    return value
 
 
 @atexit.register
