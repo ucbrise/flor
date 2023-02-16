@@ -33,6 +33,7 @@ def in_shadow_branch():
     try:
         if State.active_branch is None:
             r = Repo()
+            State.repo = r
             State.active_branch = str(r.active_branch)
         cond = (
             SHADOW_BRANCH_PREFIX == State.active_branch[0 : len(SHADOW_BRANCH_PREFIX)]

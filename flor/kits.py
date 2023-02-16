@@ -1,10 +1,10 @@
 from inspect import stack
 
-from .iterator import it, load_kvs
-from .skipblock import SkipBlock
-from .constants import *
+from flor.skipblock import SkipBlock
+from flor.constants import *
 
 from flor.state import State
+from flor.iterator import it
 
 
 class MTK:
@@ -12,7 +12,6 @@ class MTK:
     MODEL TRAINING KIT
     """
 
-    load_kvs = load_kvs
     SkipBlock = SkipBlock
     chckpts = []  # type: ignore
 

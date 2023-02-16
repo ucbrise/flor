@@ -1,18 +1,11 @@
-import json
-import os
 from typing import Iterable, List, Union
-import pandas as pd
 
 from flor import flags
 from flor.shelf import home_shelf as shelf, cwd_shelf
 from flor.skipblock import SkipBlock
 
 from flor.constants import *
-from flor.utils import *
-from pathlib import Path
-import numpy as np
 
-from flor.utils import gen_commit2tstamp_mapper
 from flor.state import State
 
 
@@ -91,63 +84,6 @@ def _deferred_init(_nil=[]):
             SkipBlock.logger.set_path(index_path)
             assert SkipBlock.logger.path is not None
         runtime_initialized = True
-
-
-def load_kvs():
-    """
-    TODO: Move to other file
-    """
-    with open(REPLAY_JSON, "r", encoding="utf-8") as f:
-        d = json.load(f)
-
-    p = Path.home()
-    p = p / ".flor"
-    p = p / d["NAME"]  # type: ignore
-    p = p / "replay_jsons"
-
-    seq = []
-
-    for q in p.iterdir():
-        # q will contain the timestamp: 2022-02-07T20:42:25.json
-        tstamp = q.stem
-        # 2022-02-07T20:42:25
-        with open(str(q), "r", encoding="utf-8") as f:
-            d = json.load(f)
-
-        _kvs = d["KVS"]
-
-        for k in _kvs:
-            if len(k.split(".")) >= 3:
-                z = k.split(".")
-                e = z.pop(0)
-                r = z.pop(0)
-                n = ".".join(z)
-                for s, x in enumerate(_kvs[k]):
-                    # pvresnx
-                    seq.append((d["NAME"], d["MEMO"], tstamp, r, e, s, n, x))
-
-    df1 = pd.DataFrame(
-        seq,
-        columns=["projid", "vid", "tstamp", "alpha", "epoch", "step", "name", "value"],
-        # dtype=(str, str, np.datetime64, str, int, int, str, object),
-    ).astype(
-        {
-            "projid": str,
-            "vid": str,
-            "tstamp": np.datetime64,
-            "alpha": str,
-            "epoch": int,
-            "step": int,
-            "name": str,
-            "value": object,
-        }
-    )
-    # TODO: RESUME
-    time2sha, sha2time = gen_commit2tstamp_mapper()
-
-    df1["vid"] = df1["vid"].apply(lambda x: time2sha.get(os.path.basename(x), x))
-
-    return df1.sort_values(by=["tstamp", "epoch", "step"])
 
 
 __all__ = ["it"]
