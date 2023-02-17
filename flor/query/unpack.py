@@ -62,7 +62,7 @@ def cp_log_records(version):
     if PurePath(message).suffix == ".json":
         # Older  Versions
         messages = message.split("::")
-        _, tstamp_json = messages[-1]
+        tstamp_json = messages[-1]
         tstamp_json = PurePath(tstamp_json)
         replay_json = get_replay_json()
         if replay_json is not None:
