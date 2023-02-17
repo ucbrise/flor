@@ -1,5 +1,6 @@
 from flor import flags
 from flor.constants import *
+from flor.logger import exp_json
 
 from typing import List, Union, Optional
 
@@ -8,7 +9,7 @@ NO_INIT = None
 
 class Window:
     def __init__(self, iterations_count: int, sparse_checkpoints: List[int]):
-        self.iterations_count = iterations_count
+        self.iterations_count = exp_json.get("EPOCHS")
         self.extended_sparse_checkpoints: List[Optional[int]] = list(sparse_checkpoints)
         self.extended_sparse_checkpoints.insert(0, NO_INIT)
 

@@ -71,18 +71,17 @@ def _deferred_init(_nil=[]):
     """
     global runtime_initialized
     if not runtime_initialized:
-        assert flags.NAME is not None
-        if not flags.REPLAY and flags.MODE is None:
+        if flags.NAME is not None:
             assert (
                 cwd_shelf.in_shadow_branch()
-            ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\nso we may commit dirty pages automatically"
-        SkipBlock.bind()
-        if flags.REPLAY:
-            SkipBlock.journal.read()
-        else:
+            ), f"Please run FLOR from a shadow branch (branch name: `{SHADOW_BRANCH_PREFIX}.[...]`)\n"
+            SkipBlock.bind()
+            if flags.REPLAY:
+                SkipBlock.journal.read()
+        if flags.NAME and not flags.REPLAY:
             index_path = shelf.get_index()
             SkipBlock.logger.set_path(index_path)
-            assert SkipBlock.logger.path is not None
+
         runtime_initialized = True
 
 
