@@ -40,16 +40,24 @@ def full_pivot():
     if facts is None:
         facts = log_records()
 
-    data_prep = facts.query("epoch == -1")
-    data_prep_names = set(data_prep["name"])
+    data_prep_gb = facts.groupby(by=["name", "vid"])
+    data_prep_names = set([])
+    for rowid, agg in data_prep_gb.count()["value"].items():
+        name, hexsha = tuple(rowid)  # type: ignore
+        if agg == 1:
+            data_prep_names |= {
+                name,
+            }
+
     outer_loop_gb = facts.groupby(by=["name", "vid", "epoch"])
     outer_loop_names = set([])
     for rowid, agg in outer_loop_gb.count()["value"].items():
-        name, hexsha, _ = tuple(rowid) #type: ignore
+        name, hexsha, _ = tuple(rowid)  # type: ignore
         if name not in data_prep_names and agg == 1:
             outer_loop_names |= {
                 name,
             }
+
     inner_loop_names = set(
         [
             name
