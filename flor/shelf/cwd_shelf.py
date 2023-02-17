@@ -40,7 +40,7 @@ def in_shadow_branch():
         )
         if cond:
             PATH.mkdir(exist_ok=True)
-            ((PATH) / get_projid()).mkdir(exist_ok=True)
+            get_projid()
         return cond
     except InvalidGitRepositoryError:
         return False
