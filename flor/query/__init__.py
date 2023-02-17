@@ -2,8 +2,11 @@ import csv
 import pandas as pd
 from flor.query.unpack import unpack
 
+facts = None
+
 
 def log_records(cache_dir=None):
+    global facts
     if cache_dir is None:
         cache_dir = unpack()
     assert cache_dir is not None
@@ -13,9 +16,12 @@ def log_records(cache_dir=None):
         if path.suffix == ".csv":
             with open(path, "r") as f:
                 data.extend(list(csv.DictReader(f)))
+    facts = pd.DataFrame(data).sort_values(by=["tstamp", "epoch", "value"])
+    return facts
 
-    return pd.DataFrame(data).sort_values(by=["tstamp", "epoch", "value"])
 
-
-def pull_pivot():
-    facts = log_records()
+def full_pivot():
+    global facts
+    if facts is None:
+        facts = log_records()
+    return facts

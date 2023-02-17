@@ -1,6 +1,6 @@
 from pathlib import PurePath, Path
 from typing import Any, Dict
-from flor.shelf import home_shelf, cwd_shelf
+from flor.shelf import cwd_shelf
 from flor.state import State
 from flor.constants import *
 
@@ -14,7 +14,7 @@ import pandas as pd
 def clear_stash():
     global stash
 
-    job_path = home_shelf.get_job()
+    job_path = Path.home() / ".flor" / cwd_shelf.get_projid()
     stash = job_path / "stash"
     if stash.exists():
         shutil.rmtree(stash)
