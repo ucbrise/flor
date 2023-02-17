@@ -63,4 +63,3 @@ def flush():
         commit = repo.index.commit(
             f"{'REPLAY' if flags.REPLAY else 'RECORD'}::{flags.NAME}"
         )
-        commit_sha = commit.hexsha
