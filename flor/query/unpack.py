@@ -43,12 +43,15 @@ def unpack():
     r = State.repo
     assert r is not None
     active = r.active_branch  # check behavior
-
-    commits = filtered_versions()
     try:
+        commits = filtered_versions()
         for version in commits["ALL"]:
-            r.git.checkout(version)
-            cp_log_records(version)
+            try:
+                print(f"STEPPING IN {version.hexsha}")
+                r.git.checkout(version)
+                cp_log_records(version)
+            except Exception as e:
+                print(e)
     finally:
         r.git.checkout(active)
         return stash
