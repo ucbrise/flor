@@ -6,9 +6,7 @@ import shutil
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional
 
-import git
 from git.repo import Repo
 
 from flor.hlast import backprop
@@ -56,50 +54,6 @@ if sys.argv[1] == "transform":
             continue
         except:
             os.remove(n)
-            continue
-
-    r.git.checkout(active)
-    os.chdir(cwd)
-elif sys.argv[1] == "unpack":
-    with open(".replay.json", "r") as f:
-        name = json.load(f)["NAME"]
-    dst = Path.home() / ".flor" / name
-    if not dst.exists():
-        dst.mkdir()
-    dst = dst / "repo.git"
-    if dst.exists():
-        shutil.rmtree(dst)
-    replay_jsons = Path.home() / ".flor" / name / "replay_jsons"
-    if not replay_jsons.exists():
-        replay_jsons.mkdir()
-    r = Repo()
-    assert "flor.shadow" in str(r.active_branch)
-    r.clone(dst)
-    r = Repo(dst)
-    commits = [
-        c
-        for c in r.iter_commits()
-        if "flor.shadow" in str(c.message) and ".json" == c.message[-len(".json") :]
-    ]
-    cwd = os.getcwd()
-    os.chdir(dst)
-    active = r.active_branch  # check behavior
-    for version in commits:
-        r.git.checkout(version)
-        hexsha, message = version.hexsha, version.message
-        messages = message.split("::")  # type: ignore
-        if len(messages) != 2:
-            print(f"Did not parse >>{messages}<<")
-            continue
-        else:
-            _, tstamp_json = messages
-        try:
-            shutil.copy2(".replay.json", os.path.join(replay_jsons, tstamp_json))  # type: ignore
-            print(f'copied {(str(version.hexsha) + "::" + str(tstamp_json))}')
-        except FileNotFoundError:
-            # print(f"version {version.hexsha[0:6]}... does not contain {args.source}")
-            continue
-        except:
             continue
 
     r.git.checkout(active)

@@ -5,7 +5,7 @@ from typing import Union
 
 import cloudpickle
 
-from flor import shelf
+from flor.shelf import home_shelf
 
 from ..constants import *
 from .abstract import Data
@@ -71,7 +71,7 @@ class Reference(Data):
 
     def fulfill(self):
         super().fulfill()
-        ref = shelf.get_pkl_ref()
+        ref = home_shelf.get_pkl_ref()
         assert ref is not None
         self.set_ref_and_dump(ref)
         return json.dumps(self.jsonify())

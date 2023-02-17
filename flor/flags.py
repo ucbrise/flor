@@ -1,20 +1,21 @@
-import json
-from typing import Dict, Optional, Tuple, Union
-from flor import shelf
+from flor.shelf import home_shelf, cwd_shelf
+from flor.constants import *
+from flor.logger import exp_json
 
 import sys
+from typing import Dict, Optional, Tuple, Union
 from pathlib import PurePath, Path
-from .constants import *
-from .pin import kvs
 
 
 NAME: Optional[str] = None
 REPLAY: bool = False
 INDEX: Optional[PurePath] = None
-MODE: Optional[Union[REPLAY_MODE, RECORD_MODE]] = None
+MODE: Optional[REPLAY_MODE] = None
 PID: REPLAY_PARALLEL = REPLAY_PARALLEL(1, 1)
 EPSILON: float = 1 / 15
 RESUMING: bool = False
+
+DATALOGGING = True
 
 """
 --flor NAME [EPSILON]
@@ -38,12 +39,8 @@ def set_REPLAY(
     if index is not None:
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
-        index_exists = shelf.verify(PurePath(index).name)
-        INDEX = Path.home() / ".flor" / NAME / Path(index).name
-        if not index_exists:
-            print("MISSING CACHE: Recomputing Checkpoints")
-            REPLAY = False
-            MODE = RECORD_MODE.chkpt_restore
+        assert home_shelf.verify(PurePath(index).name)
+        INDEX = Path(index)
     if mode is not None:
         MODE = REPLAY_MODE[mode]
     if pid is not None:
@@ -67,7 +64,10 @@ class Parser:
         assert (
             "--replay_flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
-        global NAME, EPSILON
+        assert (
+            cwd_shelf.in_shadow_branch()
+        ), "Please invoke --flor from a `flor.shadow` branch."
+        global NAME, EPSILON, DATALOGGING
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -87,40 +87,40 @@ class Parser:
         if flor_flags:
             assert flor_flags.pop(0) == "--flor"
             assert (
-                flor_flags or Path(FLORFILE).exists()
+                flor_flags or exp_json.exists()
             ), "Missing NAME argument in --flor NAME"
+            if exp_json.exists():
+                exp_json.deferred_init()
             for flag in flor_flags:
                 if flag[0:2] == "0.":
                     EPSILON = float(flag)
                 else:
                     NAME = flag
-            if Path(FLORFILE).exists():
-                with open(FLORFILE, "r", encoding="utf-8") as f:
-                    d = json.load(f)
-                assert "NAME" in d
-                NAME = d["NAME"] if NAME is None else NAME
+            if NAME is None:
+                assert exp_json.exists()
+                NAME = exp_json.get("NAME")  # take from past
+        assert NAME is not None
+        if exp_json.exists() and exp_json.get("NAME") == NAME:
+            # IF previous name is same as this name
+            DATALOGGING = False
+        exp_json.put("NAME", NAME)
+        home_shelf.mk_job(cwd_shelf.get_projid())
 
     @staticmethod
     def _parse_replay():
-        global names_in_replay
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
+        assert (
+            cwd_shelf.in_shadow_branch()
+        ), "Please invoke --replay_flor from a `flor.shadow` branch."
         try:
-            with open(FLORFILE, "r", encoding="utf-8") as f:
-                d = json.load(f)
+            assert exp_json.exists()
+            exp_json.deferred_init()
         except FileNotFoundError:
             print("No replay file, did you record first?")
             raise
-        assert "NAME" in d, "check your `.replay.json` file. Missing name."
-        if "KVS" in d:
-            kvs.update(
-                {
-                    k: v
-                    for k, v in d["KVS"].items()
-                    if "." not in k or k.split(".")[1] == "a"
-                }
-            )
+        assert exp_json.get("NAME"), f"check your `{LOG_RECORDS}` file. Missing name."
         flor_flags = []
         feeding = False
         for _ in range(len(sys.argv)):
@@ -152,7 +152,13 @@ class Parser:
                         "Invalid argument passed to --replay_flor"
                         + "[weak | strong] [I/N]"
                     )
-            set_REPLAY(d["NAME"], index=d.get("MEMO", None), mode=mode, pid=pid)
+            set_REPLAY(
+                str(exp_json.get("NAME")),
+                index=exp_json.get("MEMO"),
+                mode=mode,
+                pid=pid,
+            )
+            home_shelf.set_job(cwd_shelf.get_projid())
 
     @staticmethod
     def parse():
@@ -161,13 +167,6 @@ class Parser:
         elif "--replay_flor" in sys.argv:
             Parser._parse_replay()
 
-    @staticmethod
-    def from_string(s: str):
-        sys.argv = s.split(" ")
-        Parser.parse()
-
-
-from_string = Parser.from_string
 
 __all__ = [
     "NAME",
@@ -176,7 +175,7 @@ __all__ = [
     "MODE",
     "PID",
     "EPSILON",
+    "DATALOGGING",
     "set_REPLAY",
     "Parser",
-    "from_string",
 ]
