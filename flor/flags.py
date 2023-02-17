@@ -3,7 +3,6 @@ from flor.constants import *
 from flor.logger import exp_json
 
 import sys
-import json
 from typing import Dict, Optional, Tuple, Union
 from pathlib import PurePath, Path
 
@@ -158,6 +157,7 @@ class Parser:
                 mode=mode,
                 pid=pid,
             )
+            home_shelf.set_job(cwd_shelf.get_projid())
 
     @staticmethod
     def parse():
