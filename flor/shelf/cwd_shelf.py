@@ -21,7 +21,7 @@ def get_projid():
         State.common_dir = Path(r.common_dir)
     return (
         os.path.basename(os.path.dirname(str(State.common_dir)))
-        + ":"
+        + "_"
         + str(State.active_branch)
     )
 

@@ -77,11 +77,11 @@ def cp_log_records(version):
         if replay_json is not None:
             lr_csv = get_log_records_csv()
             tstamp_json = get_tstamp_json(replay_json)
-            data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
-            assert tstamp_json is not None
-            pd.DataFrame(data).to_csv(
-                stash / tstamp_json.with_suffix(".csv"), index=False
-            )
+            if tstamp_json is not None:
+                data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
+                pd.DataFrame(data).to_csv(
+                    stash / tstamp_json.with_suffix(".csv"), index=False
+                )
 
 
 def get_replay_json():
@@ -142,8 +142,8 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                             "projid": cwd_shelf.get_projid(),
                             "tstamp": tstamp.stem,
                             "vid": hexsha,
-                            "epoch": int(e),
-                            "step": int(s),
+                            "epoch": int(e) if e else -1,
+                            "step": int(s) if s else -1,
                             "name": n,
                             "value": x,
                         }
@@ -156,8 +156,8 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                         "projid": cwd_shelf.get_projid(),
                         "tstamp": tstamp.stem,
                         "vid": hexsha,
-                        "epoch": int(each["epoch"]),
-                        "step": int(each["step"]),
+                        "epoch": int(each["epoch"]) if each["epoch"] else -1,
+                        "step": int(each["step"]) if each["step"] else -1,
                         "name": str(each["name"]),
                         "value": each["value"],
                     }
