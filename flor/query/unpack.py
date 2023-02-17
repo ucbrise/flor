@@ -13,9 +13,9 @@ import pandas as pd
 
 def clear_stash():
     global stash
-
-    job_path = Path.home() / ".flor" / cwd_shelf.get_projid()
-    stash = job_path / "stash"
+    (Path.home() / ".flor").mkdir(exist_ok=True)
+    (Path.home() / ".flor" / cwd_shelf.get_projid()).mkdir(exist_ok=True)
+    stash = Path.home() / ".flor" / cwd_shelf.get_projid() / "stash"
     if stash.exists():
         shutil.rmtree(stash)
     stash.mkdir()
