@@ -22,7 +22,7 @@ def mk_job(name: str):
     global timestamp, job, data
     assert isinstance(name, str)
     timestamp = datetime.now().isoformat()
-    exp_json.put("TSTAMP", timestamp)
+    exp_json.put("TSTAMP", str(PurePath(timestamp).with_suffix(".json")))
     State.timestamp = timestamp
     job = florin / name
     job.mkdir(exist_ok=True)
@@ -43,8 +43,10 @@ def set_job(name: str):
 def get_index() -> Optional[Path]:
     if job is not None and timestamp is not None:
         if flags.REPLAY:
-            assert flags.INDEX is not None
-            return job / flags.INDEX.with_suffix(".json")
+            projid = exp_json.get("PROJID")
+            tstamp = exp_json.get("TSTAMP")
+            assert projid is not None and tstamp is not None
+            return florin / PurePath(projid) / PurePath(tstamp)
         else:
             return job / PurePath(timestamp).with_suffix(".json")
     else:

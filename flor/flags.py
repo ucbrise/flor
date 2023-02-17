@@ -40,6 +40,7 @@ def set_REPLAY(
         assert isinstance(index, str)
         assert PurePath(index).suffix == ".json"
         assert home_shelf.verify(PurePath(index).name)
+        INDEX = Path(index)
     if mode is not None:
         MODE = REPLAY_MODE[mode]
     if pid is not None:
