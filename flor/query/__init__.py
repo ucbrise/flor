@@ -72,8 +72,21 @@ def full_pivot(*args, **kwargs):
         ]
     )
 
-    print(
-        f"\nData prep: {data_prep_names},\nouter_loop: {outer_loop_names},\ninner_loop: {inner_loop_names}"
-    )
+    pivots = []
 
-    data_prep_pivot(facts, data_prep_names)
+    dp_pivot = data_prep_pivot(facts, data_prep_names)
+    if dp_pivot is not None:
+        pivots.append((("projid", "tstamp", "vid"), dp_pivot))
+    ol_pivot = outer_loop_pivot(facts, outer_loop_names)
+    if ol_pivot is not None:
+        pivots.append((("projid", "tstamp", "vid", "epoch"), ol_pivot))
+    il_pivot = inner_loop_pivot(facts, inner_loop_names)
+    if il_pivot is not None:
+        pivots.append((("projid", "tstamp", "vid", "epoch", "step"), il_pivot))
+
+    if pivots:
+        left_keys, rolling_df = pivots[0]
+        for right_keys, right_df in pivots:
+            rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(left_keys))
+            left_keys = right_keys
+        return rolling_df
