@@ -89,4 +89,5 @@ def full_pivot(*args, **kwargs):
         for right_keys, right_df in pivots:
             rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(left_keys))
             left_keys = right_keys
-        return rolling_df
+        return rolling_df.drop_duplicates(subset=["projid", "tstamp", "vid", "epoch", "step"])
+        
