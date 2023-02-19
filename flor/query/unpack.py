@@ -33,6 +33,11 @@ def filtered_versions():
     return {"ALL": all_versions, "FLOR": flor_versions}
 
 
+def resolve_cache(cache_short_path):
+    assert cwd_shelf.in_shadow_branch()
+    return Path.home() / ".flor" / cwd_shelf.get_projid() / cache_short_path
+
+
 def unpack():
     """
     MAIN FUNCTION
