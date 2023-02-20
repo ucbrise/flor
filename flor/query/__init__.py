@@ -93,6 +93,21 @@ def full_pivot(*args, **kwargs):
         for right_keys, right_df in pivots[1:]:
             rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(left_keys))
             left_keys = right_keys
-        return rolling_df.drop_duplicates(
+        rolling_df = rolling_df.drop_duplicates(
             subset=["projid", "tstamp", "vid", "epoch", "step"]
+        )
+        keys = ["projid", "tstamp", "vid", "epoch", "step"]
+        keys.extend([c for c in rolling_df.columns if c not in keys])
+        return (
+            rolling_df[keys]
+            .astype(
+                {
+                    "projid": str,
+                    "tstamp": np.datetime64,
+                    "vid": str,
+                    "epoch": int,
+                    "step": int,
+                }
+            )
+            .sort_values(by=["tstamp", "epoch", "step"])
         )
