@@ -76,9 +76,13 @@ def full_pivot(*args, **kwargs):
 
     dp_pivot = data_prep_pivot(facts, data_prep_names)
     if dp_pivot is not None:
+        dp_pivot = dp_pivot[
+            [c for c in dp_pivot.columns if c != "epoch" and c != "step"]
+        ]
         pivots.append((("projid", "tstamp", "vid"), dp_pivot))
     ol_pivot = outer_loop_pivot(facts, outer_loop_names)
     if ol_pivot is not None:
+        ol_pivot = ol_pivot[[c for c in ol_pivot.columns if c != "step"]]
         pivots.append((("projid", "tstamp", "vid", "epoch"), ol_pivot))
     il_pivot = inner_loop_pivot(facts, inner_loop_names)
     if il_pivot is not None:
@@ -86,8 +90,9 @@ def full_pivot(*args, **kwargs):
 
     if pivots:
         left_keys, rolling_df = pivots[0]
-        for right_keys, right_df in pivots:
+        for right_keys, right_df in pivots[1:]:
             rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(left_keys))
             left_keys = right_keys
-        return rolling_df.drop_duplicates(subset=["projid", "tstamp", "vid", "epoch", "step"])
-        
+        return rolling_df.drop_duplicates(
+            subset=["projid", "tstamp", "vid", "epoch", "step"]
+        )
