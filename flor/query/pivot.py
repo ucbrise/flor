@@ -53,6 +53,9 @@ def inner_loop_pivot(df, inner_loop_names):
         pivot_value = df[df["name"] == il_name][
             ["projid", "tstamp", "vid", "epoch", "step", "value"]
         ]
+        pivot_value["step"] = pivot_value["step"].map(
+            lambda x: max(int(x), 0), na_action="ignore"
+        )
         pivot_f = pivot_value.rename(columns={"value": il_name})
         if rolling_dataframe is None:
             rolling_dataframe = pivot_f
