@@ -88,7 +88,8 @@ def apply(names: List[str], dst: str):
     assert len(hits) == len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
-    State.repo.git.checkout("--", fp)
+    assert State.active_branch is not None
+    State.repo.git.checkout(State.active_branch)
     print("wrote stash")
 
 
