@@ -3,7 +3,7 @@ from argparse import Namespace
 from os import PathLike
 from sys import stdout
 
-from flor.hlast.gtpropagate import propagate, LogLinesVisitor
+from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 
 _LVL = None
 
