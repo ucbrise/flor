@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# type: ignore
 
 from argparse import ArgumentParser, FileType, Namespace
 from ast import AST, Name, iter_fields, parse, unparse, walk, stmt, literal_eval
@@ -74,7 +75,7 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     if node in mapping:
         # ABORT
         edon = mapping[node]
-        
+
         original = block.pop(index)  # type: ignore
         original_s = deepcopy(original)
         original = pnv.visit(node, original)
