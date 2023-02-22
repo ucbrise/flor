@@ -19,6 +19,7 @@ def clear_stash():
     if stash.exists():
         shutil.rmtree(stash)
     stash.mkdir()
+    return stash
 
 
 def filtered_versions():

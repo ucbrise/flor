@@ -1,9 +1,14 @@
 import ast
 from argparse import Namespace
 from os import PathLike
+from shutil import copy2
+from pathlib import Path, PurePath
 from sys import stdout
+from typing import List
 
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
+from flor.state import State
+import flor.query as q
 
 _LVL = None
 
@@ -55,7 +60,33 @@ class StmtToPropVisitor(ast.NodeVisitor):
             super().generic_visit(node)
 
 
-__all__ = ["backprop"]
+def apply(names: List[str], dst: str):
+    fp = Path(dst)
+    facts = q.log_records() if q.facts is None else q.facts
+    # Get latest timestamp for each variable name
+    name2tstamp = (
+        facts[facts["name"].isin(names)][["name", "tstamp"]]
+        .groupby(by=["name"])
+        .max()
+        .reset_index()
+    )
+    name2vid = {
+        row["name"]: row["vid"]
+        for _, row in facts.merge(name2tstamp, how="inner")[["name", "vid"]]
+        .drop_duplicates()
+        .iterrows()
+    }
+    stash = q.clear_stash()
+    assert stash is not None
+    assert State.repo is not None
+    for n, v in name2vid.items():
+        State.repo.git.checkout(v, "--", dst)
+        copy2(dst, stash / PurePath(n).with_suffix(".py"))
+    State.repo.git.checkout(State.active_branch)
+    print("wrote stash")
+
+
+__all__ = ["backprop", "apply"]
 
 if __name__ == "__main__":
     backprop(78, "cases/train_rnn/now.py", "cases/train_rnn/before.py")

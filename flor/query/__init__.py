@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
 import numpy as np
-from flor.query.unpack import unpack, resolve_cache
+from flor.query.unpack import unpack, clear_stash, resolve_cache
 from pathlib import Path
 
 from flor.query.pivot import *
@@ -99,3 +99,6 @@ def full_pivot(*args, **kwargs):
         keys = ["projid", "tstamp", "vid", "epoch", "step"]
         keys.extend([c for c in rolling_df.columns if c not in keys])
         return rolling_df[keys].sort_values(by=["tstamp", "epoch", "step"])
+
+
+__all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
