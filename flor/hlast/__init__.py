@@ -4,11 +4,12 @@ from os import PathLike
 from shutil import copy2
 from pathlib import Path, PurePath
 from sys import stdout
-from typing import List
+from typing import List, Set
 
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
 import flor.query as q
+from .visitors import LoggedExpVisitor
 
 _LVL = None
 
@@ -64,25 +65,30 @@ def apply(names: List[str], dst: str):
     fp = Path(dst)
     facts = q.log_records() if q.facts is None else q.facts
     # Get latest timestamp for each variable name
-    name2tstamp = (
-        facts[facts["name"].isin(names)][["name", "tstamp"]]
-        .groupby(by=["name"])
-        .max()
-        .reset_index()
-    )
-    name2vid = {
-        row["name"]: row["vid"]
-        for _, row in facts.merge(name2tstamp, how="inner")[["name", "vid"]]
-        .drop_duplicates()
-        .iterrows()
-    }
+    valid_names = facts[facts["name"].isin(names)][["name", "tstamp", "vid", "value"]]
+    valid_names = valid_names[valid_names["value"].notna()]
+    name2tstamp = valid_names[["name", "tstamp", "vid"]].drop_duplicates()
+
     stash = q.clear_stash()
     assert stash is not None
     assert State.repo is not None
-    for n, v in name2vid.items():
-        State.repo.git.checkout(v, "--", dst)
-        copy2(dst, stash / PurePath(n).with_suffix(".py"))
-    State.repo.git.checkout(State.active_branch)
+    hits: Set[str] = set([])
+    for _, row in name2tstamp.iterrows():
+        if len(hits) == len(names):
+            break
+        n = row["name"]
+        v = row["vid"]
+        State.repo.git.checkout(v, "--", fp)
+        with open(fp, "r") as f:
+            lev = LoggedExpVisitor()
+            lev.visit(ast.parse(f.read()))
+        if n in lev.names:
+            hits.union(n)
+            copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
+    assert len(hits) == len(
+        names
+    ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
+    State.repo.git.checkout("--", fp)
     print("wrote stash")
 
 
