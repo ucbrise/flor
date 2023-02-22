@@ -91,6 +91,7 @@ def apply(names: List[str], dst: str):
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
     print("wrote stash")
+    # Next, from the stash you will apply each file to our main one
 
 
 __all__ = ["backprop", "apply"]

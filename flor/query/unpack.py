@@ -59,7 +59,7 @@ def unpack():
             except Exception as e:
                 print(e)
     finally:
-        r.git.checkout(active)
+        r.git.reset("--hard")
         return stash
 
 
