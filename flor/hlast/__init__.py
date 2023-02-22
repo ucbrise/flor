@@ -83,7 +83,7 @@ def apply(names: List[str], dst: str):
             lev = LoggedExpVisitor()
             lev.visit(ast.parse(f.read()))
         if n in lev.names:
-            hits = hits.union(n)
+            hits.add(n)
             copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
     assert len(hits) == len(
         names

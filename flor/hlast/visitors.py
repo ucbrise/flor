@@ -17,6 +17,6 @@ class LoggedExpVisitor(ast.NodeVisitor):
         if not pred:
             return self.generic_visit(node)
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
-            self.names = self.names.union(str(node.args[0].value))
+            self.names.add(str(node.args[0].value))
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
