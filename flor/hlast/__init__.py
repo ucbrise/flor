@@ -85,7 +85,8 @@ def apply(names: List[str], dst: str):
         if n in lev.names:
             hits.add(n)
             copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
-    State.repo.git.checkout("--", fp)
+    assert State.active_branch is not None
+    State.repo.git.reset("--hard")
     assert len(hits) == len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
