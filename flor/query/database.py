@@ -63,6 +63,15 @@ def update_watermark(projid: str, commitsha: str):
     State.db_conn.commit()
     cur.close()
 
+def get_watermark(projid: str):
+    assert State.db_conn is not None
+    cur = State.db_conn.cursor()
+    res = cur.execute("SELECT commitsha, projid FROM watermark WHERE projid = ?", (projid,)).fetchall()
+    if not res:
+        return None
+    c,p = res[0]
+    return str(c) 
+
 
 def get_log_records():
     assert State.db_conn is not None

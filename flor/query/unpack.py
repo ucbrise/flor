@@ -32,8 +32,11 @@ def filtered_versions():
     flor_versions = [
         version for version in all_versions if "::" in str(version.message)
     ]
+    record_versions = [
+        version for version in flor_versions if "RECORD::" in str(version.message)
+    ]
 
-    return {"ALL": all_versions, "FLOR": flor_versions}
+    return {"ALL": all_versions, "FLOR": flor_versions, "RECORD": record_versions}
 
 
 def resolve_cache(cache_short_path):
@@ -51,11 +54,15 @@ def unpack():
     r = State.repo
     assert r is not None
     database.start_db(cwd_shelf.get_projid())
-    wmrk = database.update_watermark(cwd_shelf.get_projid(), str(r.head.commit.hexsha))
+    wmrk = database.get_watermark(cwd_shelf.get_projid())
     active_branch = r.active_branch
     try:
         commits = filtered_versions()
-        for version in commits["ALL"]:
+        for i, version in enumerate(commits["RECORD"]):
+            if i == 0:
+                database.update_watermark(
+                    cwd_shelf.get_projid(), str(r.head.commit.hexsha)
+                )
             if version.hexsha == wmrk:
                 break
             try:
