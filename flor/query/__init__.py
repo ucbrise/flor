@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
 import numpy as np
-from flor.query.unpack import unpack, clear_stash, resolve_cache
+from flor.query.unpack import unpack, clear_stash
 from flor.query import database
 from pathlib import Path
 
@@ -16,10 +16,10 @@ def log_records():
         return facts
     unpack()
 
-    data = database.get_log_records()
     facts = (
         pd.DataFrame(
-            data, columns=["projid", "tstamp", "vid", "epoch", "step", "name", "value"]
+            database.get_log_records(),
+            columns=["projid", "tstamp", "vid", "epoch", "step", "name", "value"],
         )
         .astype(
             {
