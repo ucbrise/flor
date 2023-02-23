@@ -71,8 +71,6 @@ def apply(names: List[str], dst: str):
     grouped_names: Dict[str, int] = {}
 
     for _, row in name2tstamp.iterrows():
-        if len(hits) == len(names):
-            break
         n = row["name"]
         v = row["vid"]
         State.repo.git.checkout(v, "--", fp)
@@ -83,6 +81,8 @@ def apply(names: List[str], dst: str):
             grouped_names[n] = lev.names[n]
             hits.add(n)
             copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
+        if len(hits) == len(names):
+            break
     assert State.active_branch is not None
     State.repo.git.reset("--hard")
     assert len(hits) == len(
