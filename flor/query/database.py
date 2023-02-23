@@ -52,13 +52,14 @@ def update_watermark(projid: str, commitsha: str):
         "SELECT commitsha, projid FROM watermark WHERE projid = '{projid}'"
     ).fetchall()
     if res:
+        print(res)
         c, p = res[0]
         cur.execute(
-            "UPDATE log_records SET commitsha = ? WHERE projid = ?",
+            "UPDATE watermark SET commitsha = ? WHERE projid = ?",
             [(commitsha, projid)],
         )
         return str(c)
     else:
-        cur.execute("INSERT INTO log_records VALUES(?, ?)", [(projid, commitsha)])
+        cur.execute("INSERT INTO watermark VALUES(?, ?)", [(projid, commitsha)])
     State.db_conn.commit()
     cur.close()
