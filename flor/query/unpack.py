@@ -82,7 +82,7 @@ def cp_log_records(version):
             data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
             df = pd.DataFrame(data)
             df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
-            df.to_sql("log_records", con=State.db_conn, if_exists="append")
+            df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
     else:
         # Newer Versions, Non-Flor Versions
         replay_json = get_replay_json()
@@ -93,7 +93,7 @@ def cp_log_records(version):
                 data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
                 df = pd.DataFrame(data)
                 df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
-                df.to_sql("log_records", con=State.db_conn, if_exists="append")
+                df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
 
 
 def get_replay_json():
