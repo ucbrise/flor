@@ -1,6 +1,7 @@
 from flor.shelf import home_shelf, cwd_shelf
 from flor.constants import *
 from flor.logger import exp_json
+from flor.query.database import start_db
 
 import sys
 from typing import Dict, Optional, Tuple, Union
@@ -152,13 +153,15 @@ class Parser:
                         "Invalid argument passed to --replay_flor"
                         + "[weak | strong] [I/N]"
                     )
+            projid = cwd_shelf.get_projid()
             set_REPLAY(
                 str(exp_json.get("NAME")),
                 index=exp_json.get("MEMO"),
                 mode=mode,
                 pid=pid,
             )
-            home_shelf.set_job(cwd_shelf.get_projid())
+            home_shelf.set_job(projid)
+            start_db(projid)
 
     @staticmethod
     def parse():

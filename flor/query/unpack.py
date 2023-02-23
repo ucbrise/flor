@@ -48,7 +48,6 @@ def unpack():
 
     r = State.repo
     assert r is not None
-    active = r.active_branch  # check behavior
     try:
         commits = filtered_versions()
         for version in commits["ALL"]:
