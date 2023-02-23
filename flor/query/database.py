@@ -52,7 +52,6 @@ def update_watermark(projid: str, commitsha: str):
         "SELECT commitsha, projid FROM watermark WHERE projid = ?", (projid,)
     ).fetchall()
     if res:
-        print(res)
         c, p = res[0]
         cur.execute(
             "UPDATE watermark SET commitsha = ? WHERE projid = ?",

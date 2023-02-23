@@ -12,8 +12,9 @@ facts = None
 
 def log_records():
     global facts
-    if facts is None:
-        unpack()
+    if facts is not None:
+        return facts
+    unpack()
 
     data = database.get_log_records()
     facts = (
