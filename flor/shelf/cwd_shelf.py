@@ -48,14 +48,14 @@ def in_shadow_branch():
 
 @atexit.register
 def flush():
-    # This is the last flush
     path = home_shelf.close()
     try:
         log_records.flush()
     except Exception as e:
         print(e)
     if flags.NAME and in_shadow_branch():
-        exp_json.put("PROJID", get_projid())
+        projid = get_projid()
+        exp_json.put("PROJID", projid)
         exp_json.put("EPOCHS", State.epoch)
         exp_json.flush()
         repo = Repo(State.common_dir)
@@ -63,3 +63,5 @@ def flush():
         commit = repo.index.commit(
             f"{'REPLAY' if flags.REPLAY else 'RECORD'}::{flags.NAME}"
         )
+        if State.db_conn:
+            State.db_conn.close()

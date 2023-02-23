@@ -6,3 +6,4 @@ apted
 bidict
 pandas
 sh
+sqlite3

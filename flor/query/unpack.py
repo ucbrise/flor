@@ -4,6 +4,8 @@ from flor.shelf import cwd_shelf
 from flor.state import State
 from flor.constants import *
 
+from flor.query import database
+
 import os
 import shutil
 import json
@@ -19,6 +21,7 @@ def clear_stash():
     if stash.exists():
         shutil.rmtree(stash)
     stash.mkdir()
+    return stash
 
 
 def filtered_versions():
@@ -29,8 +32,11 @@ def filtered_versions():
     flor_versions = [
         version for version in all_versions if "::" in str(version.message)
     ]
+    record_versions = [
+        version for version in flor_versions if "RECORD::" in str(version.message)
+    ]
 
-    return {"ALL": all_versions, "FLOR": flor_versions}
+    return {"ALL": all_versions, "FLOR": flor_versions, "RECORD": record_versions}
 
 
 def resolve_cache(cache_short_path):
@@ -47,10 +53,16 @@ def unpack():
 
     r = State.repo
     assert r is not None
-    active = r.active_branch  # check behavior
+    database.start_db(cwd_shelf.get_projid())
+    wmrk = database.get_watermark(cwd_shelf.get_projid())
+    active_branch = r.active_branch
     try:
         commits = filtered_versions()
-        for version in commits["ALL"]:
+        for i, version in enumerate(commits["RECORD"]):
+            if i == 0:
+                database.update_watermark(cwd_shelf.get_projid(), str(version.hexsha))
+            if version.hexsha == wmrk:
+                break
             try:
                 print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
@@ -58,11 +70,11 @@ def unpack():
             except Exception as e:
                 print(e)
     finally:
-        r.git.checkout(active)
-        return stash
+        r.git.checkout(active_branch)
 
 
 def cp_log_records(version):
+    assert State.db_conn is not None
     hexsha, message = version.hexsha, version.message
     if PurePath(message).suffix == ".json":
         # Older  Versions
@@ -73,9 +85,9 @@ def cp_log_records(version):
         if replay_json is not None:
             lr_csv = get_log_records_csv()
             data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
-            pd.DataFrame(data).to_csv(
-                stash / tstamp_json.with_suffix(".csv"), index=False
-            )
+            df = pd.DataFrame(data)
+            df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
+            df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
     else:
         # Newer Versions, Non-Flor Versions
         replay_json = get_replay_json()
@@ -84,8 +96,10 @@ def cp_log_records(version):
             tstamp_json = get_tstamp_json(replay_json)
             if tstamp_json is not None:
                 data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
-                pd.DataFrame(data).to_csv(
-                    stash / tstamp_json.with_suffix(".csv"), index=False
+                df = pd.DataFrame(data)
+                df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
+                df.to_sql(
+                    "log_records", con=State.db_conn, if_exists="append", index=False
                 )
 
 

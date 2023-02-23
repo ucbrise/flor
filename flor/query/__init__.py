@@ -1,7 +1,8 @@
 import csv
 import pandas as pd
 import numpy as np
-from flor.query.unpack import unpack, resolve_cache
+from flor.query.unpack import unpack, clear_stash
+from flor.query import database
 from pathlib import Path
 
 from flor.query.pivot import *
@@ -9,22 +10,17 @@ from flor.query.pivot import *
 facts = None
 
 
-def log_records(cache_dir=None):
+def log_records():
     global facts
-    if cache_dir is None:
-        cache_dir = unpack()
-    assert cache_dir is not None
-    if isinstance(cache_dir, str):
-        cache_dir = resolve_cache(cache_dir)
-    assert isinstance(cache_dir, Path)
-    data = []
+    if facts is not None:
+        return facts
+    unpack()
 
-    for path in cache_dir.iterdir():
-        if path.suffix == ".csv":
-            with open(path, "r") as f:
-                data.extend(list(csv.DictReader(f)))
     facts = (
-        pd.DataFrame(data)
+        pd.DataFrame(
+            database.get_log_records(),
+            columns=["projid", "tstamp", "vid", "epoch", "step", "name", "value"],
+        )
         .astype(
             {
                 "projid": str,
@@ -41,10 +37,10 @@ def log_records(cache_dir=None):
     return facts
 
 
-def full_pivot(*args, **kwargs):
+def full_pivot():
     global facts
     if facts is None:
-        facts = log_records(*args, **kwargs)
+        facts = log_records()
 
     data_prep_names = set([])
     data_prep_gb = facts.groupby(by=["name", "vid"])
@@ -99,3 +95,6 @@ def full_pivot(*args, **kwargs):
         keys = ["projid", "tstamp", "vid", "epoch", "step"]
         keys.extend([c for c in rolling_df.columns if c not in keys])
         return rolling_df[keys].sort_values(by=["tstamp", "epoch", "step"])
+
+
+__all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
