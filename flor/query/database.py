@@ -49,7 +49,7 @@ def update_watermark(projid: str, commitsha: str):
     assert State.db_conn is not None
     cur = State.db_conn.cursor()
     res = cur.execute(
-        "SELECT commitsha, projid FROM watermark WHERE projid = '{projid}'"
+        "SELECT commitsha, projid FROM watermark WHERE projid = ?", (projid,)
     ).fetchall()
     if res:
         print(res)
@@ -63,3 +63,11 @@ def update_watermark(projid: str, commitsha: str):
         cur.execute("INSERT INTO watermark VALUES(?, ?)", (projid, commitsha))
     State.db_conn.commit()
     cur.close()
+
+
+def get_log_records():
+    assert State.db_conn is not None
+    cur = State.db_conn.cursor()
+    res = cur.execute("SELECT * FROM log_records").fetchall()
+    cur.close()
+    return res

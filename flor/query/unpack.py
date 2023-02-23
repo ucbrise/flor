@@ -66,7 +66,6 @@ def unpack():
                 print(e)
     finally:
         r.git.checkout(active_branch)
-        return stash
 
 
 def cp_log_records(version):
