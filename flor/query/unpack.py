@@ -52,6 +52,7 @@ def unpack():
     assert r is not None
     database.start_db(cwd_shelf.get_projid())
     wmrk = database.update_watermark(cwd_shelf.get_projid(), str(r.head.commit.hexsha))
+    active_branch = r.active_branch
     try:
         commits = filtered_versions()
         for version in commits["ALL"]:
@@ -64,7 +65,7 @@ def unpack():
             except Exception as e:
                 print(e)
     finally:
-        r.git.reset("--hard")
+        r.git.checkout(active_branch)
         return stash
 
 
@@ -93,7 +94,9 @@ def cp_log_records(version):
                 data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
                 df = pd.DataFrame(data)
                 df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
-                df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
+                df.to_sql(
+                    "log_records", con=State.db_conn, if_exists="append", index=False
+                )
 
 
 def get_replay_json():
