@@ -28,8 +28,7 @@ pip install pyflor
 FLOR expects a recent version of Python (3.7+) and PyTorch (1.0+).
 
 ```bash
-git branch flor.shadow
-git checkout flor.shadow
+git checkout -b flor.shadow
 python3 examples/linear.py --flor linear
 ```
 Run the ``linear.py`` script to test your installation. 
