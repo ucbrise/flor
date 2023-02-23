@@ -26,19 +26,32 @@ def init_db():
     """
     assert State.db_conn is not None
     cur = State.db_conn.cursor()
-    cur.executescript(
-        """
-    BEGIN;
-    CREATE TABLE watermark(projid text, commitsha text);
-    CREATE TABLE log_records(
-        projid text,
-        tstamp text,
-        vid text,
-        epoch integer,
-        step integer,
-        name text,
-        value text
-        );
-    COMMIT;
-    """
-    )
+    cur.executescript("""
+        BEGIN;
+        CREATE TABLE watermark(projid text, commitsha text);
+        CREATE TABLE log_records(
+            projid text,
+            tstamp text,
+            vid text,
+            epoch integer,
+            step integer,
+            name text,
+            value text
+            );
+        COMMIT;
+    """)
+    cur.close()
+
+
+def update_watermark(projid: str, commitsha: str):
+    assert State.db_conn is not None
+    cur = State.db_conn.cursor()
+    res = cur.execute("SELECT commitsha, projid FROM watermark WHERE projid = '{projid}'").fetchall()
+    if res:
+        c,p = res[0]
+        cur.execute("UPDATE log_records SET commitsha = ? WHERE projid = ?", [(commitsha, projid)])
+        return str(c)
+    else:
+        cur.execute("INSERT INTO log_records VALUES(?, ?)", [(projid, commitsha)])
+    cur.close()
+
