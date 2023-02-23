@@ -4,20 +4,15 @@ from os import PathLike
 from shutil import copy2
 from pathlib import Path, PurePath
 from sys import stdout
-from typing import List, Set
+from typing import Dict, List, Set
 
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
 import flor.query as q
 from .visitors import LoggedExpVisitor
 
-_LVL = None
-
 
 def backprop(lineno: int, source: str, target: str, out=None):
-    global _LVL
-    with open(source, "r") as src:
-        content = src.read()
     syntactic_prop(lineno, source, target, out)
 
 
@@ -73,16 +68,19 @@ def apply(names: List[str], dst: str):
     assert stash is not None
     assert State.repo is not None
     hits: Set[str] = set([])
+    grouped_names: Dict[str, int] = {}
+
     for _, row in name2tstamp.iterrows():
         if len(hits) == len(names):
             break
         n = row["name"]
         v = row["vid"]
         State.repo.git.checkout(v, "--", fp)
+        lev = LoggedExpVisitor()
         with open(fp, "r") as f:
-            lev = LoggedExpVisitor()
             lev.visit(ast.parse(f.read()))
         if n in lev.names:
+            grouped_names[n] = lev.names[n]
             hits.add(n)
             copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
     assert State.active_branch is not None
@@ -90,8 +88,13 @@ def apply(names: List[str], dst: str):
     assert len(hits) == len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
-    print("wrote stash")
+
     # Next, from the stash you will apply each file to our main one
+    for name in names:
+        lineno = int(grouped_names[name])
+        # lev possibly unbound
+        backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
+        print(f"Applied {name} to {dst}")
 
 
 __all__ = ["backprop", "apply"]

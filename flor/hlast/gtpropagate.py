@@ -16,7 +16,7 @@ from flor.hlast.gumtree import GumTree, Mapping, python
 
 
 def add_arguments(parser: ArgumentParser):
-    # parser.add_argument("lineno", type=int)
+    parser.add_argument("lineno", type=int)
     parser.add_argument("source", type=FileType("r"))
     parser.add_argument("target", type=FileType("r+"))
     parser.add_argument("--out", type=FileType("w"), default=sys.stdout)
@@ -31,15 +31,11 @@ def propagate(args: Namespace):
     args.target.close()
     args.out = open(args.out, "w")
 
-    llv = LogLinesVisitor()
-    llv.visit(tree)
-    fft = FlorFreeTransformer()
-    target = fft.visit(target)
-    for lineno in llv.linenos:
-        replicate(tree, find(tree, lineno=lineno), target, **args.gumtree)  # type: ignore
-        with open(args.source.name, "r") as f:
-            tree = parse(f.read())
-        print(f"injected logging stmt @ {lineno}")
+    # llv = LogLinesVisitor()
+    # llv.visit(tree)
+    # fft = FlorFreeTransformer()
+    # target = fft.visit(target)
+    replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)  # type: ignore
     print(unparse(target), file=args.out)
 
 
