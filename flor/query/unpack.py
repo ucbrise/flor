@@ -4,6 +4,8 @@ from flor.shelf import cwd_shelf
 from flor.state import State
 from flor.constants import *
 
+from flor.query import database
+
 import os
 import shutil
 import json
@@ -48,9 +50,13 @@ def unpack():
 
     r = State.repo
     assert r is not None
+    database.start_db(cwd_shelf.get_projid())
+    wmrk = database.update_watermark(cwd_shelf.get_projid(), str(r.head.commit.hexsha))
     try:
         commits = filtered_versions()
         for version in commits["ALL"]:
+            if version.hexsha == wmrk:
+                break
             try:
                 print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
@@ -63,6 +69,7 @@ def unpack():
 
 
 def cp_log_records(version):
+    assert State.db_conn is not None
     hexsha, message = version.hexsha, version.message
     if PurePath(message).suffix == ".json":
         # Older  Versions
@@ -73,9 +80,9 @@ def cp_log_records(version):
         if replay_json is not None:
             lr_csv = get_log_records_csv()
             data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
-            pd.DataFrame(data).to_csv(
-                stash / tstamp_json.with_suffix(".csv"), index=False
-            )
+            df = pd.DataFrame(data)
+            df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
+            df.to_sql("log_records", con=State.db_conn, if_exists="append")
     else:
         # Newer Versions, Non-Flor Versions
         replay_json = get_replay_json()
@@ -84,9 +91,9 @@ def cp_log_records(version):
             tstamp_json = get_tstamp_json(replay_json)
             if tstamp_json is not None:
                 data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
-                pd.DataFrame(data).to_csv(
-                    stash / tstamp_json.with_suffix(".csv"), index=False
-                )
+                df = pd.DataFrame(data)
+                df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
+                df.to_sql("log_records", con=State.db_conn, if_exists="append")
 
 
 def get_replay_json():
