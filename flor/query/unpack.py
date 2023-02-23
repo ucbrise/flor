@@ -60,9 +60,7 @@ def unpack():
         commits = filtered_versions()
         for i, version in enumerate(commits["RECORD"]):
             if i == 0:
-                database.update_watermark(
-                    cwd_shelf.get_projid(), str(r.head.commit.hexsha)
-                )
+                database.update_watermark(cwd_shelf.get_projid(), str(version.hexsha))
             if version.hexsha == wmrk:
                 break
             try:
