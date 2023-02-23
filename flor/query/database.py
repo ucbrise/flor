@@ -32,7 +32,7 @@ def init_db():
         CREATE TABLE log_records(
             projid text,
             tstamp text,
-            vid text,
+            vid text, 
             epoch integer,
             step integer,
             name text,
@@ -53,5 +53,6 @@ def update_watermark(projid: str, commitsha: str):
         return str(c)
     else:
         cur.execute("INSERT INTO log_records VALUES(?, ?)", [(projid, commitsha)])
+    State.db_conn.commit()
     cur.close()
 
