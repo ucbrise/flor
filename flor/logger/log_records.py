@@ -1,5 +1,6 @@
 from flor.state import State
 from flor.constants import LOG_RECORDS
+from flor import flags
 from typing import Optional, List, Dict, Any
 
 
@@ -26,14 +27,33 @@ def put(name, value):
     }
     record_logs.append(d)
 
+def put_dp(name, value):
+    d = {
+        "epoch": -1,
+        "step": -1,
+        "name": name,
+        "value": value,
+    }
+    record_logs.append(d)
 
 def get(name):
     return [d for d in replay_logs if d["name"] == name]
 
 
-def flush():
-    if record_logs:
-        pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
+def flush(projid: str):
+    if flags.NAME and not flags.REPLAY:
+        if record_logs:
+            pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
+    elif flags.NAME and flags.REPLAY:
+        assert State.repo is not None
+        assert State.db_conn is not None
+        if record_logs:
+            df = pd.DataFrame(record_logs)
+            df["projid"] = projid
+            df["vid"] = str(State.repo.head.commit.hexsha)
+            df[["projid", "vid", "epoch", "step", "name", "value"]].to_sql(
+                "log_records", con=State.db_conn, if_exists="append", index=False
+            )
 
 
 def exists():

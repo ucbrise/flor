@@ -50,18 +50,19 @@ def in_shadow_branch():
 def flush():
     path = home_shelf.close()
     try:
-        log_records.flush()
+        if flags.NAME and in_shadow_branch() and flags.REPLAY:
+            for k in [k for k in exp_json.record_d if not k.isupper()]:
+                log_records.put_dp(k, exp_json.record_d[k])
+        log_records.flush(get_projid())
     except Exception as e:
         print(e)
-    if flags.NAME and in_shadow_branch():
+    if flags.NAME and in_shadow_branch() and not flags.REPLAY:
         projid = get_projid()
         exp_json.put("PROJID", projid)
         exp_json.put("EPOCHS", State.epoch)
         exp_json.flush()
         repo = Repo(State.common_dir)
         repo.git.add("-A")
-        commit = repo.index.commit(
-            f"{'REPLAY' if flags.REPLAY else 'RECORD'}::{flags.NAME}"
-        )
-        if State.db_conn:
-            State.db_conn.close()
+        repo.index.commit(f"RECORD::{flags.NAME}")
+    if State.db_conn:
+        State.db_conn.close()
