@@ -27,7 +27,7 @@ class MTK:
         try:
             State.loop_nesting_level += 1
             assert State.loop_nesting_level >= 1
-            static_id = f"""{'outer loop' if State.loop_nesting_level == 1 else 'nested loop'}.{stack()[1].lineno}"""
+            static_id = f"""{'outer loop' if State.loop_nesting_level == 1 else 'nested loop'}"""
             name = str(static_id) if name is None else name
             if State.loop_nesting_level == 1:
                 # Outer loop
