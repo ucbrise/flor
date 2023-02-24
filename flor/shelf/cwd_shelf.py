@@ -53,7 +53,7 @@ def flush():
         if flags.NAME and in_shadow_branch() and flags.REPLAY:
             for k in [k for k in exp_json.record_d if not k.isupper()]:
                 log_records.put_dp(k, exp_json.record_d[k])
-        log_records.flush(get_projid())
+        log_records.flush(get_projid(), str(exp_json.get("TSTAMP")))
     except Exception as e:
         print(e)
     if flags.NAME and in_shadow_branch() and not flags.REPLAY:

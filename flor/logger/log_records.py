@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 import csv
 import pandas as pd
-from pathlib import Path
+from pathlib import Path, PurePath
 
 replay_logs: List[Dict[str, Any]] = []
 record_logs: List[Dict[str, Any]] = []
@@ -40,7 +40,7 @@ def get(name):
     return [d for d in replay_logs if d["name"] == name]
 
 
-def flush(projid: str):
+def flush(projid: str, tstamp: str):
     if flags.NAME and not flags.REPLAY:
         if record_logs:
             pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
@@ -50,6 +50,7 @@ def flush(projid: str):
         if record_logs:
             df = pd.DataFrame(record_logs)
             df["projid"] = projid
+            df["tstamp"] = PurePath(tstamp).stem
             df["vid"] = str(State.repo.head.commit.hexsha)
             df[["projid", "vid", "epoch", "step", "name", "value"]].to_sql(
                 "log_records", con=State.db_conn, if_exists="append", index=False
