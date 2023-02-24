@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ucbrise/flor",
     packages=setuptools.find_packages(),
-    install_requires=["GitPython", "cloudpickle", "astunparse", "pandas", "sqlite3", "bidict"],
+    install_requires=["GitPython", "cloudpickle", "astunparse", "pandas", "bidict"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
