@@ -65,4 +65,5 @@ def flush():
         repo.git.add("-A")
         repo.index.commit(f"RECORD::{flags.NAME}")
     if State.db_conn:
+        State.db_conn.commit()
         State.db_conn.close()
