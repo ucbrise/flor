@@ -37,7 +37,14 @@ def in_shadow_branch():
             try:
                 State.active_branch = str(r.active_branch)
             except TypeError:
-                State.active_branch = r.head.commit.hexsha
+                bs = State.repo.git.branch(
+                    "--contains", str(State.repo.head.commit.hexsha)
+                ).split("\n")
+                branches = [e for e in bs if 'flor.shadow' in bs]
+                if len(branches) == 1:
+                    State.active_branch = branches.pop()
+                else:
+                    raise NotImplementedError()
         cond = check_branch_cond()
         if cond:
             PATH.mkdir(exist_ok=True)
