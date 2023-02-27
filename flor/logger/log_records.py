@@ -50,7 +50,6 @@ def flush(projid: str, tstamp: str):
     elif flags.NAME and flags.REPLAY:
         assert State.repo is not None
         assert State.db_conn is not None
-        State.db_conn.commit()
         if record_logs:
             df = pd.DataFrame(record_logs)
             df.insert(0, "vid", str(State.repo.head.commit.hexsha))
