@@ -19,6 +19,7 @@ def log_records(skip_unpack=False):
         unpack()
     else:
         # do unpack initialize
+        assert cwd_shelf.in_shadow_branch()
         database.start_db(cwd_shelf.get_projid())
 
     facts = (
