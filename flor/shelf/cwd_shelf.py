@@ -35,7 +35,7 @@ def in_shadow_branch():
             r = Repo()
             State.repo = r
             State.active_branch = str(r.active_branch)
-        cond = check_branch_cond
+        cond = check_branch_cond()
         if cond:
             PATH.mkdir(exist_ok=True)
             get_projid()
