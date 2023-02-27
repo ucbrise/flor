@@ -48,11 +48,10 @@ def unpack():
     """
     MAIN FUNCTION
     """
-    assert cwd_shelf.in_shadow_branch()
-    clear_stash()
-
     r = State.repo
     assert r is not None
+    assert cwd_shelf.in_shadow_branch()
+    clear_stash()
     database.start_db(cwd_shelf.get_projid())
     wmrk = database.get_watermark(cwd_shelf.get_projid())
     active_branch = r.active_branch

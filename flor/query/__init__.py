@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from flor.query.unpack import unpack, clear_stash
 from flor.query import database
+from flor.shelf import cwd_shelf
 from pathlib import Path
 
 from flor.query.pivot import *
@@ -14,10 +15,7 @@ def log_records():
     global facts
     if facts is not None:
         return facts
-    try:
-        unpack()
-    except TypeError:
-        assert database.exists()
+    unpack()
 
     facts = (
         pd.DataFrame(

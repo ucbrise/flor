@@ -35,15 +35,23 @@ def in_shadow_branch():
             r = Repo()
             State.repo = r
             State.active_branch = str(r.active_branch)
-        cond = (
-            SHADOW_BRANCH_PREFIX == State.active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
-        )
+        cond = check_branch_cond
         if cond:
             PATH.mkdir(exist_ok=True)
             get_projid()
         return cond
     except InvalidGitRepositoryError:
         return False
+
+
+def check_branch_cond():
+    if State.repo is not None:
+        return "RECORD::" in str(
+            State.repo.head.commit.message
+        ) and "flor.shadow" in State.repo.git.branch(
+            "--contains", str(State.repo.head.commit.hexsha)
+        )
+    return False
 
 
 @atexit.register
