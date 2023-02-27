@@ -11,11 +11,12 @@ from flor.query.pivot import *
 facts = None
 
 
-def log_records():
+def log_records(skip_unpack=False):
     global facts
     if facts is not None:
         return facts
-    unpack()
+    if not skip_unpack:
+        unpack()
 
     facts = (
         pd.DataFrame(

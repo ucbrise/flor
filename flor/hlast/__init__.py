@@ -58,7 +58,7 @@ class StmtToPropVisitor(ast.NodeVisitor):
 
 def apply(names: List[str], dst: str):
     fp = Path(dst)
-    facts = q.log_records() if q.facts is None else q.facts
+    facts = q.log_records(skip_unpack=True) if q.facts is None else q.facts
     # Get latest timestamp for each variable name
     valid_names = facts[facts["name"].isin(names)][["name", "tstamp", "vid", "value"]]
     valid_names = valid_names[valid_names["value"].notna()]
@@ -84,8 +84,6 @@ def apply(names: List[str], dst: str):
             copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
         if len(hits) == len(names):
             break
-    assert State.active_branch is not None
-    State.repo.git.reset("--hard")
     copyfile(stash / fp, fp)
     assert len(hits) == len(
         names
