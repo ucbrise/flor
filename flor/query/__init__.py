@@ -78,13 +78,9 @@ def full_pivot():
 
     dp_pivot = data_prep_pivot(facts, data_prep_names)
     if dp_pivot is not None:
-        dp_pivot = dp_pivot[
-            [c for c in dp_pivot.columns if c != "epoch" and c != "step"]
-        ]
         pivots.append((("projid", "tstamp", "vid"), dp_pivot))
     ol_pivot = outer_loop_pivot(facts, outer_loop_names)
     if ol_pivot is not None:
-        ol_pivot = ol_pivot[[c for c in ol_pivot.columns if c != "step"]]
         pivots.append((("projid", "tstamp", "vid", "epoch"), ol_pivot))
     il_pivot = inner_loop_pivot(facts, inner_loop_names)
     if il_pivot is not None:
@@ -95,12 +91,8 @@ def full_pivot():
         for right_keys, right_df in pivots[1:]:
             rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(left_keys))
             left_keys = right_keys
-        rolling_df = rolling_df.drop_duplicates(
-            subset=["projid", "tstamp", "vid", "epoch", "step"]
-        )
-        keys = ["projid", "tstamp", "vid", "epoch", "step"]
-        keys.extend([c for c in rolling_df.columns if c not in keys])
-        return rolling_df[keys].sort_values(by=["tstamp", "epoch", "step"])
+        left_keys.extend([c for c in rolling_df.columns if c not in left_keys])
+        return rolling_df[left_keys].sort_values(by=["tstamp", "epoch", "step"])
 
 
 __all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
