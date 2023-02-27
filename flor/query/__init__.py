@@ -46,7 +46,7 @@ def log_records(skip_unpack=False):
 def full_pivot():
     global facts
     if facts is None:
-        facts = log_records()
+        facts = log_records(skip_unpack=True)
 
     data_prep_names = set([])
     data_prep_gb = facts.groupby(by=["name", "vid"])
