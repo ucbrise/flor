@@ -34,7 +34,10 @@ def in_shadow_branch():
         if State.active_branch is None:
             r = Repo()
             State.repo = r
-            State.active_branch = str(r.active_branch)
+            try:
+                State.active_branch = str(r.active_branch)
+            except TypeError:
+                State.active_branch = r.head.commit.hexsha
         cond = check_branch_cond()
         if cond:
             PATH.mkdir(exist_ok=True)
