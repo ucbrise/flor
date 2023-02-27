@@ -3,6 +3,7 @@ from flor.constants import LOG_RECORDS
 from flor import flags
 from typing import Optional, List, Dict, Any
 
+from flor.query import database
 
 import csv
 import pandas as pd
@@ -43,20 +44,17 @@ def get(name):
 
 
 def flush(projid: str, tstamp: str):
-    print(f"flushing log records {projid}, {tstamp}")
+    # TODO: Possible place for debugging
     if flags.NAME and not flags.REPLAY:
         if record_logs:
             pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
     elif flags.NAME and flags.REPLAY:
         assert State.repo is not None
-        assert State.db_conn is not None
-        if record_logs:
-            df = pd.DataFrame(record_logs)
-            df.insert(0, "vid", str(State.repo.head.commit.hexsha))
-            df.insert(0, "tstamp", str(PurePath(tstamp).stem))
-            df.insert(0, "projid", projid)
-            df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
-            State.db_conn.commit()
+        for rlg in record_logs:
+            rlg["vid"] = str(State.repo.head.commit.hexsha)
+            rlg["tstamp"] = str(PurePath(tstamp).stem)
+            rlg["projid"] = projid
+        database.write_log_records(record_logs)
 
 
 def exists():

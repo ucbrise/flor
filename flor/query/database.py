@@ -89,3 +89,27 @@ def get_log_records():
     res = cur.execute("SELECT * FROM log_records").fetchall()
     cur.close()
     return res
+
+
+def write_log_records(list_of_dicts):
+    assert State.db_conn is not None
+    cur = State.db_conn.cursor()
+
+    cur.executemany(
+        "INSERT INTO log_records VALUES(?, ?, ?, ?, ?, ?, ?)",
+        [
+            (
+                d["projid"],
+                d["tstamp"],
+                d["vid"],
+                d["epoch"],
+                d["step"],
+                d["name"],
+                d["value"],
+            )
+            for d in list_of_dicts
+        ],
+    )
+    State.db_conn.commit()
+    print("Flor wrote log records to SqliteDB")
+    cur.close()
