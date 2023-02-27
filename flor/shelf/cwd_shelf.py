@@ -40,7 +40,7 @@ def in_shadow_branch():
                 bs = State.repo.git.branch(
                     "--contains", str(State.repo.head.commit.hexsha)
                 ).split("\n")
-                branches = [e.strip() for e in bs if 'flor.shadow' in e]
+                branches = [e.strip() for e in bs if "flor.shadow" in e]
                 if len(branches) == 1:
                     State.active_branch = branches.pop()
                 else:
@@ -58,7 +58,7 @@ def check_branch_cond():
     if State.repo is not None:
         return "RECORD::" in str(
             State.repo.head.commit.message
-        ) and "flor.shadow" in State.repo.git.branch(
+        ) or "flor.shadow" in State.repo.git.branch(
             "--contains", str(State.repo.head.commit.hexsha)
         )
     return False
