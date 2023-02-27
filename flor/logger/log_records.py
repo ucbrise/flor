@@ -56,6 +56,7 @@ def flush(projid: str, tstamp: str):
             df.insert(0, "tstamp", str(PurePath(tstamp).stem))
             df.insert(0, "projid", projid)
             df.to_sql("log_records", con=State.db_conn, if_exists="append", index=False)
+            State.db_conn.commit()
 
 
 def exists():
