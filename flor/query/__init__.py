@@ -17,6 +17,9 @@ def log_records(skip_unpack=False):
         return facts
     if not skip_unpack:
         unpack()
+    else:
+        # do unpack initialize
+        database.start_db(cwd_shelf.get_projid())
 
     facts = (
         pd.DataFrame(
