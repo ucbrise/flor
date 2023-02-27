@@ -1,7 +1,7 @@
 import ast
 from argparse import Namespace
 from os import PathLike
-from shutil import copy2
+from shutil import copyfile
 from pathlib import Path, PurePath
 from sys import stdout
 from typing import Dict, List, Set
@@ -67,6 +67,7 @@ def apply(names: List[str], dst: str):
     stash = q.clear_stash()
     assert stash is not None
     assert State.repo is not None
+    copyfile(fp, stash / fp)
     hits: Set[str] = set([])
     grouped_names: Dict[str, int] = {}
 
@@ -80,11 +81,12 @@ def apply(names: List[str], dst: str):
         if n in lev.names:
             grouped_names[n] = lev.names[n]
             hits.add(n)
-            copy2(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
+            copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
         if len(hits) == len(names):
             break
     assert State.active_branch is not None
     State.repo.git.reset("--hard")
+    copyfile(stash / fp, fp)
     assert len(hits) == len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"

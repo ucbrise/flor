@@ -14,7 +14,10 @@ def log_records():
     global facts
     if facts is not None:
         return facts
-    unpack()
+    try:
+        unpack()
+    except TypeError:
+        assert database.exists()
 
     facts = (
         pd.DataFrame(
