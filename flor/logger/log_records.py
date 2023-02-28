@@ -51,9 +51,15 @@ def flush(projid: str, tstamp: str):
     elif flags.NAME and flags.REPLAY:
         assert State.repo is not None
         for rlg in record_logs:
-            rlg["vid"] = str(State.repo.head.commit.hexsha)
             rlg["tstamp"] = str(PurePath(tstamp).stem)
             rlg["projid"] = projid
+            for version in State.repo.iter_commits():
+                if "RECORD::" in str(version.message):
+                    rlg["vid"] = str(version.hexsha)
+                    break
+            assert (
+                "vid" in rlg
+            ), "Failed to find a recent FLOR commit, are you calling from a flor.shadow branch?"
         database.write_log_records(record_logs)
 
 
