@@ -55,7 +55,7 @@ def unpack():
     assert r is not None
     database.start_db(cwd_shelf.get_projid())
     wmrk = database.get_watermark(cwd_shelf.get_projid())
-    active_branch = r.active_branch
+    active_branch = State.active_branch
     try:
         commits = filtered_versions()
         for i, version in enumerate(commits["RECORD"]):

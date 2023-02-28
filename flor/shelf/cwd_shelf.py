@@ -34,10 +34,18 @@ def in_shadow_branch():
         if State.active_branch is None:
             r = Repo()
             State.repo = r
-            State.active_branch = str(r.active_branch)
-        cond = (
-            SHADOW_BRANCH_PREFIX == State.active_branch[0 : len(SHADOW_BRANCH_PREFIX)]
-        )
+            try:
+                State.active_branch = str(r.active_branch)
+            except TypeError:
+                bs = State.repo.git.branch(
+                    "--contains", str(State.repo.head.commit.hexsha)
+                ).split("\n")
+                branches = [e.strip() for e in bs if "flor.shadow" in e]
+                if len(branches) == 1:
+                    State.active_branch = branches.pop()
+                else:
+                    raise NotImplementedError()
+        cond = check_branch_cond()
         if cond:
             PATH.mkdir(exist_ok=True)
             get_projid()
@@ -46,22 +54,34 @@ def in_shadow_branch():
         return False
 
 
+def check_branch_cond():
+    if State.repo is not None:
+        return "RECORD::" in str(
+            State.repo.head.commit.message
+        ) or "flor.shadow" in State.repo.git.branch(
+            "--contains", str(State.repo.head.commit.hexsha)
+        )
+    return False
+
+
 @atexit.register
 def flush():
     path = home_shelf.close()
     try:
-        log_records.flush()
+        if flags.NAME and in_shadow_branch() and flags.REPLAY:
+            for k in [k for k in exp_json.record_d if not k.isupper()]:
+                log_records.put_dp(k, exp_json.record_d[k])
+        log_records.flush(get_projid(), str(exp_json.get("TSTAMP")))
     except Exception as e:
         print(e)
-    if flags.NAME and in_shadow_branch():
+    if flags.NAME and in_shadow_branch() and not flags.REPLAY:
         projid = get_projid()
         exp_json.put("PROJID", projid)
         exp_json.put("EPOCHS", State.epoch)
         exp_json.flush()
         repo = Repo(State.common_dir)
         repo.git.add("-A")
-        commit = repo.index.commit(
-            f"{'REPLAY' if flags.REPLAY else 'RECORD'}::{flags.NAME}"
-        )
-        if State.db_conn:
-            State.db_conn.close()
+        repo.index.commit(f"RECORD::{flags.NAME}")
+    if State.db_conn:
+        State.db_conn.commit()
+        State.db_conn.close()

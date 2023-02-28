@@ -3,17 +3,13 @@ def data_prep_pivot(df, data_prep_names):
     for dpname in data_prep_names:
         if dpname == "tstamp":
             continue  # Avoiding redundant columns
-        pivot_value = df[df["name"] == dpname][
-            ["projid", "tstamp", "vid", "epoch", "step", "value"]
-        ]
+        pivot_value = df[df["name"] == dpname][["projid", "tstamp", "vid", "value"]]
         pivot_f = pivot_value.rename(columns={"value": dpname})
-        pivot_f["epoch"] = -1
-        pivot_f["step"] = -1
         if rolling_dataframe is None:
             rolling_dataframe = pivot_f
         else:
             rolling_dataframe = rolling_dataframe.merge(
-                pivot_f, how="outer", on=["projid", "tstamp", "vid", "epoch", "step"]
+                pivot_f, how="outer", on=["projid", "tstamp", "vid"]
             )
     if rolling_dataframe is not None:
         rolling_dataframe = rolling_dataframe.drop_duplicates(
@@ -28,15 +24,14 @@ def outer_loop_pivot(df, outer_loop_names):
         if ol_name == "tstamp":
             continue  # Avoiding redundant columns
         pivot_value = df[df["name"] == ol_name][
-            ["projid", "tstamp", "vid", "epoch", "step", "value"]
+            ["projid", "tstamp", "vid", "epoch", "value"]
         ]
         pivot_f = pivot_value.rename(columns={"value": ol_name})
-        pivot_f["step"] = -1
         if rolling_dataframe is None:
             rolling_dataframe = pivot_f
         else:
             rolling_dataframe = rolling_dataframe.merge(
-                pivot_f, how="outer", on=["projid", "tstamp", "vid", "epoch", "step"]
+                pivot_f, how="outer", on=["projid", "tstamp", "vid", "epoch"]
             )
     if rolling_dataframe is not None:
         rolling_dataframe = rolling_dataframe.drop_duplicates(
