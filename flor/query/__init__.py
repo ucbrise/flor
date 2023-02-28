@@ -90,20 +90,20 @@ def full_pivot():
             [k for k in df_keys if k in ("tstamp", "epoch", "step")]
         )
 
-    if dp_pivot and ol_pivot:
+    if dp_pivot is not None and ol_pivot is not None:
         dp_ol = dp_pivot.merge(ol_pivot, how="outer", on=dp_keys)
         if il_pivot:
             return post_proc(dp_ol.merge(il_pivot, how="outer", on=ol_keys), all_keys)
         return post_proc(dp_ol, ol_keys)
-    elif dp_pivot and il_pivot:
+    elif dp_pivot is not None and il_pivot is not None:
         return post_proc(dp_pivot.merge(il_pivot, how="outer", on=dp_keys), all_keys)
-    elif ol_pivot and il_pivot:
+    elif ol_pivot is not None and il_pivot is not None:
         return post_proc(ol_pivot.merge(il_pivot, how="outer", on=ol_keys), all_keys)
-    elif dp_pivot:
+    elif dp_pivot is not None:
         return post_proc(dp_pivot, dp_keys)
-    elif ol_pivot:
+    elif ol_pivot is not None:
         return post_proc(ol_pivot, ol_keys)
-    elif il_pivot:
+    elif il_pivot is not None:
         return post_proc(il_pivot, all_keys)
 
 
