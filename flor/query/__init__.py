@@ -108,13 +108,3 @@ def full_pivot():
 
 
 __all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
-
-
-# if pivots:
-#     left_keys, rolling_df = pivots[0]
-#     for right_keys, right_df in pivots[1:]:
-#         rolling_df = rolling_df.merge(right_df, how="cross", on=tuple(left_keys))
-#         left_keys = right_keys
-#     left_keys = list(left_keys)
-#     left_keys.extend([c for c in rolling_df.columns if c not in left_keys])
-#     return rolling_df[left_keys].sort_values(by=["tstamp", "epoch", "step"])
