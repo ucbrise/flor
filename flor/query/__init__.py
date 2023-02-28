@@ -92,7 +92,7 @@ def full_pivot():
 
     if dp_pivot is not None and ol_pivot is not None:
         dp_ol = dp_pivot.merge(ol_pivot, how="outer", on=dp_keys)
-        if il_pivot:
+        if il_pivot is not None:
             return post_proc(dp_ol.merge(il_pivot, how="outer", on=ol_keys), all_keys)
         return post_proc(dp_ol, ol_keys)
     elif dp_pivot is not None and il_pivot is not None:
