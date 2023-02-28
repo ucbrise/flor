@@ -83,22 +83,28 @@ def full_pivot():
     all_keys = ol_keys + ("step",)
     il_pivot = inner_loop_pivot(facts, inner_loop_names)
 
+    def post_proc(df, df_keys):
+        df_keys = list(df_keys)
+        df_keys.extend([c for c in df.columns if c not in df_keys])
+        return df[df_keys].sort_values(
+            [k for k in df_keys if k in ("tstamp", "epoch", "step")]
+        )
+
     if dp_pivot and ol_pivot:
-        # join dp, ol
+        dp_ol = dp_pivot.merge(ol_pivot, how="outer", on=dp_keys)
         if il_pivot:
-            # join (join dp, ol), il
-            return "dp_ol_il"
-        return "dp_ol"
+            return post_proc(dp_ol.merge(il_pivot, how="outer", on=ol_keys), all_keys)
+        return post_proc(dp_ol, ol_keys)
     elif dp_pivot and il_pivot:
-        return "dp_il"
+        return post_proc(dp_pivot.merge(il_pivot, how="outer", on=dp_keys), all_keys)
     elif ol_pivot and il_pivot:
-        return "ol_il"
+        return post_proc(ol_pivot.merge(il_pivot, how="outer", on=ol_keys), all_keys)
     elif dp_pivot:
-        return dp_pivot
+        return post_proc(dp_pivot, dp_keys)
     elif ol_pivot:
-        return ol_pivot
+        return post_proc(ol_pivot, ol_keys)
     elif il_pivot:
-        return il_pivot
+        return post_proc(il_pivot, all_keys)
 
 
 __all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
