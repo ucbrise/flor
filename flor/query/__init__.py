@@ -74,26 +74,41 @@ def full_pivot():
         ]
     )
 
-    pivots = []
-
+    dp_keys = ("projid", "tstamp", "vid")
     dp_pivot = data_prep_pivot(facts, data_prep_names)
-    if dp_pivot is not None:
-        pivots.append((("projid", "tstamp", "vid"), dp_pivot))
-    ol_pivot = outer_loop_pivot(facts, outer_loop_names)
-    if ol_pivot is not None:
-        pivots.append((("projid", "tstamp", "vid", "epoch"), ol_pivot))
-    il_pivot = inner_loop_pivot(facts, inner_loop_names)
-    if il_pivot is not None:
-        pivots.append((("projid", "tstamp", "vid", "epoch", "step"), il_pivot))
 
-    if pivots:
-        left_keys, rolling_df = pivots[0]
-        for right_keys, right_df in pivots[1:]:
-            rolling_df = rolling_df.merge(right_df, how="outer", on=tuple(right_keys))
-            left_keys = right_keys
-        left_keys = list(left_keys)
-        left_keys.extend([c for c in rolling_df.columns if c not in left_keys])
-        return rolling_df[left_keys].sort_values(by=["tstamp", "epoch", "step"])
+    ol_keys = dp_keys + ("epoch",)
+    ol_pivot = outer_loop_pivot(facts, outer_loop_names)
+
+    all_keys = ol_keys + ("step",)
+    il_pivot = inner_loop_pivot(facts, inner_loop_names)
+
+    if dp_pivot and ol_pivot:
+        # join dp, ol
+        if il_pivot:
+            # join (join dp, ol), il
+            return "dp_ol_il"
+        return "dp_ol"
+    elif dp_pivot and il_pivot:
+        return "dp_il"
+    elif ol_pivot and il_pivot:
+        return "ol_il"
+    elif dp_pivot:
+        return dp_pivot
+    elif ol_pivot:
+        return ol_pivot
+    elif il_pivot:
+        return il_pivot
 
 
 __all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
+
+
+# if pivots:
+#     left_keys, rolling_df = pivots[0]
+#     for right_keys, right_df in pivots[1:]:
+#         rolling_df = rolling_df.merge(right_df, how="cross", on=tuple(left_keys))
+#         left_keys = right_keys
+#     left_keys = list(left_keys)
+#     left_keys.extend([c for c in rolling_df.columns if c not in left_keys])
+#     return rolling_df[left_keys].sort_values(by=["tstamp", "epoch", "step"])
