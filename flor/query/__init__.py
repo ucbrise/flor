@@ -1,4 +1,5 @@
 import csv
+from typing import List
 import pandas as pd
 import numpy as np
 from flor.query.unpack import unpack, clear_stash
@@ -107,4 +108,19 @@ def full_pivot():
         return post_proc(il_pivot, all_keys)
 
 
-__all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
+def replay(logged_vars: List[str], path: str, where_clause: str):
+    """
+    logged_vars : ['device', 'optimizer', 'learning_rate', ...]
+    path: `train_rnn.py` or such denoting main python script
+    where_clause: stated in Pandas/SQL, passed to full_pivot
+    """
+    pass
+
+
+__all__ = [
+    "facts",
+    "log_records",
+    "full_pivot",
+    "clear_stash",
+    "replay"
+]
