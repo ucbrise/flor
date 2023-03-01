@@ -7,6 +7,14 @@ SHADOW_BRANCH_PREFIX = "flor.shadow"
 LOG_RECORDS = Path(".flor") / "log_records.csv"
 REPLAY_JSON = Path(".flor") / ".replay.json"
 
+DATA_PREP = (
+    "projid",
+    "tstamp",
+    "vid",
+)
+OUTR_LOOP = DATA_PREP + ("epoch",)
+INNR_LOOP = OUTR_LOOP + ("step",)
+
 
 @dataclass
 class REPLAY_PARALLEL:
