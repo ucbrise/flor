@@ -53,7 +53,7 @@ class ReadBlock(SeemBlock):
                         arg.__dict__.update(arg)
                     else:
                         assert type(arg) == type(value_serialized)
-                        arg.__dict__.update(value_serialized.__dict__)
+                        arg.__dict__.update(value_serialized.__dict__)  # type: ignore
                 else:
                     # TODO: ...
                     raise RuntimeError(
