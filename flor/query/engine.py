@@ -21,7 +21,7 @@ def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
     return DATA_PREP
 
 
-def batch_replay(apply_vars: List[str], path: str, versions: pd.Series[str], loglvl):
+def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
     # TODO: argv processing
     base_cmd = ["python", path, "--replay_flor"]
 
