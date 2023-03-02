@@ -48,7 +48,7 @@ def set_REPLAY(
         assert isinstance(pid, tuple) and len(pid) == 2
         p, n = pid
         assert isinstance(p, int) and isinstance(n, int)
-        assert p >= 1
+        assert p >= 0
         assert n >= 1
         assert p <= n
         PID = REPLAY_PARALLEL(*pid)
