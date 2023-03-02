@@ -8,6 +8,7 @@ from flor.shelf import cwd_shelf
 from pathlib import Path
 
 from flor.query.pivot import *
+from flor.query.engine import replay
 
 facts = None
 
@@ -108,19 +109,4 @@ def full_pivot():
         return post_proc(il_pivot, all_keys)
 
 
-def replay(logged_vars: List[str], path: str, where_clause: str):
-    """
-    logged_vars : ['device', 'optimizer', 'learning_rate', ...]
-    path: `train_rnn.py` or such denoting main python script
-    where_clause: stated in Pandas/SQL, passed to full_pivot
-    """
-    pass
-
-
-__all__ = [
-    "facts",
-    "log_records",
-    "full_pivot",
-    "clear_stash",
-    "replay"
-]
+__all__ = ["facts", "log_records", "full_pivot", "clear_stash", "replay"]
