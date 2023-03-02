@@ -127,21 +127,21 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
 
     loglvl = get_dims(pivot_vars, apply_vars)
     if loglvl == DATA_PREP:
-        schedule = df.query(where_clause)[DATA_PREP].drop_duplicates()
+        schedule = df.query(where_clause)[list(DATA_PREP)].drop_duplicates()
         versions = schedule["vid"].drop_duplicates()
         print(f"Replaying {len(versions)} at DATA_PREP loglevel: {DATA_PREP}")
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, DATA_PREP)
     elif loglvl == OUTR_LOOP:
-        schedule = df.query(where_clause)[OUTR_LOOP].drop_duplicates()
+        schedule = df.query(where_clause)[list(OUTR_LOOP)].drop_duplicates()
         versions = schedule["vid"].drop_duplicates()
         print(f"Replaying {len(versions)} at OUTR_LOOP loglevel: {OUTR_LOOP}")
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, OUTR_LOOP)
     elif loglvl == INNR_LOOP:
-        schedule = df.query(where_clause)[INNR_LOOP].drop_duplicates()
+        schedule = df.query(where_clause)[list(INNR_LOOP)].drop_duplicates()
         versions = schedule["vid"].drop_duplicates()
         print(f"Replaying {len(versions)} at INNR_LOOP loglevel: {INNR_LOOP}")
         res = input("Continue [Y/n]? ")
