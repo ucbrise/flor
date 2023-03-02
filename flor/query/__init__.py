@@ -1,4 +1,5 @@
 import csv
+from typing import List, Set, Dict
 import pandas as pd
 import numpy as np
 from flor.query.unpack import unpack, clear_stash
@@ -7,8 +8,15 @@ from flor.shelf import cwd_shelf
 from pathlib import Path
 
 from flor.query.pivot import *
+from flor.query.engine import *
+from flor.constants import *
 
 facts = None
+pivot_vars: Dict[str, Set[str]] = {
+    "DATA_PREP": set([]),
+    "OUTR_LOOP": set([]),
+    "INNR_LOOP": set([]),
+}
 
 
 def log_records(skip_unpack=False):
@@ -45,43 +53,43 @@ def log_records(skip_unpack=False):
 
 def full_pivot():
     global facts
+
     if facts is None:
         facts = log_records(skip_unpack=True)
 
-    data_prep_names = set([])
-    data_prep_gb = facts.groupby(by=["name", "vid"])
+    data_prep_gb = facts.groupby(by=list(DATA_PREP + ("name",)))
     for rowid, agg in data_prep_gb.count()["value"].items():
-        name, hexsha = tuple(rowid)  # type: ignore
+        name = str(tuple(rowid)[-1])  # type: ignore
         if agg == 1:
-            data_prep_names |= {
+            pivot_vars["DATA_PREP"] |= {
                 name,
             }
 
-    outer_loop_names = set([])
-    outer_loop_gb = facts.groupby(by=["name", "vid", "epoch"])
+    outer_loop_gb = facts.groupby(by=list(OUTR_LOOP + ("name",)))
     for rowid, agg in outer_loop_gb.count()["value"].items():
-        name, hexsha, _ = tuple(rowid)  # type: ignore
-        if name not in data_prep_names and agg == 1:
-            outer_loop_names |= {
+        name = str(tuple(rowid)[-1])  # type: ignore
+        if name not in pivot_vars["DATA_PREP"] and agg == 1:
+            pivot_vars["OUTR_LOOP"] |= {
                 name,
             }
 
-    inner_loop_names = set(
+    pivot_vars["INNR_LOOP"] |= set(
         [
             name
             for name in facts["name"]
-            if name not in data_prep_names and name not in outer_loop_names
+            if name not in pivot_vars["DATA_PREP"]
+            and name not in pivot_vars["OUTR_LOOP"]
         ]
     )
 
-    dp_keys = ("projid", "tstamp", "vid")
-    dp_pivot = data_prep_pivot(facts, data_prep_names)
+    dp_keys = DATA_PREP
+    dp_pivot = data_prep_pivot(facts, pivot_vars["DATA_PREP"])
 
-    ol_keys = dp_keys + ("epoch",)
-    ol_pivot = outer_loop_pivot(facts, outer_loop_names)
+    ol_keys = OUTR_LOOP
+    ol_pivot = outer_loop_pivot(facts, pivot_vars["OUTR_LOOP"])
 
-    all_keys = ol_keys + ("step",)
-    il_pivot = inner_loop_pivot(facts, inner_loop_names)
+    all_keys = INNR_LOOP
+    il_pivot = inner_loop_pivot(facts, pivot_vars["INNR_LOOP"])
 
     def post_proc(df, df_keys):
         df_keys = list(df_keys)
@@ -107,4 +115,40 @@ def full_pivot():
         return post_proc(il_pivot, all_keys)
 
 
-__all__ = ["facts", "log_records", "full_pivot", "clear_stash"]
+def replay(apply_vars: List[str], where_clause: str, path: str):
+    """
+    apply_vars : ['device', 'optimizer', 'learning_rate', ...]
+    where_clause: stated in Pandas/SQL, passed to full_pivot
+    path: `train_rnn.py` or such denoting main python script
+    """
+    assert Path(path).suffix == ".py"
+    df = full_pivot()
+    assert df is not None
+
+    loglvl = get_dims(pivot_vars, apply_vars)
+    if loglvl == DATA_PREP:
+        schedule = df.query(where_clause)[list(DATA_PREP)].drop_duplicates()
+        versions = schedule["vid"].drop_duplicates()
+        print(f"Replaying {len(versions)} at DATA_PREP loglevel: {DATA_PREP}")
+        res = input("Continue [Y/n]? ")
+        if res.strip().lower() != "n":
+            batch_replay(apply_vars, path, versions, DATA_PREP)
+    elif loglvl == OUTR_LOOP:
+        schedule = df.query(where_clause)[list(OUTR_LOOP)].drop_duplicates()
+        versions = schedule["vid"].drop_duplicates()
+        print(f"Replaying {len(versions)} at OUTR_LOOP loglevel: {OUTR_LOOP}")
+        res = input("Continue [Y/n]? ")
+        if res.strip().lower() != "n":
+            batch_replay(apply_vars, path, versions, OUTR_LOOP)
+    elif loglvl == INNR_LOOP:
+        schedule = df.query(where_clause)[list(INNR_LOOP)].drop_duplicates()
+        versions = schedule["vid"].drop_duplicates()
+        print(f"Replaying {len(versions)} at INNR_LOOP loglevel: {INNR_LOOP}")
+        res = input("Continue [Y/n]? ")
+        if res.strip().lower() != "n":
+            batch_replay(apply_vars, path, versions, INNR_LOOP)
+    else:
+        raise
+
+
+__all__ = ["facts", "log_records", "full_pivot", "clear_stash", "replay"]
