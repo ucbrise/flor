@@ -6,7 +6,7 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="pyflor",
-    version="2.5.7",
+    version="2.5.8",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
     description="Fast Low-Overhead Recovery",
@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/ucbrise/flor",
     packages=setuptools.find_packages(),
-    install_requires=["GitPython", "cloudpickle", "astunparse", "pandas", "bidict"],
+    install_requires=["GitPython", "cloudpickle", "astunparse", "pandas", "bidict==0.21.3", "apted"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
