@@ -51,12 +51,7 @@ def log_records(skip_unpack=False):
     return facts
 
 
-def full_pivot():
-    global facts
-
-    if facts is None:
-        facts = log_records(skip_unpack=True)
-
+def full_pivot(facts: pd.DataFrame):
     data_prep_gb = facts.groupby(by=list(DATA_PREP + ("name",)))
     for rowid, agg in data_prep_gb.count()["value"].items():
         name = str(tuple(rowid)[-1])  # type: ignore
