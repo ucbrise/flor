@@ -27,18 +27,15 @@ def start_db(projid: str):
 def init_db():
     """
     Initializes the database
-    1. Creates log_records
-    2. Defines pivot views
-    3. Updates metadata
     """
     assert State.db_conn is not None
     cur = State.db_conn.cursor()
     cur.executescript(
         """
         BEGIN;
-        CREATE TABLE watermark(projid text, commitsha text);
         CREATE TABLE log_records(
             projid text,
+            runid text,
             tstamp text,
             vid text, 
             epoch integer,
@@ -47,40 +44,19 @@ def init_db():
             value text
             );
         COMMIT;
-    """
+        """
     )
     cur.close()
 
 
-def update_watermark(projid: str, commitsha: str):
+def get_watermark():
     assert State.db_conn is not None
     cur = State.db_conn.cursor()
-    res = cur.execute(
-        "SELECT commitsha, projid FROM watermark WHERE projid = ?", (projid,)
-    ).fetchall()
-    if res:
-        c, p = res[0]
-        cur.execute(
-            "UPDATE watermark SET commitsha = ? WHERE projid = ?",
-            (commitsha, projid),
-        )
-        return str(c)
-    else:
-        cur.execute("INSERT INTO watermark VALUES(?, ?)", (projid, commitsha))
-    State.db_conn.commit()
-    cur.close()
-
-
-def get_watermark(projid: str):
-    assert State.db_conn is not None
-    cur = State.db_conn.cursor()
-    res = cur.execute(
-        "SELECT commitsha, projid FROM watermark WHERE projid = ?", (projid,)
-    ).fetchall()
+    res = cur.execute("SELECT DISTINCT vid FROM log_records").fetchall()
     if not res:
         return None
-    c, p = res[0]
-    return str(c)
+    cur.close()
+    return [str(c) for c in res]
 
 
 def get_log_records():
@@ -96,10 +72,11 @@ def write_log_records(list_of_dicts):
     cur = State.db_conn.cursor()
 
     cur.executemany(
-        "INSERT INTO log_records VALUES(?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO log_records VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
         [
             (
                 d["projid"],
+                d["runid"],
                 d["tstamp"],
                 d["vid"],
                 d["epoch"],

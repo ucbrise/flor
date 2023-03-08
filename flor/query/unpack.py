@@ -3,6 +3,7 @@ from typing import Any, Dict
 from flor.shelf import cwd_shelf
 from flor.state import State
 from flor.constants import *
+from flor import flags
 
 from flor.query import database
 
@@ -54,14 +55,12 @@ def unpack():
     r = State.repo
     assert r is not None
     database.start_db(cwd_shelf.get_projid())
-    wmrk = database.get_watermark(cwd_shelf.get_projid())
+    wmrk = database.get_watermark()
     active_branch = State.active_branch
     try:
         commits = filtered_versions()
         for i, version in enumerate(commits["RECORD"]):
-            if i == 0:
-                database.update_watermark(cwd_shelf.get_projid(), str(version.hexsha))
-            if version.hexsha == wmrk:
+            if wmrk is not None and version.hexsha in wmrk:
                 break
             try:
                 print(f"STEPPING IN {version.hexsha}")
@@ -135,6 +134,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
         data.append(
             {
                 "projid": cwd_shelf.get_projid(),
+                "runid": flags.NAME,
                 "tstamp": tstamp.stem,
                 "vid": hexsha,
                 "epoch": -1,
@@ -159,6 +159,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                     data.append(
                         {
                             "projid": cwd_shelf.get_projid(),
+                            "runid": flags.NAME,
                             "tstamp": tstamp.stem,
                             "vid": hexsha,
                             "epoch": int(e) if e else -1,
@@ -173,6 +174,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                 [
                     {
                         "projid": cwd_shelf.get_projid(),
+                        "runid": flags.NAME,
                         "tstamp": tstamp.stem,
                         "vid": hexsha,
                         "epoch": int(each["epoch"]) if each["epoch"] else -1,

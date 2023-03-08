@@ -53,6 +53,7 @@ def flush(projid: str, tstamp: str):
         for rlg in record_logs:
             rlg["tstamp"] = str(PurePath(tstamp).stem)
             rlg["projid"] = projid
+            rlg["runid"] = flags.NAME
             for version in State.repo.iter_commits():
                 if "RECORD::" in str(version.message):
                     rlg["vid"] = str(version.hexsha)
