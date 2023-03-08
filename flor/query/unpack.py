@@ -134,7 +134,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
         data.append(
             {
                 "projid": cwd_shelf.get_projid(),
-                "runid": flags.NAME,
+                "runid": d["NAME"],
                 "tstamp": tstamp.stem,
                 "vid": hexsha,
                 "epoch": -1,
@@ -159,7 +159,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                     data.append(
                         {
                             "projid": cwd_shelf.get_projid(),
-                            "runid": flags.NAME,
+                            "runid": d["NAME"],
                             "tstamp": tstamp.stem,
                             "vid": hexsha,
                             "epoch": int(e) if e else -1,
@@ -174,7 +174,7 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                 [
                     {
                         "projid": cwd_shelf.get_projid(),
-                        "runid": flags.NAME,
+                        "runid": d["NAME"],
                         "tstamp": tstamp.stem,
                         "vid": hexsha,
                         "epoch": int(each["epoch"]) if each["epoch"] else -1,
