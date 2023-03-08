@@ -127,7 +127,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     path: `train_rnn.py` or such denoting main python script
     """
     assert Path(path).suffix == ".py"
-    df = full_pivot()
+    df = full_pivot(facts) if facts is not None else full_pivot(log_records(skip_unpack=True))
     assert df is not None
 
     loglvl = get_dims(pivot_vars, apply_vars)
