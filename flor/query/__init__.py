@@ -33,11 +33,21 @@ def log_records(skip_unpack=False):
     facts = (
         pd.DataFrame(
             database.get_log_records(),
-            columns=["projid", "tstamp", "vid", "epoch", "step", "name", "value"],
+            columns=[
+                "projid",
+                "runid",
+                "tstamp",
+                "vid",
+                "epoch",
+                "step",
+                "name",
+                "value",
+            ],
         )
         .astype(
             {
                 "projid": str,
+                "runid": str,
                 "tstamp": np.datetime64,
                 "vid": str,
                 "epoch": int,

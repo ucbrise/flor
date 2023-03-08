@@ -10,6 +10,7 @@ SECONDS_JSON = Path(".flor") / "seconds.json"
 
 DATA_PREP = (
     "projid",
+    "runid",
     "tstamp",
     "vid",
 )
