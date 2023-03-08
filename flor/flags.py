@@ -1,12 +1,13 @@
 from flor.shelf import home_shelf, cwd_shelf
 from flor.constants import *
+from flor.state import State
 from flor.logger import exp_json
 from flor.query.database import start_db
 
 import sys
 from typing import Dict, Optional, Tuple, Union
 from pathlib import PurePath, Path
-
+from time import time
 
 NAME: Optional[str] = None
 REPLAY: bool = False
@@ -166,6 +167,7 @@ class Parser:
     @staticmethod
     def parse():
         if "--flor" in sys.argv:
+            State.import_time = time()
             Parser._parse_name()
         elif "--replay_flor" in sys.argv:
             Parser._parse_replay()

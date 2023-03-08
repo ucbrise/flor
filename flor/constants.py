@@ -6,6 +6,7 @@ REPLAY_MODE = Enum("REPLAY_MODE", "weak strong")
 SHADOW_BRANCH_PREFIX = "flor.shadow"
 LOG_RECORDS = Path(".flor") / "log_records.csv"
 REPLAY_JSON = Path(".flor") / ".replay.json"
+SECONDS_JSON = Path(".flor") / "seconds.json"
 
 DATA_PREP = (
     "projid",

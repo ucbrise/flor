@@ -6,6 +6,8 @@ from flor.constants import *
 from flor.state import State
 from flor.iterator import it
 
+from time import time
+
 
 class MTK:
     """
@@ -31,11 +33,16 @@ class MTK:
             name = str(static_id) if name is None else name
             if State.loop_nesting_level == 1:
                 # Outer loop
+                assert State.import_time is not None
+                State.seconds["PREP"] = time() - State.import_time
+                State.seconds["EPOCHS"] = []
                 State.epoch = 0
                 for each in it(iter8r):
+                    start_time = time()
                     State.step = 0
                     State.epoch += 1
                     yield each
+                    State.seconds["EPOCHS"].append(time() - start_time)
             else:
                 assert State.loop_nesting_level > 1
                 # Nested loop
