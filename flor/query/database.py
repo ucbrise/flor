@@ -56,7 +56,7 @@ def get_watermark():
     if not res:
         return None
     cur.close()
-    return [str(c) for c in res]
+    return [str(row[0]) for row in res]
 
 
 def get_log_records():
