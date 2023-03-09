@@ -141,7 +141,16 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
             df.query(where_clause)[list(DATA_PREP)]
             .drop_duplicates()
             .merge(
-                pd.DataFrame(database.get_schedule(DATA_PREP)),
+                pd.DataFrame(database.get_schedule(DATA_PREP)).astype(
+                    {
+                        "projid": str,
+                        "runid": str,
+                        "tstamp": np.datetime64,
+                        "vid": str,
+                        "name": str,
+                        "seconds": float,
+                    }
+                ),
                 how="inner",
                 on=DATA_PREP,
             )[
@@ -164,7 +173,17 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
             df.query(where_clause)[list(OUTR_LOOP)]
             .drop_duplicates()
             .merge(
-                pd.DataFrame(database.get_schedule(OUTR_LOOP)),
+                pd.DataFrame(database.get_schedule(OUTR_LOOP)).astype(
+                    {
+                        "projid": str,
+                        "runid": str,
+                        "tstamp": np.datetime64,
+                        "vid": str,
+                        "epoch": int,
+                        "name": str,
+                        "seconds": float,
+                    }
+                ),
                 how="inner",
                 on=OUTR_LOOP,
             )[
@@ -187,7 +206,17 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
             df.query(where_clause)[list(OUTR_LOOP)]
             .drop_duplicates()
             .merge(
-                pd.DataFrame(database.get_schedule(OUTR_LOOP)),
+                pd.DataFrame(database.get_schedule(OUTR_LOOP)).astype(
+                    {
+                        "projid": str,
+                        "runid": str,
+                        "tstamp": np.datetime64,
+                        "vid": str,
+                        "epoch": int,
+                        "name": str,
+                        "seconds": float,
+                    }
+                ),
                 how="inner",
                 on=OUTR_LOOP,
             )[
