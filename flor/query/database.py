@@ -4,6 +4,7 @@ from typing import Optional
 
 from flor.shelf import home_shelf
 from flor.state import State
+from flor.constants import *
 
 SUFFIX = ".db"
 dbp: Optional[Path] = None
@@ -72,6 +73,51 @@ def get_watermark():
         return None
     cur.close()
     return [str(row[0]) for row in res]
+
+
+def get_schedule(keys):
+    assert State.db_conn is not None
+    cur = State.db_conn.cursor()
+    if keys == DATA_PREP:
+        res = []
+        for r in cur.execute(
+            "SELECT " + ", ".join(DATA_PREP) + ", seconds FROM data_prep;"
+        ).fetchall():
+            res.append(
+                {
+                    c: v
+                    for c, v in zip(
+                        list(DATA_PREP)
+                        + [
+                            "seconds",
+                        ],
+                        r,
+                    )
+                }
+            )
+    elif keys == OUTR_LOOP:
+        res = []
+        for r in cur.execute(
+            "SELECT " + ", ".join(OUTR_LOOP) + ", seconds FROM outr_loop;"
+        ).fetchall():
+            res.append(
+                {
+                    c: v
+                    for c, v in zip(
+                        list(OUTR_LOOP)
+                        + [
+                            "seconds",
+                        ],
+                        r,
+                    )
+                }
+            )
+    else:
+        raise
+    if not res:
+        return None
+    cur.close()
+    return res
 
 
 def get_log_records():

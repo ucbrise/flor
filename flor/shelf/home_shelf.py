@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path, PurePath
 from typing import Optional, Union
+import json
+import os
 
 from flor import flags
 from flor.state import State
@@ -16,6 +18,20 @@ florin.mkdir(exist_ok=True)
 job: Optional[Path] = None
 data: Optional[Path] = None
 timestamp: Optional[str] = None
+
+
+def get_checkpoint_bytes_per_epoch(projid: str):
+    pkl_paths = []
+    with open(florin / projid / "latest.json", "r") as f:
+        for jstring in f.readlines():
+            d = json.loads(jstring)
+            if "metadata" in d and d["metadata"] == "LBRACKET" and pkl_paths:
+                break
+            elif "metadata" in d and d["metadata"] == "LBRACKET":
+                continue
+            elif "torch_ref" in d:
+                pkl_paths.append(d["torch_ref"])
+    return sum([os.path.getsize(florin / projid / "data" / p) for p in pkl_paths])
 
 
 def mk_job(name: str):
