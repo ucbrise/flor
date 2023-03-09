@@ -17,6 +17,8 @@ DATA_PREP = (
 OUTR_LOOP = DATA_PREP + ("epoch",)
 INNR_LOOP = OUTR_LOOP + ("step",)
 
+DESERIALIZATION_COEFF = 3.573e-08
+
 
 @dataclass
 class REPLAY_PARALLEL:
