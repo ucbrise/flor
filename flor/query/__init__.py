@@ -63,7 +63,9 @@ def log_records(skip_unpack=False):
 
 
 def full_pivot(facts: pd.DataFrame):
-    data_prep_gb = facts.groupby(by=list(DATA_PREP + ("name",)))
+    data_prep_gb = facts.drop_duplicates()[list(DATA_PREP) + ["name", "value"]].groupby(
+        by=list(DATA_PREP + ("name",))
+    )
     for rowid, agg in data_prep_gb.count()["value"].items():
         name = str(tuple(rowid)[-1])  # type: ignore
         if agg == 1:
@@ -71,7 +73,11 @@ def full_pivot(facts: pd.DataFrame):
                 name,
             }
 
-    outer_loop_gb = facts.groupby(by=list(OUTR_LOOP + ("name",)))
+    outer_loop_gb = (
+        facts[list(OUTR_LOOP) + ["name", "value"]]
+        .drop_duplicates()
+        .groupby(by=list(OUTR_LOOP + ("name",)))
+    )
     for rowid, agg in outer_loop_gb.count()["value"].items():
         name = str(tuple(rowid)[-1])  # type: ignore
         if name not in pivot_vars["DATA_PREP"] and agg == 1:
@@ -136,32 +142,32 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     assert df is not None
 
     loglvl = get_dims(pivot_vars, apply_vars)
-    if loglvl == DATA_PREP:
-        schedule = (
-            df.query(where_clause)[list(DATA_PREP)]
-            .drop_duplicates()
-            .merge(
-                pd.DataFrame(database.get_schedule(DATA_PREP)).astype(
-                    {
-                        "projid": str,
-                        "runid": str,
-                        "tstamp": np.datetime64,
-                        "vid": str,
-                        "seconds": float,
-                    }
-                ),
-                how="inner",
-                on=DATA_PREP,
-            )[
-                list(DATA_PREP)
-                + [
-                    "seconds",
-                ]
+    dp_schedule = (
+        df.query(where_clause)[list(DATA_PREP)]
+        .drop_duplicates()
+        .merge(
+            pd.DataFrame(database.get_schedule(DATA_PREP)).astype(
+                {
+                    "projid": str,
+                    "runid": str,
+                    "tstamp": np.datetime64,
+                    "vid": str,
+                    "seconds": float,
+                }
+            ),
+            how="inner",
+            on=DATA_PREP,
+        )[
+            list(DATA_PREP)
+            + [
+                "seconds",
             ]
-        )
-        versions = schedule["vid"].drop_duplicates()
+        ]
+    )
+    if loglvl == DATA_PREP:
+        versions = dp_schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at DATA_PREP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} at DATA_PREP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -194,7 +200,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         schedule["seconds"] = size_bytes * DESERIALIZATION_COEFF
         versions = schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at OUTR_LOOP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} at OUTR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -225,7 +231,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         )
         versions = schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at INNR_LOOP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} at INNR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
