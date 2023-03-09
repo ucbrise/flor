@@ -2,6 +2,7 @@ import csv
 from typing import List, Set, Dict
 import pandas as pd
 import numpy as np
+from flor.shelf import home_shelf, cwd_shelf
 from flor.query.unpack import unpack, clear_stash
 from flor.query import database
 from flor.shelf import cwd_shelf
@@ -127,28 +128,79 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     path: `train_rnn.py` or such denoting main python script
     """
     assert Path(path).suffix == ".py"
-    df = full_pivot(facts) if facts is not None else full_pivot(log_records(skip_unpack=True))
+    df = (
+        full_pivot(facts)
+        if facts is not None
+        else full_pivot(log_records(skip_unpack=True))
+    )
     assert df is not None
 
     loglvl = get_dims(pivot_vars, apply_vars)
     if loglvl == DATA_PREP:
-        schedule = df.query(where_clause)[list(DATA_PREP)].drop_duplicates()
+        schedule = (
+            df.query(where_clause)[list(DATA_PREP)]
+            .drop_duplicates()
+            .merge(
+                pd.DataFrame(database.get_schedule(DATA_PREP)),
+                how="inner",
+                on=DATA_PREP,
+            )[
+                list(DATA_PREP)
+                + [
+                    "seconds",
+                ]
+            ]
+        )
         versions = schedule["vid"].drop_duplicates()
-        print(f"Replaying {len(versions)} at DATA_PREP loglevel: {DATA_PREP}")
+        print(
+            f"Continue replaying {len(versions)} at DATA_PREP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+        )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, DATA_PREP)
     elif loglvl == OUTR_LOOP:
-        schedule = df.query(where_clause)[list(OUTR_LOOP)].drop_duplicates()
+        size_bytes = home_shelf.get_checkpoint_bytes_per_epoch(cwd_shelf.get_projid())
+        schedule = (
+            df.query(where_clause)[list(OUTR_LOOP)]
+            .drop_duplicates()
+            .merge(
+                pd.DataFrame(database.get_schedule(OUTR_LOOP)),
+                how="inner",
+                on=OUTR_LOOP,
+            )[
+                list(OUTR_LOOP)
+                + [
+                    "seconds",
+                ]
+            ]
+        )
+        schedule["seconds"] = size_bytes * DESERIALIZATION_COEFF
         versions = schedule["vid"].drop_duplicates()
-        print(f"Replaying {len(versions)} at OUTR_LOOP loglevel: {OUTR_LOOP}")
+        print(
+            f"Continue replaying {len(versions)} at OUTR_LOOP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+        )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, OUTR_LOOP)
     elif loglvl == INNR_LOOP:
-        schedule = df.query(where_clause)[list(INNR_LOOP)].drop_duplicates()
+        schedule = (
+            df.query(where_clause)[list(OUTR_LOOP)]
+            .drop_duplicates()
+            .merge(
+                pd.DataFrame(database.get_schedule(OUTR_LOOP)),
+                how="inner",
+                on=OUTR_LOOP,
+            )[
+                list(OUTR_LOOP)
+                + [
+                    "seconds",
+                ]
+            ]
+        )
         versions = schedule["vid"].drop_duplicates()
-        print(f"Replaying {len(versions)} at INNR_LOOP loglevel: {INNR_LOOP}")
+        print(
+            f"Continue replaying {len(versions)} at INNR_LOOP loglevel for {'{:.2f}'.format(sum(schedule['seconds']))} seconds?"
+        )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, INNR_LOOP)
