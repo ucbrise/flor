@@ -147,7 +147,6 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                         "runid": str,
                         "tstamp": np.datetime64,
                         "vid": str,
-                        "name": str,
                         "seconds": float,
                     }
                 ),
@@ -180,7 +179,6 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                         "tstamp": np.datetime64,
                         "vid": str,
                         "epoch": int,
-                        "name": str,
                         "seconds": float,
                     }
                 ),
@@ -213,7 +211,6 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                         "tstamp": np.datetime64,
                         "vid": str,
                         "epoch": int,
-                        "name": str,
                         "seconds": float,
                     }
                 ),
