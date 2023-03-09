@@ -167,7 +167,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     if loglvl == DATA_PREP:
         versions = dp_schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at DATA_PREP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at DATA_PREP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -200,7 +200,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         schedule["seconds"] = size_bytes * DESERIALIZATION_COEFF
         versions = schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at OUTR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at OUTR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -231,7 +231,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         )
         versions = schedule["vid"].drop_duplicates()
         print(
-            f"Continue replaying {len(versions)} at INNR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at INNR_LOOP loglevel for {'{:.2f}'.format(sum(dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
