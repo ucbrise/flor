@@ -65,11 +65,84 @@ def unpack():
             try:
                 print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
+                cp_seconds(version)
                 cp_log_records(version)
             except Exception as e:
                 print(e)
     finally:
         r.git.checkout(active_branch)
+
+
+def cp_seconds(version):
+    assert State.db_conn is not None
+    hexsha, message = version.hexsha, version.message
+    if "RECORD::" in message and SECONDS_JSON.exists():
+        with open(REPLAY_JSON, "r") as f:
+            replay_json = json.load(f)
+        with open(SECONDS_JSON, "r") as f:
+            seconds_json = json.load(f)
+        assert isinstance(seconds_json, dict) and seconds_json
+        assert "PREP" in seconds_json
+
+        def prep_normalize(prep_secs):
+            nonlocal seconds_json, replay_json
+            data = []
+            data.append(
+                {
+                    c: v
+                    for c, v in zip(
+                        list(DATA_PREP)
+                        + [
+                            "seconds",
+                        ],
+                        [
+                            cwd_shelf.get_projid(),
+                            replay_json["NAME"],
+                            PurePath(replay_json["TSTAMP"]).stem,
+                            hexsha,
+                            float(prep_secs),
+                        ],
+                    )
+                }
+            )
+            return data
+
+        def outr_normalize(all_epochs_secs):
+            nonlocal seconds_json, replay_json
+            data = []
+            for i, epoch_secs in enumerate(all_epochs_secs):
+                epoch = i + 1
+                data.append(
+                    {
+                        c: v
+                        for c, v in zip(
+                            list(OUTR_LOOP)
+                            + [
+                                "seconds",
+                            ],
+                            [
+                                cwd_shelf.get_projid(),
+                                replay_json["NAME"],
+                                PurePath(replay_json["TSTAMP"]).stem,
+                                hexsha,
+                                int(epoch),
+                                float(epoch_secs),
+                            ],
+                        )
+                    }
+                )
+            return data
+
+        # ..send PREP to data_prep
+        pd.DataFrame(prep_normalize(seconds_json["PREP"])).to_sql(
+            "data_prep", con=State.db_conn, if_exists="append", index=False
+        )
+
+        # .. send EPOCHS to outr_loop
+        if "EPOCHS" in seconds_json:
+            pd.DataFrame(outr_normalize(seconds_json["EPOCHS"])).to_sql(
+                "outr_loop", con=State.db_conn, if_exists="append", index=False
+            )
 
 
 def cp_log_records(version):
@@ -96,7 +169,6 @@ def cp_log_records(version):
             if tstamp_json is not None:
                 data = normalize(replay_json, lr_csv, hexsha, tstamp_json)
                 df = pd.DataFrame(data)
-                df.to_csv(stash / tstamp_json.with_suffix(".csv"), index=False)
                 df.to_sql(
                     "log_records", con=State.db_conn, if_exists="append", index=False
                 )

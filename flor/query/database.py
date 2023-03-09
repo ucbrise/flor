@@ -43,6 +43,21 @@ def init_db():
             name text,
             value text
             );
+        CREATE TABLE data_prep(
+            projid text,
+            runid text,
+            tstamp text,
+            vid text,
+            seconds real
+        );
+        CREATE TABLE outr_loop(
+            projid text,
+            runid text,
+            tstamp text,
+            vid text,
+            epoch integer,
+            seconds real
+        );
         COMMIT;
         """
     )
