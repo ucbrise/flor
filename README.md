@@ -4,26 +4,26 @@
 [![codecov](https://codecov.io/gh/ucbrise/flor/branch/master/graph/badge.svg)](https://codecov.io/gh/ucbrise/flor)
  -->
 
-Flor: Lite Experiment Management for ML Engineers
+FlorDB: Lite Experiment Management for ML Engineers
 ================================
 
-You can use FLOR to take checkpoints during model training.
+You can use Flor to take checkpoints during model training.
 These checkpoints allow you to restore arbitrary training data post-hoc and efficiently,
 thanks to memoization and parallelism speedups on replay.
 
-FLOR is a suite of machine learning tools for hindsight logging.
+Flor is a suite of machine learning tools for hindsight logging.
 Hindsight logging is an optimistic logging practice favored by agile model developers. 
 Model developers log training metrics such as the loss and accuracy by default, 
 and selectively restore additional training data --- like tensor histograms, images, and overlays --- post-hoc, 
 if and when there is evidence of a problem. 
 
-FLOR is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab, 
+Flor is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab, 
 and is being released as part of an accompanying [VLDB publication](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf).
 
 # Installation
 
 ```bash
-pip install pyflor
+pip install flordb
 ```
 FLOR expects a recent version of Python (3.7+) and PyTorch (1.0+).
 

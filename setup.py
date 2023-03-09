@@ -5,7 +5,7 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pyflor",
+    name="flordb",
     version="2.5.11",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
