@@ -166,8 +166,8 @@ class Parser:
 
     @staticmethod
     def parse():
+        State.import_time = time()
         if "--flor" in sys.argv:
-            State.import_time = time()
             Parser._parse_name()
         elif "--replay_flor" in sys.argv:
             Parser._parse_replay()
