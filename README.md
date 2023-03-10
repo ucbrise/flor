@@ -25,11 +25,11 @@ and is being released as part of an accompanying [VLDB publication](http://www.v
 ```bash
 pip install flordb
 ```
-FLOR expects a recent version of Python (3.7+) and PyTorch (1.0+).
 
+# First Run
 ```bash
 git checkout -b flor.shadow
-python3 examples/linear.py --flor linear
+python examples/linear.py --flor linear
 ```
 Run the ``linear.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
