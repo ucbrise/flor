@@ -15,8 +15,8 @@ Execution data, versions of code, and training checkpoints are all
 managed by Flor, using a combination of `git` and `sqlite3`.
 
 Flor is a suite of machine learning tools for hindsight logging.
-Hindsight logging is an optimistic logging practice favored by agile model developers. 
-Model developers log training metrics such as the loss and accuracy by default, 
+Hindsight logging is an optimistic logging practice favored by
+model developers who log training metrics such as the loss and accuracy by default, 
 and selectively restore additional training data --- like tensor histograms, images, and overlays --- post-hoc, 
 if and when there is evidence of a problem. 
 
