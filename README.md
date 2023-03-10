@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/ucbrise/flor/branch/master/graph/badge.svg)](https://codecov.io/gh/ucbrise/flor)
  -->
 
-FlorDB: Nimble Experiment Management for ML Engineers
+FlorDB: Nimble Experiment Mgmt. for ML Engineers
 ================================
 
 You can use Flor to take checkpoints during model training.
