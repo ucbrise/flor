@@ -7,9 +7,12 @@
 FlorDB: Nimble Experiment Mgmt. for ML Engineers
 ================================
 
-You can use Flor to take checkpoints during model training.
-These checkpoints allow you to restore arbitrary training data post-hoc and efficiently,
+Flor lets you log ML training runs post-hoc, with hindsight logging.
+You can use Flor to take checkpoints during model training, and
+these checkpoints allow you to restore arbitrary training data post-hoc and efficiently,
 thanks to memoization and parallelism speedups on replay.
+Execution data, versions of code, and training checkpoints are all
+managed by Flor, using a combination of `gitpython` and `sqlite3`.
 
 Flor is a suite of machine learning tools for hindsight logging.
 Hindsight logging is an optimistic logging practice favored by agile model developers. 
