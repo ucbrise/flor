@@ -1,28 +1,11 @@
-<!-- ![Travis](https://travis-ci.com/ucbrise/flor.svg?branch=master)
-![Python37](https://img.shields.io/badge/python-3.7-blue.svg)
-[![](https://badge.fury.io/py/pyflor.svg)](https://pypi.org/project/pyflor/)
-[![codecov](https://codecov.io/gh/ucbrise/flor/branch/master/graph/badge.svg)](https://codecov.io/gh/ucbrise/flor)
- -->
-
-FlorDB: Nimble Experiment Mgmt. for ML Engineers
+FlorDB: Nimble Experiment Management for Iterative ML
 ================================
 
-Flor lets you log ML training runs post-hoc, with hindsight logging.
-You can use Flor to take checkpoints during model training, and
-these checkpoints allow you to restore arbitrary training data post-hoc and efficiently,
-thanks to memoization and parallelism speedups on replay.
-Execution data, versions of code, and training checkpoints are all
-managed by Flor, using a combination of `git` and `sqlite3`.
+Flor (for "fast low-overhead recovery") is a record-replay system for deep learning, and other forms of machine learning that train models on GPUs. Flor was developed to speed-up hindsight logging: a cyclic-debugging practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging. Flor takes low-overhead checkpoints during training, or the record phase, and uses those checkpoints for replay speedups based on memoization and parallelism.
 
-Flor is a suite of machine learning tools for hindsight logging.
-Hindsight logging is an optimistic logging practice favored by
-model developers who log training metrics such as the loss and accuracy by default, 
-and selectively restore additional training data --- like tensor histograms, images, and overlays --- post-hoc, 
-if and when there is evidence of a problem. 
+FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML.
 
-Flor is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab, 
-and is being released as part of an accompanying [VLDB publication](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf).
-
+Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
 # Installation
 
 ```bash
