@@ -34,6 +34,17 @@ Confirm that Flor saved checkpoints of the ``examples/rnn.py`` execution on your
 Flor will access and interpret contents of ``~/.flor`` automatically. 
 You should routinely clear this stash or spool it to the cloud to clear up disk space.
 
+# View your Experiment History
+Open an iPython terminal, and load the history of log records.
+
+```ipython
+import flor
+facts = flor.log_records()
+```
+
+
+
+
 # Preparing your Training Script
 
 ```python
