@@ -57,17 +57,12 @@ Out[2]:
 
 ```
 
-# Preparing your Training Script
-
-```python
-from flor import MTK as Flor
-for epoch in Flor.loop(range(...)):
-    ...
-```
-
-First, wrap the iterator of the main loop with FLOR's generator: ``Flor.loop``. 
-The generator enables FLOR to parallelize replay of the main loop,
-and to jump to an arbitrary epoch for data recovery.
+# Model Training Kit (MTK)
+The MTK includes utilities for serializing and checkpointing PyTorch state,
+and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
+The model developer passes objects for checkpointing to flor,
+and gives it control over loop iterators by calling `MTK.checkpoints`
+and `MTK.loop` as follows:
 
 ```python
 from flor import MTK as Flor
@@ -89,34 +84,16 @@ for epoch in Flor.loop(range(...)):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        print(f"loss: {loss.item()}")
     eval(net, testloader)
 ```
-That's it, your training code is now ready for record-replay.
+As shown, we pass the neural network and optimizer to Flor 
+for checkpointing with `Flor.checkpoints(net, optimizer)`.
+We wrap both the nested training loop and main loop with 
+`Flor.loop`. This lets Flor jump to an arbitrary epoch
+using checkpointed state, 
+and skip the nested training loop when intermediate
+state isn't probed.
 
-# Training your model
-
-```bash
-python3 training_script.py --flor NAME [your_script_flags]
-```
-
-Before we train your model, 
-**make sure that your model training code is part of a git repository**.
-Model training is exploratory and it's common to iterate dozens of times
-before finding the right fit.
-We'd hate for you to be manually responsible for managing all those versions.
-Instead, we ask you to create a FLOR shadow branch
-that we can automatically commit changes to.
-Think of it as a sandbox: you get the benefits of autosaving,
-without worrying about us poluting your main branch with frequent & automatic commits.
-Later, you can merge the changes you like.
-
-In FLOR, all experiments need a name. 
-As your training scripts and configurations evolve,
-keep the same experiment name so FLOR 
-associates the checkpoints as versions of the same experiment.
-If you want to re-use the name from the previous run, 
-you may leave the field blank.
 
 # Hindsight Logging
 
@@ -142,51 +119,7 @@ throughout training.
 Add the code to generate the confusion matrix, as sugared above.
 
 ```bash
-python3 training_script.py --replay_flor
-```
-
-You first switch to the FLOR shadow branch,
-and select the version you wish to replay
-from the `git log` list. 
-In our example, we won't checkout version,
-because we want to replay the latest version,
-which is selected by default.
-
-You will tell FLOR to replay by setting the flag ``--replay_flor``. 
-FLOR is performing fast replay, so you may generalize this
-example to recover ad-hoc training data.
-In our example, FLOR will compute your confusion matrix 
-and automatically skip the nested training loop 
-by loading its checkpoints.
-
-```python
-from flor import MTK as Flor
-import torch
-
-trainloader: torch.utils.data.DataLoader
-testloader:  torch.utils.data.DataLoader
-optimizer:   torch.optim.Optimizer
-net:         torch.nn.Module
-criterion:   torch.nn._Loss
-
-for epoch in Flor.loop(range(...)):
-    for batch in Flor.loop(trainloader, probed=True):
-        ...
-    eval(net, testloader)
-    log_confusion_matrix(net, testloader)
-```
-
-Now, suppose you also want [TensorBoard](https://www.tensorflow.org/tensorboard)
-to plot the tensor histograms.
-In this case, it is not possible to skip the nested training loop
-because we are probing intermediate data.
-We tell FLOR to step into the nested training loop by setting ``probed=True``.
-
-Although we can't skip the nested training loop, we can parallelize replay or
-re-execute just a fraction of the epochs (e.g. near the epoch where we see a loss anomaly).
-
-```bash
-python3 training_script.py --replay_flor PID/NGPUS [your_flags]
+python3 mytrain.py --replay_flor PID/NGPUS [your_flags]
 ```
 
 As before, you tell FLOR to run in replay mode by setting ``--replay_flor``.
@@ -198,8 +131,6 @@ If instead of replaying all of training you wish to re-execute only a fraction o
 you can do this by setting the value of ``ngpus`` and ``pid`` respectively.
 Suppose you want to run the tenth epoch of a training job that ran for 200 epochs. You would set
 ``pid:9``and ``ngpus:200``.
-
-We provide additional examples in the ``examples`` directory. A good starting point is ``linear.py``. 
 
 ## Publications
 
