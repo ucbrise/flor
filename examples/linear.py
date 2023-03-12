@@ -13,7 +13,7 @@ from flor import MTK as Flor
 
 class Net(nn.Module):
     def __init__(self):
-        torch.manual_seed(flor.pinned("netseed", random.randint, (0, 9999)))
+        torch.manual_seed(flor.pinned("netseed", random.randint, 0, 9999))
         super(Net, self).__init__()
 
         self.inpt_dim = 28
