@@ -1,9 +1,0 @@
-{
-    "NAME": "readme",
-    "TSTAMP": "2023-03-12T11:11:01.json",
-    "device": "cpu",
-    "train_dataset": "<class 'torchvision.datasets.mnist.MNIST'>",
-    "accuracy": 96.96,
-    "PROJID": "flor_flor.shadow",
-    "EPOCHS": 2
-}
