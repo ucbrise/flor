@@ -15,7 +15,7 @@ pip install flordb
 # First Run
 ```bash
 git checkout -b flor.shadow
-python examples/linear.py --flor linear
+python examples/linear.py --flor readme
 ```
 Run the ``linear.py`` script to test your installation. 
 This script will train a small linear model on MNIST.

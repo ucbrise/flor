@@ -8,12 +8,12 @@ import torchvision.transforms as transforms
 import random
 
 import flor
-from flor import MTK
+from flor import MTK as Flor
 
 
 class Net(nn.Module):
     def __init__(self):
-        torch.manual_seed(flor.recall("netseed", random.randint(0, 9999)))
+        torch.manual_seed(flor.pinned("netseed", random.randint, (0, 9999)))
         super(Net, self).__init__()
 
         self.inpt_dim = 28
@@ -62,7 +62,7 @@ def eval(net):
     accuracy = 100 * correct / total
     print(
         "Accuracy of the network on the 10000 test images: %d %%"
-        % flor.recall("acc", accuracy)
+        % flor.log("acc", accuracy)
     )
 
 
@@ -73,10 +73,10 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 
-MTK.checkpoints(net, optimizer)
-for epoch in MTK.loop(range(2)):
+Flor.checkpoints(net, optimizer)
+for epoch in Flor.loop(range(2)):
     running_loss = 0.0
-    for i, data in MTK.loop(enumerate(trainloader, 0)):  # type: ignore
+    for i, data in Flor.loop(enumerate(trainloader, 0)):  # type: ignore
         inputs, labels = data
         if torch.cuda.is_available():
             inputs = inputs.cuda()
@@ -90,7 +90,10 @@ for epoch in MTK.loop(range(2)):
         # print statistics
         running_loss += loss.item()
         if i % 2000 == 1999:  # print every 2000 mini-batches
-            print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 2000))
+            print(
+                "[%d, %5d] loss: %.3f"
+                % (epoch + 1, i + 1, flor.log("loss", running_loss / 2000))
+            )
             running_loss = 0.0
     eval(net)
 
