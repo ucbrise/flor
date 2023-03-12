@@ -12,7 +12,7 @@ Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.b
 pip install flordb
 ```
 
-# First Run
+# First run
 
 Run the ``examples/rnn.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
@@ -34,16 +34,28 @@ Confirm that Flor saved checkpoints of the ``examples/rnn.py`` execution on your
 Flor will access and interpret contents of ``~/.flor`` automatically. 
 You should routinely clear this stash or spool it to the cloud to clear up disk space.
 
-# View your Experiment History
-Open an iPython terminal, and load the history of log records.
+# View your experiment history
+From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
 
 ```ipython
-import flor
-facts = flor.log_records()
+In [1]: from flor import full_pivot, log_records
+In [2]: full_pivot(log_records())
+Out[2]: 
+     runid              tstamp  epoch  step device learning_rate                 loss
+0   readme 2023-03-12 12:23:53      1   100    cpu          0.01   0.5304957032203674
+1   readme 2023-03-12 12:23:53      1   200    cpu          0.01  0.21829535067081451
+2   readme 2023-03-12 12:23:53      1   300    cpu          0.01  0.15856705605983734
+3   readme 2023-03-12 12:23:53      1   400    cpu          0.01  0.11441942304372787
+4   readme 2023-03-12 12:23:53      1   500    cpu          0.01  0.06835074722766876
+5   readme 2023-03-12 12:23:53      1   600    cpu          0.01  0.13750575482845306
+6   readme 2023-03-12 12:23:53      2   100    cpu          0.01  0.11708579957485199
+7   readme 2023-03-12 12:23:53      2   200    cpu          0.01  0.08852845430374146
+8   readme 2023-03-12 12:23:53      2   300    cpu          0.01  0.16527307033538818
+9   readme 2023-03-12 12:23:53      2   400    cpu          0.01  0.11036019027233124
+10  readme 2023-03-12 12:23:53      2   500    cpu          0.01  0.05740281194448471
+11  readme 2023-03-12 12:23:53      2   600    cpu          0.01  0.07785198092460632
+
 ```
-
-
-
 
 # Preparing your Training Script
 

@@ -164,3 +164,4 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 examples/.replay.json
+labnb.ipynb
