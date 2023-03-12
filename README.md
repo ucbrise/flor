@@ -13,23 +13,26 @@ pip install flordb
 ```
 
 # First Run
-```bash
-git checkout -b flor.shadow
-python examples/linear.py --flor readme
-```
-Run the ``linear.py`` script to test your installation. 
+
+Run the ``examples/rnn.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
-Think of it as a ''hello world'' of deep learning.
-We will cover FLOR shadow branches later.
+FLOR shadow branches permit us to commit your work
+automatically on every run, without interfering with your 
+other commits. You can later review and merge the flor shadow branch as you would any other git branch.
 
 ```bash
-ls ~/.flor/linear
+git checkout -b flor.shadow
+python examples/rnn.py --flor readme
 ```
-Confirm that FLOR saved checkpoints of the ``linear.py`` execution on your home directory.
-FLOR will access and interpret contents of ``~/.flor`` automatically. 
-Do watch out for storage footprint though. 
-If you see disk space running out, check ``~/.flor``.
-FLOR includes utilities for spooling its checkpoints to [S3](https://aws.amazon.com/s3).
+
+When finished, you will have committed to the shadow branch and written execution metadata into a `.flor` directory in your current directory. Additionally, flor created a directory tree in your HOME to organize your experiments. You can find our running experiment as follows:
+
+```bash
+ls ~/.flor/
+```
+Confirm that Flor saved checkpoints of the ``examples/rnn.py`` execution on your home directory.
+Flor will access and interpret contents of ``~/.flor`` automatically. 
+You should routinely clear this stash or spool it to the cloud to clear up disk space.
 
 # Preparing your Training Script
 
