@@ -6,7 +6,7 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="flordb",
-    version="2.5.11",
+    version="2.5.12",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
     description="Fast Low-Overhead Recovery",

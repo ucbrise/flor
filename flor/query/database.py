@@ -16,7 +16,7 @@ def exists():
 
 def start_db(projid: str):
     global dbp
-    (dir_n, _) = projid.split("_")
+    dir_n = "_".join(projid.split("_")[0:-1])
     dbp = home_shelf.florin / Path(dir_n).with_suffix(SUFFIX)
     is_first_start = not dbp.exists()
     assert State.db_conn is None, "Did you try to start_db more than once?"
