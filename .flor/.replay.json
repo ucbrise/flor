@@ -1,9 +1,0 @@
-{
-    "NAME": "seed",
-    "TSTAMP": "2023-03-12T12:23:53.json",
-    "device": "cpu",
-    "train_dataset": "<class 'torchvision.datasets.mnist.MNIST'>",
-    "accuracy": 97.36,
-    "PROJID": "flor_flor.shadow",
-    "EPOCHS": 2
-}
