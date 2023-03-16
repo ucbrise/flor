@@ -67,22 +67,26 @@ def check_branch_cond():
 @atexit.register
 def flush():
     path = home_shelf.close()
-    try:
-        if flags.NAME and in_shadow_branch() and flags.REPLAY:
-            for k in [k for k in exp_json.record_d if not k.isupper()]:
-                log_records.put_dp(k, exp_json.record_d[k])
-            print(State.seconds)
-        log_records.flush(get_projid(), str(exp_json.get("TSTAMP")))
-    except Exception as e:
-        print(e)
-    if flags.NAME and in_shadow_branch() and not flags.REPLAY:
-        projid = get_projid()
+    cond = in_shadow_branch()
+    projid = get_projid()
+
+    if flags.NAME and not flags.REPLAY:
+        assert cond
+        log_records.flush(projid, str(State.timestamp))
         exp_json.put("PROJID", projid)
         exp_json.put("EPOCHS", State.epoch)
         exp_json.flush()
-        repo = Repo(State.common_dir)
+        repo = State.repo
+        assert repo is not None
         repo.git.add("-A")
         repo.index.commit(f"RECORD::{flags.NAME}")
+    elif flags.NAME and flags.REPLAY:
+        assert cond
+        for k in [k for k in exp_json.record_d if not k.isupper()]:
+            log_records.put_dp(k, exp_json.record_d[k])
+
+        log_records.flush(projid, str(State.timestamp))
+
     if State.db_conn:
         State.db_conn.commit()
         State.db_conn.close()
