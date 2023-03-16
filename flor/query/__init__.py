@@ -13,7 +13,6 @@ from flor.query.pivot import *
 from flor.query.engine import *
 from flor.constants import *
 
-facts = None
 pivot_vars: Dict[str, Set[str]] = {
     "DATA_PREP": set([]),
     "OUTR_LOOP": set([]),
@@ -22,9 +21,6 @@ pivot_vars: Dict[str, Set[str]] = {
 
 
 def log_records(skip_unpack=False):
-    global facts
-    if facts is not None:
-        return facts
     if not skip_unpack:
         unpack()
     else:
