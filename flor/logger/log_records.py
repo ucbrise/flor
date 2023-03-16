@@ -44,7 +44,6 @@ def get(name):
 
 
 def flush(projid: str, tstamp: str):
-    print(f"log_records.flush({projid},{tstamp}) invocation")
     if flags.NAME and not flags.REPLAY:
         if len(record_logs) > 0:
             pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
