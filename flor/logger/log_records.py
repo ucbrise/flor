@@ -48,6 +48,7 @@ def flush(projid: str, tstamp: str):
     if flags.NAME and not flags.REPLAY:
         if record_logs:
             pd.DataFrame(record_logs).to_csv(LOG_RECORDS, index=False)
+            print("Flor wrote log records to SqliteDB")
     elif flags.NAME and flags.REPLAY:
         assert State.repo is not None
         for rlg in record_logs:
