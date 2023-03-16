@@ -49,6 +49,9 @@ def unpack():
     """
     MAIN FUNCTION
     """
+    if State.db_conn is not None:
+        return
+
     assert cwd_shelf.in_shadow_branch()
     clear_stash()
 

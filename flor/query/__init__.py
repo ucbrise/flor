@@ -12,6 +12,7 @@ from IPython.display import display
 from flor.query.pivot import *
 from flor.query.engine import *
 from flor.constants import *
+from flor.state import State
 
 pivot_vars: Dict[str, Set[str]] = {
     "DATA_PREP": set([]),
@@ -26,7 +27,8 @@ def log_records(skip_unpack=False):
     else:
         # do unpack initialize
         assert cwd_shelf.in_shadow_branch()
-        database.start_db(cwd_shelf.get_projid())
+        if State.db_conn is None:
+            database.start_db(cwd_shelf.get_projid())
 
     facts = (
         pd.DataFrame(
