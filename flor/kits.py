@@ -1,5 +1,3 @@
-from inspect import stack
-
 from flor.skipblock import SkipBlock
 from flor.constants import *
 
@@ -7,6 +5,7 @@ from flor.state import State
 from flor.iterator import it
 
 from time import time
+from typing import Iterable, Any
 
 
 class MTK:
@@ -22,7 +21,7 @@ class MTK:
         MTK.chckpts.extend([a for a in args])
 
     @staticmethod
-    def loop(iter8r, name=None, probed=None):
+    def loop(iter8r, name=None, probed=None) -> Iterable[Any]:
         """
         Commits after every outer loop
         """
