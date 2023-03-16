@@ -240,4 +240,4 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         raise
 
 
-__all__ = ["facts", "log_records", "full_pivot", "clear_stash", "replay"]
+__all__ = ["log_records", "full_pivot", "clear_stash", "replay"]
