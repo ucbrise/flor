@@ -58,7 +58,7 @@ class StmtToPropVisitor(ast.NodeVisitor):
 
 def apply(names: List[str], dst: str):
     fp = Path(dst)
-    facts = q.log_records(skip_unpack=True) if q.facts is None else q.facts
+    facts = q.log_records(skip_unpack=True)
     # Get latest timestamp for each variable name
     valid_names = facts[facts["name"].isin(names)][["name", "tstamp", "vid", "value"]]
     valid_names = valid_names[valid_names["value"].notna()]
