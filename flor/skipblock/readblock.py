@@ -2,6 +2,7 @@ from .seemblock import SeemBlock
 
 from flor import flags
 from flor.journal.entry import *
+from flor.state import State
 
 import pandas as pd
 
@@ -29,7 +30,12 @@ class ReadBlock(SeemBlock):
     @staticmethod
     def end(*args, values=None):
         lbracket = ReadBlock.pda.pop()
-        block = ReadBlock.journal.as_tree()[lbracket.sk].blocks[lbracket.gk]
+        block = (
+            State.target_block
+            if flags.PID.pid == 0
+            else ReadBlock.journal.as_tree()[lbracket.sk].blocks[lbracket.gk]
+        )
+        assert block is not None
         if not lbracket.predicate:
             for data_record, arg in zip(block.data_records, args):
                 data_record.make_val()

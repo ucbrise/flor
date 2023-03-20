@@ -2,6 +2,7 @@ import json
 from typing import List, Union
 
 from flor import flags
+from flor.state import State
 from flor.shelf import home_shelf
 from flor.constants import *
 from flor.logger import exp_json
@@ -46,7 +47,11 @@ class Journal:
         return exp_json.get("EPOCHS")
 
     def as_tree(self) -> Tree:
-        if not flags.REPLAY or flags.MODE is REPLAY_MODE.strong or flags.PID.pid == 1:
+        if (
+            not flags.REPLAY
+            or flags.MODE is REPLAY_MODE.strong
+            or (flags.PID.pid == 1 and flags.PID.ngpus == 1)
+        ):
             return self.tree
         else:
             assert self.sub_tree is not None
@@ -66,6 +71,7 @@ class Journal:
         if epoch_to_init is not None:
             assert self.tree.root is not None
             target = self.tree[self.tree.root.static_key].blocks[epoch_to_init]
+            State.target_block = target  # type: ignore
             feeding = False
             assert self.entries is not None
             for journal_entry in self.entries:

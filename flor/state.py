@@ -17,3 +17,4 @@ class State:
     seconds: Dict[str, Optional[Union[float, List[float]]]] = {
         "PREP": None,
     }  # May add "EPOCHS" at runtime
+    target_block = None

@@ -26,12 +26,11 @@ class Window:
             ] + [Capsule(False, e) for e in range(lo + 1 if lo is not None else 0, hi)]
         else:
             # All epochs are valid entries
-            our_segment = self._get_segment_helper(self.iterations_count)[
-                flags.PID.pid - 1
-            ]
-            assert (
-                our_segment
-            ), "TODO: Handle case when user allocs more partitions than there is work."
+            our_segment = (
+                self._get_segment_helper(self.iterations_count)[flags.PID.pid - 1]
+                if flags.PID.pid > 0
+                else []
+            )
             if flags.MODE is REPLAY_MODE.weak:
                 # Asks to initialize predecessor
                 return [

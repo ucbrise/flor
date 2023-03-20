@@ -51,7 +51,7 @@ def it(value: Union[Iterable, bool]):
                     if capsule.epoch is None:
                         continue
                     else:
-                        State.epoch = value[capsule.epoch]  # type: ignore
+                        State.epoch = int(capsule.epoch)
                         assert hasattr(
                             value, "__getitem__"
                         ), "TODO: Implement next() calls to consume iterator"
