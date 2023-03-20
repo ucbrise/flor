@@ -40,8 +40,6 @@ def it(value: Union[Iterable, bool]):
                 yield each
     else:
         # Replay mode
-        if flags.PID.pid == 0:
-            return []
         segment = SkipBlock.journal.get_segment_window()
         for capsule in segment:
             flags.RESUMING = capsule.init_only
