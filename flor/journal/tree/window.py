@@ -99,6 +99,9 @@ class Window:
                 return self.extended_sparse_checkpoints[idx + 1]
 
     def _dense(self) -> Optional[int]:
+        if flags.PID.pid == 0:
+            assert isinstance(self.iterations_count, int) and self.iterations_count > 0
+            return self.iterations_count - 1
         our_segment = self._get_segment_helper(self.iterations_count)[flags.PID.pid - 1]
         # TODO: ...
         assert (
