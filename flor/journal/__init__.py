@@ -4,6 +4,7 @@ from typing import List, Union
 from flor import flags
 from flor.shelf import home_shelf
 from flor.constants import *
+from flor.logger import exp_json
 
 from .entry import *
 from .tree import Tree
@@ -35,15 +36,14 @@ class Journal:
             assert (
                 flags.PID.ngpus <= len(self.tree.sparse_checkpoints) + 1
             ), f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
-        if flags.MODE is REPLAY_MODE.weak and flags.PID.pid > 1:
+        if flags.MODE is REPLAY_MODE.weak and flags.PID.pid >= 0:
             self._advance_head()
             assert self.sub_tree is not None
             return self.sub_tree.get_segment()
         return self.tree.get_segment()
 
     def get_iterations_count(self):
-        tree = self.as_tree()
-        return tree.iterations_count
+        return exp_json.get("EPOCHS")
 
     def as_tree(self) -> Tree:
         if not flags.REPLAY or flags.MODE is REPLAY_MODE.strong or flags.PID.pid == 1:
