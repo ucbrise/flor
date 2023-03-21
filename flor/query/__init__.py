@@ -163,7 +163,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         versions = dp_schedule["vid"].drop_duplicates()
         display(dp_schedule)
         print(
-            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(sum(dp_schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(3 * len(versions) + sum(dp_schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
