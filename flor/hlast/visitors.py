@@ -48,7 +48,20 @@ class NoGradVisitor(ast.NodeVisitor):
         if [True for each in node.items if "torch.no_grad" in ast.unparse(each)]:
             try:
                 feeding = self.feeding
+                self.feeding = True
                 for stmt in node.body:
                     self.visit(stmt)
             finally:
                 self.feeding = feeding  # type: ignore
+
+class NoGradTransformer(ast.NodeTransformer):
+    def __init__(self, their_tree) -> None:
+        super().__init__()
+        self.their_tree = their_tree
+
+    def visit_With(self, node: ast.With):
+        if [True for each in node.items if "torch.no_grad" in ast.unparse(each)]:
+            return self.their_tree
+        else:
+            return self.generic_visit(node)
+    

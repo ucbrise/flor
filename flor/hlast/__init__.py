@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
 import flor.query as q
-from .visitors import LoggedExpVisitor, NoGradVisitor
+from .visitors import LoggedExpVisitor, NoGradVisitor, NoGradTransformer
 
 
 def backprop(lineno: int, source: str, target: str, out=None):
@@ -84,17 +84,40 @@ def apply(names: List[str], dst: str):
             copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
         if len(hits) == len(names):
             break
+
     copyfile(stash / fp, fp)
     assert len(hits) == len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
 
     # Next, from the stash you will apply each file to our main one
+    parse_noGrad = []
     for name in names:
-        lineno = int(grouped_names[name])
-        # lev possibly unbound
-        backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
-        print(f"Applied {name} to {dst}")
+        with open(stash / PurePath(name).with_suffix(".py"), "r") as f:
+            tree = ast.parse(f.read())
+
+        ng_visitor = NoGradVisitor()
+        ng_visitor.visit(tree)
+        if name not in ng_visitor.names:
+            lineno = int(grouped_names[name])
+            # lev possibly unbound
+            backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
+            print(f"Applied {name} to {dst}")
+        else:
+            parse_noGrad.append(ng_visitor.tree)
+
+    if len(parse_noGrad) > 1:
+        raise NotImplementedError(
+            "TODO: Will need to merge code blocks, union of logging statements"
+        )
+    elif len(parse_noGrad) == 1:
+        their_tree = parse_noGrad[0]
+        with open(dst, "r") as f:
+            my_tree = ast.parse(f.read())
+        ng_transformer = NoGradTransformer(their_tree)
+
+        with open(dst, "w") as f:
+            f.write(ast.unparse(ng_transformer.visit(my_tree)))
 
 
 __all__ = ["backprop", "apply"]
