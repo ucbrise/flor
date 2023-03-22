@@ -49,24 +49,22 @@ def unpack():
     """
     MAIN FUNCTION
     """
-    if State.db_conn is not None:
-        return
-
     assert cwd_shelf.in_shadow_branch()
     clear_stash()
 
     r = State.repo
     assert r is not None
-    database.start_db(cwd_shelf.get_projid())
+    if State.db_conn is None:
+        database.start_db(cwd_shelf.get_projid())
     wmrk = database.get_watermark()
     active_branch = State.active_branch
     try:
         commits = filtered_versions()
-        for i, version in enumerate(commits["RECORD"]):
+        for version in commits["RECORD"]:
             if wmrk is not None and version.hexsha in wmrk:
                 break
             try:
-                print(f"STEPPING IN {version.hexsha}")
+                # print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
                 cp_seconds(version)
                 cp_log_records(version)
