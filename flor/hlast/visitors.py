@@ -39,7 +39,6 @@ class NoGradVisitor(ast.NodeVisitor):
         if not pred or not self.feeding:
             return self.generic_visit(node)
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
-            self.tree = node
             self.names[str(node.args[0].value)] = node.lineno
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
@@ -49,6 +48,7 @@ class NoGradVisitor(ast.NodeVisitor):
             try:
                 feeding = self.feeding
                 self.feeding = True
+                self.tree = node
                 for stmt in node.body:
                     self.visit(stmt)
             finally:
@@ -61,7 +61,7 @@ class NoGradTransformer(ast.NodeTransformer):
 
     def visit_With(self, node: ast.With):
         if [True for each in node.items if "torch.no_grad" in ast.unparse(each)]:
-            return self.their_tree
+            return self.generic_visit(self.their_tree)
         else:
             return self.generic_visit(node)
     
