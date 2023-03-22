@@ -133,8 +133,10 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     path: `train_rnn.py` or such denoting main python script
     """
     assert Path(path).suffix == ".py"
-    df = full_pivot(log_records(skip_unpack=True))
+    facts = log_records(skip_unpack=True)
+    df = full_pivot(facts)
     assert df is not None
+    assert all([v in facts['name'].values for v in apply_vars])
 
     loglvl = get_dims(pivot_vars, apply_vars)
     dp_schedule = (
