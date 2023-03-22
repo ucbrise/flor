@@ -31,20 +31,19 @@ def in_shadow_branch():
     Initialize
     """
     try:
-        if State.active_branch is None:
-            r = Repo()
-            State.repo = r
-            try:
-                State.active_branch = str(r.active_branch)
-            except TypeError:
-                bs = State.repo.git.branch(
-                    "--contains", str(State.repo.head.commit.hexsha)
-                ).split("\n")
-                branches = [e.strip() for e in bs if "flor.shadow" in e]
-                if len(branches) == 1:
-                    State.active_branch = branches.pop()
-                else:
-                    raise NotImplementedError()
+        r = Repo()
+        State.repo = r
+        try:
+            State.active_branch = str(r.active_branch)
+        except TypeError:
+            bs = State.repo.git.branch(
+                "--contains", str(State.repo.head.commit.hexsha)
+            ).split("\n")
+            branches = [e.strip() for e in bs if "flor.shadow" in e]
+            if len(branches) == 1:
+                State.active_branch = branches.pop()
+            else:
+                raise NotImplementedError()
         cond = check_branch_cond()
         if cond:
             PATH.mkdir(exist_ok=True)
