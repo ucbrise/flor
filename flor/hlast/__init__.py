@@ -9,7 +9,7 @@ from typing import Dict, List, Set
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
 import flor.query as q
-from .visitors import LoggedExpVisitor
+from .visitors import LoggedExpVisitor, NoGradVisitor
 
 
 def backprop(lineno: int, source: str, target: str, out=None):
