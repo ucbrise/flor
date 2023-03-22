@@ -67,7 +67,7 @@ class DataFrame(Data):
         )
 
     def promise(self):
-        ref = home_shelf.get_csv_ref(uuid.uuid4().hex, home_shelf.timestamp)
+        ref = home_shelf.get_csv_ref()
         assert ref is not None
         self.set_ref_and_dump(ref)
         self.promised = self.jsonify()

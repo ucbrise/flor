@@ -78,22 +78,17 @@ def get_latest() -> Optional[Path]:
     return job / PurePath("latest").with_suffix(".json") if job is not None else None
 
 
+def get_ref(ext=".pkl"):
+    assert data is not None
+    return data / PurePath(uuid.uuid4().hex).with_suffix(ext)
+
+
 def get_pkl_ref() -> Optional[Path]:
-    return (
-        data / PurePath(uuid.uuid4().hex).with_suffix(".pkl")
-        if data is not None
-        else None
-    )
+    return get_ref(".pkl")
 
 
-def get_csv_ref(name, tstamp) -> Optional[Path]:
-    return (
-        job
-        / PurePath("csv")
-        / PurePath(f"{name}_{flags.NAME}_{tstamp}").with_suffix(".csv")
-        if job is not None
-        else None
-    )
+def get_csv_ref() -> Optional[Path]:
+    return get_ref(".csv")
 
 
 def verify(path: Union[PurePath, str]) -> bool:
