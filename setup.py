@@ -21,6 +21,9 @@ setuptools.setup(
         "pandas",
         "bidict==0.21.3",
         "apted",
+        "matplotlib",
+        "scikit-learn",
+        "numpy",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
