@@ -101,6 +101,6 @@ def val_to_record(arg, lbracket: Bracket) -> d_entry:
         if hasattr(arg, "state_dict"):
             try:
                 return Torch(lbracket.sk, lbracket.gk, arg.state_dict())  # type: ignore
-            except:
-                pass
+            except Exception as e:
+                print("for debugging", e)
         return DataRef(lbracket.sk, lbracket.gk, arg)

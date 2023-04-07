@@ -47,9 +47,14 @@ class MTK:
                 # Nested loop
                 if SkipBlock.step_into(name, probed):
                     assert State.step is not None
-                    for each in iter8r:
-                        State.step += 1
-                        yield each
-                SkipBlock.end(*MTK.chckpts)
+                    try:
+                        while True:
+                            each = next(iter8r)
+                            State.step += 1
+                            yield each
+                    finally:
+                        SkipBlock.end(*MTK.chckpts)
+
+
         finally:
             State.loop_nesting_level -= 1
