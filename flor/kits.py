@@ -52,6 +52,8 @@ class MTK:
                             each = next(iter8r)
                             State.step += 1
                             yield each
+                    except StopIteration:
+                        pass
                     finally:
                         SkipBlock.end(*MTK.chckpts)
 
