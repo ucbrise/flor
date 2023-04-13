@@ -75,7 +75,7 @@ class WriteBlock(SeemBlock):
 
         # First consider atomic case (always/never)
         ratio = block_group.materialization_time / block_group.computation_time
-        threshold = min(1 / (1 + WriteBlock.scaling_factor), flags.EPSILON)
+        threshold = min(1 / (1 + WriteBlock.scaling_factor), flags.EPSILON)  # type: ignore
         if ratio < threshold:
             return True
 
