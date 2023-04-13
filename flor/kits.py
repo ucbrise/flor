@@ -37,6 +37,7 @@ class MTK:
                 State.seconds["EPOCHS"] = []
                 State.epoch = 0
                 for each in it(iter8r):
+                    print(each)
                     start_time = time()
                     State.step = 0
                     State.epoch += 1
@@ -45,6 +46,7 @@ class MTK:
             else:
                 assert State.loop_nesting_level > 1
                 # Nested loop
+                print("Nested")
                 if SkipBlock.step_into(name, probed):
                     assert State.step is not None
                     try:
@@ -56,7 +58,8 @@ class MTK:
                         pass
                     finally:
                         SkipBlock.end(*MTK.chckpts)
-
+                else:
+                    SkipBlock.end(*MTK.chckpts)
 
         finally:
             State.loop_nesting_level -= 1
