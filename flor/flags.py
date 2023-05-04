@@ -5,9 +5,12 @@ from flor.logger import exp_json
 from flor.query.database import start_db
 
 import sys
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 from pathlib import PurePath, Path
 from time import time
+
+from argparse import ArgumentParser, HelpFormatter, Namespace
+
 
 NAME: Optional[str] = None
 REPLAY: bool = False
@@ -55,14 +58,26 @@ def set_REPLAY(
         PID = REPLAY_PARALLEL(*pid)
 
 
-class Parser:
-    """
-    --flor NAME [EPSILON]
-    --replay_flor [weak | strong] [i/n]
-    """
+class CLI_Args(ArgumentParser):
+    def __init__(self) -> None:
+        super().__init__(
+            prog=None,
+            usage=None,
+            description=None,
+            epilog="Arguments parsed by Flor",
+            parents=[],
+            formatter_class=HelpFormatter,
+            prefix_chars="-",
+            fromfile_prefix_chars=None,
+            argument_default=None,
+            conflict_handler="error",
+            add_help=False,
+            allow_abbrev=False,
+            exit_on_error=True,
+        )
+        self.nsp = Namespace()
 
-    @staticmethod
-    def _parse_name():
+    def parse_record(self):
         assert (
             "--replay_flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
@@ -108,8 +123,7 @@ class Parser:
         exp_json.put("NAME", NAME)
         home_shelf.mk_job(cwd_shelf.get_projid())
 
-    @staticmethod
-    def _parse_replay():
+    def parse_replay(self):
         assert (
             "--flor" not in sys.argv
         ), "Pick at most one of `--flor` or `--replay_flor` but not both"
@@ -164,13 +178,25 @@ class Parser:
             home_shelf.set_job(projid)
             start_db(projid)
 
-    @staticmethod
-    def parse():
-        State.import_time = time()
-        if "--flor" in sys.argv:
-            Parser._parse_name()
-        elif "--replay_flor" in sys.argv:
-            Parser._parse_replay()
+    def parse_remaining(self):
+        skip = True
+        for flg in [each for each in sys.argv if each[0:2] == "--"]:
+            skip = False
+            self.add_argument(flg)
+        if not skip:
+            self.nsp, sys.argv[:] = self.parse_known_args()
+
+
+parser = CLI_Args()
+
+
+def parse():
+    State.import_time = time()
+    if "--flor" in sys.argv:
+        parser.parse_record()
+    elif "--replay_flor" in sys.argv:
+        parser.parse_replay()
+    parser.parse_remaining()
 
 
 __all__ = [
@@ -182,5 +208,7 @@ __all__ = [
     "EPSILON",
     "DATALOGGING",
     "set_REPLAY",
-    "Parser",
+    "parse",
+    "parser",
+    "CLI_Args",
 ]

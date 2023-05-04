@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 
 import json, os
 from pathlib import Path
+import time
 
 replay_d: Optional[Dict[str, Any]] = None
 record_d = {}
@@ -44,9 +45,16 @@ def get(name):
 def flush():
     if flags.NAME and not flags.REPLAY:
         assert State.common_dir is not None
+        record_d['CLI'] = vars(flags.parser.nsp)
         with open(_get_path(), "w", encoding="utf-8") as f:
             json.dump(record_d, f, ensure_ascii=False, indent=4)
-        
+
+        assert State.import_time is not None
+        State.seconds["PREP"] = (
+            State.seconds["PREP"]
+            if State.seconds["PREP"] is not None
+            else time.time() - State.import_time
+        )
         assert State.seconds["PREP"] is not None
         with open(_get_path(SECONDS_JSON), "w", encoding="utf-8") as f:
             json.dump(State.seconds, f, indent=4)

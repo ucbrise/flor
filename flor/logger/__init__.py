@@ -26,6 +26,11 @@ def log(name, value):
     return value
 
 
+def arg(name, default=None):
+    # calls log(name, default)
+    pass
+
+
 def pinned(name, callback, *args):
     if not flags.REPLAY:
         value = callback(*args)
