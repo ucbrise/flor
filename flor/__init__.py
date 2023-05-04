@@ -1,5 +1,5 @@
 from . import flags
-from .logger import log, pinned
+from .logger import log, pinned, arg
 from .kits import MTK
 from .query import *
 from .hlast import apply

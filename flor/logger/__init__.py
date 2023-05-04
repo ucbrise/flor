@@ -28,7 +28,38 @@ def log(name, value):
 
 def arg(name, default=None):
     # calls log(name, default)
-    pass
+    if default is None:
+        if name in vars(flags.parser.nsp):
+            v = getattr(flags.parser.nsp, name)
+            # CLI is logged by EXP_JSON
+            return v
+        else:
+            raise RuntimeError(f"Args without defaults need CLI input: {name}")
+    else:
+        if name in vars(flags.parser.nsp):
+            # CLI takes precedence over default
+            v = getattr(flags.parser.nsp, name)
+            if isinstance(default, bool):
+                return bool(v)
+            if isinstance(default, int):
+                return int(v)
+            elif isinstance(default, float):
+                return float(v)
+            elif isinstance(default, str):
+                return str(v) if v else ""
+            elif isinstance(default, list):
+                return list(v) if v else []
+            elif isinstance(default, tuple):
+                return tuple(v) if v else tuple([])
+            elif isinstance(default, bytes):
+                return bytes(v)
+            elif isinstance(default, bytearray):
+                return bytearray(v)
+            else:
+                raise TypeError(f"Unsupported type: {type(default)}")
+        else:
+            log(name, default)
+            return default
 
 
 def pinned(name, callback, *args):
