@@ -10,7 +10,7 @@ from flor.state import State
 from flor import flags
 
 
-def log(name, value):
+def log(name, value) -> Any:
     def is_jsonable(x):
         try:
             json.dumps(x)
@@ -26,7 +26,8 @@ def log(name, value):
     return value
 
 
-def arg(name, default=None):
+def arg(name, default=None) -> Any:
+    #
     # calls log(name, default)
     if default is None:
         if name in vars(flags.parser.nsp):
@@ -62,7 +63,7 @@ def arg(name, default=None):
             return default
 
 
-def pinned(name, callback, *args):
+def pinned(name, callback, *args) -> Any:
     if not flags.REPLAY:
         value = callback(*args)
         if flags.NAME:
