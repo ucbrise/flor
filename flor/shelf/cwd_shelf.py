@@ -16,6 +16,8 @@ PATH = Path(".flor")
 
 
 def get_projid():
+    if flags.NAME is None:
+        return ""
     if State.common_dir is None:
         r = Repo()
         State.common_dir = Path(r.common_dir)
@@ -50,6 +52,9 @@ def in_shadow_branch():
             get_projid()
         return cond
     except InvalidGitRepositoryError:
+        return False
+    except Exception as e:
+        print(e)
         return False
 
 
