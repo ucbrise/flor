@@ -19,6 +19,8 @@ job: Optional[Path] = None
 data: Optional[Path] = None
 timestamp: Optional[str] = None
 
+def server_init():
+    pass
 
 def get_checkpoint_bytes_per_epoch(projid: str):
     pkl_paths = []
