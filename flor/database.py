@@ -85,6 +85,7 @@ def server_completed(db_conn):
 def init_db(db_conn: sqlite3.Connection):
     """
     Initializes the database
+    TODO: add GPU column to `workers`
     """
     cur = db_conn.cursor()
     cur.executescript(
@@ -109,7 +110,7 @@ def init_db(db_conn: sqlite3.Connection):
         CREATE TABLE pool(
             pid integer,
             tstamp text,
-            jobid 
+            jobid integer
         );
         COMMIT;
         """
