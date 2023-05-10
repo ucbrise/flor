@@ -92,6 +92,15 @@ def init_db(db_conn: sqlite3.Connection):
             pid integer,
             status text,
             tstamp text);
+        CREATE TABLE config(
+            name text,
+            value text
+        );
+        CREATE TABLE queue(
+            path text,
+            args text,
+            pid integer
+        );
         COMMIT;
         """
     )

@@ -30,13 +30,11 @@ elif arg == "serve":
     except KeyboardInterrupt:
         print("Cleaning up...")
     except Exception as e:
-        if not isinstance(e, KeyboardInterrupt):
-            print(e)
-        else:
-            print("Cleaning up...")
+        print(e)
     finally:
         database.server_completed(db_conn)
         db_conn.close()
 
-elif arg == "shell":
+elif arg == "config":
+    # Assume default arguments
     pass

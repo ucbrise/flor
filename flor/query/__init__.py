@@ -136,7 +136,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     facts = log_records(skip_unpack=True)
     df = full_pivot(facts)
     assert df is not None
-    assert all([v in facts['name'].values for v in apply_vars])
+    assert all([v in facts["name"].values for v in apply_vars])
 
     loglvl = get_dims(pivot_vars, apply_vars)
     dp_schedule = (
@@ -240,4 +240,9 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         raise
 
 
-__all__ = ["log_records", "full_pivot", "clear_stash", "replay"]
+def batch(table):
+    for row in table:
+        pass
+
+
+__all__ = ["log_records", "full_pivot", "clear_stash", "replay", "batch"]
