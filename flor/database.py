@@ -101,15 +101,14 @@ def init_db(db_conn: sqlite3.Connection):
         );
         CREATE TABLE workers(
             pid integer,
-            tstamp text
+            tstamp text,
             gpu integer,
-            status text,
+            status text
         );
         CREATE TABLE jobs(
             jobid integer,
             path text,
-            args text,
-            pid integer
+            args text
         );
         CREATE TABLE pool(
             pid integer,
