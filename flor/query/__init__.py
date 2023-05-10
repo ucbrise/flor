@@ -14,6 +14,8 @@ from flor.query.engine import *
 from flor.constants import *
 from flor.state import State
 
+import math
+
 pivot_vars: Dict[str, Set[str]] = {
     "DATA_PREP": set([]),
     "OUTR_LOOP": set([]),
@@ -240,9 +242,17 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         raise
 
 
-def batch(table):
-    for row in table:
-        pass
+def batch(table: pd.DataFrame):
+    cli_args = []
+    records = table.to_dict(orient="records")
+    for record in records:
+        s = ""
+        for k, v in record.items():
+            if v is None or math.isnan(v):
+                continue
+            s += f"--{k} {v} "
+        cli_args.append(s)
+        print(s)
 
 
 __all__ = ["log_records", "full_pivot", "clear_stash", "replay", "batch"]
