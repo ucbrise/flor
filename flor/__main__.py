@@ -14,7 +14,7 @@ if arg == "status":
         database.server_status(db_conn)
     elif len(sys.argv) > 2:
         database.server_status(db_conn, "COMPLETED")
-elif arg == "server":
+elif arg == "serve":
     print("FLOR: Server starting...")
 
     def gen8r():
