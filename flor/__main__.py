@@ -15,7 +15,13 @@ if arg == "status":
     elif len(sys.argv) > 2:
         database.server_status(db_conn, "COMPLETED")
 elif arg == "serve":
-    print("FLOR: Server starting...")
+    gpu_id = None
+    if len(sys.argv) > 2:
+        gpu_id = int(sys.argv[2])
+        assert gpu_id >= 0
+    print(
+        f"FLOR: Server starting{ f' on GPU {str(gpu_id)}' if gpu_id is not None else ''}..."
+    )
 
     def gen8r():
         i = 0

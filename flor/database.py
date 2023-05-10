@@ -23,7 +23,7 @@ def start_db():
 
 def server_status(db_conn, status="ACTIVE"):
     sql = f"""
-    SELECT DISTINCT * FROM status WHERE status = '{status}'; 
+    SELECT DISTINCT * FROM workers WHERE status = '{status}'; 
     """
     cur = db_conn.cursor()
     try:
@@ -33,8 +33,8 @@ def server_status(db_conn, status="ACTIVE"):
         if res is not None:
             all_res = res.fetchall()
             if all_res:
-                for pid, status, tstamp in all_res:
-                    print(f"PID {pid}: {status} since {tstamp}.")
+                for pid, tstamp, gpu, status in all_res:
+                    print(f"PID {pid} on GPU {gpu}: {status} since {tstamp}.")
             else:
                 print("FLOR Server Inactive.")
         else:
@@ -45,13 +45,16 @@ def server_status(db_conn, status="ACTIVE"):
         cur.close()
 
 
-def server_active(db_conn):
+def server_active(db_conn, gpu_id):
     sql = """
-    INSERT INTO status VALUES(?, ?, ?)
+    INSERT INTO workers VALUES(?, ?, ?, ?)
     """
     cur = db_conn.cursor()
     try:
-        cur.execute(sql, (int(os.getpid()), "ACTIVE", str(datetime.now())))
+        pid = int(os.getpid())
+        tstamp = str(datetime.now())
+        status = "ACTIVE"
+        cur.execute(sql, (pid, tstamp, gpu_id, status))
         db_conn.commit()
     except Exception as e:
         print(e)
@@ -61,7 +64,7 @@ def server_active(db_conn):
 
 def server_completed(db_conn):
     sql = """
-    UPDATE status SET status = ?, tstamp = ? WHERE pid = ?;
+    UPDATE workers SET status = ? WHERE pid = ?;
     """
     cur = db_conn.cursor()
     try:
@@ -69,7 +72,6 @@ def server_completed(db_conn):
             sql,
             (
                 "COMPLETED",
-                str(datetime.now()),
                 int(os.getpid()),
             ),
         )
@@ -88,18 +90,26 @@ def init_db(db_conn: sqlite3.Connection):
     cur.executescript(
         """
         BEGIN;
-        CREATE TABLE status(
-            pid integer,
-            status text,
-            tstamp text);
         CREATE TABLE config(
             name text,
             value text
         );
-        CREATE TABLE queue(
+        CREATE TABLE workers(
+            pid integer,
+            tstamp text
+            gpu integer,
+            status text,
+        );
+        CREATE TABLE jobs(
+            jobid integer,
             path text,
             args text,
             pid integer
+        );
+        CREATE TABLE pool(
+            pid integer,
+            tstamp text,
+            jobid 
         );
         COMMIT;
         """
