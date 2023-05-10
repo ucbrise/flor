@@ -30,7 +30,7 @@ elif arg == "serve":
             i += 1
 
     try:
-        database.server_active(db_conn)
+        database.server_active(db_conn, gpu_id)
         for each in tqdm(gen8r()):
             time.sleep(2)
     except KeyboardInterrupt:

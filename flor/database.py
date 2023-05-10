@@ -6,6 +6,7 @@ from datetime import datetime
 
 from flor.shelf import home_shelf
 from flor.constants import *
+import math
 
 SUFFIX = ".db"
 dbp: Optional[Path] = None
@@ -34,7 +35,10 @@ def server_status(db_conn, status="ACTIVE"):
             all_res = res.fetchall()
             if all_res:
                 for pid, tstamp, gpu, status in all_res:
-                    print(f"PID {pid} on GPU {gpu}: {status} since {tstamp}.")
+                    if gpu is not None and not math.isnan(gpu):
+                        print(f"PID {pid} on GPU {gpu}: {status} since {tstamp}.")
+                    else:
+                        print(f"PID on CPU: {status} since {tstamp}.")
             else:
                 print("FLOR Server Inactive.")
         else:
