@@ -38,7 +38,7 @@ def server_status(db_conn, status="ACTIVE"):
                     if gpu is not None and not math.isnan(gpu):
                         print(f"PID {pid} on GPU {gpu}: {status} since {tstamp}.")
                     else:
-                        print(f"PID on CPU: {status} since {tstamp}.")
+                        print(f"PID {pid} on CPU: {status} since {tstamp}.")
             else:
                 print("FLOR Server Inactive.")
         else:
