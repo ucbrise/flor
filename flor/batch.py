@@ -5,7 +5,7 @@ import math
 from . import database
 
 
-def batch(args_table: pd.DataFrame, from_path=os.getcwd()):
+def batch(args_table: pd.DataFrame, script='train.py', from_path=os.getcwd()):
     cli_args = []
     records = args_table.to_dict(orient="records")
     for record in records:
@@ -19,7 +19,7 @@ def batch(args_table: pd.DataFrame, from_path=os.getcwd()):
 
     db_conn = database.start_db()
     try:
-        database.add_jobs(db_conn, from_path, cli_args)
+        database.add_jobs(db_conn, os.path.join(from_path, script), cli_args)
     except Exception as e:
         print(e)
     finally:

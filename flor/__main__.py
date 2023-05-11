@@ -1,6 +1,8 @@
 import sys
 import time
 from tqdm import tqdm
+import subprocess
+import os
 
 from . import database
 
@@ -30,9 +32,27 @@ elif arg == "serve":
             i += 1
 
     try:
-        database.server_active(db_conn, gpu_id)
+        pid, tstamp = database.server_active(db_conn, gpu_id)
         for each in tqdm(gen8r()):
-            time.sleep(2)
+            jobid, path, script, args = database.step_worker(db_conn, pid, tstamp)
+            if jobid is None:
+                time.sleep(2)
+            else:
+                assert jobid is not None
+                assert path is not None
+                assert script is not None
+                assert args is not None
+
+                os.chdir(path)
+
+                s = ""
+                if gpu_id is not None:
+                    s += f"CUDA_VISIBLE_DEVICES={gpu_id} "
+                s += f"python {script} --flor BATCH {args}"
+                print(s)
+                subprocess.run(s.split(" "))
+                database.finish_job(db_conn, jobid)
+
     except KeyboardInterrupt:
         print("Cleaning up...")
     except Exception as e:
