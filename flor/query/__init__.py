@@ -242,17 +242,4 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         raise
 
 
-def batch(table: pd.DataFrame):
-    cli_args = []
-    records = table.to_dict(orient="records")
-    for record in records:
-        s = ""
-        for k, v in record.items():
-            if v is None or math.isnan(v):
-                continue
-            s += f"--{k} {v} "
-        cli_args.append(s)
-        print(s)
-
-
-__all__ = ["log_records", "full_pivot", "clear_stash", "replay", "batch"]
+__all__ = ["log_records", "full_pivot", "clear_stash", "replay"]

@@ -1,12 +1,13 @@
 import os
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 from flor.shelf import home_shelf
 from flor.constants import *
 import math
+import random
 
 SUFFIX = ".db"
 dbp: Optional[Path] = None
@@ -108,7 +109,7 @@ def init_db(db_conn: sqlite3.Connection):
         CREATE TABLE jobs(
             jobid integer,
             path text,
-            args text
+            args text,
         );
         CREATE TABLE pool(
             pid integer,
@@ -119,3 +120,15 @@ def init_db(db_conn: sqlite3.Connection):
         """
     )
     cur.close()
+
+
+def add_jobs(db_conn: sqlite3.Connection, run_dir: str, batched_args: List[str]):
+    sql = """
+    INSERT INTO jobs VALUES(?, ?, ?)
+    """
+    cur = db_conn.cursor()
+    params = [(random.randint(0, 999999999), run_dir, args) for args in batched_args]
+    try:
+        cur.executemany(sql, params)
+    finally:
+        cur.close()
