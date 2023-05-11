@@ -16,8 +16,6 @@ PATH = Path(".flor")
 
 
 def get_projid():
-    if flags.NAME is None:
-        return ""
     if State.common_dir is None:
         r = Repo()
         State.common_dir = Path(r.common_dir)
@@ -70,11 +68,11 @@ def check_branch_cond():
 
 @atexit.register
 def flush():
-    path = home_shelf.close()
-    cond = in_shadow_branch()
-    projid = get_projid()
-
     if flags.NAME and not flags.REPLAY:
+        path = home_shelf.close()
+        cond = in_shadow_branch()
+        projid = get_projid()
+
         assert cond
         log_records.flush(projid, str(State.timestamp))
         exp_json.put("PROJID", projid)
@@ -85,6 +83,10 @@ def flush():
         repo.git.add("-A")
         repo.index.commit(f"RECORD::{flags.NAME}")
     elif flags.NAME and flags.REPLAY:
+        path = home_shelf.close()
+        cond = in_shadow_branch()
+        projid = get_projid()
+
         assert cond
         for k in [k for k in exp_json.record_d if not k.isupper()]:
             log_records.put_dp(k, exp_json.record_d[k])
