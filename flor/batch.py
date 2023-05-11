@@ -5,9 +5,9 @@ import math
 from . import database
 
 
-def batch(table: pd.DataFrame, from_path=os.getcwd()):
+def batch(args_table: pd.DataFrame, from_path=os.getcwd()):
     cli_args = []
-    records = table.to_dict(orient="records")
+    records = args_table.to_dict(orient="records")
     for record in records:
         s = ""
         for k, v in record.items():
@@ -24,3 +24,14 @@ def batch(table: pd.DataFrame, from_path=os.getcwd()):
         pass
     finally:
         db_conn.close()
+
+def cross_prod(**kwargs):
+    """
+    {'epochs': 2, 'batch_size': 2, 'lr': (1e-5, 1e-4, 1e-3)}
+      => [
+          {'epochs': 2, 'batch_size': 2, 'lr': 1e-5},
+          {'epochs': 2, 'batch_size': 2, 'lr': 1e-4},
+          {'epochs': 2, 'batch_size': 2, 'lr': 1e-3}
+        ]
+    """
+    pass

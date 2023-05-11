@@ -93,8 +93,7 @@ def init_db(db_conn: sqlite3.Connection):
     TODO: add GPU column to `workers`
     """
     cur = db_conn.cursor()
-    cur.executescript(
-        """
+    cur.executescript("""
         BEGIN;
         CREATE TABLE config(
             name text,
@@ -109,7 +108,7 @@ def init_db(db_conn: sqlite3.Connection):
         CREATE TABLE jobs(
             jobid integer,
             path text,
-            args text,
+            args text
         );
         CREATE TABLE pool(
             pid integer,
