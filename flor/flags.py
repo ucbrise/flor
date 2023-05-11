@@ -190,13 +190,22 @@ class CLI_Args(ArgumentParser):
 parser = CLI_Args()
 
 
+def is_interactive():
+    try:
+        get_ipython()
+        return True
+    except:
+        return False
+
+
 def parse():
     State.import_time = time()
     if "--flor" in sys.argv:
         parser.parse_record()
     elif "--replay_flor" in sys.argv:
         parser.parse_replay()
-    parser.parse_remaining()
+    if not is_interactive():
+        parser.parse_remaining()
 
 
 __all__ = [
