@@ -20,8 +20,8 @@ def batch(args_table: pd.DataFrame, from_path=os.getcwd()):
     db_conn = database.start_db()
     try:
         database.add_jobs(db_conn, from_path, cli_args)
-    except:
-        pass
+    except Exception as e:
+        print(e)
     finally:
         db_conn.close()
 
@@ -35,3 +35,6 @@ def cross_prod(**kwargs):
         ]
     """
     pass
+
+if __name__ == '__main__':
+    batch(pd.DataFrame({'epochs': 2, 'batch_size': 2, 'lr': (1e-5, 1e-4,1e-3)}), from_path='/home/rogarcia/git/xp-layoutlmv3')

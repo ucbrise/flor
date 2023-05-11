@@ -129,5 +129,8 @@ def add_jobs(db_conn: sqlite3.Connection, run_dir: str, batched_args: List[str])
     params = [(random.randint(0, 999999999), run_dir, args) for args in batched_args]
     try:
         cur.executemany(sql, params)
+        db_conn.commit()
+    except Exception as e:
+        print(e)
     finally:
         cur.close()
