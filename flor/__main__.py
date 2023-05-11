@@ -3,6 +3,7 @@ import time
 from tqdm import tqdm
 import subprocess
 import os
+import sys
 
 from . import database
 
@@ -43,14 +44,15 @@ elif arg == "serve":
                 assert script is not None
                 assert args is not None
 
-                os.chdir(path)
+                s = f"python {script} --flor BATCH {args}"
 
-                s = ""
-                if gpu_id is not None:
-                    s += f"CUDA_VISIBLE_DEVICES={gpu_id} "
-                s += f"python {script} --flor BATCH {args}"
-                print(s)
-                subprocess.run(s.split(" "))
+                my_env = os.environ.copy()
+                my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
+                try:
+                    print(s)
+                    subprocess.run(s.split(), cwd=path, env=my_env)
+                except Exception as e:
+                    print("subprocess exception", e)
                 database.finish_job(db_conn, jobid)
 
     except KeyboardInterrupt:
