@@ -69,7 +69,7 @@ def unpack():
                 cp_seconds(version)
                 cp_log_records(version)
             except Exception as e:
-                print(e)
+                print("Line 72 Exception", e)
     finally:
         r.git.checkout(active_branch)
 
@@ -202,8 +202,6 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
         d: Dict[str, Any] = json.load(f)
 
     user_vars = [name for name in d if not name.isupper()]
-    if "CLI" in d:
-        user_vars.extend([name for name in d["CLI"]])
     for user_var in user_vars:
         # append p,v,-1,-1,n,v
         data.append(
@@ -218,6 +216,20 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
                 "value": d[user_var],
             }
         )
+    if "CLI" in d:
+        for user_var in d['CLI']:
+            data.append({
+                "projid": cwd_shelf.get_projid(),
+                "runid": d["NAME"],
+                "tstamp": tstamp.stem,
+                "vid": hexsha,
+                "epoch": -1,
+                "step": -1,
+                "name": user_var,
+                "value": d['CLI'][user_var],
+            })
+
+
     if "KVS" in d:
         # LEGACY
         _kvs = d["KVS"]
