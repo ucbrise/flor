@@ -50,7 +50,7 @@ def log_records(skip_unpack=False):
             {
                 "projid": str,
                 "runid": str,
-                "tstamp": np.datetime64,
+                "tstamp": 'datetime64[ns]',
                 "vid": str,
                 "epoch": int,
                 "step": int,
@@ -149,7 +149,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                 {
                     "projid": str,
                     "runid": str,
-                    "tstamp": np.datetime64,
+                    "tstamp": 'datetime64[ns]',
                     "vid": str,
                     "seconds": float,
                 }
@@ -182,7 +182,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": np.datetime64,
+                        "tstamp": 'datetime64[ns]',
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
@@ -215,7 +215,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": np.datetime64,
+                        "tstamp": 'datetime64[ns]',
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
