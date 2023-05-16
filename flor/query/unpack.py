@@ -64,7 +64,7 @@ def unpack():
             if wmrk is not None and version.hexsha in wmrk:
                 break
             try:
-                # print(f"STEPPING IN {version.hexsha}")
+                print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
                 cp_seconds(version)
                 cp_log_records(version)
@@ -202,6 +202,8 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
         d: Dict[str, Any] = json.load(f)
 
     user_vars = [name for name in d if not name.isupper()]
+    if "CLI" in d:
+        user_vars.extend([name for name in d["CLI"]])
     for user_var in user_vars:
         # append p,v,-1,-1,n,v
         data.append(
