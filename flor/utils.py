@@ -1,3 +1,4 @@
+from typing import Optional
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import seaborn as sn
@@ -18,3 +19,16 @@ def plot_confusion_matrix(y_true, y_pred, x_classes, y_classes):
     path = home_shelf.get_ref(".png")
     plt.savefig(path)
     return path
+
+
+def cross_prod(**kwargs) -> Optional[pd.DataFrame]:
+    for k in kwargs:
+        if not isinstance(kwargs[k], (tuple, list)):
+            print(f"Coercing type {type(kwargs[k])}: {kwargs[k]}")
+            kwargs[k] = tuple(kwargs[k])
+    dataframes = [pd.DataFrame.from_dict({k: v}) for k, v in kwargs.items()]
+    if dataframes:
+        rolling_df = dataframes[0]
+        for df in dataframes[1:]:
+            rolling_df = rolling_df.merge(df, how="cross")
+        return rolling_df
