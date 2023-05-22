@@ -13,7 +13,11 @@ pip install flordb
 ```
 # Demo
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/TNSt5-i7kR4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+[![Napa Retreat Demo](https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg)](https://youtu.be/TNSt5-i7kR4)
+
+<!-- https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg
+https://youtu.be/TNSt5-i7kR4
+ -->
 
 # First run
 
