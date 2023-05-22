@@ -11,6 +11,9 @@ Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.b
 ```bash
 pip install flordb
 ```
+# Demo
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/TNSt5-i7kR4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 # First run
 
