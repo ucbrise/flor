@@ -49,7 +49,9 @@ def unpack():
     """
     MAIN FUNCTION
     """
-    assert cwd_shelf.in_shadow_branch()
+    assert (
+        cwd_shelf.in_shadow_branch()
+    ), "Please unpack log records from within a `flor.shadow` branch"
     clear_stash()
 
     r = State.repo
@@ -77,7 +79,7 @@ def unpack():
 def cp_seconds(version):
     assert State.db_conn is not None
     hexsha, message = version.hexsha, version.message
-    if "RECORD::" in message and SECONDS_JSON.exists():
+    if message.count("RECORD::") == 1 and SECONDS_JSON.exists():
         with open(REPLAY_JSON, "r") as f:
             replay_json = json.load(f)
         with open(SECONDS_JSON, "r") as f:
@@ -217,18 +219,19 @@ def normalize(replay_json, lr_csv, hexsha, tstamp):
             }
         )
     if "CLI" in d:
-        for user_var in d['CLI']:
-            data.append({
-                "projid": cwd_shelf.get_projid(),
-                "runid": d["NAME"],
-                "tstamp": tstamp.stem,
-                "vid": hexsha,
-                "epoch": -1,
-                "step": -1,
-                "name": user_var,
-                "value": d['CLI'][user_var],
-            })
-
+        for user_var in d["CLI"]:
+            data.append(
+                {
+                    "projid": cwd_shelf.get_projid(),
+                    "runid": d["NAME"],
+                    "tstamp": tstamp.stem,
+                    "vid": hexsha,
+                    "epoch": -1,
+                    "step": -1,
+                    "name": user_var,
+                    "value": d["CLI"][user_var],
+                }
+            )
 
     if "KVS" in d:
         # LEGACY
