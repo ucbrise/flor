@@ -192,7 +192,7 @@ parser = CLI_Args()
 
 def is_interactive():
     try:
-        get_ipython()
+        get_ipython()  # type: ignore
         return True
     except:
         return False
