@@ -34,7 +34,9 @@ def filtered_versions():
         version for version in all_versions if "::" in str(version.message)
     ]
     record_versions = [
-        version for version in flor_versions if "RECORD::" in str(version.message)
+        version
+        for version in flor_versions
+        if str(version.message).count("RECORD::") == 1
     ]
 
     return {"ALL": all_versions, "FLOR": flor_versions, "RECORD": record_versions}
