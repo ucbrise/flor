@@ -36,12 +36,14 @@ class MTK:
                 State.seconds["PREP"] = time() - State.import_time
                 State.seconds["EPOCHS"] = []
                 State.epoch = 0
+                State.seconds["EVAL"] = time()
                 for each in it(iter8r):
                     start_time = time()
                     State.step = 0
                     State.epoch += 1
                     yield each
                     State.seconds["EPOCHS"].append(time() - start_time)
+                State.seconds["EVAL"] = time() - State.seconds["EVAL"]
             else:
                 assert State.loop_nesting_level > 1
                 # Nested loop

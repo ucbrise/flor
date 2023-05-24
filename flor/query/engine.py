@@ -23,10 +23,8 @@ def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
 
 
 def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
-    # TODO: argv processing
     base_cmd = ["python", path, "--replay_flor"]
 
-    start_time = time()
     assert State.repo is not None
     for hexsha in versions:
         State.repo.git.checkout(hexsha)
@@ -57,7 +55,6 @@ def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
         else:
             raise
         State.repo.git.stash()
-    print(f"Time elapsed: {time() - start_time} seconds")
 
 
 def diff_vars(apply_vars: List[str], path: str):

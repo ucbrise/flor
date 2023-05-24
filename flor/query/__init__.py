@@ -50,7 +50,7 @@ def log_records(skip_unpack=False):
             {
                 "projid": str,
                 "runid": str,
-                "tstamp": 'datetime64[ns]',
+                "tstamp": "datetime64[ns]",
                 "vid": str,
                 "epoch": int,
                 "step": int,
@@ -149,25 +149,21 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                 {
                     "projid": str,
                     "runid": str,
-                    "tstamp": 'datetime64[ns]',
+                    "tstamp": "datetime64[ns]",
                     "vid": str,
-                    "seconds": float,
+                    "prep_secs": float,
+                    "eval_secs": float,
                 }
             ),
             how="inner",
             on=DATA_PREP,
-        )[
-            list(DATA_PREP)
-            + [
-                "seconds",
-            ]
-        ]
+        )[list(DATA_PREP) + ["prep_secs", "eval_secs"]]
     )
     if loglvl == DATA_PREP:
         versions = dp_schedule["vid"].drop_duplicates()
         display(dp_schedule)
         print(
-            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(3 * len(versions) + sum(dp_schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -182,7 +178,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": 'datetime64[ns]',
+                        "tstamp": "datetime64[ns]",
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
@@ -201,7 +197,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         versions = schedule["vid"].drop_duplicates()
         display(schedule)
         print(
-            f"Continue replaying {len(versions)} versions at OUTR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['seconds'])) + sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at OUTR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
@@ -215,7 +211,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": 'datetime64[ns]',
+                        "tstamp": "datetime64[ns]",
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
@@ -233,7 +229,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
         versions = schedule["vid"].drop_duplicates()
         display(schedule)
         print(
-            f"Continue replaying {len(versions)} versions at INNR_LOOP level for {'{:.2f}'.format(sum(3 * len(versions) + dp_schedule['seconds']) + sum(schedule['seconds']))} seconds?"
+            f"Continue replaying {len(versions)} versions at INNR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds?"
         )
         res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":

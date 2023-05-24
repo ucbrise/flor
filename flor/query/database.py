@@ -51,7 +51,8 @@ def init_db():
             runid text,
             tstamp text,
             vid text,
-            seconds real
+            prep_secs real,
+            eval_secs real
         );
         CREATE TABLE outr_loop(
             projid text,
@@ -78,21 +79,19 @@ def get_watermark():
 
 
 def get_schedule(keys):
+    # TODO: repair and test
     assert State.db_conn is not None
     cur = State.db_conn.cursor()
     if keys == DATA_PREP:
         res = []
         for r in cur.execute(
-            "SELECT " + ", ".join(DATA_PREP) + ", seconds FROM data_prep;"
+            "SELECT " + ", ".join(DATA_PREP) + ", prep_secs, eval_secs FROM data_prep;"
         ).fetchall():
             res.append(
                 {
                     c: v
                     for c, v in zip(
-                        list(DATA_PREP)
-                        + [
-                            "seconds",
-                        ],
+                        list(DATA_PREP) + ["prep_secs", "eval_secs"],
                         r,
                     )
                 }
@@ -151,5 +150,5 @@ def write_log_records(list_of_dicts):
         ],
     )
     State.db_conn.commit()
-    print("Flor wrote log records to SqliteDB")
+    print("Flor wrote log records to sqlite")
     cur.close()

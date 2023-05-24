@@ -73,7 +73,7 @@ def unpack():
                 cp_seconds(version)
                 cp_log_records(version)
             except Exception as e:
-                print("Line 72 Exception", e)
+                print("Line Exception", e)
     finally:
         r.git.checkout(active_branch)
 
@@ -89,23 +89,21 @@ def cp_seconds(version):
         assert isinstance(seconds_json, dict) and seconds_json
         assert "PREP" in seconds_json
 
-        def prep_normalize(prep_secs):
-            nonlocal seconds_json, replay_json
+        def prep_normalize(prep_secs, eval_secs):
+            nonlocal replay_json
             data = []
             data.append(
                 {
                     c: v
                     for c, v in zip(
-                        list(DATA_PREP)
-                        + [
-                            "seconds",
-                        ],
+                        list(DATA_PREP) + ["prep_secs", "eval_secs"],
                         [
                             cwd_shelf.get_projid(),
                             replay_json["NAME"],
                             PurePath(replay_json["TSTAMP"]).stem,
                             hexsha,
                             float(prep_secs),
+                            float(eval_secs),
                         ],
                     )
                 }
@@ -113,10 +111,10 @@ def cp_seconds(version):
             return data
 
         def outr_normalize(all_epochs_secs):
-            nonlocal seconds_json, replay_json
+            nonlocal replay_json
             data = []
             for i, epoch_secs in enumerate(all_epochs_secs):
-                epoch = i + 1
+                epoch = i + 1  # TODO: confirm not off-by-one
                 data.append(
                     {
                         c: v
@@ -139,9 +137,12 @@ def cp_seconds(version):
             return data
 
         # ..send PREP to data_prep
-        pd.DataFrame(prep_normalize(seconds_json["PREP"])).to_sql(
-            "data_prep", con=State.db_conn, if_exists="append", index=False
-        )
+        pd.DataFrame(
+            prep_normalize(
+                seconds_json["PREP"],
+                seconds_json["EVAL"] if "EVAL" in seconds_json else -1.0,
+            )
+        ).to_sql("data_prep", con=State.db_conn, if_exists="append", index=False)
 
         # .. send EPOCHS to outr_loop
         if "EPOCHS" in seconds_json:
