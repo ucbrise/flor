@@ -1,3 +1,4 @@
+# type: ignore
 from apted import APTED, Config
 from itertools import product, zip_longest
 from collections.abc import Iterable
