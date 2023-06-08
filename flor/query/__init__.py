@@ -1,5 +1,5 @@
-import csv
-from typing import List, Set, Dict
+import ast
+from typing import List, Optional, Set, Dict
 import pandas as pd
 import numpy as np
 from flor.shelf import home_shelf, cwd_shelf
@@ -14,7 +14,7 @@ from flor.query.engine import *
 from flor.constants import *
 from flor.state import State
 
-import math
+from flor.hlast.visitors import LoggedExpVisitor
 
 pivot_vars: Dict[str, Set[str]] = {
     "DATA_PREP": set([]),
@@ -128,7 +128,9 @@ def full_pivot(facts: pd.DataFrame):
         return post_proc(il_pivot, all_keys)
 
 
-def replay(apply_vars: List[str], where_clause: str, path: str):
+def replay(
+    apply_vars: List[str], where_clause: Optional[str] = None, path: str = "train.py"
+):
     """
     apply_vars : ['device', 'optimizer', 'learning_rate', ...]
     where_clause: stated in Pandas/SQL, passed to full_pivot
@@ -138,9 +140,21 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     facts = log_records(skip_unpack=True)
     df = full_pivot(facts)
     assert df is not None
-    assert all([v in facts["name"].values for v in apply_vars])
 
-    loglvl = get_dims(pivot_vars, apply_vars)
+    vars_in_latest = []
+    for var in apply_vars:
+        if var not in facts["name"].values:
+            with open(path, "r") as f:
+                tree = ast.parse(f.read())
+            lev = LoggedExpVisitor()
+            lev.visit(tree)
+            assert (
+                var in lev.names
+            ), f"FLOR: could not find logged var `{var}` in any version of `{path}`."
+            vars_in_latest.append(var)
+
+    # TODO: pickup
+    loglvl = get_dims(pivot_vars, apply_vars, vars_in_latest)
     dp_schedule = (
         (df.query(where_clause) if where_clause is not None else df)[list(DATA_PREP)]
         .drop_duplicates()
