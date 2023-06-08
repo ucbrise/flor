@@ -142,7 +142,7 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
 
     loglvl = get_dims(pivot_vars, apply_vars)
     dp_schedule = (
-        df.query(where_clause)[list(DATA_PREP)]
+        (df.query(where_clause) if where_clause is not None else df)[list(DATA_PREP)]
         .drop_duplicates()
         .merge(
             pd.DataFrame(database.get_schedule(DATA_PREP)).astype(
@@ -171,7 +171,9 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
     elif loglvl == OUTR_LOOP:
         size_bytes = home_shelf.get_checkpoint_bytes_per_epoch(cwd_shelf.get_projid())
         schedule = (
-            df.query(where_clause)[list(OUTR_LOOP)]
+            (df.query(where_clause) if where_clause is not None else df)[
+                list(OUTR_LOOP)
+            ]
             .drop_duplicates()
             .merge(
                 pd.DataFrame(database.get_schedule(OUTR_LOOP)).astype(
@@ -204,7 +206,9 @@ def replay(apply_vars: List[str], where_clause: str, path: str):
             batch_replay(apply_vars, path, versions, OUTR_LOOP)
     elif loglvl == INNR_LOOP:
         schedule = (
-            df.query(where_clause)[list(OUTR_LOOP)]
+            (df.query(where_clause) if where_clause is not None else df)[
+                list(OUTR_LOOP)
+            ]
             .drop_duplicates()
             .merge(
                 pd.DataFrame(database.get_schedule(OUTR_LOOP)).astype(
