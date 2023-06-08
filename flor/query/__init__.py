@@ -153,8 +153,18 @@ def replay(
             ), f"FLOR: could not find logged var `{var}` in any version of `{path}`."
             vars_in_latest.append(var)
 
-    # TODO: pickup
-    loglvl = get_dims(pivot_vars, apply_vars, vars_in_latest)
+    for var in vars_in_latest:
+        # find where in source code
+        # Prompt the user
+        # TODO: Infer which one with fast static analysis.
+        msg = input(
+            f"What is the log level of logging statement `{var}`: DATA_PREP, OUTR_LOOP, INNR_LOOP?"
+        )
+        msg = msg.strip().upper()
+        assert msg in pivot_vars
+        pivot_vars[msg].add(var)
+
+    loglvl = get_dims(pivot_vars, apply_vars)
     dp_schedule = (
         (df.query(where_clause) if where_clause is not None else df)[list(DATA_PREP)]
         .drop_duplicates()

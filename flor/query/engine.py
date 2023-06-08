@@ -14,12 +14,12 @@ from flor.hlast.visitors import LoggedExpVisitor
 import subprocess
 
 
-def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str], latest_vars: List[str]):
+def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
     if any([applied_v in pivot_vars["INNR_LOOP"] for applied_v in apply_vars]):
-        return INNR_LOOP # FULL SCAN --replay_flor 1/1
+        return INNR_LOOP  # FULL SCAN --replay_flor 1/1
     if any([applied_v in pivot_vars["OUTR_LOOP"] for applied_v in apply_vars]):
-        return OUTR_LOOP # INDEX SCAN --replay_flor
-    return DATA_PREP # INDEX LOOKUP --replay_flor 0/1
+        return OUTR_LOOP  # INDEX SCAN --replay_flor
+    return DATA_PREP  # INDEX LOOKUP --replay_flor 0/1
 
 
 def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
