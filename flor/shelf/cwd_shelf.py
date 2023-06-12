@@ -10,6 +10,7 @@ from flor.logger import exp_json, log_records
 from flor.shelf import home_shelf
 from pathlib import Path
 
+from time import time
 import atexit
 
 PATH = Path(".flor")
@@ -68,6 +69,7 @@ def check_branch_cond():
 
 @atexit.register
 def flush():
+    State.seconds["EVAL"] = time() - State.seconds["EVAL"]  # type: ignore
     if flags.NAME and not flags.REPLAY:
         path = home_shelf.close()
         cond = in_shadow_branch()
