@@ -93,6 +93,8 @@ def flush():
         for k in [k for k in exp_json.record_d if not k.isupper()]:
             log_records.put_dp(k, exp_json.record_d[k])
 
+        # TODO: Write replay metadata (e.g. seconds) to NEW TABLE in sqlite3
+
         log_records.flush(projid, str(State.timestamp))
 
     if State.db_conn:

@@ -185,6 +185,10 @@ class CLI_Args(ArgumentParser):
             self.add_argument(flg)
         if not skip:
             self.nsp, sys.argv[:] = self.parse_known_args()
+        elif REPLAY:
+            # TODO: Replay case, load CLI from .flor/.replay.json
+            pass
+            
 
 
 parser = CLI_Args()
