@@ -12,6 +12,7 @@ from flor.hlast import apply
 from flor.hlast.visitors import LoggedExpVisitor
 
 import subprocess
+import json
 
 
 def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
@@ -30,27 +31,38 @@ def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
         State.repo.git.checkout(hexsha)
         apply(diff_vars(apply_vars, path), path)
 
+        cli_args = []
+        with open(REPLAY_JSON, "r") as f:
+            d = json.load(f)
+            if "CLI" in d:
+                for k, v in d["CLI"].items():
+                    cli_args.append("--" + str(k))
+                    cli_args.append(v)
+
         if loglvl == DATA_PREP:
             subprocess.run(
                 base_cmd
                 + [
                     "0/1",
                 ]
+                + cli_args
             )
         elif loglvl == OUTR_LOOP:
-            subprocess.run(base_cmd)
+            subprocess.run(base_cmd + cli_args)
         elif loglvl == INNR_LOOP:
             subprocess.run(
                 base_cmd
                 + [
                     "1/2",
                 ]
+                + cli_args
             )
             subprocess.run(
                 base_cmd
                 + [
                     "2/2",
                 ]
+                + cli_args
             )
         else:
             raise
