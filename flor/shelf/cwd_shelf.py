@@ -8,10 +8,13 @@ from flor.state import State
 from flor.constants import *
 from flor.logger import exp_json, log_records
 from flor.shelf import home_shelf
+from flor.query import database
 from pathlib import Path
 
 from time import time
+from datetime import datetime
 import atexit
+import pandas as pd
 
 PATH = Path(".flor")
 
@@ -88,13 +91,69 @@ def flush():
         path = home_shelf.close()
         cond = in_shadow_branch()
         projid = get_projid()
+        assert State.repo
+
+        if State.db_conn is None:
+            database.start_db(projid)
+        assert State.db_conn
+
+        # TODO: Write replay metadata (e.g. seconds)
+        new_tstamp = str(datetime.now())
+        hexsha = None
+        for v in State.repo.iter_commits():
+            if str(v.message).count("RECORD::") == 1:
+                hexsha = v.hexsha
+                break
+        assert hexsha is not None
+
+        pd.DataFrame(
+            [
+                {
+                    c: v
+                    for c, v in zip(
+                        list(DATA_PREP) + ["prep_secs", "eval_secs"],
+                        [
+                            projid,
+                            flags.NAME,
+                            new_tstamp,
+                            hexsha,
+                            float(State.seconds["PREP"]),  # type: ignore
+                            float(State.seconds["EVAL"]),
+                        ],
+                    )
+                },
+            ]
+        ).to_sql("data_prep", con=State.db_conn, if_exists="append", index=False)
+
+        data = []
+        for i, epoch_secs in enumerate(State.seconds["EPOCHS"]):  # type: ignore
+            epoch = i + 1
+            data.append(
+                {
+                    c: v
+                    for c, v in zip(
+                        list(OUTR_LOOP)
+                        + [
+                            "seconds",
+                        ],
+                        [
+                            projid,
+                            flags.NAME,
+                            new_tstamp,
+                            hexsha,
+                            int(epoch),
+                            float(epoch_secs),
+                        ],
+                    )
+                }
+            )
+        pd.DataFrame(data).to_sql(
+            "outr_loop", con=State.db_conn, if_exists="append", index=False
+        )
 
         assert cond
         for k in [k for k in exp_json.record_d if not k.isupper()]:
             log_records.put_dp(k, exp_json.record_d[k])
-
-        # TODO: Write replay metadata (e.g. seconds) to NEW TABLE in sqlite3
-
         log_records.flush(projid, str(State.timestamp))
 
     if State.db_conn:
