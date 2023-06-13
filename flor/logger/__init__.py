@@ -27,7 +27,6 @@ def log(name, value) -> Any:
 
 
 def arg(name, default=None) -> Any:
-    #
     # calls log(name, default)
     if default is None:
         if name in vars(flags.parser.nsp):
