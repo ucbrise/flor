@@ -128,31 +128,32 @@ def flush():
             ]
         ).to_sql("data_prep", con=State.db_conn, if_exists="append", index=False)
 
-        data = []
-        for i, epoch_secs in enumerate(State.seconds["EPOCHS"]):  # type: ignore
-            epoch = i + 1
-            data.append(
-                {
-                    c: v
-                    for c, v in zip(
-                        list(OUTR_LOOP)
-                        + [
-                            "seconds",
-                        ],
-                        [
-                            projid,
-                            flags.NAME,
-                            new_tstamp,
-                            hexsha,
-                            int(epoch),
-                            float(epoch_secs),
-                        ],
-                    )
-                }
+        if flags.PID.pid == 1 and flags.PID.ngpus == 1:
+            data = []
+            for i, epoch_secs in enumerate(State.seconds["EPOCHS"]):  # type: ignore
+                epoch = i + 1
+                data.append(
+                    {
+                        c: v
+                        for c, v in zip(
+                            list(OUTR_LOOP)
+                            + [
+                                "seconds",
+                            ],
+                            [
+                                projid,
+                                flags.NAME,
+                                new_tstamp,
+                                hexsha,
+                                int(epoch),
+                                float(epoch_secs),
+                            ],
+                        )
+                    }
+                )
+            pd.DataFrame(data).to_sql(
+                "outr_loop", con=State.db_conn, if_exists="append", index=False
             )
-        pd.DataFrame(data).to_sql(
-            "outr_loop", con=State.db_conn, if_exists="append", index=False
-        )
 
         assert cond
         for k in [k for k in exp_json.record_d if not k.isupper()]:
