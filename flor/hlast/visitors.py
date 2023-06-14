@@ -2,23 +2,23 @@ from _ast import For
 from typing import Any, Dict
 import ast
 
-def _get_log_level(i: int):
-    if i == 0:
-        return "DATA_PREP"
-    elif i == 1: 
-        return "OUTR_LOOP"
-    else:
-        return "INNR_LOOP"
-
 class LoggedExpVisitor(ast.NodeVisitor):
-    # TODO: Static analysis infers location
     def __init__(self):
         super().__init__()
         self.names: Dict[str, int] = {}
-        self.loglevels: Dict[str, str] = {}
+        self.loglevels: Dict[str, int] = {}
         
-        # LVL is DATA_PREP, OUTR_LOOP, INNR_LOOP
         self.lvl = 0 
+
+    def get_loglevel(self, filtered_keys):
+        i = max({k:self.loglevels[k] for k in (filtered_keys if filtered_keys is not None else self.loglevels)}.values())
+        if i == 0:
+            return "DATA_PREP"
+        elif i == 1:
+            return "OUTR_LOOP"
+        elif i >= 2:
+            return "INNR_LOOP"
+        raise
 
     def visit_For(self, node: For):
         iter_s = ast.unparse(node.iter).strip()
@@ -45,7 +45,7 @@ class LoggedExpVisitor(ast.NodeVisitor):
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
             n = str(node.args[0].value)
             self.names[n] = node.lineno
-            self.loglevels[n] = _get_log_level(self.lvl)
+            self.loglevels[n] = self.lvl
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
 

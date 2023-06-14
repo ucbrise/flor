@@ -141,13 +141,14 @@ def replay(
     df = full_pivot(facts)
     assert df is not None
 
+    with open(path, "r") as f:
+        tree = ast.parse(f.read())
+    lev = LoggedExpVisitor()
+    lev.visit(tree)
+
     vars_in_latest = []
     for var in apply_vars:
         if var not in facts["name"].values:
-            with open(path, "r") as f:
-                tree = ast.parse(f.read())
-            lev = LoggedExpVisitor()
-            lev.visit(tree)
             assert (
                 var in lev.names
             ), f"FLOR: could not find logged var `{var}` in any version of `{path}`."
@@ -158,11 +159,21 @@ def replay(
         # Prompt the user
         # TODO: Infer which one with fast static analysis.
         msg = input(
-            f"What is the log level of logging statement `{var}`: DATA_PREP, OUTR_LOOP, INNR_LOOP?"
+            f"What is the log level of logging statement `{var}`? Leave blank to infer `{lev.get_loglevel([var,])}`: "
         )
         msg = msg.strip().upper()
-        assert msg in pivot_vars
-        pivot_vars[msg].add(var)
+        if msg in pivot_vars:
+            pivot_vars[msg].add(var)
+        elif msg == "" or not msg:
+            pivot_vars[
+                lev.get_loglevel(
+                    [
+                        var,
+                    ]
+                )
+            ].add(var)
+        else:
+            raise
 
     loglvl = get_dims(pivot_vars, apply_vars)
     dp_schedule = (
