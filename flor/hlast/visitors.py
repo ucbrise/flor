@@ -1,4 +1,3 @@
-from _ast import For
 from typing import Any, Dict
 import ast
 
@@ -20,17 +19,17 @@ class LoggedExpVisitor(ast.NodeVisitor):
             return "INNR_LOOP"
         raise
 
-    def visit_For(self, node: For):
+    def visit_For(self, node: ast.For):
         iter_s = ast.unparse(node.iter).strip()
         if 'Flor.loop' == iter_s[0:len('Flor.loop')] or 'MTK.loop' == iter_s[0:len('MTK.loop')]:
             start_lvl = self.lvl
             try:
                 self.lvl += 1
-                tree = super().visit_For(node)
+                tree = self.generic_visit(node)
             finally:
                 self.lvl = start_lvl
         else:
-            tree = super().visit_For(node)
+            tree = self.generic_visit(node)
         return tree
 
     def visit_Call(self, node: ast.Call):

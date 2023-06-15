@@ -3,8 +3,9 @@ from typing import List, Optional, Set, Dict
 import pandas as pd
 import numpy as np
 from flor.shelf import home_shelf, cwd_shelf
-from flor.query.unpack import unpack, clear_stash
+from flor.query.unpack import unpack, clear_stash, get_stash
 from flor.query import database
+
 from flor.shelf import cwd_shelf
 from pathlib import Path
 from IPython.display import display
@@ -15,6 +16,8 @@ from flor.constants import *
 from flor.state import State
 
 from flor.hlast.visitors import LoggedExpVisitor
+from shutil import copyfile
+
 
 pivot_vars: Dict[str, Set[str]] = {
     "DATA_PREP": set([]),
@@ -50,7 +53,7 @@ def log_records(skip_unpack=False):
             {
                 "projid": str,
                 "runid": str,
-                "tstamp": "datetime64[ns]",
+                "tstamp": str,
                 "vid": str,
                 "epoch": int,
                 "step": int,
@@ -141,6 +144,9 @@ def replay(
     df = full_pivot(facts)
     assert df is not None
 
+    stash = clear_stash()
+    assert stash is not None
+
     with open(path, "r") as f:
         tree = ast.parse(f.read())
     lev = LoggedExpVisitor()
@@ -152,7 +158,10 @@ def replay(
             assert (
                 var in lev.names
             ), f"FLOR: could not find logged var `{var}` in any version of `{path}`."
+            copyfile(path, stash / Path(var).with_suffix(".py"))
             vars_in_latest.append(var)
+            State.hls_hits.add(var)
+            State.grouped_names[var] = lev.names[var]
 
     for var in vars_in_latest:
         # find where in source code
@@ -184,7 +193,7 @@ def replay(
                 {
                     "projid": str,
                     "runid": str,
-                    "tstamp": "datetime64[ns]",
+                    "tstamp": str,
                     "vid": str,
                     "prep_secs": float,
                     "eval_secs": float,
@@ -197,10 +206,9 @@ def replay(
     if loglvl == DATA_PREP:
         versions = dp_schedule["vid"].drop_duplicates()
         display(dp_schedule)
-        print(
-            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs']))} seconds?"
+        res = input(
+            f"Continue replaying {len(versions)} versions at DATA_PREP level for {'{:.2f}'.format(3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs']))} seconds?[Y/n]? "
         )
-        res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, DATA_PREP)
     elif loglvl == OUTR_LOOP:
@@ -215,7 +223,7 @@ def replay(
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": "datetime64[ns]",
+                        "tstamp": str,
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
@@ -233,10 +241,9 @@ def replay(
         schedule["seconds"] = size_bytes * DESERIALIZATION_COEFF
         versions = schedule["vid"].drop_duplicates()
         display(schedule)
-        print(
-            f"Continue replaying {len(versions)} versions at OUTR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds?"
+        res = input(
+            f"Continue replaying {len(versions)} versions at OUTR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds [Y/n]? "
         )
-        res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, OUTR_LOOP)
     elif loglvl == INNR_LOOP:
@@ -250,7 +257,7 @@ def replay(
                     {
                         "projid": str,
                         "runid": str,
-                        "tstamp": "datetime64[ns]",
+                        "tstamp": str,
                         "vid": str,
                         "epoch": int,
                         "seconds": float,
@@ -267,14 +274,13 @@ def replay(
         )
         versions = schedule["vid"].drop_duplicates()
         display(schedule)
-        print(
-            f"Continue replaying {len(versions)} versions at INNR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds?"
+        res = input(
+            f"Continue replaying {len(versions)} versions at INNR_LOOP level for {'{:.2f}'.format((3 * len(versions) + sum(dp_schedule['prep_secs']) + sum(dp_schedule['eval_secs'])) + sum(schedule['seconds']))} seconds [Y/n]? "
         )
-        res = input("Continue [Y/n]? ")
         if res.strip().lower() != "n":
             batch_replay(apply_vars, path, versions, INNR_LOOP)
     else:
         raise
 
 
-__all__ = ["log_records", "full_pivot", "clear_stash", "replay"]
+__all__ = ["log_records", "full_pivot", "clear_stash", "get_stash", "replay"]

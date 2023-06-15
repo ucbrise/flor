@@ -5,6 +5,7 @@ from shutil import copyfile
 from pathlib import Path, PurePath
 from sys import stdout
 from typing import Dict, List, Set
+import pandas as pd
 
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
@@ -57,21 +58,28 @@ class StmtToPropVisitor(ast.NodeVisitor):
 
 
 def apply(names: List[str], dst: str):
+    """
+    Caller checks out a previous version
+    """
+
     fp = Path(dst)
     facts = q.log_records(skip_unpack=True)
-    # Get latest timestamp for each variable name
-    valid_names = facts[facts["name"].isin(names)][["name", "tstamp", "vid", "value"]]
-    valid_names = valid_names[valid_names["value"].notna()]
-    name2tstamp = valid_names[["name", "tstamp", "vid"]].drop_duplicates()
 
-    stash = q.clear_stash()
+    # Get latest timestamp for each variable name
+    historical_names = facts[facts["name"].isin(names)][
+        ["name", "tstamp", "vid", "value"]
+    ]
+    historical_names = historical_names[historical_names["value"].notna()]
+    hist_name2tstamp = historical_names[["name", "tstamp", "vid"]].drop_duplicates()
+
+    stash = q.get_stash()
     assert stash is not None
     assert State.repo is not None
     copyfile(fp, stash / fp)
-    hits: Set[str] = set([])
-    grouped_names: Dict[str, int] = {}
 
-    for _, row in name2tstamp.iterrows():
+    for _, row in hist_name2tstamp.iterrows():
+        if len(State.hls_hits) == len(names):
+            break
         n = row["name"]
         v = row["vid"]
         State.repo.git.checkout(v, "--", fp)
@@ -79,16 +87,14 @@ def apply(names: List[str], dst: str):
         with open(fp, "r") as f:
             lev.visit(ast.parse(f.read()))
         if n in lev.names:
-            grouped_names[n] = lev.names[n]
-            hits.add(n)
+            State.grouped_names[n] = lev.names[n]
+            State.hls_hits.add(n)
             copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
-        if len(hits) == len(names):
-            break
 
     copyfile(stash / fp, fp)
-    assert len(hits) == len(
+    assert len(State.hls_hits) == len(
         names
-    ), f"Failed to find log statement for vars {[n for n in names if n not in hits]}"
+    ), f"Failed to find log statement for vars {[n for n in names if n not in State.hls_hits]}"
 
     # Next, from the stash you will apply each file to our main one
     parse_noGrad = []
@@ -99,7 +105,7 @@ def apply(names: List[str], dst: str):
         ng_visitor = NoGradVisitor()
         ng_visitor.visit(tree)
         if name not in ng_visitor.names:
-            lineno = int(grouped_names[name])
+            lineno = int(State.grouped_names[name])
             # lev possibly unbound
             backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
             print(f"Applied {name} to {dst}")

@@ -8,6 +8,7 @@ import json
 from flor.logger import exp_json, log_records
 from flor.state import State
 from flor import flags
+from flor.constants import *
 
 
 def log(name, value) -> Any:
@@ -27,18 +28,50 @@ def log(name, value) -> Any:
 
 
 def arg(name, default=None) -> Any:
-    # calls log(name, default)
+    historical_args = None
+    if flags.NAME and flags.REPLAY:
+        with open(REPLAY_JSON, "r") as f:
+            d = json.load(f)
+            if "CLI" in d:
+                historical_args = d["CLI"]
     if default is None:
-        if name in vars(flags.parser.nsp):
-            v = getattr(flags.parser.nsp, name)
-            # CLI is logged by EXP_JSON
-            return v
+        if historical_args is None or name not in historical_args:
+            if name in vars(flags.parser.nsp):
+                v = getattr(flags.parser.nsp, name)
+                # CLI is logged by EXP_JSON
+                return v
+            else:
+                raise RuntimeError(f"Args without defaults need CLI input: {name}")
         else:
-            raise RuntimeError(f"Args without defaults need CLI input: {name}")
+            return historical_args[name]
     else:
-        if name in vars(flags.parser.nsp):
-            # CLI takes precedence over default
-            v = getattr(flags.parser.nsp, name)
+        if historical_args is None or name not in historical_args:
+            if name in vars(flags.parser.nsp):
+                # CLI takes precedence over default
+                v = getattr(flags.parser.nsp, name)
+                if isinstance(default, bool):
+                    return bool(v)
+                if isinstance(default, int):
+                    return int(v)
+                elif isinstance(default, float):
+                    return float(v)
+                elif isinstance(default, str):
+                    return str(v) if v else ""
+                elif isinstance(default, list):
+                    return list(v) if v else []
+                elif isinstance(default, tuple):
+                    return tuple(v) if v else tuple([])
+                elif isinstance(default, bytes):
+                    return bytes(v)
+                elif isinstance(default, bytearray):
+                    return bytearray(v)
+                else:
+                    raise TypeError(f"Unsupported type: {type(default)}")
+            else:
+                log(name, default)
+                return default
+        else:
+            v = historical_args[name]
             if isinstance(default, bool):
                 return bool(v)
             if isinstance(default, int):
@@ -57,9 +90,6 @@ def arg(name, default=None) -> Any:
                 return bytearray(v)
             else:
                 raise TypeError(f"Unsupported type: {type(default)}")
-        else:
-            log(name, default)
-            return default
 
 
 def pinned(name, callback, *args) -> Any:
