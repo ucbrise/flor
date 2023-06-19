@@ -101,7 +101,7 @@ def flush():
         assert State.db_conn
 
         # TODO: Write replay metadata (e.g. seconds)
-        new_tstamp = str(datetime.now())
+        new_tstamp = str(datetime.now().isoformat())
         hexsha = None
         for v in State.repo.iter_commits():
             if str(v.message).count("RECORD::") == 1:
