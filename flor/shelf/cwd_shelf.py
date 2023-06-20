@@ -73,7 +73,7 @@ def check_branch_cond():
 def eval_seconds():
     try:
         State.seconds["EVAL"] = time() - State.seconds["EVAL"]  # type: ignore
-    except:
+    except Exception:
         State.seconds["EVAL"] = -1
 
 
