@@ -70,11 +70,17 @@ def check_branch_cond():
     return False
 
 
+def eval_seconds():
+    try:
+        State.seconds["EVAL"] = time() - State.seconds["EVAL"]  # type: ignore
+    except:
+        State.seconds["EVAL"] = -1
+
+
 @atexit.register
 def flush():
     if flags.NAME and not flags.REPLAY:
-        State.seconds["EVAL"] = time() - State.seconds["EVAL"]  # type: ignore
-
+        eval_seconds()
         path = home_shelf.close()
         cond = in_shadow_branch()
         projid = get_projid()
@@ -89,8 +95,7 @@ def flush():
         repo.git.add("-A")
         repo.index.commit(f"RECORD::{flags.NAME}")
     elif flags.NAME and flags.REPLAY:
-        State.seconds["EVAL"] = time() - State.seconds["EVAL"]  # type: ignore
-
+        eval_seconds()
         path = home_shelf.close()
         cond = in_shadow_branch()
         projid = get_projid()
@@ -121,7 +126,7 @@ def flush():
                             new_tstamp,
                             hexsha,
                             float(State.seconds["PREP"]),  # type: ignore
-                            float(State.seconds["EVAL"]),
+                            float(State.seconds["EVAL"]),  # type: ignore
                         ],
                     )
                 },
