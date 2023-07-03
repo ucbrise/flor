@@ -6,6 +6,7 @@ from pathlib import Path, PurePath
 from sys import stdout
 from typing import Dict, List, Set
 import pandas as pd
+import os
 
 from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
 from flor.state import State
@@ -92,7 +93,11 @@ def apply(names: List[str], dst: str):
             copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
 
     copyfile(stash / fp, fp)
-    assert len(State.hls_hits) == len(
+
+    for p in os.listdir(stash):
+        State.hls_hits.add(".".join(p.split(".")[0:-1]))
+
+    assert len(os.listdir(stash)) > len(
         names
     ), f"Failed to find log statement for vars {[n for n in names if n not in State.hls_hits]}"
 
@@ -104,13 +109,20 @@ def apply(names: List[str], dst: str):
 
         ng_visitor = NoGradVisitor()
         ng_visitor.visit(tree)
+
         if name not in ng_visitor.names:
-            lineno = int(State.grouped_names[name])
+            if name in State.grouped_names:
+                lineno = int(State.grouped_names[name])
+            else:
+                lev = LoggedExpVisitor()
+                lev.visit(tree)
+                lineno = int(lev.names[name])
             # lev possibly unbound
             backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
             print(f"Applied {name} to {dst}")
         else:
             parse_noGrad.append(ng_visitor.tree)
+            print(f"Applied {name} to {dst}")
 
     if len(parse_noGrad) > 1:
         raise NotImplementedError(

@@ -13,9 +13,11 @@ import json
 import csv
 import pandas as pd
 
+
 def get_stash():
-    global stash
-    return stash
+    projid = cwd_shelf.get_projid()
+    return Path.home() / ".flor" / projid / "stash"
+
 
 def clear_stash():
     global stash
