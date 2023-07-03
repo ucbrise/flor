@@ -6,6 +6,7 @@ import os
 import sys
 
 from . import database
+from flor.query.engine import apply_variables
 
 from git.repo import Repo
 
@@ -66,13 +67,12 @@ elif arg == "serve":
                         print("\n", s)
                         # TODO: git checkout VID
                         repo.git.checkout(vid)
-
-                        # TODO need to add this: apply(diff_vars(apply_vars, path), path)
-
+                        apply_variables(apply_vars.split(", "), path)
                         subprocess.run(s.split(), cwd=path, env=my_env)
                     except Exception as e:
                         print("subprocess exception", e)
                     finally:
+                        repo.git.stash()
                         repo.git.reset("--hard", current_commit)
                     database.finish_replay(db_conn, jobid)
                 else:

@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from flor.shelf import home_shelf
@@ -161,7 +161,7 @@ def add_replay(
     db_conn: sqlite3.Connection,
     run_dir: str,
     script: str,
-    vid_vars_mod: List[tuple],
+    vid_vars_mod: List[Any],
 ):
     cur = db_conn.cursor()
     params = []

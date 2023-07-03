@@ -1,16 +1,13 @@
 from typing import List, Dict, Set
 import pandas as pd
 import ast
-from time import time
+import os
 
 from flor.constants import *
-from flor.state import State
 from flor.hlast import apply
 
 from flor.hlast.visitors import LoggedExpVisitor
-
-import subprocess
-import json
+from flor import database
 
 
 def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
@@ -21,39 +18,32 @@ def get_dims(pivot_vars: Dict[str, Set[str]], apply_vars: List[str]):
     return DATA_PREP  # INDEX LOOKUP --replay_flor 0/1
 
 
+def apply_variables(apply_vars, path):
+    apply(diff_vars(apply_vars, path), path)
+
+
 def batch_replay(apply_vars: List[str], path: str, versions: pd.Series, loglvl):
-    base_cmd = ["python", path, "--replay_flor"]
 
-    assert State.repo is not None
+    mode = "--replay_flor"
+    vid_vars_mode = []
+
     for hexsha in versions:
-        State.repo.git.checkout(hexsha)
-        apply(diff_vars(apply_vars, path), path)
-
         if loglvl == DATA_PREP:
-            subprocess.run(
-                base_cmd
-                + [
-                    "0/1",
-                ]
-            )
+            vid_vars_mode.append((hexsha, ", ".join(apply_vars), mode + " 0/1"))
         elif loglvl == OUTR_LOOP:
-            subprocess.run(base_cmd)
+            vid_vars_mode.append((hexsha, ", ".join(apply_vars), mode))
         elif loglvl == INNR_LOOP:
-            subprocess.run(
-                base_cmd
-                + [
-                    "1/2",
-                ]
-            )
-            subprocess.run(
-                base_cmd
-                + [
-                    "2/2",
-                ]
-            )
+            vid_vars_mode.append((hexsha, ", ".join(apply_vars), mode + " 1/2"))
+            vid_vars_mode.append((hexsha, ", ".join(apply_vars), mode + " 2/2"))
         else:
             raise
-        State.repo.git.stash()
+
+    db_conn = database.start_db()
+
+    database.add_replay(db_conn, os.getcwd(), path, vid_vars_mode)
+    print(f"Flordb registered {len(vid_vars_mode)} replay jobs.")
+
+    db_conn.close()
 
 
 def diff_vars(apply_vars: List[str], path: str):
