@@ -70,24 +70,31 @@ def full_pivot(facts: pd.DataFrame):
     data_prep_gb = facts.drop_duplicates()[list(DATA_PREP) + ["name", "value"]].groupby(
         by=list(DATA_PREP + ("name",))
     )
+
+    skip_set = set([])
     for rowid, agg in data_prep_gb.count()["value"].items():
         name = str(tuple(rowid)[-1])  # type: ignore
-        if agg == 1:
+        if agg == 1 and name not in skip_set:
             pivot_vars["DATA_PREP"] |= {
                 name,
             }
+        else:
+            skip_set.add(name)
 
     outer_loop_gb = (
         facts[list(OUTR_LOOP) + ["name", "value"]]
         .drop_duplicates()
         .groupby(by=list(OUTR_LOOP + ("name",)))
     )
+    skip_set = set([])
     for rowid, agg in outer_loop_gb.count()["value"].items():
         name = str(tuple(rowid)[-1])  # type: ignore
-        if name not in pivot_vars["DATA_PREP"] and agg == 1:
+        if name not in pivot_vars["DATA_PREP"] and agg == 1 and name not in skip_set:
             pivot_vars["OUTR_LOOP"] |= {
                 name,
             }
+        else:
+            skip_set.add(name)
 
     pivot_vars["INNR_LOOP"] |= set(
         [
