@@ -80,7 +80,6 @@ elif arg == "serve":
                     raise
             else:
                 time.sleep(2)
-
     except KeyboardInterrupt:
         print("Cleaning up...")
     except Exception as e:
