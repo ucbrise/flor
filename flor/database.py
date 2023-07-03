@@ -166,9 +166,12 @@ def add_replay(
     cur = db_conn.cursor()
     params = []
     for vid, apply_vars, mode in vid_vars_mod:
-        params.append((random.randint(0, 999999999), run_dir, script, vid, apply_vars, mode, 0))
+        params.append(
+            (random.randint(0, 999999999), run_dir, script, vid, apply_vars, mode, 0)
+        )
     try:
         cur.executemany("INSERT INTO replay VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+        db_conn.commit()
     except Exception as e:
         print(e)
         db_conn.rollback()
