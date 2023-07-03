@@ -66,9 +66,10 @@ elif arg == "serve":
                     try:
                         print("\n", s)
                         # TODO: git checkout VID
+                        os.chdir(path)
                         repo.git.checkout(vid)
-                        apply_variables(apply_vars.split(", "), path)
-                        subprocess.run(s.split(), cwd=path, env=my_env)
+                        apply_variables(apply_vars.split(", "), script)
+                        subprocess.run(s.split(), check=True, env=my_env)
                     except Exception as e:
                         print("subprocess exception", e)
                     finally:
