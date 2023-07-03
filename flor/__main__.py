@@ -7,6 +7,8 @@ import sys
 
 from . import database
 
+from git.repo import Repo
+
 db_conn = database.start_db()
 
 
@@ -35,25 +37,48 @@ elif arg == "serve":
     try:
         pid, tstamp = database.server_active(db_conn, gpu_id)
         for each in tqdm(gen8r()):
-            jobid, path, script, args = database.step_worker(db_conn, pid, tstamp)
-            if jobid is None:
-                time.sleep(2)
+            res = database.step_worker(db_conn, pid, tstamp)
+            if res is not None:
+                if res[0] == "jobs":
+                    jobid, path, script, args = res[1]
+
+                    s = f"python {script} --flor BATCH {args}"
+
+                    my_env = os.environ.copy()
+                    my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
+                    try:
+                        print("\n", s)
+                        subprocess.run(s.split(), cwd=path, env=my_env)
+                    except Exception as e:
+                        print("subprocess exception", e)
+                    database.finish_job(db_conn, jobid)
+                elif res[0] == "replay":
+                    jobid, path, script, vid, apply_vars, mode = res[1]
+                    s = f"python {script} {mode}"
+
+                    my_env = os.environ.copy()
+                    my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
+
+                    repo = Repo(path)
+                    current_commit = repo.head.commit
+
+                    try:
+                        print("\n", s)
+                        # TODO: git checkout VID
+                        repo.git.checkout(vid)
+
+                        # TODO need to add this: apply(diff_vars(apply_vars, path), path)
+
+                        subprocess.run(s.split(), cwd=path, env=my_env)
+                    except Exception as e:
+                        print("subprocess exception", e)
+                    finally:
+                        repo.git.reset("--hard", current_commit)
+                    database.finish_replay(db_conn, jobid)
+                else:
+                    raise
             else:
-                assert jobid is not None
-                assert path is not None
-                assert script is not None
-                assert args is not None
-
-                s = f"python {script} --flor BATCH {args}"
-
-                my_env = os.environ.copy()
-                my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
-                try:
-                    print(s)
-                    subprocess.run(s.split(), cwd=path, env=my_env)
-                except Exception as e:
-                    print("subprocess exception", e)
-                database.finish_job(db_conn, jobid)
+                time.sleep(2)
 
     except KeyboardInterrupt:
         print("Cleaning up...")
