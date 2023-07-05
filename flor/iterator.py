@@ -42,11 +42,6 @@ def it(value: Union[Iterable, bool]):
         # Replay mode
         segment = SkipBlock.journal.get_segment_window()
         for capsule in segment:
-            print(capsule)
-
-        print("NOW ENTERING SEGMENTs")
-        for capsule in segment:
-            print(capsule)
             flags.RESUMING = capsule.init_only
             if isinstance(value, bool):
                 yield True
@@ -63,7 +58,6 @@ def it(value: Union[Iterable, bool]):
                         yield value[capsule.epoch]  # type: ignore
                 else:
                     assert capsule.epoch is not None
-                    print(capsule.epoch, list(value))
                     State.epoch = value[capsule.epoch]  # type: ignore
                     assert hasattr(
                         value, "__getitem__"
