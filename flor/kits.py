@@ -41,6 +41,7 @@ class MTK:
                     start_time = time()
                     State.step = 0
                     State.epoch += 1
+                    print("STATE EPOCH", State.epoch)
                     yield each
                     State.seconds["EPOCHS"].append(time() - start_time)
                 State.seconds["EVAL"] = time()
