@@ -9,7 +9,7 @@ NO_INIT = None
 
 class Window:
     def __init__(self, iterations_count: int, sparse_checkpoints: List[int]):
-        self.iterations_count = exp_json.get("EPOCHS")
+        self.iterations_count = iterations_count
         self.extended_sparse_checkpoints: List[Optional[int]] = list(sparse_checkpoints)
         self.extended_sparse_checkpoints.insert(0, NO_INIT)
 
@@ -114,3 +114,6 @@ class Capsule:
     def __init__(self, init_only: bool, epoch: Optional[int]):
         self.init_only = init_only
         self.epoch = epoch
+
+    def __str__(self) -> str:
+        return f"init_only: {self.init_only}, epoch: {self.epoch}"

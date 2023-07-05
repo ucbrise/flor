@@ -37,7 +37,7 @@ class Journal:
             assert (
                 flags.PID.ngpus <= len(self.tree.sparse_checkpoints) + 1
             ), f"Not enough checkpoints. Max degree of parallelism: {len(self.tree.sparse_checkpoints) + 1}"
-        if flags.MODE is REPLAY_MODE.weak and flags.PID.pid >= 0:
+        if flags.MODE is REPLAY_MODE.weak and flags.PID.pid != 1:
             self._advance_head()
             assert self.sub_tree is not None
             return self.sub_tree.get_segment()
