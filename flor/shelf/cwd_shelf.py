@@ -9,6 +9,7 @@ from flor.constants import *
 from flor.logger import exp_json, log_records
 from flor.shelf import home_shelf
 from flor.query import database
+from flor.skipblock.writeblock import WriteBlock
 from pathlib import Path
 
 from time import time
@@ -88,7 +89,7 @@ def flush():
         assert cond
         log_records.flush(projid, str(State.timestamp))
         exp_json.put("PROJID", projid)
-        exp_json.put("EPOCHS", State.epoch)
+        exp_json.put("EPOCHS", WriteBlock.journal.get_iterations_count())
         exp_json.flush()
         repo = State.repo
         assert repo is not None

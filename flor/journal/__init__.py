@@ -44,7 +44,7 @@ class Journal:
         return self.tree.get_segment()
 
     def get_iterations_count(self):
-        return exp_json.get("EPOCHS")
+        return self.as_tree().iterations_count
 
     def as_tree(self) -> Tree:
         if (
