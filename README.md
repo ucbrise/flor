@@ -6,20 +6,23 @@ Flor (for "fast low-overhead recovery") is a record-replay system for deep learn
 FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML.
 
 Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
+
+[![Napa Retreat Demo](https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg)](https://youtu.be/TNSt5-i7kR4)
+
 # Installation
 
 ```bash
 pip install flordb
 ```
-# Demo
 
-[![Napa Retreat Demo](https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg)](https://youtu.be/TNSt5-i7kR4)
+# Getting Started
 
-<!-- https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg
-https://youtu.be/TNSt5-i7kR4
- -->
+We start by selecting (or creating) a `git` repository to save our model training code as we iterate and experiment. Flor automatically commits your changes on every run, so no change is lost. Below we provide a sample repository you can use to follow along:
 
-# First run
+```bash
+git clone git@github.com:ucbepic/ml_tutorial
+cd ml_tutorial/
+```
 
 Run the ``examples/rnn.py`` script to test your installation. 
 This script will train a small linear model on MNIST.
@@ -28,8 +31,7 @@ automatically on every run, without interfering with your
 other commits. You can later review and merge the flor shadow branch as you would any other git branch.
 
 ```bash
-git checkout -b flor.shadow
-python examples/rnn.py --flor readme
+python train.py --flor myFirstRun
 ```
 
 When finished, you will have committed to the shadow branch and written execution metadata into a `.flor` directory in your current directory. Additionally, flor created a directory tree in your HOME to organize your experiments. You can find our running experiment as follows:
