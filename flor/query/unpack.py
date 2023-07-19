@@ -16,17 +16,26 @@ import pandas as pd
 
 def get_stash():
     projid = cwd_shelf.get_projid()
-    return Path.home() / ".flor" / projid / "stash"
+    projid = str(projid).replace("\x1b[m", "")
+    out = Path.home() / ".flor" / projid / "stash"
+    print("get_stash", out)
+    return out
 
 
 def clear_stash():
     global stash
+
+    projid = cwd_shelf.get_projid()
+    projid = str(projid).replace("\x1b[m", "")
+
     (Path.home() / ".flor").mkdir(exist_ok=True)
-    (Path.home() / ".flor" / cwd_shelf.get_projid()).mkdir(exist_ok=True)
-    stash = Path.home() / ".flor" / cwd_shelf.get_projid() / "stash"
+
+    (Path.home() / ".flor" / projid).mkdir(exist_ok=True)
+    stash = ((Path.home() / ".flor") / projid) / "stash"
     if stash.exists():
         shutil.rmtree(stash)
     stash.mkdir()
+    print('clear_stash', stash)
     return stash
 
 
