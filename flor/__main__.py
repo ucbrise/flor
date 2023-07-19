@@ -57,8 +57,6 @@ elif arg == "serve":
                     jobid, path, script, vid, apply_vars, mode = res[1]
                     s = f"python {script} {mode}"
 
-                    print(path)
-
                     my_env = os.environ.copy()
                     my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
 
