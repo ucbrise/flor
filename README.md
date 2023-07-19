@@ -148,7 +148,7 @@ calling `MTK.loop(iterator)` as follows:
 
 ```python
 import flor
-from flor import MTK as Flor
+from flor import MTK
 
 import torch
 
@@ -163,9 +163,9 @@ optimizer:   torch.optim.Optimizer
 net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
-Flor.checkpoints(net, optimizer)
-for epoch in Flor.loop(range(num_epochs)):
-    for data in Flor.loop(trainloader):
+MTK.checkpoints(net, optimizer)
+for epoch in MTK.loop(range(num_epochs)):
+    for data in MTK.loop(trainloader):
         inputs, labels = data
         optimizer.zero_grad()
         outputs = net(inputs)
@@ -176,7 +176,7 @@ for epoch in Flor.loop(range(num_epochs)):
     eval(net, testloader)
 ```
 As shown, 
-we wrap both the nested training loop and main loop with `Flor.loop` so Flor can manage their state. Flor will use loop iteration boundaries to store selected checkpoints adaptively, and on replay time use those same checkpoints to resume training from the appropriate epoch.  
+we wrap both the nested training loop and main loop with `MTK.loop` so Flor can manage their state. Flor will use loop iteration boundaries to store selected checkpoints adaptively, and on replay time use those same checkpoints to resume training from the appropriate epoch.  
 
 ### Logging API
 
