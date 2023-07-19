@@ -40,20 +40,20 @@ From the same directory you ran the examples above, open an iPython terminal, th
 In [1]: from flor import full_pivot, log_records
 In [2]: full_pivot(log_records())
 Out[2]: 
-     runid              tstamp  epoch  step device learning_rate                 loss
-0   readme 2023-03-12 12:23:53      1   100    cpu          0.01   0.5304957032203674
-1   readme 2023-03-12 12:23:53      1   200    cpu          0.01  0.21829535067081451
-2   readme 2023-03-12 12:23:53      1   300    cpu          0.01  0.15856705605983734
-3   readme 2023-03-12 12:23:53      1   400    cpu          0.01  0.11441942304372787
-4   readme 2023-03-12 12:23:53      1   500    cpu          0.01  0.06835074722766876
-5   readme 2023-03-12 12:23:53      1   600    cpu          0.01  0.13750575482845306
-6   readme 2023-03-12 12:23:53      2   100    cpu          0.01  0.11708579957485199
-7   readme 2023-03-12 12:23:53      2   200    cpu          0.01  0.08852845430374146
-8   readme 2023-03-12 12:23:53      2   300    cpu          0.01  0.16527307033538818
-9   readme 2023-03-12 12:23:53      2   400    cpu          0.01  0.11036019027233124
-10  readme 2023-03-12 12:23:53      2   500    cpu          0.01  0.05740281194448471
-11  readme 2023-03-12 12:23:53      2   600    cpu          0.01  0.07785198092460632
+                            projid       runid               tstamp        vid  epoch  step      loss hidden batch_size epochs     lr
+0   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   100  0.246695    500         32      5  0.001
+1   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   200  0.279637    500         32      5  0.001
+2   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   300  0.247390    500         32      5  0.001
+3   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   400  0.536536    500         32      5  0.001
+4   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   500  0.198422    500         32      5  0.001
+..                             ...         ...                  ...        ...    ...   ...       ...    ...        ...    ...    ...
+85  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1400  0.003081    500         32      5  0.001
+86  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1500  0.002184    500         32      5  0.001
+87  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1600  0.042605    500         32      5  0.001
+88  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1700  0.007986    500         32      5  0.001
+89  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1800  0.006866    500         32      5  0.001
 
+[90 rows x 11 columns]
 ```
 
 # Model Training Kit (MTK)
