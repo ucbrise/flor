@@ -31,7 +31,7 @@ and test your `flordb` installation.
 python train.py --flor myFirstRun
 ```
 
-Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#under-the-hood)). All of this data is then expesed to the user via SQL or Pandas queries.
+Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#storage--data-layout)). All of this data is then expesed to the user via SQL or Pandas queries.
 
 # View your experiment history
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
