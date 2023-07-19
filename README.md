@@ -73,6 +73,7 @@ You can choose to change any of the hyper-parameters (e.g. `hidden`) via Flor's 
 $ python train.py --flor mySecondRun --hidden 75
 ```
 
+### Advanced (Optional): Batch Processing
 Alternatively, we can call `flor.batch()` from an interactive environment
 inside our model training repo, to dispatch a group of jobs that can be long-runnning:
 ```ipython
