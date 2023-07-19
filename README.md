@@ -59,6 +59,7 @@ Out[2]:
 # Run some more experiments
 
 Below are the 4 different hyper-parameters we can control.
+
 ```ipython
 In [1]: %cat train.py | grep flor.arg
 hidden_size = flor.arg("hidden", default=500)
@@ -66,6 +67,7 @@ num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
 ```
+
 You can choose to change any of the hyper-parameters (e.g. `hidden`) via Flor's command-line interface.
 ```bash 
 $ python train.py --flor mySecondRun --hidden 75
@@ -134,17 +136,25 @@ Out[2]:
 [1080 rows x 11 columns]
 ```
 
-# Model Training Kit (MTK)
-The MTK includes utilities for serializing and checkpointing PyTorch state,
+# Model Traing Kit (MTK)
+
+The Model Training Kit (MTK) includes utilities for serializing and checkpointing PyTorch state,
 and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
-The model developer passes objects for checkpointing to flor,
-and gives it control over loop iterators by calling `MTK.checkpoints`
-and `MTK.loop` as follows:
+
+The model developer passes objects for checkpointing to `MTK.checkpoints(*args)`,
+and gives it control over loop iterators by 
+calling `MTK.loop(iterator)` as follows:
 
 ```python
+import flor
 from flor import MTK as Flor
 
 import torch
+
+hidden_size = flor.arg("hidden", default=500)
+num_epochs = flor.arg("epochs", 5)
+batch_size = flor.arg("batch_size", 32)
+learning_rate = flor.arg("lr", 1e-3)
 
 trainloader: torch.utils.data.DataLoader
 testloader:  torch.utils.data.DataLoader
@@ -153,25 +163,38 @@ net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
 Flor.checkpoints(net, optimizer)
-for epoch in Flor.loop(range(...)):
+for epoch in Flor.loop(range(num_epochs)):
     for data in Flor.loop(trainloader):
         inputs, labels = data
         optimizer.zero_grad()
         outputs = net(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
+        flor.log("loss", loss.item())
         optimizer.step()
     eval(net, testloader)
 ```
-As shown, we pass the neural network and optimizer to Flor 
-for checkpointing with `Flor.checkpoints(net, optimizer)`.
-We wrap both the nested training loop and main loop with 
-`Flor.loop`. This lets Flor jump to an arbitrary epoch
-using checkpointed state, 
-and skip the nested training loop when intermediate
-state isn't probed.
+As shown, 
+we wrap both the nested training loop and main loop with `Flor.loop` so Flor can manage their state. Flor will use loop iteration boundaries to store selected checkpoints adaptively, and on replay time use those same checkpoints to resume training from the appropriate epoch.  
 
-# Under the hood
+### Logging API
+
+You call `flor.log(name, value)` and `flor.arg(name, default=None)` to log metrics and register tune-able hyper-parameters, respectively. 
+
+```bash
+$ cat train.py | grep flor.arg
+hidden_size = flor.arg("hidden", default=500)
+num_epochs = flor.arg("epochs", 5)
+batch_size = flor.arg("batch_size", 32)
+learning_rate = flor.arg("lr", 1e-3)
+
+$ cat train.py | grep flor.log
+        flor.log("loss", loss.item()),
+```
+
+The `name`(s) you use for the variables you intercept with `flor.log` and `flor.arg` will become a column (measure) in the full pivoted view (see [Viewing your exp history](#view-your-experiment-history)).
+
+# Storage & Data Layout
 On each run, Flor will:
 1. Save model checkpoints in `~/.flor/`
 1. Commit code changes, command-line args, and log records to `git`, inside a dedicated `flor.shadow` branch.
