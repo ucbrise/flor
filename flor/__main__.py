@@ -62,6 +62,7 @@ elif arg == "serve":
 
                     repo = Repo(path)
                     current_commit = repo.head.commit
+                    active_branch = repo.active_branch
 
                     try:
                         print("\n", s)
@@ -74,7 +75,8 @@ elif arg == "serve":
                         print("subprocess exception", e)
                     finally:
                         repo.git.stash()
-                        repo.git.reset("--hard", current_commit)
+                        # repo.git.reset("--hard", current_commit)
+                        repo.heads[active_branch].checkout()
                     database.finish_replay(db_conn, jobid)
                 else:
                     raise
