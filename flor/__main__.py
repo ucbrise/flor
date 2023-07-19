@@ -67,6 +67,7 @@ elif arg == "serve":
                     try:
                         print("\n", s)
                         # TODO: git checkout VID
+                        print(path)
                         os.chdir(path)
                         repo.git.checkout(vid)
                         apply_variables(apply_vars.split(", "), script)
