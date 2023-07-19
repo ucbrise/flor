@@ -56,6 +56,84 @@ Out[2]:
 [90 rows x 11 columns]
 ```
 
+# Run some more experiments
+
+Below are the 4 different hyper-parameters we can control.
+```ipython
+In [1]: %cat train.py | grep flor.arg
+hidden_size = flor.arg("hidden", default=500)
+num_epochs = flor.arg("epochs", 5)
+batch_size = flor.arg("batch_size", 32)
+learning_rate = flor.arg("lr", 1e-3)
+```
+You can choose to change any of the hyper-parameters (e.g. `hidden`) via Flor's command-line interface.
+```bash 
+$ python train.py --flor mySecondRun --hidden 75
+```
+
+Alternatively, we can call `flor.batch()` from an interactive environment
+inside our model training repo, to dispatch a group of jobs that can be long-runnning:
+```ipython
+In [1]: %cwd
+Out [1]: '/Users/rogarcia/git/ml_tutorial'
+
+In [2]: import flor
+
+In [3]: flor.batch(flor.cross_prod(
+    hidden=[i*100 for i in range(1,6)],
+    lr=(1e-4, 1e-3)))
+Out[3]:
+--hidden 100 --lr 0.0001 
+--hidden 100 --lr 0.001 
+--hidden 200 --lr 0.0001 
+--hidden 200 --lr 0.001 
+--hidden 300 --lr 0.0001 
+--hidden 300 --lr 0.001 
+--hidden 400 --lr 0.0001 
+--hidden 400 --lr 0.001 
+--hidden 500 --lr 0.0001 
+--hidden 500 --lr 0.001 
+```
+
+Then start a `flordb` server to process the batch jobs:
+
+```bash
+$ python -m flor serve
+```
+
+or, if you want to allocate a GPU to the flor server,
+```bash
+$ python -m flor serve 0 
+```
+where 0 is replaced by the GPU id.
+
+You can check the progress of your jobs with the following query:
+
+```bash
+$ watch "sqlite3 ~/.flor/main.db 'select done, path, count(*) from jobs group by done, path;'"
+```
+
+When finished, you can view the updated pivot view with all your experiment data:
+```ipython
+In [1]: from flor import full_pivot, log_records
+In [2]: full_pivot(log_records())
+Out[2]: 
+                              projid       runid               tstamp        vid  epoch  step      loss batch_size hidden     lr epochs
+0     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   100  0.246695         32    500  0.001      5
+1     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   200  0.279637         32    500  0.001      5
+2     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   300  0.247390         32    500  0.001      5
+3     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   400  0.536536         32    500  0.001      5
+4     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   500  0.198422         32    500  0.001      5
+...                              ...         ...                  ...        ...    ...   ...       ...        ...    ...    ...    ...
+1075  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  7b4dfc...      5  1400  0.012752         32    500  0.001      5
+1076  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  7b4dfc...      5  1500  0.005932         32    500  0.001      5
+1077  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  7b4dfc...      5  1600  0.058090         32    500  0.001      5
+1078  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  7b4dfc...      5  1700  0.000570         32    500  0.001      5
+1079  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  7b4dfc...      5  1800  0.043115         32    500  0.001      5
+
+[1080 rows x 11 columns]
+```
+
 # Model Training Kit (MTK)
 The MTK includes utilities for serializing and checkpointing PyTorch state,
 and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
