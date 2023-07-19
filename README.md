@@ -20,21 +20,28 @@ pip install flordb
 We start by selecting (or creating) a `git` repository to save our model training code as we iterate and experiment. Flor automatically commits your changes on every run, so no change is lost. Below we provide a sample repository you can use to follow along:
 
 ```bash
-git clone git@github.com:ucbepic/ml_tutorial
-cd ml_tutorial/
+$ git clone git@github.com:ucbepic/ml_tutorial
+$ cd ml_tutorial/
 ```
 
 Run the `train.py` script to train a small linear model, 
 and test your `flordb` installation.
 
 ```bash
-python train.py --flor myFirstRun
+$ python train.py --flor myFirstRun
 ```
 
 Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#storage--data-layout)). All of this data is then expesed to the user via SQL or Pandas queries.
 
 # View your experiment history
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
+
+```bash
+$ pwd
+/Users/rogarcia/git/ml_tutorial
+
+$ ipython
+```
 
 ```ipython
 In [1]: from flor import full_pivot, log_records
@@ -61,7 +68,7 @@ Out[2]:
 The `train.py` script has been prepared in advance to define and manage four different hyper-parameters:
 
 ```bash
-$ cat train.py | grep flor.arg
+(base) ml_tutorial $ cat train.py | grep flor.arg
 hidden_size = flor.arg("hidden", default=500)
 num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
@@ -70,7 +77,7 @@ learning_rate = flor.arg("lr", 1e-3)
 
 You can control any of the hyper-parameters (e.g. `hidden`) using Flor's command-line interface:
 ```bash 
-$ python train.py --flor mySecondRun --hidden 75
+(base) ml_tutorial $ python train.py --flor mySecondRun --hidden 75
 ```
 
 ### Advanced (Optional): Batch Processing
@@ -223,6 +230,65 @@ Confirm that Flor saved checkpoints of the `train.py` execution on your home dir
 Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed to the user via SQL or Pandas queries.
 
 # Hindsight Logging
+
+Suppose you wanted to start logging the `device`
+identifier where the model is run, as well as the
+final `accuracy` after training.
+You would add the corresponding logging statements
+to `train.py`, for example:
+```bash
+(base) ml_tutorial $ cat train.py | grep -C 5 flor.log
+```
+
+```python
+...
+# Loss and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+flor.log('device', str(device))    # <-- New logging stmt
+Flor.checkpoints(model, optimizer)
+
+# Train the model
+total_step = len(train_loader)
+for epoch in Flor.loop(range(num_epochs)):
+    for i, (images, labels) in Flor.loop(enumerate(train_loader)):
+        ...
+        if (i + 1) % 100 == 0:
+            print(
+                "Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}".format(
+                    epoch + 1,
+                    num_epochs,
+                    i + 1,
+                    total_step,
+                    flor.log("loss", loss.item()),
+                )
+            )
+
+...
+# Test the model
+# In test phase, we don't need to compute gradients (for memory efficiency)
+with torch.no_grad():
+    correct = 0
+    total = 0
+    for images, labels in test_loader:
+        ...
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+    print(
+        "Accuracy of the network on the 10000 test images: {} %".format(
+            flor.log("accuracy", 100 * correct / total) # <-- New logging stmt
+        )
+    )
+```
+
+Typically, when you add a logging statement, logging 
+begins "from now on", and you have no visibility into the past.
+
+With hindsight logging, the aim is to allow model developers to send
+new logging statements back in time, and replay the past 
+efficiently from checkpoint.
 
 ```python
 from flor import MTK as Flor
