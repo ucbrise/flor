@@ -90,7 +90,7 @@ def apply(names: List[str], dst: str):
         if n in lev.names:
             State.grouped_names[n] = lev.names[n]
             State.hls_hits.add(n)
-            copyfile(src=fp, dst=stash / PurePath(n).with_suffix(".py"))
+            copyfile(src=fp, dst=stash / Path(n).with_suffix(".py"))
 
     copyfile(stash / fp, fp)
 
@@ -104,7 +104,7 @@ def apply(names: List[str], dst: str):
     # Next, from the stash you will apply each file to our main one
     parse_noGrad = []
     for name in names:
-        with open(stash / PurePath(name).with_suffix(".py"), "r") as f:
+        with open(stash / Path(name).with_suffix(".py"), "r") as f:
             tree = ast.parse(f.read())
 
         ng_visitor = NoGradVisitor()
@@ -118,7 +118,11 @@ def apply(names: List[str], dst: str):
                 lev.visit(tree)
                 lineno = int(lev.names[name])
             # lev possibly unbound
-            backprop(lineno, str(stash / PurePath(name).with_suffix(".py")), dst)
+            backprop(
+                lineno,
+                str(stash / Path(name).with_suffix(".py")).replace("\x1b[m", ""),
+                dst,
+            )
             print(f"Applied {name} to {dst}")
         else:
             parse_noGrad.append(ng_visitor.tree)
