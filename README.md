@@ -31,28 +31,7 @@ and test your `flordb` installation.
 python train.py --flor myFirstRun
 ```
 
-On each run, Flor will:
-1. Save model checkpoints in `~/.flor/`
-
-1. Commit code changes, command-line args, and log records to `git`, inside a dedicated `flor.shadow` branch.
-
-
-```bash
-(base) ml_tutorial $ ls ~/.flor 
-ml_tutorial_flor.shadow.readme
-
-(base) ml_tutorial $ git branch   
-* flor.shadow.readme
-
-(base) ml_tutorial $ ls -la ./.flor   
-drwxr-xr-x  5 rogarcia   160 Jul 19 09:02 .
-drwxr-xr-x  9 rogarcia   288 Jul 19 09:01 ..
--rw-r--r--  1 rogarcia   225 Jul 19 09:02 .replay.json
--rw-r--r--  1 rogarcia  2895 Jul 19 09:02 log_records.csv
--rw-r--r--  1 rogarcia   228 Jul 19 09:02 seconds.json
-```
-Confirm that Flor saved checkpoints of the `train.py` execution on your home directory (`~`).
-Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed to the user via SQL or Pandas queries.
+Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#under-the-hood)). All of this data is then expesed to the user via SQL or Pandas queries.
 
 # View your experiment history
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
@@ -114,6 +93,28 @@ using checkpointed state,
 and skip the nested training loop when intermediate
 state isn't probed.
 
+# Under the hood
+On each run, Flor will:
+1. Save model checkpoints in `~/.flor/`
+1. Commit code changes, command-line args, and log records to `git`, inside a dedicated `flor.shadow` branch.
+
+
+```bash
+(base) ml_tutorial $ ls ~/.flor 
+ml_tutorial_flor.shadow.readme
+
+(base) ml_tutorial $ git branch   
+* flor.shadow.readme
+
+(base) ml_tutorial $ ls -la ./.flor   
+drwxr-xr-x  5 rogarcia   160 Jul 19 09:02 .
+drwxr-xr-x  9 rogarcia   288 Jul 19 09:01 ..
+-rw-r--r--  1 rogarcia   225 Jul 19 09:02 .replay.json
+-rw-r--r--  1 rogarcia  2895 Jul 19 09:02 log_records.csv
+-rw-r--r--  1 rogarcia   228 Jul 19 09:02 seconds.json
+```
+Confirm that Flor saved checkpoints of the `train.py` execution on your home directory (`~`).
+Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed to the user via SQL or Pandas queries.
 
 # Hindsight Logging
 
