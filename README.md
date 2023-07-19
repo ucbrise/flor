@@ -51,8 +51,10 @@ drwxr-xr-x  9 rogarcia   288 Jul 19 09:01 ..
 -rw-r--r--  1 rogarcia  2895 Jul 19 09:02 log_records.csv
 -rw-r--r--  1 rogarcia   228 Jul 19 09:02 seconds.json
 ```
-Confirm that Flor saved checkpoints of the `train.py` execution on your home directory.
-Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed through a relational model, using either `sqlite3` or `pandas`, and `flor` will use the checkpoints for hindsight logging, to augment any gaps in the log record. 
+Confirm that Flor saved checkpoints of the `train.py` execution on your home directory (`~`).
+Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed to the user via SQL or Pandas queries. 
+
+Should the model developer miss logging statemtents, they can add them post-hoc with hindsight logging, and `flor` will use the checkpoints for fast and parallel replay.
 
 # View your experiment history
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
