@@ -58,10 +58,10 @@ Out[2]:
 
 # Run some more experiments
 
-Below are the 4 different hyper-parameters we can control.
+The `train.py` script has been prepared in advance to define and manage four different hyper-parameters:
 
-```ipython
-In [1]: %cat train.py | grep flor.arg
+```bash
+$ cat train.py | grep flor.arg
 hidden_size = flor.arg("hidden", default=500)
 num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
