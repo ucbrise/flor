@@ -18,7 +18,6 @@ def get_stash():
     projid = cwd_shelf.get_projid()
     projid = str(projid).replace("\x1b[m", "")
     out = Path.home() / ".flor" / projid / "stash"
-    print("get_stash", out)
     return out
 
 
@@ -35,7 +34,6 @@ def clear_stash():
     if stash.exists():
         shutil.rmtree(stash)
     stash.mkdir()
-    print('clear_stash', stash)
     return stash
 
 
