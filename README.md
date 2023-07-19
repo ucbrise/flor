@@ -68,14 +68,14 @@ batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
 ```
 
-You can choose to change any of the hyper-parameters (e.g. `hidden`) via Flor's command-line interface.
+You can control any of the hyper-parameters (e.g. `hidden`) using Flor's command-line interface:
 ```bash 
 $ python train.py --flor mySecondRun --hidden 75
 ```
 
 ### Advanced (Optional): Batch Processing
 Alternatively, we can call `flor.batch()` from an interactive environment
-inside our model training repo, to dispatch a group of jobs that can be long-runnning:
+inside our model training repository, to dispatch a group of jobs that can be long-runnning:
 ```ipython
 In [1]: %cwd
 Out [1]: '/Users/rogarcia/git/ml_tutorial'
@@ -98,22 +98,26 @@ Out[3]:
 --hidden 500 --lr 0.001 
 ```
 
-Then start a `flordb` server to process the batch jobs:
+Then, we start a `flordb` server to process the batch jobs:
 
 ```bash
 $ python -m flor serve
 ```
 
-or, if you want to allocate a GPU to the flor server,
+or, if we want to allocate a GPU to the flor server:
 ```bash
 $ python -m flor serve 0 
 ```
-where 0 is replaced by the GPU id.
+(where 0 is replaced by the GPU id.)
 
 You can check the progress of your jobs with the following query:
 
 ```bash
-$ watch "sqlite3 ~/.flor/main.db 'select done, path, count(*) from jobs group by done, path;'"
+$ watch "sqlite3 ~/.flor/main.db -header 'select done, path, count(*) from jobs group by done, path;'"
+
+done|path|count(*)
+0|/Users/rogarcia/git/ml_tutorial|5
+1|/Users/rogarcia/git/ml_tutorial|5
 ```
 
 When finished, you can view the updated pivot view with all your experiment data:
