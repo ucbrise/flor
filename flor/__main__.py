@@ -55,6 +55,7 @@ elif arg == "serve":
                     database.finish_job(db_conn, jobid)
                 elif res[0] == "replay":
                     jobid, path, script, vid, apply_vars, mode = res[1]
+                    path = path.replace('\x1b[m', '')
                     s = f"python {script} {mode}"
 
                     my_env = os.environ.copy()
@@ -77,7 +78,7 @@ elif arg == "serve":
                     finally:
                         repo.git.stash()
                         # repo.git.reset("--hard", current_commit)
-                        repo.heads[active_branch].checkout()
+                        repo.heads[active_branch.name].checkout()
                     database.finish_replay(db_conn, jobid)
                 else:
                     raise
