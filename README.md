@@ -24,24 +24,35 @@ git clone git@github.com:ucbepic/ml_tutorial
 cd ml_tutorial/
 ```
 
-Run the ``examples/rnn.py`` script to test your installation. 
-This script will train a small linear model on MNIST.
-FLOR shadow branches permit us to commit your work
-automatically on every run, without interfering with your 
-other commits. You can later review and merge the flor shadow branch as you would any other git branch.
+Run the `train.py` script to train a small linear model, 
+and test your `flordb` installation.
 
 ```bash
 python train.py --flor myFirstRun
 ```
 
-When finished, you will have committed to the shadow branch and written execution metadata into a `.flor` directory in your current directory. Additionally, flor created a directory tree in your HOME to organize your experiments. You can find our running experiment as follows:
+On each run, Flor will:
+1. Save model checkpoints in `~/.flor/`
+
+1. Commit code changes, command-line args, and log records to `git`, inside a dedicated `flor.shadow` branch.
+
 
 ```bash
-ls ~/.flor/
+(base) ml_tutorial $ ls ~/.flor 
+ml_tutorial_flor.shadow.readme
+
+(base) ml_tutorial $ git branch   
+* flor.shadow.readme
+
+(base) ml_tutorial $ ls -la ./.flor   
+drwxr-xr-x  5 rogarcia   160 Jul 19 09:02 .
+drwxr-xr-x  9 rogarcia   288 Jul 19 09:01 ..
+-rw-r--r--  1 rogarcia   225 Jul 19 09:02 .replay.json
+-rw-r--r--  1 rogarcia  2895 Jul 19 09:02 log_records.csv
+-rw-r--r--  1 rogarcia   228 Jul 19 09:02 seconds.json
 ```
-Confirm that Flor saved checkpoints of the ``examples/rnn.py`` execution on your home directory.
-Flor will access and interpret contents of ``~/.flor`` automatically. 
-You should routinely clear this stash or spool it to the cloud to clear up disk space.
+Confirm that Flor saved checkpoints of the `train.py` execution on your home directory.
+Flor will access and interpret contents of `.flor` automatically. The data and log records will be exposed through a relational model, using either `sqlite3` or `pandas`, and `flor` will use the checkpoints for hindsight logging, to augment any gaps in the log record. 
 
 # View your experiment history
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
