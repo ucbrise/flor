@@ -68,7 +68,7 @@ Out[2]:
 The `train.py` script has been prepared in advance to define and manage four different hyper-parameters:
 
 ```bash
-(base) ml_tutorial $ cat train.py | grep flor.arg
+$ cat train.py | grep flor.arg
 hidden_size = flor.arg("hidden", default=500)
 num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
@@ -77,7 +77,7 @@ learning_rate = flor.arg("lr", 1e-3)
 
 You can control any of the hyper-parameters (e.g. `hidden`) using Flor's command-line interface:
 ```bash 
-(base) ml_tutorial $ python train.py --flor mySecondRun --hidden 75
+$ python train.py --flor mySecondRun --hidden 75
 ```
 
 ### Advanced (Optional): Batch Processing
@@ -91,7 +91,8 @@ In [2]: import flor
 
 In [3]: flor.batch(flor.cross_prod(
     hidden=[i*100 for i in range(1,6)],
-    lr=(1e-4, 1e-3)))
+    lr=(1e-4, 1e-3)
+    ))
 Out[3]:
 --hidden 100 --lr 0.0001 
 --hidden 100 --lr 0.001 
@@ -213,13 +214,13 @@ On each run, Flor will:
 
 
 ```bash
-(base) ml_tutorial $ ls ~/.flor 
+$ ls ~/.flor 
 ml_tutorial_flor.shadow.readme
 
-(base) ml_tutorial $ git branch   
+$ git branch   
 * flor.shadow.readme
 
-(base) ml_tutorial $ ls -la ./.flor   
+$ ls -la ./.flor   
 drwxr-xr-x  5 rogarcia   160 Jul 19 09:02 .
 drwxr-xr-x  9 rogarcia   288 Jul 19 09:01 ..
 -rw-r--r--  1 rogarcia   225 Jul 19 09:02 .replay.json
@@ -237,7 +238,7 @@ final `accuracy` after training.
 You would add the corresponding logging statements
 to `train.py`, for example:
 ```bash
-(base) ml_tutorial $ cat train.py | grep -C 5 flor.log
+$ cat train.py | grep -C 5 flor.log
 ```
 
 ```python
@@ -283,47 +284,81 @@ with torch.no_grad():
     )
 ```
 
+```bash
+$ git branch
+* flor.shadow.readme
+
+$ git commit -am "hindsight logging stmts added."
+[flor.shadow.readme 3c23919] hindsight logging stmts added.
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+```
+
 Typically, when you add a logging statement, logging 
 begins "from now on", and you have no visibility into the past.
-
 With hindsight logging, the aim is to allow model developers to send
 new logging statements back in time, and replay the past 
 efficiently from checkpoint.
 
-```python
-from flor import MTK as Flor
-import torch
-
-trainloader: torch.utils.data.DataLoader
-testloader:  torch.utils.data.DataLoader
-optimizer:   torch.optim.Optimizer
-net:         torch.nn.Module
-criterion:   torch.nn._Loss
-
-for epoch in Flor.loop(range(...)):
-    for batch in Flor.loop(trainloader):
-        ...
-    eval(net, testloader)
-    log_confusion_matrix(net, testloader)
+In order to do that, we open up an interactive environent from within the `ml_tutorial` directory, and call `flor.replay()`, asking flor to apply the logging statements with the names `device` and `accuracy` to all previous versions (leave `where_clause` null in `flor.replay()`):
+```bash
+$ ipython
 ```
 
-Suppose you want to view a confusion matrix as it changes
-throughout training.
-Add the code to generate the confusion matrix, as sugared above.
+```ipython
+In [1]: !pwd
+/Users/rogarcia/git/ml_tutorial
+
+In [2]: flor.full_pivot(flor.log_records())
+Out[2]: 
+                              projid       runid               tstamp  ... batch_size     lr  epochs
+0     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  ...         32  0.001       5
+1     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  ...         32  0.001       5
+2     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  ...         32  0.001       5
+3     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  ...         32  0.001       5
+4     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  ...         32  0.001       5
+...                              ...         ...                  ...  ...        ...    ...     ...
+1075  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  ...         32  0.001       5
+1076  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  ...         32  0.001       5
+1077  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  ...         32  0.001       5
+1078  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  ...         32  0.001       5
+1079  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T10:11:48  ...         32  0.001       5
+
+[1080 rows x 11 columns]
+
+In [3]: flor.replay(['device', 'accuracy'])
+What is the log level of logging statement `device`? Leave blank to infer `DATA_PREP`: 
+What is the log level of logging statement `accuracy`? Leave blank to infer `DATA_PREP`: 
+                            projid        runid               tstamp                                       vid  prep_secs  eval_secs
+0   ml_tutorial_flor.shadow.readme   myFirstRun  2023-07-19T09:01:51  c0418cfe5c3805fe44d29fdafabde8d372e50c73   0.073429   0.238834
+1   ml_tutorial_flor.shadow.readme  mySecondRun  2023-07-19T10:00:29  5e2f3784fb9414e9fd207cb6d58fc071acdcddd5   0.058423   0.205233
+2   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:09:50  aaf85cd05565b65141395fdbb57a023c8a6334fa   0.039978   0.200451
+3   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:01  ecde40929234546eb55c4f2b7e8158535a04bf4a   0.037776   0.199677
+4   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:11  043c11dc3e6db9954dfed4e273c66c3b548c9df1   0.038676   0.212092
+5   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:23  0c30296fbf38758dc1a144e3265d349e30310992   0.039001   0.239323
+6   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:35  84475621638c06a94c0956a997be9c5cca807ac5   0.040606   0.211364
+7   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:48  978121a53ac4b2f845e3e11fea965ff465b94ae9   0.039992   0.218336
+8   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:02  ba85bf6cf5a0d748c98cf91a4baffba8702e55e1   0.039123   0.229340
+9   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:16  fe319ede9f0a815dbbcecc18bc5ec5d6820176bd   0.039545   0.220878
+10  ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:31  d6e8f15c698f523addc6eab06f55ac9491cff83a   0.040542   0.240724
+11  ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:48  7b4dfc2b179807c343f755abf111b0247b34a0cf   0.040378   0.242875
+
+
+Continue replaying 12 versions at DATA_PREP level for 39.19 seconds?[Y/n]? Y
+Flordb registered 12 replay jobs.
+```
+
+Finally, spin up a `flordb` server with the GPU identifier (leave blank for CPU) you wish to allocate to the replay worker:
+```bash
+python -m flor serve
+```
+
+or
 
 ```bash
-python3 mytrain.py --replay_flor PID/NGPUS [your_flags]
+python -m flor serve 0
 ```
 
-As before, you tell FLOR to run in replay mode by setting ``--replay_flor``.
-You'll also tell FLOR how many GPUs from the pool to use for parallelism,
-and you'll dispatch this script simultaneously, varying the ``pid:<int>``
-to span all the GPUs. To run segment 3 out of 5 segments, you would write: ``--replay_flor 3/5``.
-
-If instead of replaying all of training you wish to re-execute only a fraction of the epochs
-you can do this by setting the value of ``ngpus`` and ``pid`` respectively.
-Suppose you want to run the tenth epoch of a training job that ran for 200 epochs. You would set
-``pid:9``and ``ngpus:200``.
+When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations.
 
 ## Publications
 

@@ -57,6 +57,8 @@ elif arg == "serve":
                     jobid, path, script, vid, apply_vars, mode = res[1]
                     s = f"python {script} {mode}"
 
+                    print(path)
+
                     my_env = os.environ.copy()
                     my_env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)  # type: ignore
 
@@ -69,7 +71,7 @@ elif arg == "serve":
                         os.chdir(path)
                         repo.git.checkout(vid)
                         apply_variables(apply_vars.split(", "), script)
-                        subprocess.run(s.split(), check=True, env=my_env)
+                        subprocess.run(s.split(), check=True, cwd=path, env=my_env)
                     except Exception as e:
                         print("subprocess exception", e)
                     finally:
