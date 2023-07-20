@@ -9,6 +9,8 @@ Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.b
 
 [![Napa Retreat Demo](https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg)](https://youtu.be/TNSt5-i7kR4)
 
+You can follow along yourself by starting a Jupyter server from this directory and opening [`tutorial.ipynb`](tutorial.ipynb).
+
 # Installation
 
 ```bash
