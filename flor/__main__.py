@@ -55,7 +55,7 @@ elif arg == "serve":
                     database.finish_job(db_conn, jobid)
                 elif res[0] == "replay":
                     jobid, path, script, vid, apply_vars, mode = res[1]
-                    path = path.replace("\\x1b[m", "")
+                    path = path.replace("\x1b[m", "")
                     s = f"python {script} {mode}"
 
                     my_env = os.environ.copy()
