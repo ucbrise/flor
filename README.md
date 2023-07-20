@@ -133,6 +133,13 @@ done|path|count(*)
 ```
 
 When finished, you can view the updated pivot view with all your experiment data:
+
+```bash
+$ pwd
+/Users/rogarcia/git/ml_tutorial
+
+$ ipython
+```
 ```ipython
 In [1]: from flor import full_pivot, log_records
 In [2]: full_pivot(log_records())
@@ -152,6 +159,8 @@ Out[2]:
 
 [1080 rows x 11 columns]
 ```
+
+
 
 # Model Traing Kit (MTK)
 
