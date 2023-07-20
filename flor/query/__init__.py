@@ -68,15 +68,8 @@ def log_records(skip_unpack=False):
 
 
 def full_pivot(facts: pd.DataFrame):
-    data_prep_gb = (
-        facts[[x for x in DATA_PREP if x != "tstamp"] + ["name", "value"]]
-        .drop_duplicates()
-        .groupby(
-            by=[x for x in DATA_PREP if x != "tstamp"]
-            + [
-                "name",
-            ]
-        )
+    data_prep_gb = facts.drop_duplicates()[list(DATA_PREP) + ["name", "value"]].groupby(
+        by=list(DATA_PREP + ("name",))
     )
 
     skip_set = set([])
@@ -90,14 +83,9 @@ def full_pivot(facts: pd.DataFrame):
             skip_set.add(name)
 
     outer_loop_gb = (
-        facts[[x for x in OUTR_LOOP if x != "tstamp"] + ["name", "value"]]
+        facts[list(OUTR_LOOP) + ["name", "value"]]
         .drop_duplicates()
-        .groupby(
-            by=[x for x in OUTR_LOOP if x != "tstamp"]
-            + [
-                "name",
-            ]
-        )
+        .groupby(by=list(OUTR_LOOP + ("name",)))
     )
     skip_set = set([])
     for rowid, agg in outer_loop_gb.count()["value"].items():
@@ -112,12 +100,7 @@ def full_pivot(facts: pd.DataFrame):
     pivot_vars["INNR_LOOP"] |= set(
         [
             name
-            for name in facts[
-                [x for x in INNR_LOOP if x != "tstamp"]
-                + [
-                    "name",
-                ]
-            ].drop_duplicates()["name"]
+            for name in facts["name"]
             if name not in pivot_vars["DATA_PREP"]
             and name not in pivot_vars["OUTR_LOOP"]
         ]
