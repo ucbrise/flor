@@ -230,6 +230,9 @@ On each run, Flor will:
 $ ls ~/.flor 
 ml_tutorial_flor.shadow.readme
 
+$ pwd
+/home/rogarcia/git/ml_tutorial
+
 $ git branch   
 * flor.shadow.readme
 
