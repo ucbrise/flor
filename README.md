@@ -83,17 +83,21 @@ $ python train.py --flor mySecondRun --hidden 75
 ### Advanced (Optional): Batch Processing
 Alternatively, we can call `flor.batch()` from an interactive environment
 inside our model training repository, to dispatch a group of jobs that can be long-runnning:
+```bash
+$ pwd
+/Users/rogarcia/git/ml_tutorial
+
+$ ipython
+```
+
 ```ipython
-In [1]: %cwd
-Out [1]: '/Users/rogarcia/git/ml_tutorial'
+In [1]: import flor
 
-In [2]: import flor
-
-In [3]: flor.batch(flor.cross_prod(
+In [2]: flor.batch(flor.cross_prod(
     hidden=[i*100 for i in range(1,6)],
     lr=(1e-4, 1e-3)
     ))
-Out[3]:
+Out[2]:
 --hidden 100 --lr 0.0001 
 --hidden 100 --lr 0.001 
 --hidden 200 --lr 0.0001 
@@ -328,21 +332,7 @@ Out[2]:
 In [3]: flor.replay(['device', 'accuracy'])
 What is the log level of logging statement `device`? Leave blank to infer `DATA_PREP`: 
 What is the log level of logging statement `accuracy`? Leave blank to infer `DATA_PREP`: 
-                            projid        runid               tstamp                                       vid  prep_secs  eval_secs
-0   ml_tutorial_flor.shadow.readme   myFirstRun  2023-07-19T09:01:51  c0418cfe5c3805fe44d29fdafabde8d372e50c73   0.073429   0.238834
-1   ml_tutorial_flor.shadow.readme  mySecondRun  2023-07-19T10:00:29  5e2f3784fb9414e9fd207cb6d58fc071acdcddd5   0.058423   0.205233
-2   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:09:50  aaf85cd05565b65141395fdbb57a023c8a6334fa   0.039978   0.200451
-3   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:01  ecde40929234546eb55c4f2b7e8158535a04bf4a   0.037776   0.199677
-4   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:11  043c11dc3e6db9954dfed4e273c66c3b548c9df1   0.038676   0.212092
-5   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:23  0c30296fbf38758dc1a144e3265d349e30310992   0.039001   0.239323
-6   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:35  84475621638c06a94c0956a997be9c5cca807ac5   0.040606   0.211364
-7   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:10:48  978121a53ac4b2f845e3e11fea965ff465b94ae9   0.039992   0.218336
-8   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:02  ba85bf6cf5a0d748c98cf91a4baffba8702e55e1   0.039123   0.229340
-9   ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:16  fe319ede9f0a815dbbcecc18bc5ec5d6820176bd   0.039545   0.220878
-10  ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:31  d6e8f15c698f523addc6eab06f55ac9491cff83a   0.040542   0.240724
-11  ml_tutorial_flor.shadow.readme        BATCH  2023-07-19T10:11:48  7b4dfc2b179807c343f755abf111b0247b34a0cf   0.040378   0.242875
-
-
+...
 Continue replaying 12 versions at DATA_PREP level for 39.19 seconds?[Y/n]? Y
 Flordb registered 12 replay jobs.
 ```
@@ -351,14 +341,21 @@ Finally, spin up a `flordb` server with the GPU identifier (leave blank for CPU)
 ```bash
 python -m flor serve
 ```
-
 or
-
 ```bash
 python -m flor serve 0
 ```
 
 When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations.
+
+```bash
+$ watch "sqlite3 ~/.flor/main.db -header 'select done, path, count(*) from replay group by done, path;'"
+
+done|path|count(*)
+0|/Users/rogarcia/git/ml_tutorial|5
+1|/Users/rogarcia/git/ml_tutorial|5
+```
+
 
 ## Publications
 
