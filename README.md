@@ -301,6 +301,9 @@ with torch.no_grad():
 ```
 
 ```bash
+$ pwd
+/home/rogarcia/git/ml_tutorial
+
 $ git branch
 * flor.shadow.readme
 
@@ -317,12 +320,13 @@ efficiently from checkpoint.
 
 In order to do that, we open up an interactive environent from within the `ml_tutorial` directory, and call `flor.replay()`, asking flor to apply the logging statements with the names `device` and `accuracy` to all previous versions (leave `where_clause` null in `flor.replay()`):
 ```bash
+$ pwd
+/home/rogarcia/git/ml_tutorial
+
 $ ipython
 ```
-
 ```ipython
-In [1]: !pwd
-/Users/rogarcia/git/ml_tutorial
+In [1]: import flor
 
 In [2]: flor.full_pivot(flor.log_records())
 Out[2]: 
@@ -359,15 +363,41 @@ python -m flor serve 0
 ```
 
 ```bash
-$ watch "sqlite3 ~/.flor/main.db -header 'select done, path, count(*) from replay group by done, path;'"
+$ watch "sqlite3 ~/.flor/main.db -header 'select done, path, appvars, count(*) from replay group by done, path, appvars;'"
 
-done|path|count(*)
-0|/Users/rogarcia/git/ml_tutorial|5
-1|/Users/rogarcia/git/ml_tutorial|5
+done|path|appvars|count(*)
+0|/Users/rogarcia/git/ml_tutorial|device, accuracy|5
+1|/Users/rogarcia/git/ml_tutorial|device, accuracy|5
 ```
 
-When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations.
+When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations:
 
+```bash
+$ pwd
+/Users/rogarcia/git/ml_tutorial
+
+$ ipython
+```
+```ipython
+In [1]: from flor import full_pivot, log_records
+In [2]: full_pivot(log_records())
+Out[2]: 
+                              projid       runid               tstamp        vid  epoch  step      loss batch_size device epochs     lr hidden accuracy
+0     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T20:45:36  4054c7...      1   100  0.208682         32   cuda      5  0.001    500    97.58
+1     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T20:45:36  4054c7...      1   200  0.213655         32   cuda      5  0.001    500    97.58
+2     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T20:45:36  4054c7...      1   300  0.491789         32   cuda      5  0.001    500    97.58
+3     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T20:45:36  4054c7...      1   400  0.344357         32   cuda      5  0.001    500    97.58
+4     ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T20:45:36  4054c7...      1   500  0.269210         32   cuda      5  0.001    500    97.58
+...                              ...         ...                  ...        ...    ...   ...       ...        ...    ...    ...    ...    ...      ...
+1075  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T20:54:52  25d4c3...      5  1400  0.005633         32   cuda      5  0.001    500    98.03
+1076  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T20:54:52  25d4c3...      5  1500  0.021457         32   cuda      5  0.001    500    98.03
+1077  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T20:54:52  25d4c3...      5  1600  0.049711         32   cuda      5  0.001    500    98.03
+1078  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T20:54:52  25d4c3...      5  1700  0.004853         32   cuda      5  0.001    500    98.03
+1079  ml_tutorial_flor.shadow.readme       BATCH  2023-07-19T20:54:52  25d4c3...      5  1800  0.009038         32   cuda      5  0.001    500    98.03
+
+[1080 rows x 13 columns]
+```
+Note the new columns `device` and `accuracy` that are backfilled.
 
 ## Publications
 
