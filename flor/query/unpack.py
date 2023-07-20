@@ -80,7 +80,7 @@ def unpack():
             if wmrk is not None and version.hexsha in wmrk:
                 break
             try:
-                print(f"STEPPING IN {version.hexsha}")
+                # print(f"STEPPING IN {version.hexsha}")
                 r.git.checkout(version)
                 cp_seconds(version)
                 cp_log_records(version)
