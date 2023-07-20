@@ -120,7 +120,7 @@ or, if we want to allocate a GPU to the flor server:
 ```bash
 $ python -m flor serve 0 
 ```
-(where 0 is replaced by the GPU id.)
+(where 0 is replaced by the GPU id).
 
 You can check the progress of your jobs with the following query:
 
@@ -346,8 +346,6 @@ or
 python -m flor serve 0
 ```
 
-When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations.
-
 ```bash
 $ watch "sqlite3 ~/.flor/main.db -header 'select done, path, count(*) from replay group by done, path;'"
 
@@ -355,6 +353,8 @@ done|path|count(*)
 0|/Users/rogarcia/git/ml_tutorial|5
 1|/Users/rogarcia/git/ml_tutorial|5
 ```
+
+When the process is finished, you will be able to view the values for `device` and `accuracy` for historical executions, and they will continue to be logged in subsequent iterations.
 
 
 ## Publications
