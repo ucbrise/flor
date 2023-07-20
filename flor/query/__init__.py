@@ -63,7 +63,7 @@ def log_records(skip_unpack=False):
         )
         .sort_values(by=["tstamp", "epoch", "step"])
     )
-    facts['projid'] = facts.['projid'].map(lambda x: x.replace("\\x1b[m", ""))
+    facts["projid"] = facts["projid"].map(lambda x: x.replace("\x1b[m", ""))
     return facts
 
 
