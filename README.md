@@ -9,7 +9,7 @@ FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, ex
 
 Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
 
-<!-- [![FlorDB Demo](https://i.ytimg.com/vi/TNSt5-i7kR4/sddefault.jpg)](https://youtu.be/x4ObDb5B2Us) -->
+[![FlorDB Demo](https://img.youtube.com/vi/x4ObDb5B2Us/0.jpg)](https://youtu.be/x4ObDb5B2Us)
 
 You can follow along yourself by starting a Jupyter server from this directory and opening [`tutorial.ipynb`](tutorial.ipynb).
 
