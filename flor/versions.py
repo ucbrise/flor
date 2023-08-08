@@ -38,7 +38,7 @@ def to_shadow():
         repo = Repo(CURRDIR)
         branch = repo.active_branch.name
         if branch.startswith(SHADOW_BRANCH_PREFIX):
-            print("Branch already has the 'flor.' prefix, continuing...")
+            # Branch already has the 'flor.' prefix, continuing...
             return
         else:
             base_shadow_name = "flor.shadow"
