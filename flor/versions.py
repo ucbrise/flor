@@ -28,14 +28,32 @@ def git_commit(message="Auto-commit"):
 def current_branch():
     try:
         repo = Repo(CURRDIR)
-        return str(repo.active_branch)
+        return repo.active_branch.name
     except InvalidGitRepositoryError:
         return None
 
 
-# Usage example
-if __name__ == "__main__":
-    # Your library code here
+def to_shadow():
+    try:
+        repo = Repo(CURRDIR)
+        branch = repo.active_branch.name
+        if branch.startswith(SHADOW_BRANCH_PREFIX):
+            print("Branch already has the 'flor.' prefix, continuing...")
+            return
+        else:
+            base_shadow_name = "flor.shadow"
+            new_branch_name = base_shadow_name
+            suffix = 1
 
-    # Commit the changes with a custom message
-    git_commit("Commit message for this run")
+            # Check if the branch name exists and increment the suffix until a unique name is found
+            while any(b.name == new_branch_name for b in repo.branches):
+                new_branch_name = f"{base_shadow_name}{suffix}"
+                suffix += 1
+
+            # Create a new branch with the unique name
+            repo.git.checkout("-b", new_branch_name)
+            print(f"Created and switched to new branch: {new_branch_name}")
+    except InvalidGitRepositoryError:
+        print("Not a valid Git repository")
+    except Exception as e:
+        print(f"An error occurred while processing the branch: {e}")
