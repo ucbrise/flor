@@ -57,3 +57,10 @@ def to_shadow():
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while processing the branch: {e}")
+
+
+# TODO
+# for v in State.repo.iter_commits():
+#             if str(v.message).count("RECORD::") == 1:
+#                 hexsha = v.hexsha
+#                 break
