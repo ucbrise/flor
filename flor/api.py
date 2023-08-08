@@ -75,14 +75,18 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
 @atexit.register
 def cleanup():
     if not cli.in_replay_mode():
+        # RECORD
         branch = versions.current_branch()
-        msg = f"PROJID: {PROJID}, BRANCH: {branch}, TSTAMP: {TIMESTAMP}"
-        with open(".flor.txt", "w") as f:
-            output_buffer.write(msg + "\n")
-            f.write(output_buffer.getvalue())
         if branch is not None:
+            msg = f"PROJID: {PROJID}, BRANCH: {branch}, TSTAMP: {TIMESTAMP}"
             print(msg)
+            with open(".flor.txt", "w") as f:
+                output_buffer.write(msg + "\n")
+                f.write(output_buffer.getvalue())
             versions.git_commit()
+    else:
+        # REPLAY
+        pass
 
 
 __all__ = ["log", "arg", "checkpointing", "layer"]
