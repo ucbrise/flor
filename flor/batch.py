@@ -1,3 +1,4 @@
+from typing import Optional
 import pandas as pd
 import os
 import math
@@ -26,13 +27,14 @@ def batch(args_table: pd.DataFrame, script="train.py", from_path=os.getcwd()):
         db_conn.close()
 
 
-def cross_prod(**kwargs):
-    """
-    {'epochs': 2, 'batch_size': 2, 'lr': (1e-5, 1e-4, 1e-3)}
-      => [
-          {'epochs': 2, 'batch_size': 2, 'lr': 1e-5},
-          {'epochs': 2, 'batch_size': 2, 'lr': 1e-4},
-          {'epochs': 2, 'batch_size': 2, 'lr': 1e-3}
-        ]
-    """
-    pass
+def cross_prod(**kwargs) -> Optional[pd.DataFrame]:
+    for k in kwargs:
+        if not isinstance(kwargs[k], (tuple, list)):
+            print(f"Coercing type {type(kwargs[k])}: {kwargs[k]}")
+            kwargs[k] = tuple(kwargs[k])
+    dataframes = [pd.DataFrame.from_dict({k: v}) for k, v in kwargs.items()]
+    if dataframes:
+        rolling_df = dataframes[0]
+        for df in dataframes[1:]:
+            rolling_df = rolling_df.merge(df, how="cross")
+        return rolling_df
