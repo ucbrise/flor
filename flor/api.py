@@ -27,6 +27,6 @@ def checkpoints(*args):
     print("Exiting the context")
     # Add code to tear down the context if needed
 
-
+layers = []
 def layer(name, iterator):
     pass
