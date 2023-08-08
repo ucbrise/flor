@@ -28,7 +28,14 @@ def parse_args():
             key, value = kwarg.split("=")
             state.hyperparameters[key] = value
 
+    if state.replay_mode():
+        replay_initialize()
+
     return args, hyperparameters
+
+
+def replay_initialize():
+    pass
 
 
 if __name__ == "__main__":

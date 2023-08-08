@@ -7,7 +7,4 @@ hyperparameters: Dict[str, str] = {}
 
 def replay_mode():
     assert args is not None
-    if args.replay_flor is None:
-        return False
-    else:
-        return True
+    return args.replay_flor is not None
