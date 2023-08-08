@@ -43,7 +43,7 @@ def parse_args():
     if in_replay_mode():
         replay_initialize()
 
-    return args, hyperparameters
+    return flags
 
 
 def in_replay_mode():
@@ -56,7 +56,10 @@ def replay_initialize():
 
 
 if __name__ == "__main__":
-    args, hyperparameters = parse_args()
+    flags = parse_args()
+
+    args = flags.args
+    hyperparameters = flags.hyperparameters
 
     if args.replay_flor is None:
         print("Default mode")
