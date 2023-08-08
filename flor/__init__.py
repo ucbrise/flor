@@ -1,6 +1,5 @@
-from . import constants
+from .constants import *
 
-from .cli import parse_args
-parse_args()
+from . import cli
 
-__all__ = ['constants']
+cli.parse_args()
