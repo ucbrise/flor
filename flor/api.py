@@ -69,7 +69,9 @@ def checkpointing(*args):
 def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
     layers[name] = 0
-    for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
+    for each in tqdm(
+        iterator, position=pos, leave=(True if pos == 0 else False)
+    ):
         layers[name] += 1
         yield each
 
