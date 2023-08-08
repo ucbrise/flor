@@ -27,7 +27,7 @@ def log(name, value):
         msg = f"{str(stack)} {name}: {str(serializable_value)}"
     else:
         msg = f"{name}: {str(serializable_value)}"
-    output_buffer.write(msg)
+    output_buffer.write(msg + "\n")
     tqdm.write(msg)
     return value
 
