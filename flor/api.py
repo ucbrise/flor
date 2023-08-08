@@ -14,9 +14,18 @@ layers = {}
 checkpoints = []
 
 
+def get_stack():
+    return list(layers.items())
+
+
 def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    tqdm.write(f"{str(list(layers.items()))} {name}: {str(serializable_value)}")
+    stack = get_stack()
+    if stack:
+        tqdm.write(f"{str(stack)} {name}: {str(serializable_value)}")
+    else:
+        tqdm.write(f"{name}: {str(serializable_value)}")
+
     # if State.loop_nesting_level:
     #     log_records.put(name, serializable_value)
     # else:
