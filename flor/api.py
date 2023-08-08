@@ -58,7 +58,6 @@ def checkpointing(*args):
     yield  # The code within the 'with' block will be executed here.
 
     # tear down the context if needed
-    layers.clear()
     checkpoints[:] = []
 
 
@@ -68,6 +67,7 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
     for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
         layers[name] += 1
         yield each
+    del layers[name]
 
 
 __all__ = ["log", "arg", "checkpointing", "layer"]
