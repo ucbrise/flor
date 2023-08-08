@@ -31,10 +31,14 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
         # CLI
         v = cli.flags.hyperparameters[name]
         if default is not None:
-            return utils.duck_cast(v, default)
+            v = utils.duck_cast(v, default)
+            log(name, v)
+            return v
+        log(name, v)
         return v
     elif default is not None:
         # default
+        log(name, default)
         return default
     else:
         raise
