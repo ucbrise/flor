@@ -10,6 +10,6 @@ STEM = (
 )
 TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 CURRDIR = os.getcwd()
+PROJID = os.path.basename(CURRDIR)
 
-
-__all__ = ["SHADOW_BRANCH_PREFIX", "STEM", "TIMESTAMP", "CURRDIR"]
+__all__ = ["SHADOW_BRANCH_PREFIX", "STEM", "TIMESTAMP", "CURRDIR", "PROJID"]
