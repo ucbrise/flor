@@ -1,9 +1,21 @@
 import argparse
-from . import state
+from argparse import Namespace
+from typing import Dict, Optional
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Flags:
+    args: Optional[Namespace]
+    hyperparameters: Dict[str, str]
+
+
+flags = Flags(None, {})
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Replay flor script")
+    parser = argparse.ArgumentParser(description="FlorDB CLI")
     parser.add_argument(
         "--replay_flor",
         nargs="*",
@@ -20,18 +32,23 @@ def parse_args():
     )
 
     args = parser.parse_args()
-    state.args = args
+    flags.args = args
 
     # Process the key-value pair arguments
     if args.kwargs:
         for kwarg in args.kwargs:
             key, value = kwarg.split("=")
-            state.hyperparameters[key] = value
+            flags.hyperparameters[key] = value
 
-    if state.replay_mode():
+    if in_replay_mode():
         replay_initialize()
 
     return args, hyperparameters
+
+
+def in_replay_mode():
+    assert flags.args is not None
+    return flags.args.replay_flor
 
 
 def replay_initialize():

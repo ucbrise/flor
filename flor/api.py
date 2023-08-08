@@ -1,6 +1,6 @@
 import utils
 from contextlib import contextmanager
-from . import state
+from . import cli
 
 
 layers = []
@@ -18,16 +18,17 @@ def log(name, value):
 
 
 def arg(name, default=None):
-    if state.replay_mode():
+    if cli.in_replay_mode():
         # GIT
         pass
-    elif name in state.hyperparameters:
+    elif name in cli.flags.hyperparameters:
         # CLI
-        v = state.hyperparameters[name]
+        v = cli.flags.hyperparameters[name]
         if default is not None:
             return utils.duck_cast(v, default)
         return v
     elif default is not None:
+        # default
         return default
     else:
         raise
@@ -36,7 +37,7 @@ def arg(name, default=None):
 @contextmanager
 def checkpointing(*args):
     # set up the context
-    layers.extend(list(args))
+    checkpoints.extend(list(args))
 
     yield  # The code within the 'with' block will be executed here.
 
