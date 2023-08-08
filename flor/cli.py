@@ -55,21 +55,21 @@ def replay_initialize():
     pass
 
 
-if __name__ == "__main__":
-    flags = parse_args()
+# if __name__ == "__main__":
+#     flags = parse_args()
 
-    args = flags.args
-    hyperparameters = flags.hyperparameters
+#     args = flags.args
+#     hyperparameters = flags.hyperparameters
 
-    if args.replay_flor is None:
-        print("Default mode")
-    elif not args.replay_flor:
-        print("Flor replay mode")
-    elif len(args.replay_flor) == 3 and args.replay_flor[1] == "/":
-        print(
-            f"Flor replay with PID: {args.replay_flor[0]}, NGPUS: {args.replay_flor[2]}"
-        )
-    else:
-        print("Invalid input for --replay_flor")
+#     if args.replay_flor is None:
+#         print("Default mode")
+#     elif not args.replay_flor:
+#         print("Flor replay mode")
+#     elif len(args.replay_flor) == 3 and args.replay_flor[1] == "/":
+#         print(
+#             f"Flor replay with PID: {args.replay_flor[0]}, NGPUS: {args.replay_flor[2]}"
+#         )
+#     else:
+#         print("Invalid input for --replay_flor")
 
-    print("Hyperparameters:", hyperparameters)
+#     print("Hyperparameters:", hyperparameters)
