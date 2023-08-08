@@ -21,9 +21,9 @@ def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     stack = list(layers.items())
     if stack:
-        msg = f"{str(stack)} {name}: {json.dumps(serializable_value)}"
+        msg = f"{str(stack)} {name}: {str(serializable_value)}"
     else:
-        msg = f"{name}: {json.dumps(serializable_value)}"
+        msg = f"{name}: {str(serializable_value)}"
     tqdm.write(msg)
     return value
 
