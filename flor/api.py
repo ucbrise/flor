@@ -14,7 +14,11 @@ def log(name, value):
 
 
 def arg(name, default=None):
-    pass
+    if default is None:
+        # CLI | GIT
+        pass
+    else:
+        pass
 
 
 @contextmanager
@@ -27,6 +31,9 @@ def checkpoints(*args):
     print("Exiting the context")
     # Add code to tear down the context if needed
 
+
 layers = []
+
+
 def layer(name, iterator):
     pass
