@@ -35,13 +35,12 @@ def arg(name, default=None):
 
 @contextmanager
 def checkpointing(*args):
-    print("Entering the context")
-    # Add code to set up the context if needed
+    # set up the context
+    layers.extend(list(args))
 
-    yield  # The code within the 'with' block will be executed here
+    yield  # The code within the 'with' block will be executed here.
 
-    print("Exiting the context")
-    # Add code to tear down the context if needed
+    # tear down the context if needed
     layers[:] = []
     checkpoints[:] = []
 
