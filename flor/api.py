@@ -42,6 +42,8 @@ def checkpointing(*args):
 
     print("Exiting the context")
     # Add code to tear down the context if needed
+    layers[:] = []
+    checkpoints[:] = []
 
 
 def layer(name, iterator):
