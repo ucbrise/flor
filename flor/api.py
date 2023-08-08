@@ -10,8 +10,11 @@ from tqdm import tqdm
 import json
 import atexit
 
+import io
 
 T = TypeVar("T")
+
+output_buffer = io.StringIO(newline="\n")
 
 layers = {}
 checkpoints = []
@@ -24,6 +27,7 @@ def log(name, value):
         msg = f"{str(stack)} {name}: {str(serializable_value)}"
     else:
         msg = f"{name}: {str(serializable_value)}"
+    output_buffer.write(msg)
     tqdm.write(msg)
     return value
 
@@ -73,6 +77,8 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
 def cleanup():
     if not cli.in_replay_mode():
         branch = versions.current_branch()
+        with open(".flor.txt", "w") as f:
+            f.write(output_buffer.getvalue())
         if branch is not None:
             msg = f"PROJID: {PROJID}, BRANCH: {branch}, TSTAMP: {TIMESTAMP}"
             print(msg)
