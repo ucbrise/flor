@@ -5,17 +5,18 @@ from . import utils
 from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
 from contextlib import contextmanager
 
+from tqdm import tqdm
 
 T = TypeVar("T")
 
 
-layers = []
+layers = {}
 checkpoints = []
 
 
 def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    print(name, serializable_value)
+    tqdm.write(f"{str(list(layers.items()))} {name}: {str(serializable_value)}")
     # if State.loop_nesting_level:
     #     log_records.put(name, serializable_value)
     # else:
@@ -52,13 +53,14 @@ def checkpointing(*args):
     yield  # The code within the 'with' block will be executed here.
 
     # tear down the context if needed
-    layers[:] = []
+    layers.clear()
     checkpoints[:] = []
 
 
 def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
-    layers.append(name)
-    for each in iterator:
+    layers[name] = 0
+    for each in tqdm(iterator):
+        layers[name] += 1
         yield each
 
 
