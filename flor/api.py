@@ -1,6 +1,12 @@
-import utils
-from contextlib import contextmanager
+from .constants import *
 from . import cli
+from . import utils
+
+from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
+from contextlib import contextmanager
+
+
+T = TypeVar("T")
 
 
 layers = []
@@ -17,7 +23,7 @@ def log(name, value):
     return value
 
 
-def arg(name, default=None):
+def arg(name: str, default: Optional[Any] = None) -> Any:
     if cli.in_replay_mode():
         # GIT
         pass
@@ -46,5 +52,9 @@ def checkpointing(*args):
     checkpoints[:] = []
 
 
-def layer(name, iterator):
-    pass
+def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
+    for each in iterator:
+        yield each
+
+
+__all__ = ["log", "arg", "checkpointing", "layer"]
