@@ -71,8 +71,11 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 @atexit.register
 def cleanup():
-    msg = f"PROJID: {PROJID}, BRANCH: {versions.current_branch()}, TSTAMP: {TIMESTAMP}"
-    print(msg)
+    branch = versions.current_branch()
+    if branch is not None:
+        msg = f"PROJID: {PROJID}, BRANCH: {branch}, TSTAMP: {TIMESTAMP}"
+        print(msg)
+        versions.git_commit()
 
 
 __all__ = ["log", "arg", "checkpointing", "layer"]
