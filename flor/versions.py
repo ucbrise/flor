@@ -1,7 +1,7 @@
 from .constants import *
 
-import git
 from git.repo import Repo
+from git.exc import InvalidGitRepositoryError
 
 
 def git_commit(message="Auto-commit"):
@@ -19,10 +19,15 @@ def git_commit(message="Auto-commit"):
             print("Changes committed successfully")
         else:
             print("No changes to commit")
-    except git.InvalidGitRepositoryError:
+    except InvalidGitRepositoryError:
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while committing: {e}")
+
+
+def current_branch():
+    repo = Repo(CURRDIR)
+    return str(repo.active_branch)
 
 
 # Usage example

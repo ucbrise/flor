@@ -1,14 +1,17 @@
 from .constants import *
 from . import cli
 from . import utils
+from . import versions
 
 from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
 from contextlib import contextmanager
 
 from tqdm import tqdm
+import json
+import atexit
+
 
 T = TypeVar("T")
-
 
 layers = {}
 checkpoints = []
@@ -18,14 +21,10 @@ def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     stack = list(layers.items())
     if stack:
-        tqdm.write(f"{str(stack)} {name}: {str(serializable_value)}")
+        msg = f"{str(stack)} {name}: {json.dumps(serializable_value)}"
     else:
-        tqdm.write(f"{name}: {str(serializable_value)}")
-
-    # if State.loop_nesting_level:
-    #     log_records.put(name, serializable_value)
-    # else:
-    #     exp_json.put(name, serializable_value, ow=False)
+        msg = f"{name}: {json.dumps(serializable_value)}"
+    tqdm.write(msg)
     return value
 
 
@@ -68,6 +67,12 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
         layers[name] += 1
         yield each
     del layers[name]
+
+
+@atexit.register
+def cleanup():
+    msg = f"PROJID: {PROJID}, BRANCH: {versions.current_branch()}, TSTAMP: {TIMESTAMP}"
+    tqdm.write(msg)
 
 
 __all__ = ["log", "arg", "checkpointing", "layer"]
