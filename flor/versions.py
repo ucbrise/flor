@@ -4,7 +4,7 @@ from git.repo import Repo
 from git.exc import InvalidGitRepositoryError
 
 
-def git_commit(message="Auto-commit"):
+def git_commit(message="FLOR::Auto-commit"):
     try:
         # Get the current working directory and initialize a Repo object
         repo = Repo(CURRDIR)
