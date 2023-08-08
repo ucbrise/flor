@@ -57,6 +57,7 @@ def checkpointing(*args):
 
 
 def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
+    layers.append(name)
     for each in iterator:
         yield each
 
