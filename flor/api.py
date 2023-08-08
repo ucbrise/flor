@@ -3,6 +3,10 @@ from contextlib import contextmanager
 from . import state
 
 
+layers = []
+checkpoints = []
+
+
 def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     print(name, serializable_value)
@@ -14,15 +18,23 @@ def log(name, value):
 
 
 def arg(name, default=None):
-    if default is None:
-        # CLI | GIT
+    if state.replay_mode():
+        # GIT
         pass
+    elif name in state.hyperparameters:
+        # CLI
+        v = state.hyperparameters[name]
+        if default is not None:
+            return utils.duck_cast(v, default)
+        return v
+    elif default is not None:
+        return default
     else:
-        pass
+        raise
 
 
 @contextmanager
-def checkpoints(*args):
+def checkpointing(*args):
     print("Entering the context")
     # Add code to set up the context if needed
 
@@ -30,9 +42,6 @@ def checkpoints(*args):
 
     print("Exiting the context")
     # Add code to tear down the context if needed
-
-
-layers = []
 
 
 def layer(name, iterator):
