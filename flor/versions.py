@@ -26,8 +26,11 @@ def git_commit(message="Auto-commit"):
 
 
 def current_branch():
-    repo = Repo(CURRDIR)
-    return str(repo.active_branch)
+    try:
+        repo = Repo(CURRDIR)
+        return str(repo.active_branch)
+    except InvalidGitRepositoryError:
+        return None
 
 
 # Usage example
