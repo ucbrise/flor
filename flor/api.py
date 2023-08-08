@@ -23,7 +23,7 @@ checkpoints = []
 def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     if layers:
-        msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])} {name}: {str(serializable_value)}"
+        msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])}, {name}: {str(serializable_value)}"
     else:
         msg = f"{name}: {str(serializable_value)}"
     output_buffer.write(msg + "\n")
