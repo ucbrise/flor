@@ -1,3 +1,4 @@
+# type: ignore
 import ast
 from argparse import Namespace
 from os import PathLike
