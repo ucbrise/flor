@@ -1,13 +1,16 @@
 import json
+from typing import Any
+
 
 def is_jsonable(x):
-        try:
-            json.dumps(x)
-            return True
-        except (TypeError, OverflowError):
-            return False
-        
-def duck_cast(v, default):
+    try:
+        json.dumps(x)
+        return True
+    except (TypeError, OverflowError):
+        return False
+
+
+def duck_cast(v: str, default: Any):
     if isinstance(default, bool):
         return bool(v)
     if isinstance(default, int):
@@ -20,9 +23,5 @@ def duck_cast(v, default):
         return list(v) if v else []
     elif isinstance(default, tuple):
         return tuple(v) if v else tuple([])
-    elif isinstance(default, bytes):
-        return bytes(v)
-    elif isinstance(default, bytearray):
-        return bytearray(v)
     else:
         raise TypeError(f"Unsupported type: {type(default)}")
