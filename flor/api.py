@@ -72,7 +72,7 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
 @atexit.register
 def cleanup():
     msg = f"PROJID: {PROJID}, BRANCH: {versions.current_branch()}, TSTAMP: {TIMESTAMP}"
-    tqdm.write(msg)
+    print(msg)
 
 
 __all__ = ["log", "arg", "checkpointing", "layer"]
