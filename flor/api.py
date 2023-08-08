@@ -14,13 +14,9 @@ layers = {}
 checkpoints = []
 
 
-def get_stack():
-    return list(layers.items())
-
-
 def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    stack = get_stack()
+    stack = list(layers.items())
     if stack:
         tqdm.write(f"{str(stack)} {name}: {str(serializable_value)}")
     else:
@@ -69,9 +65,7 @@ def checkpointing(*args):
 def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
     layers[name] = 0
-    for each in tqdm(
-        iterator, position=pos, leave=(True if pos == 0 else False)
-    ):
+    for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
         layers[name] += 1
         yield each
 
