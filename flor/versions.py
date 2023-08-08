@@ -10,7 +10,7 @@ def git_commit(message="FLOR::Auto-commit"):
         repo = Repo(CURRDIR)
 
         # Check if there are any uncommitted changes
-        if repo.is_dirty():
+        if repo.is_dirty(untracked_files=True):
             # Add all untracked files and changes to tracked files
             repo.git.add(A=True)
 
