@@ -21,6 +21,7 @@ def create_connection(db_file):
         conn = sqlite3.connect(db_file)
     except sqlite3.Error as e:
         print(e)
+        raise
 
     return conn
 
@@ -31,6 +32,7 @@ def create_table(conn, create_table_sql):
         c.execute(create_table_sql)
     except sqlite3.Error as e:
         print(e)
+        raise
 
 
 def add_row(conn, table_name, data):
