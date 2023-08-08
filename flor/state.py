@@ -1,8 +1,8 @@
 from argparse import Namespace
-from typing import Optional
+from typing import Dict, Optional
 
 args: Optional[Namespace] = None
-hyperparameters = {}
+hyperparameters: Dict[str, str] = {}
 
 
 def replay_mode():
