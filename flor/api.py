@@ -92,7 +92,7 @@ def cleanup():
                     "PROJID": PROJID,
                     "BRANCH": branch,
                     "TSTAMP": TIMESTAMP,
-                    "FILENAME": None,
+                    "FILENAME": SCRIPTNAME,
                 }
             )
             with open(".flor.json", "w") as f:
