@@ -88,7 +88,12 @@ def cleanup():
         branch = versions.current_branch()
         if branch is not None:
             output_buffer.append(
-                {"PROJID": PROJID, "BRANCH": branch, "TSTAMP": TIMESTAMP}
+                {
+                    "PROJID": PROJID,
+                    "BRANCH": branch,
+                    "TSTAMP": TIMESTAMP,
+                    "FILENAME": None,
+                }
             )
             with open(".flor.json", "w") as f:
                 json.dump(output_buffer, f, indent=2)
