@@ -70,7 +70,7 @@ def checkpointing(*args):
     checkpoints[:] = []
 
 
-def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
+def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
     layers[name] = 0
     for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
@@ -98,4 +98,4 @@ def cleanup():
         pass
 
 
-__all__ = ["log", "arg", "checkpointing", "layer"]
+__all__ = ["log", "arg", "checkpointing", "loop"]
