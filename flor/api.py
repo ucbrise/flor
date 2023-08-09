@@ -19,8 +19,12 @@ output_buffer = io.StringIO(newline="\n")
 layers = {}
 checkpoints = []
 
+skip_cleanup = True
+
 
 def log(name, value):
+    global skip_cleanup
+    skip_cleanup = False
     serializable_value = value if utils.is_jsonable(value) else str(value)
     if layers:
         msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])}, {name}: {str(serializable_value)}"
@@ -74,6 +78,8 @@ def layer(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 @atexit.register
 def cleanup():
+    if skip_cleanup:
+        return
     if not cli.in_replay_mode():
         # RECORD
         branch = versions.current_branch()
