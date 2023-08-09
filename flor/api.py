@@ -10,7 +10,8 @@ from tqdm import tqdm
 import json
 import atexit
 
-import io
+import time
+from datetime import datetime
 
 T = TypeVar("T")
 
@@ -72,11 +73,27 @@ def checkpointing(*args):
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
+    if pos == 0:
+        d = dict(layers)
+        d[f"enter::{name}"] = datetime.now().isoformat(timespec="seconds")
+        output_buffer.append(d)
+
     layers[name] = 0
     for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
         layers[name] += 1
+        start_t = time.perf_counter()
         yield each
+        elapsed_t = time.perf_counter() - start_t
+        if pos == 0:
+            d = dict(layers)
+            d[f"iter::secs"] = elapsed_t
+            output_buffer.append(d)
     del layers[name]
+
+    if pos == 0:
+        d = dict(layers)
+        d[f"exit::{name}"] = datetime.now().isoformat(timespec="seconds")
+        output_buffer.append(d)
 
 
 @atexit.register
