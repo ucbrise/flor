@@ -14,7 +14,7 @@ import io
 
 T = TypeVar("T")
 
-output_buffer = io.StringIO(newline="\n")
+output_buffer = []
 
 layers = {}
 checkpoints = []
@@ -27,10 +27,13 @@ def log(name, value):
     skip_cleanup = False
     serializable_value = value if utils.is_jsonable(value) else str(value)
     if layers:
+        d = dict(layers)
+        d[name] = serializable_value
+        output_buffer.append(d)
         msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])}, {name}: {str(serializable_value)}"
     else:
+        output_buffer.append({name: serializable_value})
         msg = f"{name}: {str(serializable_value)}"
-    output_buffer.write(msg + "\n")
     tqdm.write(msg)
     return value
 
@@ -84,11 +87,11 @@ def cleanup():
         # RECORD
         branch = versions.current_branch()
         if branch is not None:
-            msg = f"PROJID: {PROJID}, BRANCH: {branch}, TSTAMP: {TIMESTAMP}"
-            print(msg)
-            with open(".flor.txt", "w") as f:
-                output_buffer.write(msg + "\n")
-                f.write(output_buffer.getvalue())
+            output_buffer.append(
+                {"PROJID": PROJID, "BRANCH": branch, "TSTAMP": TIMESTAMP}
+            )
+            with open(".flor.json", "w") as f:
+                json.dump(output_buffer, f, indent=2)
             versions.git_commit(f"FLOR::Auto-commit::{TIMESTAMP}")
     else:
         # REPLAY
