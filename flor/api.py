@@ -83,7 +83,7 @@ def cleanup():
             with open(".flor.txt", "w") as f:
                 output_buffer.write(msg + "\n")
                 f.write(output_buffer.getvalue())
-            versions.git_commit()
+            versions.git_commit(f"FLOR::Auto-commit::{TIMESTAMP}")
     else:
         # REPLAY
         pass

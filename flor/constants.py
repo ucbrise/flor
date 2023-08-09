@@ -7,7 +7,7 @@ STEM = (
     "tstamp",
     "vid",
 )
-TIMESTAMP = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+TIMESTAMP = datetime.now().isoformat(timespec="seconds")
 CURRDIR = os.getcwd()
 PROJID = os.path.basename(CURRDIR)
 HOMEDIR = os.path.join(os.path.expanduser("~"), ".flor")
