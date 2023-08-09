@@ -59,8 +59,18 @@ def to_shadow():
         print(f"An error occurred while processing the branch: {e}")
 
 
-# TODO
-# for v in State.repo.iter_commits():
-#             if str(v.message).count("RECORD::") == 1:
-#                 hexsha = v.hexsha
-#                 break
+def get_latest_autocommit():
+    try:
+        repo = Repo(CURRDIR)
+        for v in repo.iter_commits():
+            if str(v.message).count("FLOR::") == 1:
+                _, _, ts = v.message.strip().split("::")  # type: ignore
+                return (
+                    ts,
+                    v.hexsha,
+                    v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
+                )
+    except InvalidGitRepositoryError:
+        print("Not a valid Git repository")
+    except Exception as e:
+        print(f"An error occurred while processing the branch: {e}")
