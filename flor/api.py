@@ -2,6 +2,7 @@ from .constants import *
 from . import cli
 from . import utils
 from . import versions
+from . import obj_store
 
 from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
 from contextlib import contextmanager
@@ -97,7 +98,13 @@ def is_due_chkpt(elapsed_t):
 
 def chkpt():
     for name, obj in checkpoints:
-        pass
+        output_buffer.append(
+            utils.add2copy(
+                layers,
+                f"chkpt::{name}",
+                obj_store.serialize(layers, name, obj)
+            )
+        )
 
 
 @atexit.register

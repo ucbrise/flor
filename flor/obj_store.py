@@ -17,7 +17,9 @@ def serialize_torch(layers, name, obj):
     import torch.optim
 
     if isinstance(obj, torch.nn.Module) or isinstance(obj, torch.optim.Optimizer):
-        torch.save(obj, SHELF / utils.to_filename(layers, name, ".pth"))
+        path = SHELF / utils.to_filename(layers, name, ".pth")
+        torch.save(obj, path)
+        return path
     else:
         raise
 
@@ -26,7 +28,9 @@ def serialize_numpy(layers, name, obj):
     import numpy as np
 
     if isinstance(obj, np.ndarray):
-        np.save(SHELF / utils.to_filename(layers, name, ".npy"), obj)
+        path = SHELF / utils.to_filename(layers, name, ".npy")
+        np.save(path, obj)
+        return path
     else:
         raise
 
@@ -43,8 +47,10 @@ def serialize_scikit(layers, name, obj):
         sklearn.base.TransformerMixin,
     )
     if isinstance(obj, sklearn_base_classes) or hasattr(obj, "fit"):
-        with open(SHELF / utils.to_filename(layers, name, ".pkl"), "wb") as f:
+        path = SHELF / utils.to_filename(layers, name, ".pkl")
+        with open(path, "wb") as f:
             pickle.dump(obj, f)
+        return path
     else:
         raise
 
@@ -55,30 +61,32 @@ def serialize_pandas(layers, name, obj):
     if isinstance(obj, pd.DataFrame):
         path = SHELF / utils.to_filename(layers, name, ".parquet")
         obj.to_parquet(path)
+        return path
     else:
         raise
 
 
 def serialize(layers, name, obj):
     try:
-        serialize_torch(layers, name, obj)
+        return serialize_torch(layers, name, obj)
     except:
         pass
 
     try:
-        serialize_scikit(layers, name, obj)
+        return serialize_scikit(layers, name, obj)
     except:
         pass
 
     try:
-        serialize_numpy(layers, name, obj)
+        return serialize_numpy(layers, name, obj)
     except:
         pass
 
     try:
-        serialize_pandas(layers, name, obj)
+        return serialize_pandas(layers, name, obj)
     except:
         pass
 
-    with open(SHELF / utils.to_filename(layers, name, ".pkl"), "wb") as f:
+    with open((path := SHELF / utils.to_filename(layers, name, ".pkl")), "wb") as f:
         cloudpickle.dump(obj, f)
+    return path
