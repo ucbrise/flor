@@ -64,11 +64,9 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 def checkpointing(**kwargs):
     # set up the context
     checkpoints.extend(list(kwargs.items()))
-
-    yield  # The code within the 'with' block will be executed here.
-
+    yield
     # tear down the context if needed
-    checkpoints[:] = []
+    checkpoints.clear()
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
