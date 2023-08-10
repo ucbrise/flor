@@ -86,7 +86,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
             d = dict(layers)
-            d[f"iter::secs"] = elapsed_t
+            d[f"auto::secs"] = elapsed_t
             output_buffer.append(d)
     del layers[name]
 
