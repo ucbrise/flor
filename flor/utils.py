@@ -25,3 +25,9 @@ def duck_cast(v: str, default: Any):
         return tuple(v) if v else tuple([])
     else:
         raise TypeError(f"Unsupported type: {type(default)}")
+
+
+def add2copy(src, name, value):
+    d = dict(src)
+    d[name] = value
+    return d

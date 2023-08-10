@@ -28,9 +28,7 @@ def log(name, value):
     skip_cleanup = False
     serializable_value = value if utils.is_jsonable(value) else str(value)
     if layers:
-        d = dict(layers)
-        d[name] = serializable_value
-        output_buffer.append(d)
+        output_buffer.append(utils.add2copy(layers, name, serializable_value))
         msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])}, {name}: {str(serializable_value)}"
     else:
         output_buffer.append({name: serializable_value})
@@ -72,10 +70,11 @@ def checkpointing(**kwargs):
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
     if pos == 0:
-        d = dict(layers)
-        d[f"enter::{name}"] = datetime.now().isoformat(timespec="seconds")
-        output_buffer.append(d)
-
+        output_buffer.append(
+            utils.add2copy(
+                layers, f"enter::{name}", datetime.now().isoformat(timespec="seconds")
+            )
+        )
     layers[name] = 0
     for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
         layers[name] += 1
@@ -83,15 +82,26 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         yield each
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
-            d = dict(layers)
-            d[f"auto::secs"] = elapsed_t
-            output_buffer.append(d)
+            output_buffer.append(utils.add2copy(layers, "auto::secs", elapsed_t))
+            if is_due_chkpt(elapsed_t):
+                chkpt()
     del layers[name]
 
     if pos == 0:
-        d = dict(layers)
-        d[f"exit::{name}"] = datetime.now().isoformat(timespec="seconds")
-        output_buffer.append(d)
+        output_buffer.append(
+            utils.add2copy(
+                layers, f"exit::{name}", datetime.now().isoformat(timespec="seconds")
+            )
+        )
+
+
+def is_due_chkpt(elapsed_t):
+    return True
+
+
+def chkpt():
+    for name, obj in checkpoints:
+        pass
 
 
 @atexit.register
