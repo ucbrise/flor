@@ -102,7 +102,7 @@ def chkpt():
             utils.add2copy(
                 layers,
                 f"chkpt::{name}",
-                obj_store.serialize(layers, name, obj).as_posix(),
+                obj_store.serialize(layers, name, obj),
             )
         )
 
