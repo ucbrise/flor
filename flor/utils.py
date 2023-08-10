@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from pathlib import Path
 
 
 def is_jsonable(x):
@@ -31,3 +32,22 @@ def add2copy(src, name, value):
     d = dict(src)
     d[name] = value
     return d
+
+
+def to_string(src, name, value):
+    if src:
+        return (
+            f"{', '.join([f'{k}: {v}' for k,v in src.items()])}, {name}: {str(value)}"
+        )
+    else:
+        return f"{name}: {str(value)}"
+
+
+def to_filename(src, name, ext):
+    rolling_name = [
+        name,
+    ]
+    for k, v in src.items():
+        rolling_name.append(k)
+        rolling_name.append(v)
+    return Path(".".join(rolling_name)).with_suffix(ext)

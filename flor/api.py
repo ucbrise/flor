@@ -26,14 +26,11 @@ skip_cleanup = True
 def log(name, value):
     global skip_cleanup
     skip_cleanup = False
+
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    if layers:
-        output_buffer.append(utils.add2copy(layers, name, serializable_value))
-        msg = f"{', '.join([f'{k}: {v}' for k,v in layers.items()])}, {name}: {str(serializable_value)}"
-    else:
-        output_buffer.append({name: serializable_value})
-        msg = f"{name}: {str(serializable_value)}"
-    tqdm.write(msg)
+    output_buffer.append(utils.add2copy(layers, name, serializable_value))
+    tqdm.write(utils.to_string(layers, name, serializable_value))
+
     return value
 
 
