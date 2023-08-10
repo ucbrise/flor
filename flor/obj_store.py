@@ -19,7 +19,7 @@ def serialize_torch(layers, name, obj):
     if isinstance(obj, torch.nn.Module) or isinstance(obj, torch.optim.Optimizer):
         path = SHELF / utils.to_filename(layers, name, ".pth")
         torch.save(obj, path)
-        return path
+        return path.name
     else:
         raise
 
@@ -30,7 +30,7 @@ def serialize_numpy(layers, name, obj):
     if isinstance(obj, np.ndarray):
         path = SHELF / utils.to_filename(layers, name, ".npy")
         np.save(path, obj)
-        return path
+        return path.name
     else:
         raise
 
@@ -50,7 +50,7 @@ def serialize_scikit(layers, name, obj):
         path = SHELF / utils.to_filename(layers, name, ".pkl")
         with open(path, "wb") as f:
             pickle.dump(obj, f)
-        return path
+        return path.name
     else:
         raise
 
@@ -61,7 +61,7 @@ def serialize_pandas(layers, name, obj):
     if isinstance(obj, pd.DataFrame):
         path = SHELF / utils.to_filename(layers, name, ".parquet")
         obj.to_parquet(path)
-        return path
+        return path.name
     else:
         raise
 
@@ -89,4 +89,4 @@ def serialize(layers, name, obj):
 
     with open((path := SHELF / utils.to_filename(layers, name, ".pkl")), "wb") as f:
         cloudpickle.dump(obj, f)
-    return path
+    return path.name
