@@ -86,7 +86,6 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             if is_due_chkpt(elapsed_t):
                 chkpt()
     del layers[name]
-
     if pos == 0:
         output_buffer.append(
             utils.add2copy(
