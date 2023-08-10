@@ -61,9 +61,9 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 
 
 @contextmanager
-def checkpointing(*args):
+def checkpointing(**kwargs):
     # set up the context
-    checkpoints.extend(list(args))
+    checkpoints.extend(list(kwargs.items()))
 
     yield  # The code within the 'with' block will be executed here.
 
