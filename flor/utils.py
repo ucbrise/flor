@@ -48,6 +48,6 @@ def to_filename(src, name, ext):
         name,
     ]
     for k, v in src.items():
-        rolling_name.append(k)
-        rolling_name.append(v)
+        rolling_name.append(str(k))
+        rolling_name.append(str(v))
     return Path(".".join(rolling_name)).with_suffix(ext)
