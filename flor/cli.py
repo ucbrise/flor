@@ -7,11 +7,16 @@ from dataclasses import dataclass
 
 @dataclass
 class Flags:
-    args: Optional[Namespace]
     hyperparameters: Dict[str, str]
+    queryparameters: Dict[str, str]
 
 
-flags = Flags(None, {})
+flags = Flags({}, {})
+
+
+def parse_replay_flor(arg):
+    parts = arg.split()
+    return {p.split("=")[0]: eval(p.split("=")[1]) for p in parts}
 
 
 def parse_args():
@@ -19,8 +24,8 @@ def parse_args():
     parser.add_argument(
         "--replay_flor",
         nargs="*",
-        type=lambda s: int(s) if s != "/" else s,
-        help='Use "--replay_flor PID / NGPUS" format where PID and NGPUS are integers, and "/" is a literal',
+        type=parse_replay_flor,
+        help="Key-value pair arguments corresponding to `flor.loop` name and access method",
     )
 
     # Collect additional key-value pair arguments
@@ -32,13 +37,16 @@ def parse_args():
     )
 
     args = parser.parse_args()
-    flags.args = args
+
+    flags.queryparameters = args.replay_flor
 
     # Process the key-value pair arguments
-    if args.kwargs:
+    if args.kwargs is not None:
         for kwarg in args.kwargs:
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
+        else:
+            raise RuntimeError("--kwargs called but no arguments added")
 
     if in_replay_mode():
         replay_initialize()
@@ -47,29 +55,12 @@ def parse_args():
 
 
 def in_replay_mode():
-    assert flags.args is not None
-    return flags.args.replay_flor
+    if cond := flags.queryparameters is not None:
+        print("FLOR REPLAY MODE", str(flags.queryparameters))
+    else:
+        print("FLOR RECORD MODE")
+    return cond
 
 
 def replay_initialize():
     pass
-
-
-# if __name__ == "__main__":
-#     flags = parse_args()
-
-#     args = flags.args
-#     hyperparameters = flags.hyperparameters
-
-#     if args.replay_flor is None:
-#         print("Default mode")
-#     elif not args.replay_flor:
-#         print("Flor replay mode")
-#     elif len(args.replay_flor) == 3 and args.replay_flor[1] == "/":
-#         print(
-#             f"Flor replay with PID: {args.replay_flor[0]}, NGPUS: {args.replay_flor[2]}"
-#         )
-#     else:
-#         print("Invalid input for --replay_flor")
-
-#     print("Hyperparameters:", hyperparameters)
