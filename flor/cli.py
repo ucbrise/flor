@@ -64,9 +64,7 @@ def parse_args():
 
 def in_replay_mode():
     if cond := flags.queryparameters is not None:
-        print("FLOR REPLAY MODE", str(flags.queryparameters))
-    else:
-        print("FLOR RECORD MODE")
+        pass
     return cond
 
 
