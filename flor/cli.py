@@ -16,7 +16,12 @@ flags = Flags({}, {})
 
 def parse_replay_flor(arg):
     parts = arg.split()
-    return {p.split("=")[0]: eval(p.split("=")[1]) for p in parts}
+    return {
+        p.split("=")[0]: eval(p.split("=")[1])
+        if "::" not in p
+        else str(p.split("=")[1])
+        for p in parts
+    }
 
 
 def parse_args():
