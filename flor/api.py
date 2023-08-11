@@ -38,7 +38,10 @@ def log(name, value):
 def arg(name: str, default: Optional[Any] = None) -> Any:
     if cli.in_replay_mode():
         # GIT
-        pass
+        assert name in cli.flags.hyperparameters
+        historical_v = cli.flags.hyperparameters[name]
+        log(name, historical_v)
+        return historical_v
     elif name in cli.flags.hyperparameters:
         # CLI
         v = cli.flags.hyperparameters[name]

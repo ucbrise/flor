@@ -1,8 +1,11 @@
+import json
 import argparse
 from argparse import Namespace
 from typing import Dict, Optional
 
 from dataclasses import dataclass
+
+from .constants import *
 
 
 @dataclass
@@ -47,11 +50,11 @@ def parse_args():
 
     # Process the key-value pair arguments
     if args.kwargs is not None:
+        if not args.kwargs:
+            raise RuntimeError("--kwargs called but no arguments added")
         for kwarg in args.kwargs:
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
-        else:
-            raise RuntimeError("--kwargs called but no arguments added")
 
     if in_replay_mode():
         replay_initialize()
@@ -68,4 +71,13 @@ def in_replay_mode():
 
 
 def replay_initialize():
-    pass
+    assert (
+        not flags.hyperparameters
+    ), "Cannot set --kwargs in replay, would rewrite history"
+    # Validate flor.queryparameters
+    # update flags.hyperparameters
+    with open(".flor.json", "r") as f:
+        data = json.load(f)
+    for obj in data:
+        if len(obj) == 1:
+            flags.hyperparameters.update(obj)
