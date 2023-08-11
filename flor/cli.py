@@ -72,7 +72,8 @@ def replay_initialize():
     assert (
         not flags.hyperparameters
     ), "Cannot set --kwargs in replay, would rewrite history"
-    # Validate flor.queryparameters
+    # TODO: Validate flor.queryparameters
+
     # update flags.hyperparameters
     with open(".flor.json", "r") as f:
         data = json.load(f)
