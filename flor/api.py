@@ -154,7 +154,7 @@ def slice(name, iterator):
     assert cli.flags.queryparameters is not None
     qop = (cli.flags.queryparameters).get(name, 1)
     if qop == 1:
-        return iterator
+        return
 
     new_slice = []
     if qop == 0:
