@@ -18,7 +18,7 @@ def serialize_torch(layers, name, obj):
 
     if isinstance(obj, torch.nn.Module) or isinstance(obj, torch.optim.Optimizer):
         path = SHELF / utils.to_filename(layers, name, ".pth")
-        torch.save(obj, path)
+        torch.save(obj.state_dict(), path)
         return path.name
     else:
         raise
@@ -90,3 +90,23 @@ def serialize(layers, name, obj):
     with open((path := SHELF / utils.to_filename(layers, name, ".pkl")), "wb") as f:
         cloudpickle.dump(obj, f)
     return path.name
+
+
+def deserialize(layers, name, obj):
+    if (path := SHELF / utils.to_filename(layers, name, ".pth")).exists():
+        import torch
+
+        obj.load_state_dict(torch.load(path))
+    elif (path := SHELF / utils.to_filename(layers, name, ".npy")).exists():
+        import numpy
+
+        obj[:] = numpy.load(path)
+    elif (path := SHELF / utils.to_filename(layers, name, ".parquet")).exists():
+        import pandas as pd
+
+        obj.iloc[:, :] = pd.read_parquet(path)
+    elif (path := SHELF / utils.to_filename(layers, name, ".pkl")).exists():
+        with open(path, "rb") as f:
+            loaded_obj = cloudpickle.load(f)
+        obj.clear()
+        obj.update(loaded_obj)
