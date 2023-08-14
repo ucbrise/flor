@@ -115,5 +115,5 @@ def deserialize(layers, name, obj):
             loaded_obj = cloudpickle.load(f)
         obj.clear()
         obj.update(loaded_obj)
-
-    raise
+    else:
+        raise
