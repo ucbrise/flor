@@ -6,11 +6,6 @@ from . import utils
 
 import cloudpickle
 
-OBJSTORE = Path(HOMEDIR) / "obj_store"
-SHELF = OBJSTORE / PROJID / TIMESTAMP
-os.makedirs(SHELF, exist_ok=True)
-
-
 def serialize_torch(layers, name, obj):
     import torch
     import torch.nn
@@ -67,6 +62,11 @@ def serialize_pandas(layers, name, obj):
 
 
 def serialize(layers, name, obj):
+    global SHELF
+    OBJSTORE = Path(HOMEDIR) / "obj_store"
+    SHELF = OBJSTORE / PROJID / TIMESTAMP
+    os.makedirs(SHELF, exist_ok=True)
+
     try:
         return serialize_torch(layers, name, obj)
     except:
@@ -93,6 +93,10 @@ def serialize(layers, name, obj):
 
 
 def deserialize(layers, name, obj):
+    global SHELF
+    OBJSTORE = Path(HOMEDIR) / "obj_store"
+    SHELF = OBJSTORE / PROJID / TIMESTAMP
+    
     if (path := SHELF / utils.to_filename(layers, name, ".pth")).exists():
         import torch
 
