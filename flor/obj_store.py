@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .constants import *
 from . import utils
+from . import cli
 
 import cloudpickle
 
@@ -95,8 +96,7 @@ def serialize(layers, name, obj):
 def deserialize(layers, name, obj):
     global SHELF
     OBJSTORE = Path(HOMEDIR) / "obj_store"
-    SHELF = OBJSTORE / PROJID / TIMESTAMP
-    
+    SHELF = OBJSTORE / PROJID / cli.flags.hyperparameters["TSTAMP"]
     if (path := SHELF / utils.to_filename(layers, name, ".pth")).exists():
         import torch
 
