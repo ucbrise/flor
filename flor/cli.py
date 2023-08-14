@@ -10,9 +10,10 @@ from dataclasses import dataclass
 class Flags:
     hyperparameters: Dict[str, str]
     queryparameters: Optional[Dict[str, str]]
+    old_tstamp: Optional[str]
 
 
-flags = Flags({}, None)
+flags = Flags({}, None, None)
 
 
 def parse_replay_flor(arg):
@@ -81,4 +82,4 @@ def replay_initialize():
     for obj in data:
         if len(obj) == 1:
             flags.hyperparameters.update(obj)
-    flags.hyperparameters["TSTAMP"] = data[-1]["TSTAMP"]
+    flags.old_tstamp = data[-1]["TSTAMP"]
