@@ -11,10 +11,10 @@ from . import constants
 @dataclass
 class Flags:
     hyperparameters: Dict[str, str]
-    queryparameters: Dict[str, str]
+    queryparameters: Optional[Dict[str, str]]
 
 
-flags = Flags({}, {})
+flags = Flags({}, None)
 
 
 def parse_replay_flor(arg):
@@ -47,8 +47,7 @@ def parse_args():
     args = parser.parse_args()
 
     if args.replay_flor is not None:
-        for d in args.replay_flor:
-            flags.queryparameters.update(d)
+        flags.queryparameters = dict(args.replay_flor)
 
     # Process the key-value pair arguments
     if args.kwargs is not None:

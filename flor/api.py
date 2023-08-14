@@ -148,8 +148,12 @@ def load_chkpt():
 
 
 def slice(name, iterator):
+    if not cli.in_replay_mode():
+        return iterator
+
+    assert cli.flags.queryparameters is not None
     qop = (cli.flags.queryparameters).get(name, 1)
-    if not cli.in_replay_mode() or qop == 1:
+    if qop == 1:
         return iterator
 
     new_slice = []
