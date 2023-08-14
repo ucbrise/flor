@@ -31,6 +31,8 @@ def current_branch():
         return repo.active_branch.name
     except InvalidGitRepositoryError:
         return None
+    except TypeError:
+        return None
 
 
 def to_shadow():
