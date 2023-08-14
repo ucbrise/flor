@@ -5,8 +5,6 @@ from typing import Dict, Optional
 
 from dataclasses import dataclass
 
-from . import constants
-
 
 @dataclass
 class Flags:
@@ -83,4 +81,4 @@ def replay_initialize():
     for obj in data:
         if len(obj) == 1:
             flags.hyperparameters.update(obj)
-    constants.TIMESTAMP = data[-1]["TSTAMP"]
+    flags.hyperparameters["TSTAMP"] = data[-1]["TSTAMP"]
