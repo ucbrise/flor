@@ -73,13 +73,19 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     if pos == 0:
         output_buffer.append(
             utils.add2copy(
-                layers, f"enter::{name}", datetime.now().isoformat(timespec="seconds")
+                layers,
+                f"enter::{name}",
+                datetime.now().isoformat(timespec="seconds"),
             )
         )
     layers[name] = 0
-    for each in tqdm(iterator, position=pos, leave=(True if pos == 0 else False)):
-        layers[name] += 1
+    for each in tqdm(
+        slice(name, iterator), position=pos, leave=(True if pos == 0 else False)
+    ):
+        layers[name] = list(iterator).index(each) + 1 if pos == 0 else layers[name] + 1
         start_t = time.perf_counter()
+        if pos == 0 and cli.in_replay_mode():
+            load_chkpt()
         yield each
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
@@ -90,22 +96,9 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     if pos == 0:
         output_buffer.append(
             utils.add2copy(
-                layers, f"exit::{name}", datetime.now().isoformat(timespec="seconds")
-            )
-        )
-
-
-def is_due_chkpt(elapsed_t):
-    return True
-
-
-def chkpt():
-    for name, obj in checkpoints:
-        output_buffer.append(
-            utils.add2copy(
                 layers,
-                f"chkpt::{name}",
-                obj_store.serialize(layers, name, obj),
+                f"exit::{name}",
+                datetime.now().isoformat(timespec="seconds"),
             )
         )
 
@@ -131,7 +124,43 @@ def cleanup():
             versions.git_commit(f"FLOR::Auto-commit::{TIMESTAMP}")
     else:
         # REPLAY
-        pass
+        print("TODO: Add logging stmts to replay")
+
+
+def is_due_chkpt(elapsed_t):
+    return not cli.in_replay_mode()
+
+
+def chkpt():
+    for name, obj in checkpoints:
+        output_buffer.append(
+            utils.add2copy(
+                layers,
+                f"chkpt::{name}",
+                obj_store.serialize(layers, name, obj),
+            )
+        )
+
+
+def load_chkpt():
+    for name, obj in checkpoints:
+        obj_store.deserialize(layers, name, obj)
+
+
+def slice(name, iterator):
+    qop = cli.flags.queryparameters.get(name, 1)
+    if not cli.in_replay_mode() or qop == 1:
+        return iterator
+
+    new_slice = []
+    if qop == 0:
+        return new_slice
+
+    original = list(iterator)
+    assert isinstance(qop, (list, tuple))
+    for i in qop:
+        new_slice.append(original[int(i)])
+    return new_slice
 
 
 __all__ = ["log", "arg", "checkpointing", "loop"]
