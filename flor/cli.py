@@ -81,4 +81,4 @@ def replay_initialize():
     for obj in data:
         if len(obj) == 1:
             flags.hyperparameters.update(obj)
-    constants.TIMESTAMP = data[-1]["TSTAMP"] 
+    constants.TIMESTAMP = data[-1]["TSTAMP"]
