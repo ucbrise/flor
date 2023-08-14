@@ -47,7 +47,9 @@ def parse_args():
     args = parser.parse_args()
 
     if args.replay_flor is not None:
-        flags.queryparameters = dict(args.replay_flor)
+        flags.queryparameters = {}
+        for d in args.replay_flor:
+            flags.queryparameters.update(d)
 
     # Process the key-value pair arguments
     if args.kwargs is not None:
