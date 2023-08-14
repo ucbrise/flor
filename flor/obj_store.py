@@ -7,6 +7,7 @@ from . import cli
 
 import cloudpickle
 
+
 def serialize_torch(layers, name, obj):
     import torch
     import torch.nn
@@ -114,3 +115,5 @@ def deserialize(layers, name, obj):
             loaded_obj = cloudpickle.load(f)
         obj.clear()
         obj.update(loaded_obj)
+
+    raise
