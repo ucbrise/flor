@@ -1,6 +1,5 @@
 from .cli import flags
 from .versions import unpack
-from .hlast import apply
 
 
 def main():
@@ -8,6 +7,8 @@ def main():
         if flags.args.flor_command == "unpack":
             unpack()
         elif flags.args.flor_command == "apply":
+            from .hlast import apply
+
             apply(flags.args.dp_list, flags.args.train_file)
 
 

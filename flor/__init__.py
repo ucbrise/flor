@@ -7,6 +7,3 @@ cli.parse_args()
 
 if versions.current_branch() is not None:
     versions.to_shadow()
-
-from .versions import unpack
-from .hlast import apply
