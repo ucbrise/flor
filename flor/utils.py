@@ -51,7 +51,3 @@ def to_filename(src, name, ext):
         rolling_name.append(str(k))
         rolling_name.append(str(v))
     return Path("_".join(rolling_name)).with_suffix(ext)
-
-
-def unpack():
-    print("UNPACK")
