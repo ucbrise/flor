@@ -74,14 +74,13 @@ def checkpointing(**kwargs):
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
-    if pos == 0:
-        output_buffer.append(
-            utils.add2copy(
-                utils.add2copy(layers, "value_name", f"enter::{name}"),
-                "value",
-                datetime.now().isoformat(timespec="seconds"),
-            )
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", f"enter::{name}"),
+            "value",
+            datetime.now().isoformat(timespec="seconds"),
         )
+    )
     layers[name] = 0
     for each in tqdm(
         slice(name, iterator), position=pos, leave=(True if pos == 0 else False)
@@ -103,14 +102,13 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             if is_due_chkpt(elapsed_t):
                 chkpt()
     del layers[name]
-    if pos == 0:
-        output_buffer.append(
-            utils.add2copy(
-                utils.add2copy(layers, "value_name", f"exit::{name}"),
-                "value",
-                datetime.now().isoformat(timespec="seconds"),
-            )
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", f"exit::{name}"),
+            "value",
+            datetime.now().isoformat(timespec="seconds"),
         )
+    )
 
 
 @atexit.register
@@ -153,17 +151,7 @@ def is_due_chkpt(elapsed_t):
 
 def chkpt():
     for name, obj in checkpoints:
-        output_buffer.append(
-            utils.add2copy(
-                utils.add2copy(
-                    layers,
-                    "value_name",
-                    f"chkpt::{name}",
-                ),
-                "value",
-                obj_store.serialize(layers, name, obj),
-            )
-        )
+        obj_store.serialize(layers, name, obj)
 
 
 def load_chkpt():
