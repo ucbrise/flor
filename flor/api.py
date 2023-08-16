@@ -114,7 +114,6 @@ def cleanup():
             output_buffer.append(
                 {
                     "PROJID": PROJID,
-                    "BRANCH": branch,
                     "TSTAMP": TIMESTAMP,
                     "FILENAME": SCRIPTNAME,
                 }
