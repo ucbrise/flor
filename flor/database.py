@@ -5,6 +5,10 @@ from pathlib import Path
 import os
 
 
+def unpack(output_buffer):
+    print("Unpacking len:", len(output_buffer))
+
+
 def create_tables():
     cursor.execute(
         """

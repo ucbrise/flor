@@ -1,11 +1,11 @@
 from .cli import flags
-from .versions import unpack
+from .database import unpack
 
 
 def main():
     if flags.args is not None and flags.args.flor_command is not None:
         if flags.args.flor_command == "unpack":
-            unpack()
+            unpack([])
         elif flags.args.flor_command == "apply":
             from .hlast import apply
 
