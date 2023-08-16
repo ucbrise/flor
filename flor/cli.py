@@ -65,6 +65,7 @@ def parse_args():
         flags.queryparameters = {}
         for d in args.replay_flor:
             flags.queryparameters.update(d)
+        replay_initialize()
 
     # Process the key-value pair arguments
     if args.kwargs is not None:
@@ -73,9 +74,6 @@ def parse_args():
         for kwarg in args.kwargs:
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
-
-    if in_replay_mode():
-        replay_initialize()
 
     return flags
 
@@ -88,7 +86,7 @@ def in_replay_mode():
 
 def replay_initialize():
     assert (
-        not flags.hyperparameters
+        flags.args is not None and flags.args.kwargs is None
     ), "Cannot set --kwargs in replay, would rewrite history"
     # TODO: Validate flor.queryparameters
 
