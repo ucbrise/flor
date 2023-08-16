@@ -5,73 +5,88 @@ from pathlib import Path
 import os
 
 
-def start_db() -> sqlite3.Connection:
-    conn = create_connection(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
-    assert conn is not None
-    return conn
-
-
-def add_jobs(db_conn: sqlite3.Connection, from_path, script, cli_args):
-    pass
-
-
-def create_connection(db_file):
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-    except sqlite3.Error as e:
-        print(e)
-        raise
-
-    return conn
-
-
-def create_table(conn, create_table_sql):
-    try:
-        c = conn.cursor()
-        c.execute(create_table_sql)
-    except sqlite3.Error as e:
-        print(e)
-        raise
-
-
-def add_row(conn, table_name, data):
-    placeholders = ", ".join(["?"] * len(data))
-    sql = f"INSERT INTO {table_name} VALUES ({placeholders})"
-    cur = conn.cursor()
-    cur.execute(sql, data)
-    conn.commit()
-
-
-def create_and_add_table(conn, table_name, columns, data):
-    columns_definition = ", ".join(
-        [f"{col_name} {col_type}" for col_name, col_type in columns.items()]
+def create_tables():
+    cursor.execute(
+        """
+    CREATE TABLE IF NOT EXISTS loops (
+        ctx_id INTEGER,
+        parent_ctx_id INTEGER,
+        loop_name TEXT,
+        loop_entries INTEGER,
+        loop_iteration INTEGER
     )
-    create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_definition})"
+    """
+    )
 
-    create_table(conn, create_table_sql)
-    add_row(conn, table_name, data)
+    cursor.execute(
+        """
+    CREATE TABLE IF NOT EXISTS logs (
+        projid TEXT,
+        tstamp TEXT,
+        filename TEXT,
+        ctx_id INTEGER,
+        value_name TEXT,
+        value TEXT,
+        value_type INTEGER
+    )
+    """
+    )
+
+
+def insert_data_into_loops(
+    ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration
+):
+    cursor.execute(
+        """
+    INSERT INTO loops (ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration)
+    VALUES (?, ?, ?, ?, ?)
+    """,
+        (ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration),
+    )
+
+
+def insert_data_into_logs(
+    projid, tstamp, filename, ctx_id, value_name, value, value_type
+):
+    cursor.execute(
+        """
+    INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """,
+        (projid, tstamp, filename, ctx_id, value_name, value, value_type),
+    )
+
+
+def read_from_loops():
+    cursor.execute("SELECT * FROM loops")
+    return cursor.fetchall()
+
+
+def read_from_logs():
+    cursor.execute("SELECT * FROM logs")
+    return cursor.fetchall()
 
 
 # Example usage:
 if __name__ == "__main__":
-    database = "mydatabase.db"
+    connection = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
+    cursor = connection.cursor()
 
-    # Create a connection
-    conn = create_connection(database)
+    create_tables()
 
-    # Create a predefined table
-    create_table(
-        conn, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
+    # Example of inserting data
+    insert_data_into_loops(1, None, "loop1", 10, 5)
+    insert_data_into_logs(
+        "proj1", "2023-08-16", "file.txt", 1, "value_name", "value", 1
     )
 
-    # Add a row to the predefined table
-    add_row(conn, "users", (1, "John Doe"))
+    # Example of reading data
+    loops_data = read_from_loops()
+    logs_data = read_from_logs()
 
-    # Add a new table and a row during runtime
-    columns = {"product_id": "INTEGER PRIMARY KEY", "product_name": "TEXT"}
-    data = (1, "Laptop")
-    create_and_add_table(conn, "products", columns, data)
+    connection.commit()
+    connection.close()
 
-    if conn is not None:
-        conn.close()
+    # Process or print the retrieved data as needed
+    print(loops_data)
+    print(logs_data)
