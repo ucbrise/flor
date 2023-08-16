@@ -27,6 +27,7 @@ class Log:
 
 entries: Dict[str, int] = {}
 logs: List[Log] = []
+loops: Dict[Tuple[int, str, int, int], int] = {}
 
 
 def parse_log(stem, obj, loop):

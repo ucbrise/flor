@@ -21,14 +21,16 @@ def main():
 
             start_branch = versions.current_branch()
             assert start_branch is not None
-            for triplet in versions.get_latest_autocommit():
-                _, next_commit, _ = triplet
-                versions.checkout(next_commit)
-                with open(".flor.json", "r") as f:
-                    unpack(json.load(f), cursor)
-            versions.checkout(start_branch.name)
-            connection.commit()
-            connection.close()
+            try:
+                for triplet in versions.get_latest_autocommit():
+                    _, next_commit, _ = triplet
+                    versions.checkout(next_commit)
+                    with open(".flor.json", "r") as f:
+                        unpack(json.load(f), cursor)
+                connection.commit()
+                connection.close()
+            finally:
+                versions.checkout(start_branch.name)
         elif flags.args.flor_command == "apply":
             from .hlast import apply
 
