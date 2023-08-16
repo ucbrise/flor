@@ -25,8 +25,7 @@ skip_cleanup = True
 
 
 def log(name, value):
-    global skip_cleanup
-    skip_cleanup = False
+    _deferred_init()
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
     output_buffer.append(utils.add2copy(layers, name, serializable_value))
@@ -124,6 +123,15 @@ def cleanup():
     else:
         # REPLAY
         print("TODO: Add logging stmts to replay")
+
+
+def _deferred_init():
+    global skip_cleanup
+    if skip_cleanup:
+        skip_cleanup = False
+        if not cli.in_replay_mode():
+            assert versions.current_branch() is not None, "Running from a detached HEAD?"
+            versions.to_shadow()
 
 
 def is_due_chkpt(elapsed_t):
