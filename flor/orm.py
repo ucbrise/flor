@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from enum import Enum
 
@@ -25,13 +25,34 @@ class Log:
     type: Val_Type
 
 
-loops: Dict[Tuple[str, int, int], Loop] = {}
+entries: Dict[str, int] = {}
+logs: List[Log] = []
 
 
-def get_loop(obj):
+def parse_log(stem, obj, loop):
+    log_record = Log(
+        stem["PROJID"],
+        stem["TSTAMP"],
+        stem["FILENAME"],
+        loop,
+        obj["value_name"],
+        obj["value"],
+        Val_Type.AUTO if "::" in obj["value_name"] else Val_Type.RAW,
+    )
+    logs.append(log_record)
+    return log_record
+
+
+def parse_loop(obj):
     loop = None
-    for k, v in obj.items():
-        if k == "value" or k == "value_name":
-            continue
-        loop = Loop(loop, k, 10, v)
+    for k, v in entries.items():
+        if k in obj:
+            loop = Loop(loop, k, v, obj[k])
     return loop
+
+
+def parse_entries(obj):
+    if obj["value_name"].startswith("enter::"):
+        entries[obj["value_name"].split("::")[1]] = (
+            entries.get(obj["value_name"].split("::")[1], 0) + 1
+        )
