@@ -29,7 +29,11 @@ def log(name, value):
         _deferred_init()
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    output_buffer.append(utils.add2copy(layers, name, serializable_value))
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", name), "value", serializable_value
+        )
+    )
     tqdm.write(utils.to_string(layers, name, serializable_value))
 
     return value
@@ -73,8 +77,8 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     if pos == 0:
         output_buffer.append(
             utils.add2copy(
-                layers,
-                f"enter::{name}",
+                utils.add2copy(layers, "value_name", f"enter::{name}"),
+                "value",
                 datetime.now().isoformat(timespec="seconds"),
             )
         )
@@ -89,15 +93,21 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         yield each
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
-            output_buffer.append(utils.add2copy(layers, "auto::secs", elapsed_t))
+            output_buffer.append(
+                utils.add2copy(
+                    utils.add2copy(layers, "value_name", "auto::secs"),
+                    "value",
+                    elapsed_t,
+                )
+            )
             if is_due_chkpt(elapsed_t):
                 chkpt()
     del layers[name]
     if pos == 0:
         output_buffer.append(
             utils.add2copy(
-                layers,
-                f"exit::{name}",
+                utils.add2copy(layers, "value_name", f"exit::{name}"),
+                "value",
                 datetime.now().isoformat(timespec="seconds"),
             )
         )
@@ -145,8 +155,12 @@ def chkpt():
     for name, obj in checkpoints:
         output_buffer.append(
             utils.add2copy(
-                layers,
-                f"chkpt::{name}",
+                utils.add2copy(
+                    layers,
+                    "value_name",
+                    f"chkpt::{name}",
+                ),
+                "value",
                 obj_store.serialize(layers, name, obj),
             )
         )
