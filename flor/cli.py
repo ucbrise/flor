@@ -1,7 +1,7 @@
 import json
 import argparse
 from argparse import Namespace
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from dataclasses import dataclass
 
@@ -11,9 +11,10 @@ class Flags:
     hyperparameters: Dict[str, str]
     queryparameters: Optional[Dict[str, str]]
     old_tstamp: Optional[str]
+    args: Optional[Any]
 
 
-flags = Flags({}, None, None)
+flags = Flags({}, None, None, None)
 
 
 def parse_replay_flor(arg):
@@ -28,14 +29,14 @@ def parse_replay_flor(arg):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="FlorDB CLI")
+
+    # Existing code
     parser.add_argument(
         "--replay_flor",
         nargs="*",
         type=parse_replay_flor,
         help="Key-value pair arguments corresponding to `flor.loop` name and access method",
     )
-
-    # Collect additional key-value pair arguments
     parser.add_argument(
         "--kwargs",
         nargs="*",
@@ -43,7 +44,22 @@ def parse_args():
         help="Additional key-value pair arguments for hyper-parameters",
     )
 
+    # Flor module subparser
+    flor_parser = parser.add_subparsers(dest="flor_command")
+
+    # Unpack command
+    unpack_parser = flor_parser.add_parser("unpack")
+
+    # Apply command
+    apply_parser = flor_parser.add_parser("apply")
+    apply_parser.add_argument(
+        "dp_list", nargs="*", help="The variable-length list of dp_str and dp values"
+    )
+    apply_parser.add_argument("train_file", help="The train.py file")
+
+    # Existing code
     args = parser.parse_args()
+    flags.args = args
 
     if args.replay_flor is not None:
         flags.queryparameters = {}

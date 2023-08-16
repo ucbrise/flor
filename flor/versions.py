@@ -76,3 +76,7 @@ def get_latest_autocommit():
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while processing the branch: {e}")
+
+
+def unpack():
+    print("Unpacking...")
