@@ -6,11 +6,17 @@ import os
 
 
 def unpack(output_buffer):
+    if not output_buffer:
+        return
+
     print(
-        "Unpacking len:",
-        len(output_buffer),
+        "Unpacking ",
         output_buffer[-1] if output_buffer else None,
     )
+    # Structure the output buffer
+    stem = output_buffer[-1]
+    for obj in output_buffer[:-1]:
+        pass
 
 
 def create_tables():
