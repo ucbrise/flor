@@ -75,10 +75,10 @@ if __name__ == "__main__":
     create_tables()
 
     # Example of inserting data
-    insert_data_into_loops(1, None, "loop1", 10, 5)
-    insert_data_into_logs(
-        "proj1", "2023-08-16", "file.txt", 1, "value_name", "value", 1
-    )
+    # insert_data_into_loops(1, None, "loop1", 10, 5)
+    # insert_data_into_logs(
+    #     "proj1", "2023-08-16", "file.txt", 1, "value_name", "value", 1
+    # )
 
     # Example of reading data
     loops_data = read_from_loops()
