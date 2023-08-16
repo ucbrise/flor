@@ -2,10 +2,6 @@ from typing import Dict, Optional, Tuple
 from .constants import *
 from . import orm
 
-import sqlite3
-from pathlib import Path
-import os
-
 
 def unpack(output_buffer, cursor):
     if not output_buffer:
@@ -21,7 +17,6 @@ def unpack(output_buffer, cursor):
         orm.parse_entries(obj)
         orm.parse_log(stem, obj, orm.parse_loop(obj))
 
-    loops: Dict[Tuple[Optional[int], str, int, int], int] = {}
     for (
         ctx_id,
         parent_ctx_id,
@@ -34,13 +29,49 @@ def unpack(output_buffer, cursor):
         print("loop_name", loop_name)
         print("loop_entries", loop_entries)
         print("loop_iteration", loop_iteration)
-        loops[(parent_ctx_id, loop_name, int(loop_entries), int(loop_iteration))] = int(
-            ctx_id
-        )
+        orm.loops[
+            (
+                int(parent_ctx_id) if parent_ctx_id else -1,
+                loop_name,
+                int(loop_entries),
+                int(loop_iteration),
+            )
+        ] = int(ctx_id)
         print("ctx ID: ", ctx_id)
 
+    def dfs(loop: Optional[orm.Loop]):
+        if loop is None:
+            return None
+        parent_ctx_id = dfs(loop.parent)
+        if (
+            k := (
+                int(parent_ctx_id) if parent_ctx_id is not None else -1,
+                loop.name,
+                int(loop.entries),
+                int(loop.iteration),
+            )
+        ) in orm.loops:
+            return orm.loops[k]
+        else:
+            v = len(orm.loops)
+            orm.loops[k] = v
+            insert_data_into_loops(
+                v, parent_ctx_id, loop.name, loop.entries, loop.iteration, cursor
+            )
+            return v
+
     for log_record in orm.logs:
-        print(log_record)
+        print("inserting", log_record)
+        insert_data_into_logs(
+            log_record.projid,
+            log_record.tstamp,
+            log_record.filename,
+            dfs(log_record.loop),
+            log_record.name,
+            log_record.value,
+            log_record.type.value,
+            cursor,
+        )
 
 
 def create_tables(cursor):
