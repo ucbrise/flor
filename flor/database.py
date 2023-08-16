@@ -6,7 +6,11 @@ import os
 
 
 def unpack(output_buffer):
-    print("Unpacking len:", len(output_buffer))
+    print(
+        "Unpacking len:",
+        len(output_buffer),
+        output_buffer[-1] if output_buffer else None,
+    )
 
 
 def create_tables():

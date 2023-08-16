@@ -2,12 +2,6 @@ from datetime import datetime
 import os
 import sys
 
-STEM = (
-    "branch",
-    "op",
-    "tstamp",
-    "vid",
-)
 CURRDIR = os.getcwd()
 PROJID = os.path.basename(CURRDIR)
 HOMEDIR = os.path.join(os.path.expanduser("~"), ".flor")
@@ -18,7 +12,6 @@ TIMESTAMP = datetime.now().isoformat(timespec="seconds")
 
 __all__ = [
     "SHADOW_BRANCH_PREFIX",
-    "STEM",
     "TIMESTAMP",
     "CURRDIR",
     "PROJID",

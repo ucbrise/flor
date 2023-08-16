@@ -28,7 +28,7 @@ def git_commit(message="FLOR::Auto-commit"):
 def current_branch():
     try:
         repo = Repo(CURRDIR)
-        return repo.active_branch.name
+        return repo.active_branch
     except InvalidGitRepositoryError:
         return None
     except TypeError:
@@ -67,7 +67,7 @@ def get_latest_autocommit():
         for v in repo.iter_commits():
             if str(v.message).count("FLOR::") == 1:
                 _, _, ts = v.message.strip().split("::")  # type: ignore
-                return (
+                yield (
                     ts,
                     v.hexsha,
                     v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
@@ -76,3 +76,16 @@ def get_latest_autocommit():
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while processing the branch: {e}")
+
+
+def checkout(commit_hash):
+    repo = Repo(CURRDIR)
+    # Checkout to the desired commit
+    print("Checking out ", commit_hash)
+    repo.git.checkout(commit_hash)
+
+
+def get_head():
+    repo = Repo(CURRDIR)
+    current_head = repo.head.commit
+    return current_head
