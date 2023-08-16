@@ -5,5 +5,7 @@ from . import versions
 
 cli.parse_args()
 
-if versions.current_branch() is not None:
-    versions.to_shadow()
+if cli.flags.args is not None:
+    if cli.flags.args.flor_command is None:
+        if versions.current_branch() is not None:
+            versions.to_shadow()
