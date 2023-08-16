@@ -1,23 +1,34 @@
+from .constants import *
 from .cli import flags
-from .database import unpack
+from .database import unpack, create_tables
 
 import json
+import os
+from pathlib import Path
 
 
 def main():
     if flags.args is not None and flags.args.flor_command is not None:
         if flags.args.flor_command == "unpack":
             from . import versions
+            import sqlite3
+
+            connection = sqlite3.connect(
+                os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db"))
+            )
+            cursor = connection.cursor()
+            create_tables(cursor)
 
             start_branch = versions.current_branch()
             assert start_branch is not None
             for triplet in versions.get_latest_autocommit():
-                print(triplet)
                 _, next_commit, _ = triplet
                 versions.checkout(next_commit)
                 with open(".flor.json", "r") as f:
-                    unpack(json.load(f))
+                    unpack(json.load(f), cursor)
             versions.checkout(start_branch.name)
+            connection.commit()
+            connection.close()
         elif flags.args.flor_command == "apply":
             from .hlast import apply
 

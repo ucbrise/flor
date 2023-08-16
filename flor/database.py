@@ -1,11 +1,13 @@
+from typing import Dict, Optional, Tuple
 from .constants import *
+from . import orm
 
 import sqlite3
 from pathlib import Path
 import os
 
 
-def unpack(output_buffer):
+def unpack(output_buffer, cursor):
     if not output_buffer:
         return
 
@@ -16,10 +18,32 @@ def unpack(output_buffer):
     # Structure the output buffer
     stem = output_buffer[-1]
     for obj in output_buffer[:-1]:
-        pass
+        orm.parse_entries(obj)
+        orm.parse_log(stem, obj, orm.parse_loop(obj))
+
+    loops: Dict[Tuple[Optional[int], str, int, int], int] = {}
+    for (
+        ctx_id,
+        parent_ctx_id,
+        loop_name,
+        loop_entries,
+        loop_iteration,
+    ) in read_from_loops(cursor):
+        print("ctx_id", ctx_id)
+        print("parent_ctx_id", parent_ctx_id)
+        print("loop_name", loop_name)
+        print("loop_entries", loop_entries)
+        print("loop_iteration", loop_iteration)
+        loops[(parent_ctx_id, loop_name, int(loop_entries), int(loop_iteration))] = int(
+            ctx_id
+        )
+        print("ctx ID: ", ctx_id)
+
+    for log_record in orm.logs:
+        print(log_record)
 
 
-def create_tables():
+def create_tables(cursor):
     cursor.execute(
         """
     CREATE TABLE IF NOT EXISTS loops (
@@ -48,7 +72,7 @@ def create_tables():
 
 
 def insert_data_into_loops(
-    ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration
+    ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration, cursor
 ):
     cursor.execute(
         """
@@ -60,7 +84,7 @@ def insert_data_into_loops(
 
 
 def insert_data_into_logs(
-    projid, tstamp, filename, ctx_id, value_name, value, value_type
+    projid, tstamp, filename, ctx_id, value_name, value, value_type, cursor
 ):
     cursor.execute(
         """
@@ -71,36 +95,11 @@ def insert_data_into_logs(
     )
 
 
-def read_from_loops():
+def read_from_loops(cursor):
     cursor.execute("SELECT * FROM loops")
     return cursor.fetchall()
 
 
-def read_from_logs():
+def read_from_logs(cursor):
     cursor.execute("SELECT * FROM logs")
     return cursor.fetchall()
-
-
-if __name__ == "__main__":
-    # TODO: move to deferred init
-    connection = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
-    cursor = connection.cursor()
-
-    create_tables()
-
-    # Example of inserting data
-    # insert_data_into_loops(1, None, "loop1", 10, 5)
-    # insert_data_into_logs(
-    #     "proj1", "2023-08-16", "file.txt", 1, "value_name", "value", 1
-    # )
-
-    # Example of reading data
-    loops_data = read_from_loops()
-    logs_data = read_from_logs()
-
-    connection.commit()
-    connection.close()
-
-    # Process or print the retrieved data as needed
-    print(loops_data)
-    print(logs_data)
