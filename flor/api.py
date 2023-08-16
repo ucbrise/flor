@@ -25,7 +25,8 @@ skip_cleanup = True
 
 
 def log(name, value):
-    _deferred_init()
+    if skip_cleanup:
+        _deferred_init()
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
     output_buffer.append(utils.add2copy(layers, name, serializable_value))
@@ -130,7 +131,9 @@ def _deferred_init():
     if skip_cleanup:
         skip_cleanup = False
         if not cli.in_replay_mode():
-            assert versions.current_branch() is not None, "Running from a detached HEAD?"
+            assert (
+                versions.current_branch() is not None
+            ), "Running from a detached HEAD?"
             versions.to_shadow()
 
 
