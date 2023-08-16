@@ -4,6 +4,7 @@ from argparse import Namespace
 from typing import Any, Dict, Optional
 
 from dataclasses import dataclass
+from .versions import current_branch, to_shadow
 
 
 @dataclass
