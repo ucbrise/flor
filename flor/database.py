@@ -75,8 +75,8 @@ def read_from_logs():
     return cursor.fetchall()
 
 
-# Example usage:
 if __name__ == "__main__":
+    # TODO: move to deferred init
     connection = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
     cursor = connection.cursor()
 
