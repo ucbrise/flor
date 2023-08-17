@@ -95,6 +95,6 @@ def replay_initialize():
     with open(".flor.json", "r") as f:
         data = json.load(f)
     for obj in data:
-        if len(obj) == 1:
+        if len(obj) == 2:
             flags.hyperparameters.update(obj)
     flags.old_tstamp = data[-1]["TSTAMP"]
