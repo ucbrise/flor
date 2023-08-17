@@ -21,7 +21,7 @@ def main():
 
             start_branch = versions.current_branch()
             assert start_branch is not None
-            known_tstamps = database.read_known_tstamps(cursor)
+            known_tstamps = [t for t, in database.read_known_tstamps(cursor)]
             try:
                 for triplet in versions.get_latest_autocommit():
                     ts_start, next_commit, _ = triplet
