@@ -127,7 +127,7 @@ def read_from_loops(cursor):
 
 
 def read_from_logs(cursor):
-    cursor.execute("SELECT * FROM logs")
+    cursor.execute("SELECT DISTINCT * FROM logs")
     return cursor.fetchall()
 
 
