@@ -6,11 +6,8 @@ from . import orm
 def unpack(output_buffer, cursor):
     if not output_buffer:
         return
+    print("Unpacking ", output_buffer[-1])
 
-    print(
-        "Unpacking ",
-        output_buffer[-1] if output_buffer else None,
-    )
     # Structure the output buffer
     stem = output_buffer[-1]
     for obj in output_buffer[:-1]:
@@ -35,7 +32,6 @@ def unpack(output_buffer, cursor):
                 int(loop_iteration),
             )
         ] = int(ctx_id)
-        print("ctx ID: ", ctx_id)
 
     def dfs(loop: Optional[orm.Loop]):
         if loop is None:
@@ -61,7 +57,6 @@ def unpack(output_buffer, cursor):
             return v
 
     for log_record in orm.logs:
-        print("inserting", log_record)
         insert_data_into_logs(
             log_record.projid,
             log_record.tstamp,
