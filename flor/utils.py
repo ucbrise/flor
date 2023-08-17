@@ -51,3 +51,18 @@ def to_filename(src, name, ext):
         rolling_name.append(str(k))
         rolling_name.append(str(v))
     return Path("_".join(rolling_name)).with_suffix(ext)
+
+
+def split_and_retrieve_elements(array, count=10):
+    # Find the middle index
+    middle_index = len(array) // 2
+
+    # Split the array into two halves
+    left_half = array[:middle_index]
+    right_half = array[middle_index:]
+
+    # Retrieve the first 10 elements from the left half and last 10 elements from the right half
+    first_10_left = left_half[:count]
+    last_10_right = right_half[-count:]
+
+    return first_10_left, last_10_right
