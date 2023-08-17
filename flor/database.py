@@ -17,6 +17,7 @@ def unpack(output_buffer, cursor):
         orm.parse_entries(obj)
         orm.parse_log(stem, obj, orm.parse_loop(obj))
 
+    # Read existing loop ids to get ctx_ids, know when to create new ones
     for (
         ctx_id,
         parent_ctx_id,
@@ -24,14 +25,11 @@ def unpack(output_buffer, cursor):
         loop_entries,
         loop_iteration,
     ) in read_from_loops(cursor):
-        print("ctx_id", ctx_id)
-        print("parent_ctx_id", parent_ctx_id)
-        print("loop_name", loop_name)
-        print("loop_entries", loop_entries)
-        print("loop_iteration", loop_iteration)
         orm.loops[
             (
-                int(parent_ctx_id) if parent_ctx_id else -1,
+                int(parent_ctx_id)
+                if (isinstance(parent_ctx_id, str) or isinstance(parent_ctx_id, int))
+                else -1,
                 loop_name,
                 int(loop_entries),
                 int(loop_iteration),
@@ -45,7 +43,9 @@ def unpack(output_buffer, cursor):
         parent_ctx_id = dfs(loop.parent)
         if (
             k := (
-                int(parent_ctx_id) if parent_ctx_id is not None else -1,
+                int(parent_ctx_id)
+                if (isinstance(parent_ctx_id, str) or isinstance(parent_ctx_id, int))
+                else -1,
                 loop.name,
                 int(loop.entries),
                 int(loop.iteration),
@@ -133,4 +133,9 @@ def read_from_loops(cursor):
 
 def read_from_logs(cursor):
     cursor.execute("SELECT * FROM logs")
+    return cursor.fetchall()
+
+
+def read_known_tstamps(cursor):
+    cursor.execute("SELECT DISTINCT tstamp FROM logs")
     return cursor.fetchall()
