@@ -145,6 +145,8 @@ def cleanup():
             {"PROJID": PROJID, "TSTAMP": cli.flags.old_tstamp, "FILENAME": SCRIPTNAME}
         )
         database.unpack(output_buffer, cursor)
+    conn.commit()
+    conn.close()
 
 
 def _deferred_init():
