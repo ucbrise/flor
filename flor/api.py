@@ -1,8 +1,11 @@
+import os
+from pathlib import Path
 from .constants import *
 from . import cli
 from . import utils
 from . import versions
 from . import obj_store
+from . import database
 
 from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
 from contextlib import contextmanager
@@ -10,6 +13,7 @@ from contextlib import contextmanager
 from tqdm import tqdm
 import json
 import atexit
+import sqlite3
 
 import time
 from datetime import datetime
@@ -115,6 +119,12 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 def cleanup():
     if skip_cleanup:
         return
+
+    # Add logging statements on REPLAY
+    conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
+    cursor = conn.cursor()
+    database.create_tables(cursor)
+
     if not cli.in_replay_mode():
         # RECORD
         branch = versions.current_branch()
@@ -126,12 +136,15 @@ def cleanup():
                     "FILENAME": SCRIPTNAME,
                 }
             )
+            database.unpack(output_buffer, cursor)
             with open(".flor.json", "w") as f:
                 json.dump(output_buffer, f, indent=2)
             versions.git_commit(f"FLOR::Auto-commit::{TIMESTAMP}")
     else:
-        # REPLAY
-        print("TODO: Add logging stmts to replay")
+        output_buffer.append(
+            {"PROJID": PROJID, "TSTAMP": cli.flags.old_tstamp, "FILENAME": SCRIPTNAME}
+        )
+        database.unpack(output_buffer, cursor)
 
 
 def _deferred_init():
