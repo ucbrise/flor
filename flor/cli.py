@@ -96,5 +96,6 @@ def replay_initialize():
         data = json.load(f)
     for obj in data:
         if len(obj) == 2:
-            flags.hyperparameters.update(obj)
+            d = {obj["value_name"]: obj["value"]}
+            flags.hyperparameters.update(d)
     flags.old_tstamp = data[-1]["TSTAMP"]
