@@ -2,6 +2,7 @@ from .constants import *
 from .cli import flags
 from . import database
 from . import versions
+from . import utils
 
 
 import json
@@ -45,8 +46,19 @@ def main():
             try:
                 cursor.execute(user_query)
                 results = cursor.fetchall()
-                for row in results:
-                    print(row)
+                parta, partb = utils.split_and_retrieve_elements(results)
+                if len(parta) + len(partb) == len(results):
+                    for row in parta + partb:
+                        print(row)
+                else:
+                    for row in (
+                        parta
+                        + [
+                            "...",
+                        ]
+                        + partb
+                    ):
+                        print(row)
             except sqlite3.Error as e:
                 print(f"An error occurred: {e}")
 
