@@ -58,6 +58,12 @@ def parse_args():
     )
     apply_parser.add_argument("train_file", help="The train.py file")
 
+    # Query command
+    query_parser = flor_parser.add_parser("query")
+    query_parser.add_argument(
+        "q", type=str, help="SQL query to execute on the database"
+    )
+
     # Existing code
     args = parser.parse_args()
     flags.args = args
