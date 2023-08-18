@@ -1,7 +1,7 @@
 import json
 import argparse
 from argparse import Namespace
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from dataclasses import dataclass
 from .versions import current_branch, to_shadow
@@ -13,9 +13,10 @@ class Flags:
     queryparameters: Optional[Dict[str, str]]
     old_tstamp: Optional[str]
     args: Optional[Any]
+    columns: Optional[Tuple[str]]
 
 
-flags = Flags({}, None, None, None)
+flags = Flags({}, None, None, None, None)
 
 
 def parse_replay_flor(arg):
@@ -26,6 +27,10 @@ def parse_replay_flor(arg):
         else str(p.split("=")[1])
         for p in parts
     }
+
+
+def parse_columns(column_string):
+    return [str(each) for each in column_string.split()]
 
 
 def parse_args():
@@ -64,6 +69,15 @@ def parse_args():
         "q", type=str, help="SQL query to execute on the database"
     )
 
+    # Pivot command
+    pivot_parser = flor_parser.add_parser("pivot")
+    pivot_parser.add_argument(
+        "columns",
+        nargs="*",
+        type=parse_columns,
+        help="The variable-length list of column names",
+    )
+
     # Existing code
     args = parser.parse_args()
     flags.args = args
@@ -81,6 +95,9 @@ def parse_args():
         for kwarg in args.kwargs:
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
+
+    if args.flor_command == "pivot":
+        flags.columns = args.columns
 
     return flags
 
