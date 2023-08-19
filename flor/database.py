@@ -1,3 +1,4 @@
+from functools import reduce
 from typing import Dict, Optional, Tuple
 from .constants import *
 from . import orm
@@ -228,4 +229,9 @@ def pivot(cursor, *args):
         logs = logs.drop(columns=["ctx_id"])
         dataframes.append(logs)
 
-    return loops, dataframes
+    # Function to perform the natural join
+    def join_on_common_columns(df1, df2):
+        common_columns = set(df1.columns) & set(df2.columns)
+        return pd.merge(df1, df2, on=list(common_columns), how="inner")
+
+    return reduce(join_on_common_columns, dataframes)
