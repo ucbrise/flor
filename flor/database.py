@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Tuple
 from .constants import *
 from . import orm
+import pandas as pd
 
 
 def unpack(output_buffer, cursor):
@@ -126,11 +127,71 @@ def read_from_loops(cursor):
     return cursor.fetchall()
 
 
-def read_from_logs(cursor):
-    cursor.execute("SELECT DISTINCT * FROM logs")
+def read_from_logs(cursor, where_clause=None):
+    if where_clause is None:
+        cursor.execute("SELECT DISTINCT * FROM logs")
+    else:
+        cursor.execute(f"SELECT DISTINCT * FROM logs WHERE {where_clause}")
     return cursor.fetchall()
 
 
 def read_known_tstamps(cursor):
     cursor.execute("SELECT DISTINCT tstamp FROM logs")
     return cursor.fetchall()
+
+
+def query(cursor, user_query):
+    cursor.execute(user_query)
+    return cursor.fetchall()
+
+
+def get_column_names(cursor):
+    column_names = [description[0] for description in cursor.description]
+    return column_names
+
+
+def pivot(cursor, *args):
+    print(args)
+
+    def _pivot_star():
+        cursor.execute(
+            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL;"
+        )
+        value_names = cursor.fetchall()
+
+        # Build the dynamic part of the SQL query
+        dynamic_sql = ", ".join(
+            [
+                f"MAX(CASE WHEN value_name = '{value_name[0]}' THEN value ELSE NULL END) AS '{value_name[0]}'"
+                for value_name in value_names
+            ]
+        )
+
+        # Construct the final SQL query
+        final_sql = f"""
+        SELECT projid,
+            tstamp,
+            filename,
+            {dynamic_sql}
+        FROM logs
+        WHERE value_type = 1 AND ctx_id IS NULL
+        GROUP BY projid, tstamp, filename;
+        """
+
+        # Execute the final SQL query
+        cursor.execute(final_sql)
+        df = pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
+        return df
+
+    if not args:
+        return _pivot_star()
+
+    dataframes = []
+    loops = pd.DataFrame(read_from_loops(cursor), columns=get_column_names(cursor))
+    for value_name in args:
+        logs = pd.DataFrame(
+            read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'), columns=get_column_names(cursor)
+        )
+        dataframes.append(logs)
+    
+    return loops, dataframes
