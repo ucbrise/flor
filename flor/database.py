@@ -203,6 +203,29 @@ def pivot(cursor, *args):
             read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'),
             columns=get_column_names(cursor),
         )
+        logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
+        logs = logs.rename(columns={"value": value_name})
+        while any(not logs["ctx_id"].isna()):
+            logs = pd.merge(
+                left=logs,
+                right=loops,
+                how="inner",
+                on=[
+                    "ctx_id",
+                ],
+            )
+            loop_name = logs["loop_name"].values[0]
+            logs = logs.drop(columns=["loop_name"])
+            logs = logs.rename(
+                columns={
+                    "loop_entries": loop_name + "_entries",
+                    "loop_iteration": loop_name + "_iteration",
+                }
+            )
+            logs["ctx_id"] = logs["parent_ctx_id"]
+            logs = logs.drop(columns=["parent_ctx_id"])
+
+        logs = logs.drop(columns=["ctx_id"])
         dataframes.append(logs)
 
     return loops, dataframes
