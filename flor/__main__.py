@@ -62,8 +62,12 @@ def main():
             conn, cursor = database.conn_and_cursor()
             # Query the distinct value_names
             try:
-                df = database.pivot(cursor, flags.args.columns)
-
+                df = database.pivot(cursor, *flags.args.columns)
+                if len(df) <= 20:
+                    print(df.head())
+                else:
+                    print(df.head(10))
+                    print(df.tail(10))
             finally:
                 conn.close()
 
