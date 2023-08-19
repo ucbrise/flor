@@ -3,6 +3,16 @@ from .constants import *
 from . import orm
 import pandas as pd
 
+import sqlite3
+import os
+from pathlib import Path
+
+
+def conn_and_cursor():
+    conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
+    cursor = conn.cursor()
+    return conn, cursor
+
 
 def unpack(output_buffer, cursor):
     if not output_buffer:
@@ -190,8 +200,9 @@ def pivot(cursor, *args):
     loops = pd.DataFrame(read_from_loops(cursor), columns=get_column_names(cursor))
     for value_name in args:
         logs = pd.DataFrame(
-            read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'), columns=get_column_names(cursor)
+            read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'),
+            columns=get_column_names(cursor),
         )
         dataframes.append(logs)
-    
+
     return loops, dataframes
