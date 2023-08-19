@@ -230,6 +230,6 @@ def pivot(cursor, *args):
     # Function to perform the natural join
     def join_on_common_columns(df1, df2):
         common_columns = set(df1.columns) & set(df2.columns)
-        return pd.merge(df1, df2, on=list(common_columns), how="inner")
+        return pd.merge(df1, df2, on=list(common_columns), how="outer")
 
     return reduce(join_on_common_columns, dataframes)
