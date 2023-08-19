@@ -207,8 +207,8 @@ def pivot(cursor, *args):
         logs = logs.rename(columns={"value": value_name})
         while not logs["ctx_id"].isna().any():
             logs = pd.merge(
-                left=logs,
-                right=loops,
+                right=logs,
+                left=loops,
                 how="inner",
                 on=[
                     "ctx_id",
