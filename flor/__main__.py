@@ -15,10 +15,7 @@ import pandas as pd
 def main():
     if flags.args is not None and flags.args.flor_command is not None:
         if flags.args.flor_command == "unpack":
-            conn = sqlite3.connect(
-                os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db"))
-            )
-            cursor = conn.cursor()
+            conn, cursor = database.conn_and_cursor()
             database.create_tables(cursor)
 
             start_branch = versions.current_branch()
@@ -37,10 +34,7 @@ def main():
             finally:
                 versions.checkout(start_branch.name)
         elif flags.args.flor_command == "query":
-            conn = sqlite3.connect(
-                os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db"))
-            )
-            cursor = conn.cursor()
+            conn, cursor = database.conn_and_cursor()
             database.create_tables(cursor)
 
             user_query = flags.args.q
@@ -65,11 +59,7 @@ def main():
             # Close connection
             conn.close()
         elif flags.args.flor_command == "pivot":
-            conn = sqlite3.connect(
-                os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db"))
-            )
-            cursor = conn.cursor()
-
+            conn, cursor = database.conn_and_cursor()
             # Query the distinct value_names
             try:
                 df = database.pivot(cursor, flags.args.columns)
