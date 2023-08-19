@@ -162,6 +162,8 @@ def get_column_names(cursor):
 
 
 def pivot(cursor, *args):
+    print(args)
+
     def _pivot_star():
         cursor.execute(
             "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL;"
@@ -204,7 +206,7 @@ def pivot(cursor, *args):
         )
         logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
         logs = logs.rename(columns={"value": value_name})
-        while logs["ctx_id"].isna().any():
+        while logs["ctx_id"].notna().all():
             logs = pd.merge(
                 right=logs,
                 left=loops,
