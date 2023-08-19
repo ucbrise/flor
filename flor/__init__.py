@@ -1,6 +1,8 @@
 from .constants import *
 from .api import *
 from . import cli
-from . import versions
 
-cli.parse_args()
+import sys
+
+if "ipykernel" not in sys.modules:
+    cli.parse_args()
