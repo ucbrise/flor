@@ -63,7 +63,7 @@ def main():
             # Query the distinct value_names
             try:
                 df = database.pivot(cursor, *[c.pop() for c in flags.args.columns])
-                print(df.tail())
+                print(df.tail(20))
             finally:
                 conn.close()
 
