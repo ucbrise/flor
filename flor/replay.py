@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from hlast.visitors import LoggedExpVisitor
+
 
 def replay(apply_vars: List[str], where_clause: Optional[str]):
     pass

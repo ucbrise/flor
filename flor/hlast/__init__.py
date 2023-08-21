@@ -1,13 +1,6 @@
-import ast
 from argparse import Namespace
-from shutil import copyfile
-from pathlib import Path
-from sys import stdout
-from typing import Dict, List, Set
-import os
 
 from flor.hlast.gtpropagate import propagate  # type: ignore
-from .visitors import NoGradVisitor, NoGradTransformer, LoggedExpVisitor
 
 
 def backprop(lineno: int, source, target, out=None):
