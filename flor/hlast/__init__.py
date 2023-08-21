@@ -82,44 +82,23 @@ def apply(names: List[str], dst: str):
     ), f"Failed to find log statement for vars {[n for n in names if n not in State.hls_hits]}"
 
     # Next, from the stash you will apply each file to our main one
-    parse_noGrad = []
     for name in names:
         with open(stash / Path(name).with_suffix(".py"), "r") as f:
             tree = ast.parse(f.read())
 
-        ng_visitor = NoGradVisitor()
-        ng_visitor.visit(tree)
-
-        if name not in ng_visitor.names:
-            if name in State.grouped_names:
-                lineno = int(State.grouped_names[name])
-            else:
-                lev = LoggedExpVisitor()
-                lev.visit(tree)
-                lineno = int(lev.names[name])
-            # lev possibly unbound
-            backprop(
-                lineno,
-                str(stash / Path(name).with_suffix(".py")).replace("\x1b[m", ""),
-                dst,
-            )
-            print(f"Applied {name} to {dst}")
+        if name in State.grouped_names:
+            lineno = int(State.grouped_names[name])
         else:
-            parse_noGrad.append(ng_visitor.tree)
-            print(f"Applied {name} to {dst}")
-
-    if len(parse_noGrad) > 1:
-        raise NotImplementedError(
-            "TODO: Will need to merge code blocks, union of logging statements"
+            lev = LoggedExpVisitor()
+            lev.visit(tree)
+            lineno = int(lev.names[name])
+        # lev possibly unbound
+        backprop(
+            lineno,
+            str(stash / Path(name).with_suffix(".py")).replace("\x1b[m", ""),
+            dst,
         )
-    elif len(parse_noGrad) == 1:
-        their_tree = parse_noGrad[0]
-        with open(dst, "r") as f:
-            my_tree = ast.parse(f.read())
-        ng_transformer = NoGradTransformer(their_tree)
-
-        with open(dst, "w") as f:
-            f.write(ast.unparse(ng_transformer.visit(my_tree)))
+        print(f"Applied {name} to {dst}")
 
 
 __all__ = ["backprop", "apply"]
