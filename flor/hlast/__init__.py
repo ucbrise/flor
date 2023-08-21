@@ -10,11 +10,7 @@ from flor.hlast.gtpropagate import propagate  # type: ignore
 from .visitors import NoGradVisitor, NoGradTransformer, LoggedExpVisitor
 
 
-def backprop(lineno: int, source: str, target: str, out=None):
-    syntactic_prop(lineno, source, target, out)
-
-
-def syntactic_prop(lineno: int, source, target, out=None):
+def backprop(lineno: int, source, target, out=None):
     if out is None:
         with open(str(source), "r") as src, open(str(target), "r") as dst:
             return propagate(
