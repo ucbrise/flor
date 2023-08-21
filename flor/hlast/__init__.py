@@ -38,7 +38,7 @@ def syntactic_prop(lineno: int, source, target, out=None):
             )
 
 
-def apply(names: List[str], dst: str):
+def apply(names: List[str], dst: str, stash=None):
     """
     Caller checks out a previous version
     """
