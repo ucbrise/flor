@@ -1,6 +1,5 @@
-# type: ignore
 from apted import APTED, Config
-from itertools import product, zip_longest
+from itertools import product
 from collections.abc import Iterable
 from typing import Generic, Optional, TypeVar
 from bidict._mut import MutableBidict
@@ -47,7 +46,7 @@ class Mapping(MutableBidict[Tree, Tree]):  # type: ignore
         super().__init__(it)
 
     def put_tree(self, t1: Tree, t2: Tree):
-        self.putall(zip(*map(self.adapter.postorder, [t1, t2])))
+        self.putall(zip(*map(self.adapter.postorder, [t1, t2])))  # type: ignore
 
 
 class GumTree(Generic[Tree]):
