@@ -8,21 +8,8 @@ from copy import deepcopy
 import sys
 import ast
 
-from flor.hlast.gumtree import GumTree, Mapping, python
+from .gumtree import GumTree, python
 from .visitors import LoggedExpVisitor
-
-# https://github.com/PyCQA/pylint/issues/3882
-# pylint: disable=unsubscriptable-object
-
-
-def add_arguments(parser: ArgumentParser):
-    parser.add_argument("lineno", type=int)
-    parser.add_argument("source", type=FileType("r"))
-    parser.add_argument("target", type=FileType("r+"))
-    parser.add_argument("--out", type=FileType("w"), default=sys.stdout)
-    parser.add_argument("--minor", type=int, default=sys.version_info[1])
-    parser.add_argument("--gumtree", type=literal_eval, default="{}")
-    return parser
 
 
 def propagate(args: Namespace):
@@ -31,10 +18,6 @@ def propagate(args: Namespace):
     args.target.close()
     args.out = open(args.out, "w")
 
-    # llv = LogLinesVisitor()
-    # llv.visit(tree)
-    # fft = FlorFreeTransformer()
-    # target = fft.visit(target)
     replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)  # type: ignore
     print(unparse(target), file=args.out)
 
@@ -80,37 +63,6 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     else:
         new = make_contextual_copy(adapter, node, mapping)
         block.insert(index, new)  # type: ignore
-
-
-class LogLinesVisitor(ast.NodeVisitor):
-    def __init__(self):
-        super().__init__()
-        self.coreline = None
-        self.linenos = set([])
-
-    def visit_Assign(self, node: ast.Assign):
-        self.coreline = node.lineno
-        return self.generic_visit(node)
-
-    def visit_AugAssign(self, node: ast.AugAssign):
-        self.coreline = node.lineno
-        return self.generic_visit(node)
-
-    def visit_Expr(self, node: ast.Expr):
-        self.coreline = node.lineno
-        return self.generic_visit(node)
-
-    def visit_Call(self, node: ast.Call):
-        pred = (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "flor"
-            and node.func.attr == "log"
-        )
-        if pred:
-            self.linenos.add(self.coreline)
-
-        return self.generic_visit(node)
 
 
 class PairNodeVisitor(ast.NodeTransformer):
@@ -237,7 +189,3 @@ def find(t: AST, *, lineno: int):
         if getattr(n, "lineno", lineno) == lineno and isinstance(n, stmt):
             res = n
     return res
-
-
-if __name__ == "__main__":
-    propagate(add_arguments(ArgumentParser()).parse_args(sys.argv[1:]))
