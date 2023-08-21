@@ -1,18 +1,16 @@
 # type: ignore
 import ast
 from argparse import Namespace
-from os import PathLike
 from shutil import copyfile
-from pathlib import Path, PurePath
+from pathlib import Path
 from sys import stdout
 from typing import Dict, List, Set
-import pandas as pd
 import os
 
-from flor.hlast.gtpropagate import propagate, LogLinesVisitor  # type: ignore
+from flor.hlast.gtpropagate import propagate  # type: ignore
 from flor.state import State
 import flor.query as q
-from .visitors import LoggedExpVisitor, NoGradVisitor, NoGradTransformer
+from .visitors import NoGradVisitor, NoGradTransformer, LoggedExpVisitor
 
 
 def backprop(lineno: int, source: str, target: str, out=None):
@@ -38,25 +36,6 @@ def syntactic_prop(lineno: int, source, target, out=None):
                     lineno=lineno, source=src, target=dst, out=out, gumtree=dict()
                 )
             )
-
-
-class StmtToPropVisitor(ast.NodeVisitor):
-    def __init__(self, lineno) -> None:
-        super().__init__()
-        self.value = ""
-        self.value_valid = False
-        self.lineno = int(lineno)
-
-    def generic_visit(self, node: ast.AST):
-        if isinstance(node, ast.stmt):
-            assert node.end_lineno is not None
-            if int(node.lineno) == int(self.lineno):
-                self.value = str(ast.unparse(node))
-                self.value_valid = True
-            else:
-                super().generic_visit(node)
-        else:
-            super().generic_visit(node)
 
 
 def apply(names: List[str], dst: str):

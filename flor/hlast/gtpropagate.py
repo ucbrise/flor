@@ -5,11 +5,11 @@ from argparse import ArgumentParser, FileType, Namespace
 from ast import AST, Name, iter_fields, parse, unparse, walk, stmt, literal_eval
 from collections import defaultdict
 from copy import deepcopy
-from typing import Optional, TextIO
 import sys
 import ast
 
 from flor.hlast.gumtree import GumTree, Mapping, python
+from .visitors import LoggedExpVisitor
 
 # https://github.com/PyCQA/pylint/issues/3882
 # pylint: disable=unsubscriptable-object
@@ -80,21 +80,6 @@ def replicate(tree: AST, node: stmt, target: AST, **kwargs):
     else:
         new = make_contextual_copy(adapter, node, mapping)
         block.insert(index, new)  # type: ignore
-
-    # print("done")
-
-
-class FlorFreeTransformer(ast.NodeTransformer):
-    def visit_Call(self, node: ast.Call):
-        pred = (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "flor"
-            and node.func.attr == "log"
-        )
-        if pred:
-            return self.visit(node.args[1])
-        return self.generic_visit(node)
 
 
 class LogLinesVisitor(ast.NodeVisitor):
@@ -207,26 +192,6 @@ class PairNodeVisitor(ast.NodeTransformer):
                 else:
                     setattr(node2, fld2, new_node)
         return node2
-
-
-class LoggedExpVisitor(ast.NodeVisitor):
-    def __init__(self):
-        super().__init__()
-        self.name: Optional[str] = None
-
-    def visit_Call(self, node: ast.Call):
-        pred = (
-            isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Name)
-            and node.func.value.id == "flor"
-            and node.func.attr == "log"
-        )
-        if not pred:
-            return self.generic_visit(node)
-        if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
-            self.name = str(node.args[0].value)
-        else:
-            raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
 
 
 def find_insert_loc(adapter, node, mapping):

@@ -1,3 +1,4 @@
+# type: ignore
 from collections.abc import MutableMapping
 from typing import Generic, TypeVar, Iterable, NamedTuple
 
