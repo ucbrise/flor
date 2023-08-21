@@ -56,12 +56,12 @@ def parse_args():
     # Unpack command
     unpack_parser = flor_parser.add_parser("unpack")
 
-    # Apply command
-    apply_parser = flor_parser.add_parser("apply")
-    apply_parser.add_argument(
+    # Replay command
+    replay_parser = flor_parser.add_parser("replay")
+    replay_parser.add_argument(
         "dp_list", nargs="*", help="The variable-length list of dp_str and dp values"
     )
-    apply_parser.add_argument("train_file", help="The train.py file")
+    replay_parser.add_argument("where_clause", type=str, help="SQL WHERE clause")
 
     # Query command
     query_parser = flor_parser.add_parser("query")

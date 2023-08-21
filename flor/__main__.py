@@ -64,10 +64,8 @@ def main():
             finally:
                 conn.close()
 
-        elif flags.args.flor_command == "apply":
-            from .hlast import apply
-
-            apply(flags.args.dp_list, flags.args.train_file)
+        elif flags.args.flor_command == "replay":
+            pass
 
 
 if __name__ == "__main__":
