@@ -1,6 +1,6 @@
 from argparse import Namespace
 
-from flor.hlast.gtpropagate import propagate  # type: ignore
+from .gtpropagate import propagate
 
 
 def backprop(lineno: int, source, target, out=None):
