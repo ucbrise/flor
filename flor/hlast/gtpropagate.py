@@ -6,7 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 import ast
 
-from gumtree import GumTree, python
+from .gumtree import GumTree, python
 
 
 def propagate(args: Namespace):
