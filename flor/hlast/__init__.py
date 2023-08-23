@@ -24,7 +24,7 @@ def backprop(lineno: int, source, target, out=None):
                     )
                 )
     except FileExistsError:
-        pass
+        print("Logging record exists in target, nothing to do")
 
 
 __all__ = ["backprop"]
