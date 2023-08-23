@@ -10,12 +10,10 @@ from .gumtree import GumTree, python
 
 
 def propagate(args: Namespace):
-    tree, target = [
-        parse(f.read(), feature_version=(3, args.minor))
-        for f in (args.source, args.target)
-    ]
+    tree, target = [parse(f.read()) for f in (args.source, args.target)]
     replicate(tree, find(tree, lineno=args.lineno), target, **args.gumtree)
-    print(unparse(target), file=args.out)
+    with open(args.out, "w") as f:
+        print(unparse(target), file=f)
 
 
 def replicate(tree: AST, node: AST, target: AST, **kwargs):
@@ -24,7 +22,7 @@ def replicate(tree: AST, node: AST, target: AST, **kwargs):
     assert tree == adapter.root(node) and isinstance(node, stmt)
 
     if node in mapping:
-        exit("Already in target!")
+        raise FileExistsError("Nothing to do")
 
     block, index = find_insert_loc(adapter, node, mapping)
     new = make_contextual_copy(adapter, node, mapping)
