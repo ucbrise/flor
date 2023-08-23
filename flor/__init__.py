@@ -8,3 +8,4 @@ if "ipykernel" not in sys.modules:
     cli.parse_args()
 
 from . import database
+from .hlast import backprop
