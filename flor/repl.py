@@ -1,6 +1,7 @@
 from typing import List, Optional
 
-from hlast.visitors import LoggedExpVisitor
+from .hlast.visitors import LoggedExpVisitor
+from .hlast import backprop
 
 
 def replay(apply_vars: List[str], where_clause: Optional[str]):
