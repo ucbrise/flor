@@ -4,24 +4,27 @@ from .gtpropagate import propagate
 
 
 def backprop(lineno: int, source, target, out=None):
-    if out is None:
-        with open(str(source), "r") as src, open(str(target), "r") as dst:
-            return propagate(
-                Namespace(
-                    lineno=lineno,
-                    source=src,
-                    target=dst,
-                    out=str(target),
-                    gumtree=dict(),
+    try:
+        if out is None:
+            with open(str(source), "r") as src, open(str(target), "r") as dst:
+                return propagate(
+                    Namespace(
+                        lineno=lineno,
+                        source=src,
+                        target=dst,
+                        out=str(target),
+                        gumtree=dict(),
+                    )
                 )
-            )
-    else:
-        with open(str(source), "r") as src, open(str(target), "r") as dst:
-            return propagate(
-                Namespace(
-                    lineno=lineno, source=src, target=dst, out=out, gumtree=dict()
+        else:
+            with open(str(source), "r") as src, open(str(target), "r") as dst:
+                return propagate(
+                    Namespace(
+                        lineno=lineno, source=src, target=dst, out=out, gumtree=dict()
+                    )
                 )
-            )
+    except FileExistsError:
+        pass
 
 
 __all__ = ["backprop"]
