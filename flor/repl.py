@@ -6,6 +6,7 @@ from . import utils
 from .hlast.visitors import LoggedExpVisitor
 
 from . import database
+from . import versions
 
 def pivot(*args):
     conn, cursor = database.conn_and_cursor()
@@ -48,6 +49,8 @@ def replay(apply_vars: List[str], where_clause: Optional[str]):
     # Do a forward pass to determine replay log level
     log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
     print("log level:", log_lvl)
+
+    # Pick up on versions
 
 
     
