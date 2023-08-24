@@ -7,5 +7,4 @@ if "ipykernel" not in sys.modules:
     cli.parse_args()
 
 from .api import *
-from . import database
-from .repl import backprop, replay
+from . import repl

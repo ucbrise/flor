@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from . import utils
 from .hlast.visitors import LoggedExpVisitor
-from .hlast import backprop
 
 from . import database
 
