@@ -2,7 +2,6 @@ from .constants import *
 from .cli import flags
 from . import database
 from . import versions
-from . import utils
 from . import repl
 
 
@@ -35,7 +34,8 @@ def main():
             df = repl.query(user_query)
             print(df)
         elif flags.args.flor_command == "pivot":
-            repl.pivot(*(flags.args.columns if flags.args.columns else tuple()))
+            df = repl.pivot(*(flags.args.columns if flags.args.columns else tuple()))
+            print(df)
         elif flags.args.flor_command == "replay":
             repl.replay(flags.args.VARS, flags.args.where_clause)
 
