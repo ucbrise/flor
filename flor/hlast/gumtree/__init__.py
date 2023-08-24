@@ -178,5 +178,5 @@ class AptedConfig(Config):
     def rename(self, n1: Tree, n2: Tree):
         return int(self.adapter.label(n1) != self.adapter.label(n2))
 
-    def children(self, n: Tree):
+    def children(self, n):
         return list(self.adapter.children(n))

@@ -65,7 +65,8 @@ def main():
                 conn.close()
 
         elif flags.args.flor_command == "replay":
-            pass
+            print("VARS", flags.args.VARS)
+            print("where_clause", flags.args.where_clause)
 
 
 if __name__ == "__main__":
