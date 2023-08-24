@@ -45,9 +45,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str]):
     # First, we convert named_vars to linenos
     apply_linenos = {int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars}
 
-    # Do a forward pass to determine
-    for lineno in apply_linenos:
-        print("lineno:", lineno, "logging level:", lev.line2level[lineno])
+    # Do a forward pass to determine replay log level
+    log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
+    print("log level:", log_lvl)
 
 
     
