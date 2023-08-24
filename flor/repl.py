@@ -11,7 +11,7 @@ def pivot(*args):
     # Query the distinct value_names
     try:
         df = database.pivot(cursor, *(args if args else tuple()))
-        print(df)
+        return df
     finally:
         conn.close()
 
