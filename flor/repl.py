@@ -27,12 +27,6 @@ def query(user_query: str):
         # Close connection
         conn.close()
 
-def _get_lineno(var: str, tree):
-    # Default values from quick static pass
-    
-    
-    return 1
-
 def replay(apply_vars: List[str], where_clause: Optional[str]):
     print("VARS:", apply_vars)
     print("where_clause:", where_clause)
