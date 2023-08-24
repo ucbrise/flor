@@ -1,3 +1,4 @@
+from _ast import AST
 from typing import Any, Dict, Optional
 import ast
 
@@ -5,6 +6,21 @@ class LoggedExpVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
         self.names: Dict[str, int] = {}
+
+        self.line2level: Dict[int, int] = {}
+        self.lvl = 0 
+
+    def visit_For(self, node: ast.For):
+        iter_s = ast.unparse(node.iter).strip()
+        if iter_s.startswith("flor.loop"):
+            start_lvl = self.lvl
+            try:
+                self.lvl += 1
+                self.generic_visit(node)
+            finally:
+                self.lvl = start_lvl
+        else:
+            self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
         pred = (
@@ -17,8 +33,14 @@ class LoggedExpVisitor(ast.NodeVisitor):
             return self.generic_visit(node)
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
             self.names[str(node.args[0].value)] = node.lineno
+            self.line2level[node.lineno] = self.lvl
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
+        
+    def generic_visit(self, node: AST) -> Any:
+        if hasattr(node, 'lineno'):
+            self.line2level[node.lineno] = self.lvl
+        return super().generic_visit(node)
 
 
 class NoGradVisitor(ast.NodeVisitor):
