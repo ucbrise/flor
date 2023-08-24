@@ -56,10 +56,11 @@ def main():
             # Close connection
             conn.close()
         elif flags.args.flor_command == "pivot":
+            print("columns", flags.args.columns)
             conn, cursor = database.conn_and_cursor()
             # Query the distinct value_names
             try:
-                df = database.pivot(cursor, *[c.pop() for c in flags.args.columns])
+                df = database.pivot(cursor, *(flags.args.columns if flags.args.columns else tuple()))
                 print(df)
             finally:
                 conn.close()
