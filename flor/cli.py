@@ -57,11 +57,17 @@ def parse_args():
     unpack_parser = flor_parser.add_parser("unpack")
 
     # Replay command
-    replay_parser = flor_parser.add_parser("replay")
-    replay_parser.add_argument(
-        "dp_list", nargs="*", help="The variable-length list of dp_str and dp values"
+    replay_parser = flor_parser.add_parser(
+        "replay", help="Replay with specified VARS and optional QUERY"
     )
-    replay_parser.add_argument("where_clause", type=str, help="SQL WHERE clause")
+    replay_parser.add_argument(
+        "VARS",
+        type=lambda s: s.split(","),
+        help="List of logged variables, or linenos, comma-separated",
+    )
+    replay_parser.add_argument(
+        "where_clause", nargs="?", type=str, help="Optional SQL WHERE clause"
+    )
 
     # Query command
     query_parser = flor_parser.add_parser("query")
