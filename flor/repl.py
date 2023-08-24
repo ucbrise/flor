@@ -1,3 +1,5 @@
+import ast
+import json
 from typing import List, Optional
 
 from . import utils
@@ -25,10 +27,32 @@ def query(user_query: str):
         # Close connection
         conn.close()
 
+def _get_lineno(var: str, tree):
+    # Default values from quick static pass
+    
+    
+    return 1
 
 def replay(apply_vars: List[str], where_clause: Optional[str]):
-    print("VARS,", apply_vars)
-    print("where_clause", where_clause)
+    print("VARS:", apply_vars)
+    print("where_clause:", where_clause)
+
+    with open(".flor.json", 'r') as f:
+        main_script = json.load(f)[-1]["FILENAME"]
+
+    print("main script:", main_script)
+
+    with open(main_script, "r") as f:
+        tree = ast.parse(f.read())
+
+    lev = LoggedExpVisitor()
+    lev.visit(tree)
+
+    # First, we convert named_vars to linenos
+    apply_linenos = [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]
+
+    print("linenos: ", apply_linenos)
+
 
 
 # def apply(names: List[str], dst: str, stash=None):
