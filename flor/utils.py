@@ -66,3 +66,10 @@ def split_and_retrieve_elements(array, count=10):
     last_10_right = right_half[-count:]
 
     return first_10_left, last_10_right
+
+def is_integer(string):
+    try:
+        int(string)
+        return True
+    except ValueError:
+        return False
