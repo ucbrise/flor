@@ -31,8 +31,6 @@ def replay(apply_vars: List[str], where_clause: Optional[str]):
     print("where_clause", where_clause)
 
 
-__all__ = ["pivot", "query", "replay"]
-
 # def apply(names: List[str], dst: str, stash=None):
 #     """
 #     Caller checks out a previous version
