@@ -3,10 +3,10 @@ from .cli import flags
 from . import database
 from . import versions
 from . import utils
+from . import repl
 
 
 import json
-import sqlite3
 
 
 def main():
@@ -31,43 +31,13 @@ def main():
             finally:
                 versions.checkout(start_branch.name)
         elif flags.args.flor_command == "query":
-            conn, cursor = database.conn_and_cursor()
-            database.create_tables(cursor)
-
-            user_query = flags.args.q
-            try:
-                results = database.query(cursor, user_query)
-                parta, partb = utils.split_and_retrieve_elements(results)
-                if len(parta) + len(partb) == len(results):
-                    for row in parta + partb:
-                        print(row)
-                else:
-                    for row in (
-                        parta
-                        + [
-                            "...",
-                        ]
-                        + partb
-                    ):
-                        print(row)
-            except sqlite3.Error as e:
-                print(f"An error occurred: {e}")
-
-            # Close connection
-            conn.close()
+            user_query = str(flags.args.q)
+            df = repl.query(user_query)
+            print(df)
         elif flags.args.flor_command == "pivot":
-            print("columns", flags.args.columns)
-            conn, cursor = database.conn_and_cursor()
-            # Query the distinct value_names
-            try:
-                df = database.pivot(cursor, *(flags.args.columns if flags.args.columns else tuple()))
-                print(df)
-            finally:
-                conn.close()
-
+            repl.pivot(*(flags.args.columns if flags.args.columns else tuple()))
         elif flags.args.flor_command == "replay":
-            print("VARS", flags.args.VARS)
-            print("where_clause", flags.args.where_clause)
+            repl.replay(flags.args.VARS, flags.args.where_clause)
 
 
 if __name__ == "__main__":

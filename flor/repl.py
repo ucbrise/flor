@@ -1,11 +1,35 @@
 from typing import List, Optional
 
+from . import utils
 from .hlast.visitors import LoggedExpVisitor
 from .hlast import backprop
 
+from . import database
+
+def pivot(*args):
+    conn, cursor = database.conn_and_cursor()
+    # Query the distinct value_names
+    try:
+        df = database.pivot(cursor, *(args if args else tuple()))
+        print(df)
+    finally:
+        conn.close()
+
+def query(user_query: str):
+    conn, cursor = database.conn_and_cursor()
+    database.create_tables(cursor)
+
+    try:
+        df = database.query(cursor, user_query, aspandas=True)
+        return df
+    finally:
+        # Close connection
+        conn.close()
+
 
 def replay(apply_vars: List[str], where_clause: Optional[str]):
-    pass
+    print("VARS,", apply_vars)
+    print("where_clause", where_clause)
 
 
 # def apply(names: List[str], dst: str, stash=None):

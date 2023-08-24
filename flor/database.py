@@ -151,9 +151,12 @@ def read_known_tstamps(cursor):
     return cursor.fetchall()
 
 
-def query(cursor, user_query):
+def query(cursor, user_query, aspandas=False):
     cursor.execute(user_query)
-    return cursor.fetchall()
+    if not aspandas:
+        return cursor.fetchall()
+    else:
+        return pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
 
 
 def get_column_names(cursor):
