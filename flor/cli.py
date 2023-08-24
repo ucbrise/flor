@@ -79,9 +79,9 @@ def parse_args():
     pivot_parser = flor_parser.add_parser("pivot")
     pivot_parser.add_argument(
         "columns",
-        nargs="*",
-        type=parse_columns,
-        help="The variable-length list of column names",
+        nargs="?",
+        type=lambda s: s.split(","),
+        help="List of logged variables, comma-separated",
     )
 
     # Existing code
