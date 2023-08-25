@@ -89,3 +89,7 @@ def get_head():
     repo = Repo(CURRDIR)
     current_head = repo.head.commit
     return current_head
+
+def reset_hard():
+    repo = Repo(CURRDIR)
+    repo.git.reset('--hard')
