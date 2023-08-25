@@ -177,8 +177,12 @@ def load_chkpt():
 def slice(name, iterator):
     if not cli.in_replay_mode():
         return iterator
-
     assert cli.flags.queryparameters is not None
+    original = list(iterator)
+
+    if not cli.flags.queryparameters:
+        return [original[-1],]
+
     qop = (cli.flags.queryparameters).get(name, 1)
     if qop == 1:
         return iterator
@@ -187,7 +191,7 @@ def slice(name, iterator):
     if qop == 0:
         return new_slice
 
-    original = list(iterator)
+    
     assert isinstance(qop, (list, tuple))
     for i in qop:
         new_slice.append(original[int(i)])

@@ -3,12 +3,14 @@ import json
 import numpy as np
 import pandas as pd
 from typing import List, Optional
+import subprocess
 
 from . import utils
 from .hlast.visitors import LoggedExpVisitor, NamedColumnVisitor
 
 from . import database
 from . import versions
+from . import obj_store
 
 def pivot(*args):
     conn, cursor = database.conn_and_cursor()
@@ -53,6 +55,15 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     # Do a forward pass to determine replay log level
     log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
     print("log level:", log_lvl)
+    if log_lvl == 0:
+        query_op = ['epoch=0',]
+    elif log_lvl == 1:
+        query_op = ['epoch=1', 'step=0']
+    elif log_lvl == 2:
+        query_op = ['epoch=1', 'step=1']
+    else:
+        raise NotImplementedError("Please open a pull request")
+
 
 
     df = pivot()
@@ -81,7 +92,23 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     print(schedule)
     print()
 
+
+
     # Pick up on versions
+    active_branch = versions.current_branch
+    try:
+        known_tstamps = schedule['tstamp'].drop_duplicates()
+        for ts, hexsha, end_ts in versions.get_latest_autocommit():
+            if ts in known_tstamps:
+                versions.checkout(hexsha)
+                main_script = schedule[schedule['tstamp'] == ts]['filename'].values[0]
+                subprocess.run(['python', main_script, '--replay_flor'] + query_op, check=True)
+
+                # Apply the logging statements
+                # Map Log level to replay flags
+                # Replay FILENAME from correct level
+    finally:
+        versions.checkout(active_branch)
 
 
     
