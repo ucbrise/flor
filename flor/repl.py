@@ -26,9 +26,10 @@ def query(user_query: str):
         return df
     finally:
         # Close connection
+        conn.commit()
         conn.close()
 
-def replay(apply_vars: List[str], where_clause: Optional[str]):
+def replay(apply_vars: List[str], where_clause: Optional[str]=None):
     print("VARS:", apply_vars)
     print("where_clause:", where_clause)
 
@@ -49,6 +50,14 @@ def replay(apply_vars: List[str], where_clause: Optional[str]):
     # Do a forward pass to determine replay log level
     log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
     print("log level:", log_lvl)
+
+    df = pivot()
+    if where_clause is None:
+        schedule = df[df[apply_vars].isna().any(axis=1)]
+    else:
+        schedule = df.query(where_clause)
+
+    print(schedule)
 
     # Pick up on versions
 
