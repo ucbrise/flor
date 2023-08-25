@@ -36,6 +36,31 @@ def query(user_query: str):
         conn.commit()
         conn.close()
 
+def get_schedule(apply_vars, pd_expression):
+    df = pivot()
+    if pd_expression is None:
+        if (sub_vars := [v for v in apply_vars if v not in df.columns]):
+            # Function to perform the natural join
+            ext_df = pivot(*sub_vars)
+            common_columns = set(df.columns) & set(ext_df.columns)
+            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+        return df
+    else:
+        # Regular expression to match column names
+        ncv = NamedColumnVisitor()
+        ncv.visit(ast.parse(pd_expression))
+        # Convert to list if needed
+        columns_list = list(ncv.names)
+        print("columns in pd_expression:", columns_list)
+        if columns_list:
+            ext_df = pivot(*columns_list)
+            common_columns = set(df.columns) & set(ext_df.columns)
+            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+        schedule = eval(pd_expression)
+        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
+        return schedule
+
+
 def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     print("VARS:", apply_vars)
     print("pd_expression:", pd_expression)
@@ -75,33 +100,13 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
         raise NotImplementedError("Please open a pull request")
 
 
-    df = pivot()
+    schedule = get_schedule(apply_vars, pd_expression)
     if pd_expression is None:
-        if (sub_vars := [v for v in apply_vars if v not in df.columns]):
-            # Function to perform the natural join
-            ext_df = pivot(*sub_vars)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        schedule = df[df[apply_vars].isna().any(axis=1)]
-    else:
-        # Regular expression to match column names
-        ncv = NamedColumnVisitor()
-        ncv.visit(ast.parse(pd_expression))
-        # Convert to list if needed
-        columns_list = list(ncv.names)
-        print("columns in pd_expression:", columns_list)
-        if columns_list:
-            ext_df = pivot(*columns_list)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        schedule = eval(pd_expression)
-        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
+        schedule = schedule[schedule[apply_vars].isna().any(axis=1)]
 
     print()
     print(schedule)
     print()
-
-
 
     # Pick up on versions
     active_branch = versions.current_branch()
@@ -127,6 +132,12 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
         versions.checkout(active_branch)
         os.remove(temp_file.name)
         
+    schedule = get_schedule(apply_vars, pd_expression)
+
+    print()
+    print(schedule)
+    print()
+
         
 
 
