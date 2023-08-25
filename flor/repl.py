@@ -75,7 +75,7 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
             common_columns = set(df.columns) & set(ext_df.columns)
             df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
         schedule = eval(pd_expression)
-        schedule[apply_vars] = np.nan
+        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
 
     print()
     print(schedule)
