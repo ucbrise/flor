@@ -153,10 +153,11 @@ def read_known_tstamps(cursor):
 
 def query(cursor, user_query, aspandas=False):
     cursor.execute(user_query)
+    res = cursor.fetchall()
     if not aspandas:
-        return cursor.fetchall()
-    else:
-        return pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
+        return res
+    elif res:
+        return pd.DataFrame(res, columns=get_column_names(cursor))
 
 
 def get_column_names(cursor):
@@ -203,7 +204,7 @@ def pivot(cursor, *args):
     for value_name in args:
         logs = pd.DataFrame(
             read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'),
-            columns=get_column_names(cursor),
+            columns=get_column_names(cursor)
         )
         logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
         logs = logs.rename(columns={"value": value_name})

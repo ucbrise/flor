@@ -1,6 +1,8 @@
-from _ast import AST
+from _ast import AST, Constant
 from typing import Any, Dict, Optional
 import ast
+
+from .. import utils
 
 class LoggedExpVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -42,6 +44,17 @@ class LoggedExpVisitor(ast.NodeVisitor):
             self.line2level[node.lineno] = self.lvl
         return super().generic_visit(node)
 
+class NamedColumnVisitor(ast.NodeVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.names = set([])
+
+    def visit_Constant(self, node: Constant) -> Any:
+        if not utils.is_integer(node.value):
+            self.names.add(node.value)
+        return super().visit_Constant(node)
+
+    
 
 class NoGradVisitor(ast.NodeVisitor):
     def __init__(self):
