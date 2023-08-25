@@ -1,7 +1,7 @@
 from functools import reduce
 from typing import Dict, Optional, Tuple
 from .constants import *
-from . import orm
+from .orm import ORM, Loop
 import pandas as pd
 
 import sqlite3
@@ -21,6 +21,7 @@ def unpack(output_buffer, cursor):
     print("Unpacking ", output_buffer[-1])
 
     # Structure the output buffer
+    orm = ORM()
     stem = output_buffer[-1]
     for obj in output_buffer[:-1]:
         orm.parse_entries(obj)
@@ -45,7 +46,7 @@ def unpack(output_buffer, cursor):
             )
         ] = int(ctx_id)
 
-    def dfs(loop: Optional[orm.Loop]):
+    def dfs(loop: Optional[Loop]):
         if loop is None:
             return None
         parent_ctx_id = dfs(loop.parent)
