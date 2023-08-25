@@ -1,6 +1,6 @@
 import ast
 import json
-import re
+import numpy as np
 import pandas as pd
 from typing import List, Optional
 
@@ -75,6 +75,7 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
             common_columns = set(df.columns) & set(ext_df.columns)
             df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
         schedule = eval(pd_expression)
+        schedule[apply_vars] = np.nan
 
     print()
     print(schedule)
