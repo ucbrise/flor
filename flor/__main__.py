@@ -37,7 +37,10 @@ def main():
             df = repl.pivot(*(flags.args.columns if flags.args.columns else tuple()))
             print(df)
         elif flags.args.flor_command == "replay":
-            repl.replay(flags.args.VARS, flags.args.where_clause)
+            if flags.args.where_clause:
+                repl.replay(flags.args.VARS, flags.args.where_clause)
+            else:
+                repl.replay(flags.args.VARS)
 
 
 if __name__ == "__main__":

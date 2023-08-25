@@ -4,13 +4,15 @@ import numpy as np
 import pandas as pd
 from typing import List, Optional
 import subprocess
+import tempfile
+import os
 
 from . import utils
 from .hlast.visitors import LoggedExpVisitor, NamedColumnVisitor
+from .hlast import backprop
 
 from . import database
 from . import versions
-from . import obj_store
 
 def pivot(*args):
     conn, cursor = database.conn_and_cursor()
@@ -38,32 +40,39 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     print("VARS:", apply_vars)
     print("pd_expression:", pd_expression)
 
+    versions.git_commit("Hindsight logging stmts added.")
+
     with open(".flor.json", 'r') as f:
         main_script = json.load(f)[-1]["FILENAME"]
 
     print("main script:", main_script)
 
     with open(main_script, "r") as f:
-        tree = ast.parse(f.read())
+        anchor_script_buffer = f.read()
+        tree = ast.parse(anchor_script_buffer)
+
+    
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    with open(temp_file.name, "w") as f:
+        f.write(anchor_script_buffer)
 
     lev = LoggedExpVisitor()
     lev.visit(tree)
 
     # First, we convert named_vars to linenos
-    apply_linenos = {int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars}
+    apply_linenos = [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]
 
     # Do a forward pass to determine replay log level
     log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
     print("log level:", log_lvl)
     if log_lvl == 0:
-        query_op = ['epoch=0',]
+        query_op = []
     elif log_lvl == 1:
         query_op = ['epoch=1', 'step=0']
     elif log_lvl == 2:
         query_op = ['epoch=1', 'step=1']
     else:
         raise NotImplementedError("Please open a pull request")
-
 
 
     df = pivot()
@@ -95,20 +104,30 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
 
 
     # Pick up on versions
-    active_branch = versions.current_branch
+    active_branch = versions.current_branch()
     try:
-        known_tstamps = schedule['tstamp'].drop_duplicates()
+        known_tstamps = schedule['tstamp'].drop_duplicates().values
         for ts, hexsha, end_ts in versions.get_latest_autocommit():
             if ts in known_tstamps:
+                print("entering", ts, hexsha)
                 versions.checkout(hexsha)
-                main_script = schedule[schedule['tstamp'] == ts]['filename'].values[0]
-                subprocess.run(['python', main_script, '--replay_flor'] + query_op, check=True)
-
-                # Apply the logging statements
-                # Map Log level to replay flags
-                # Replay FILENAME from correct level
+                with open('.flor.json', 'r') as f:
+                    main_script = json.load(f)[-1]['FILENAME']
+                for v,lineno in zip(apply_vars, apply_linenos):
+                    print("applying: ", v, lineno)
+                    try:
+                        backprop(lineno, temp_file.name, main_script, main_script)
+                    except Exception as e:
+                        print("EXCEPTION", e)
+                subprocess.run(['python', main_script, '--replay_flor'] + query_op)
+    except Exception as e:
+        print("EXCEPTION", e)
     finally:
+        versions.reset_hard()
         versions.checkout(active_branch)
+        os.remove(temp_file.name)
+        
+        
 
 
     
