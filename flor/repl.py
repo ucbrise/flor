@@ -70,8 +70,6 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     with open(".flor.json", 'r') as f:
         main_script = json.load(f)[-1]["FILENAME"]
 
-    print("main script:", main_script)
-
     with open(main_script, "r") as f:
         anchor_script_buffer = f.read()
         tree = ast.parse(anchor_script_buffer)
@@ -104,33 +102,37 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     if pd_expression is None:
         schedule = schedule[schedule[apply_vars].isna().any(axis=1)]
 
-    print()
-    print(schedule)
-    print()
-
-    # Pick up on versions
-    active_branch = versions.current_branch()
-    try:
-        known_tstamps = schedule['tstamp'].drop_duplicates().values
-        for ts, hexsha, end_ts in versions.get_latest_autocommit():
-            if ts in known_tstamps:
-                print("entering", ts, hexsha)
-                versions.checkout(hexsha)
-                with open('.flor.json', 'r') as f:
-                    main_script = json.load(f)[-1]['FILENAME']
-                for v,lineno in zip(apply_vars, apply_linenos):
-                    print("applying: ", v, lineno)
-                    try:
-                        backprop(lineno, temp_file.name, main_script, main_script)
-                    except Exception as e:
-                        print("EXCEPTION", e)
-                subprocess.run(['python', main_script, '--replay_flor'] + query_op)
-    except Exception as e:
-        print("EXCEPTION", e)
-    finally:
-        versions.reset_hard()
-        versions.checkout(active_branch)
-        os.remove(temp_file.name)
+    if not schedule.empty:
+        print()
+        print(schedule)
+        print()
+        # Pick up on versions
+        active_branch = versions.current_branch()
+        try:
+            # TODO: iterate the schedule not the git log
+            # TODO: use schedule to index the epoch
+            known_tstamps = schedule['tstamp'].drop_duplicates().values
+            for ts, hexsha, end_ts in versions.get_latest_autocommit():
+                if ts in known_tstamps:
+                    print("entering", ts, hexsha)
+                    versions.checkout(hexsha)
+                    with open('.flor.json', 'r') as f:
+                        main_script = json.load(f)[-1]['FILENAME']
+                    for v,lineno in zip(apply_vars, apply_linenos):
+                        print("applying: ", v, lineno)
+                        try:
+                            backprop(lineno, temp_file.name, main_script, main_script)
+                        except Exception as e:
+                            print("Exception raised during `backprop`", e)
+                            raise e
+                    subprocess.run(['python', main_script, '--replay_flor'] + query_op)
+        except Exception as e:
+            print("Exception raised during outer replay loop", e)
+            raise e
+        finally:
+            versions.reset_hard()
+            versions.checkout(active_branch)
+            os.remove(temp_file.name)
         
     schedule = get_schedule(apply_vars, pd_expression)
 
