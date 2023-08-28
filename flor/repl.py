@@ -94,8 +94,11 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
             versions.reset_hard()
             versions.checkout(active_branch)
             os.remove(temp_file.name)
-            schedule = Schedule(apply_vars, where_clause)
 
+        filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
+        if schedule.vars_in_where is not None:
+            filtered_vs += schedule.vars_in_where
+        schedule = pivot(*filtered_vs)
         print()
         print(schedule)
         print()
@@ -112,6 +115,7 @@ class Schedule:
         #     you will need to infer var_name from ast
         self.apply_vars = apply_vars
         self.where_clause = where_clause
+        self.vars_in_where = None
         df = pivot()
         if where_clause is None:
             if (sub_vars := [v for v in apply_vars if v not in df.columns]):
