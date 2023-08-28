@@ -78,8 +78,6 @@ calling `flor.loop(name, iterator)` as follows:
 
 ```python
 import flor
-from flor import MTK
-
 import torch
 
 hidden_size = flor.arg("hidden", default=500)
