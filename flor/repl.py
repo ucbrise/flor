@@ -59,7 +59,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
-            for projid, ts, hexsha, main_script, query_op in schedule.iter_dims():
+            for projid, ts, hexsha, main_script, epochs in schedule.iter_dims():
                 print("entering", str(ts), hexsha)
                 versions.checkout(hexsha)
                 for v,lineno in zip(apply_vars, [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]):
@@ -69,7 +69,17 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
                     except Exception as e:
                         print("Exception raised during `backprop`", e)
                         raise e
-                subprocess.run(['python', main_script, '--replay_flor'] + query_op)
+                loglvl = schedule.get_loglvl()
+                if loglvl == 0:
+                    subprocess.run(['python', main_script, '--replay_flor'])
+                elif loglvl == 1:
+                    tup = ','.join(epochs) + ','
+                    subprocess.run(['python', main_script, '--replay_flor'] + [schedule.dims[0] + '=' + tup])
+                elif loglvl == 2:
+                    tup = ','.join(epochs) + ','
+                    subprocess.run(['python', main_script, '--replay_flor'] + [schedule.dims[0] + '=' + tup, schedule.dims[1] + '=1'])
+                else:
+                    raise NotImplementedError("Please open a Pull Request on GitHub and describe your use-case.")
         except Exception as e:
             print("Exception raised during `schedule.iter_dims()`", e)
             raise e
@@ -77,15 +87,14 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
             versions.reset_hard()
             versions.checkout(active_branch)
             os.remove(temp_file.name)
-            schedule = get_schedule(apply_vars, where_clause)
-
+            schedule = Schedule(apply_vars, where_clause)
         print()
         print(schedule)
         print()
-
     else:
         print("Nothing to do.")
 
+    return schedule
 
         
 class Schedule:
