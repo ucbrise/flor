@@ -29,42 +29,14 @@ def query(user_query: str):
 
     try:
         df = database.query(cursor, user_query, aspandas=True)
-        assert isinstance(df, pd.DataFrame)
         return df
     finally:
         # Close connection
         conn.commit()
         conn.close()
 
-def get_schedule(apply_vars, pd_expression):
-    df = pivot()
-    if pd_expression is None:
-        if (sub_vars := [v for v in apply_vars if v not in df.columns]):
-            # Function to perform the natural join
-            ext_df = pivot(*sub_vars)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        return df
-    else:
-        # Regular expression to match column names
-        ncv = NamedColumnVisitor()
-        ncv.visit(ast.parse(pd_expression))
-        # Convert to list if needed
-        columns_list = list(ncv.names)
-        print("columns in pd_expression:", columns_list)
-        if columns_list:
-            ext_df = pivot(*columns_list)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        schedule = eval(pd_expression)
-        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
-        return schedule
-
 
 def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
-    print("VARS:", apply_vars)
-    print("pd_expression:", pd_expression)
-
     versions.git_commit("Hindsight logging stmts added.")
 
     with open(".flor.json", 'r') as f:
@@ -144,3 +116,26 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
 
 
     
+def get_schedule(apply_vars, pd_expression):
+    df = pivot()
+    if pd_expression is None:
+        if (sub_vars := [v for v in apply_vars if v not in df.columns]):
+            # Function to perform the natural join
+            ext_df = pivot(*sub_vars)
+            common_columns = set(df.columns) & set(ext_df.columns)
+            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+        return df
+    else:
+        # Regular expression to match column names
+        ncv = NamedColumnVisitor()
+        ncv.visit(ast.parse(pd_expression))
+        # Convert to list if needed
+        columns_list = list(ncv.names)
+        print("columns in pd_expression:", columns_list)
+        if columns_list:
+            ext_df = pivot(*columns_list)
+            common_columns = set(df.columns) & set(ext_df.columns)
+            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+        schedule = eval(pd_expression)
+        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
+        return schedule
