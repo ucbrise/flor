@@ -55,15 +55,11 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
         print(schedule)
         print()
 
-        exit()
 
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
-            # TODO: iterate the schedule not the git log
-            # TODO: use schedule to index the epoch
-            known_tstamps = schedule['tstamp'].drop_duplicates().values
-            for ts, hexsha, end_ts in versions.get_latest_autocommit():
+            for projid, ts, hexsha, fname, epoch in schedule.iter_dims():
                 if ts in known_tstamps:
                     print("entering", ts, hexsha)
                     versions.checkout(hexsha)
@@ -143,11 +139,12 @@ class Schedule:
         loglvl = len(self.dims)
         return loglvl
     
-    def iter_runs(self):
-        ts2vid = {pd.Timestamp(ts):vid for ts, vid, _ in versions.get_latest_autocommit()}
-        ts = ''
-        hexsha = ''
-        return ts, hexsha
+    def iter_dims(self):
+        ts2vid = {pd.Timestamp(ts):str(vid) for ts, vid, _ in versions.get_latest_autocommit()}
+
+        for row_dict in self.df.to_dict(orient='records'):
+            epoch = int(row_dict[self.dims[0] + '_iteration']) if self.dims else None
+            yield row_dict['projid'], row_dict['tstamp'], ts2vid[row_dict['tstamp']], row_dict['filename'], epoch
 
     def __str__(self):
         if self.where_clause is None:
