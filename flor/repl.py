@@ -143,7 +143,7 @@ class Schedule:
     def iter_dims(self):
         ts2vid = {pd.Timestamp(ts): str(vid) for ts, vid, _ in versions.get_latest_autocommit()}
 
-        epochs = []
+        epochs: List[str] = []
         prev_row = None
 
         for row_dict in self.df.to_dict(orient='records'):
@@ -156,7 +156,7 @@ class Schedule:
 
             # Update epochs
             if self.dims:
-                epochs.append(int(row_dict[self.dims[0] + '_iteration']))
+                epochs.append(str(row_dict[self.dims[0] + '_iteration']))
 
             # Update prev_row for the next iteration
             prev_row = row_dict
