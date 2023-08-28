@@ -60,19 +60,18 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
         active_branch = versions.current_branch()
         try:
             for projid, ts, hexsha, fname, epoch in schedule.iter_dims():
-                if ts in known_tstamps:
-                    print("entering", ts, hexsha)
-                    versions.checkout(hexsha)
-                    with open('.flor.json', 'r') as f:
-                        main_script = json.load(f)[-1]['FILENAME']
-                    for v,lineno in zip(apply_vars, apply_linenos):
-                        print("applying: ", v, lineno)
-                        try:
-                            backprop(lineno, temp_file.name, main_script, main_script)
-                        except Exception as e:
-                            print("Exception raised during `backprop`", e)
-                            raise e
-                    subprocess.run(['python', main_script, '--replay_flor'] + query_op)
+                print("entering", ts, hexsha)
+                versions.checkout(hexsha)
+                with open('.flor.json', 'r') as f:
+                    main_script = json.load(f)[-1]['FILENAME']
+                for v,lineno in zip(apply_vars, apply_linenos):
+                    print("applying: ", v, lineno)
+                    try:
+                        backprop(lineno, temp_file.name, main_script, main_script)
+                    except Exception as e:
+                        print("Exception raised during `backprop`", e)
+                        raise e
+                subprocess.run(['python', main_script, '--replay_flor'] + query_op)
         except Exception as e:
             print("Exception raised during outer replay loop", e)
             raise e
