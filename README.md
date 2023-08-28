@@ -1,4 +1,4 @@
-FlorDB: Nimble Experiment Management for Iterative ML
+FlorDB: Multiversion Hindsight Logging for Model Training
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb)](https://pypi.org/project/flordb/)
 
