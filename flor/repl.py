@@ -55,6 +55,8 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
         print(schedule)
         print()
 
+        exit()
+
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
@@ -131,7 +133,7 @@ class Schedule:
                 ext_df = pivot(*columns_list)
                 common_columns = set(df.columns) & set(ext_df.columns)
                 df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-            self.df = df.query(where_clause)
+            self.df = utils.cast_dtypes(df).query(where_clause)
 
     def is_empty(self):
         return self.df.empty
@@ -141,7 +143,7 @@ class Schedule:
         loglvl = len(self.dims)
         return loglvl
     
-    def iter_runs():
+    def iter_runs(self):
         ts = ''
         hexsha = ''
         return ts, hexsha
