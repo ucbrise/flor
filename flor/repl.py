@@ -75,12 +75,15 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
                         print("Exception raised during `backprop`", e)
                         raise e
                 if loglvl == 0:
+                    print("loglvl", loglvl, "no dims")
                     subprocess.run(['python', main_script, '--replay_flor'])
                 elif loglvl == 1:
                     tup = ','.join(epochs) + ','
+                    print("loglvl", loglvl, tup)
                     subprocess.run(['python', main_script, '--replay_flor'] + [schedule.dims[0] + '=' + tup])
                 elif loglvl == 2:
                     tup = ','.join(epochs) + ','
+                    print("loglvl", loglvl, tup)
                     subprocess.run(['python', main_script, '--replay_flor'] + [schedule.dims[0] + '=' + tup, schedule.dims[1] + '=1'])
                 else:
                     raise NotImplementedError("Please open a Pull Request on GitHub and describe your use-case.")
