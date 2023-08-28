@@ -62,6 +62,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
  
         # Pick up on versions
         active_branch = versions.current_branch()
+        loglvl = schedule.get_loglvl()
         try:
             for projid, ts, hexsha, main_script, epochs in schedule.iter_dims():
                 print("entering", str(ts), hexsha)
@@ -73,7 +74,6 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
                     except Exception as e:
                         print("Exception raised during `backprop`", e)
                         raise e
-                loglvl = schedule.get_loglvl()
                 if loglvl == 0:
                     subprocess.run(['python', main_script, '--replay_flor'])
                 elif loglvl == 1:
