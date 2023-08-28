@@ -39,32 +39,30 @@ def query(user_query: str):
 
 
 def replay(apply_vars: List[str], where_clause: Optional[str]=None):
-    versions.git_commit("Hindsight logging stmts added.")
-
-    with open(".flor.json", 'r') as f:
-        main_script = json.load(f)[-1]["FILENAME"]
-    
-    temp_file = tempfile.NamedTemporaryFile(delete=False)
-    shutil.copy2(main_script, temp_file.name)
-
-    # First, we convert named_vars to linenos
-    schedule = Schedule(apply_vars, where_clause, main_script)
-
+    versions.git_commit("Hindsight logging stmts added.")    
+    schedule = Schedule(apply_vars, where_clause)
     if not schedule.is_empty():
+        with open(".flor.json", 'r') as f:
+            main_script = json.load(f)[-1]["FILENAME"]
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        shutil.copy2(main_script, temp_file.name)
+        with open(main_script, "r") as f:
+            tree = ast.parse(f.read())
+
+        lev = LoggedExpVisitor()
+        lev.visit(tree)
+
         print()
         print(schedule)
         print()
 
-
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
-            for projid, ts, hexsha, fname, epoch in schedule.iter_dims():
-                print("entering", ts, hexsha)
+            for projid, ts, hexsha, main_script, query_op in schedule.iter_dims():
+                print("entering", str(ts), hexsha)
                 versions.checkout(hexsha)
-                with open('.flor.json', 'r') as f:
-                    main_script = json.load(f)[-1]['FILENAME']
-                for v,lineno in zip(apply_vars, apply_linenos):
+                for v,lineno in zip(apply_vars, [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]):
                     print("applying: ", v, lineno)
                     try:
                         backprop(lineno, temp_file.name, main_script, main_script)
@@ -73,7 +71,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
                         raise e
                 subprocess.run(['python', main_script, '--replay_flor'] + query_op)
         except Exception as e:
-            print("Exception raised during outer replay loop", e)
+            print("Exception raised during `schedule.iter_dims()`", e)
             raise e
         finally:
             versions.reset_hard()
@@ -91,21 +89,11 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
 
         
 class Schedule:
-    def __init__(self, apply_vars, where_clause, main_script=None) -> None:
-        if main_script is None:
-            with open(".flor.json", 'r') as f:
-                main_script = json.load(f)[-1]["FILENAME"]
-        
-        with open(main_script, "r") as f:
-            tree = ast.parse(f.read())
-
-        self.lev = LoggedExpVisitor()
-        self.lev.visit(tree)
+    def __init__(self, apply_vars, where_clause) -> None:
         # TODO: 
         # case when integer supplied through apply_vars, 
         #     you will need to infer var_name from ast
         self.apply_vars = apply_vars
-        self.apply_linenos = [int(v) if utils.is_integer(v) else self.lev.names[v] for v in apply_vars]
         self.where_clause = where_clause
         df = pivot()
         if where_clause is None:
@@ -139,11 +127,29 @@ class Schedule:
         return loglvl
     
     def iter_dims(self):
-        ts2vid = {pd.Timestamp(ts):str(vid) for ts, vid, _ in versions.get_latest_autocommit()}
+        ts2vid = {pd.Timestamp(ts): str(vid) for ts, vid, _ in versions.get_latest_autocommit()}
+
+        epochs = []
+        prev_row = None
 
         for row_dict in self.df.to_dict(orient='records'):
-            epoch = int(row_dict[self.dims[0] + '_iteration']) if self.dims else None
-            yield row_dict['projid'], row_dict['tstamp'], ts2vid[row_dict['tstamp']], row_dict['filename'], epoch
+            curr_tstamp = row_dict['tstamp']
+
+            # Compare current timestamp with the previous timestamp
+            if prev_row is not None and curr_tstamp != prev_row['tstamp']:
+                yield prev_row['projid'], prev_row['tstamp'], ts2vid[prev_row['tstamp']], prev_row['filename'], epochs
+                epochs.clear()
+
+            # Update epochs
+            if self.dims:
+                epochs.append(int(row_dict[self.dims[0] + '_iteration']))
+
+            # Update prev_row for the next iteration
+            prev_row = row_dict
+
+        # Yield the final record if prev_row is populated
+        if prev_row is not None:
+            yield prev_row['projid'], prev_row['tstamp'], ts2vid[prev_row['tstamp']], prev_row['filename'], epochs
 
     def __str__(self):
         if self.where_clause is None:
