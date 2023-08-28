@@ -1,12 +1,13 @@
 from functools import reduce
-from typing import Dict, Optional, Tuple
-from .constants import *
-from .orm import ORM, Loop
+from typing import Dict, Optional
 import pandas as pd
-
 import sqlite3
 import os
 from pathlib import Path
+
+from .constants import *
+from .orm import ORM, Loop
+from . import utils
 
 
 def conn_and_cursor():
@@ -155,10 +156,11 @@ def read_known_tstamps(cursor):
 def query(cursor, user_query, aspandas=False):
     cursor.execute(user_query)
     res = cursor.fetchall()
-    if not aspandas:
-        return res
+    if res and aspandas:
+        return utils.cast_dtypes(pd.DataFrame(res, columns=get_column_names(cursor)))
     elif res:
-        return pd.DataFrame(res, columns=get_column_names(cursor))
+        return res
+    return pd.DataFrame()
 
 
 def get_column_names(cursor):
@@ -171,12 +173,12 @@ def pivot(cursor, *args):
         cursor.execute(
             "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL;"
         )
-        value_names = cursor.fetchall()
+        value_names = [str(singleton[0]).strip() for singleton in cursor.fetchall()]
 
         # Build the dynamic part of the SQL query
         dynamic_sql = ", ".join(
             [
-                f"MAX(CASE WHEN value_name = '{value_name[0]}' THEN value ELSE NULL END) AS '{value_name[0]}'"
+                f"MAX(CASE WHEN value_name = '{value_name}' THEN value ELSE NULL END) AS '{value_name}'"
                 for value_name in value_names
             ]
         )
@@ -195,7 +197,7 @@ def pivot(cursor, *args):
         # Execute the final SQL query
         cursor.execute(final_sql)
         df = pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
-        return df
+        return utils.cast_dtypes(df)
 
     if not args:
         return _pivot_star()
@@ -237,4 +239,4 @@ def pivot(cursor, *args):
         common_columns = set(df1.columns) & set(df2.columns)
         return pd.merge(df1, df2, on=list(common_columns), how="outer")
 
-    return reduce(join_on_common_columns, dataframes)
+    return utils.cast_dtypes(reduce(join_on_common_columns, dataframes))

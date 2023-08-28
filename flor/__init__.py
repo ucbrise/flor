@@ -8,3 +8,4 @@ if "ipykernel" not in sys.modules:
 
 from .api import *
 from .repl import query, pivot, replay
+from . import utils

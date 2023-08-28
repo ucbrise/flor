@@ -2,6 +2,13 @@ import json
 from typing import Any
 from pathlib import Path
 
+import pandas as pd
+
+import warnings
+
+warnings.filterwarnings('ignore', category=UserWarning, message='Could not infer format.*')
+
+
 
 def is_jsonable(x):
     try:
@@ -73,3 +80,11 @@ def is_integer(string):
         return True
     except ValueError:
         return False
+
+def cast_dtypes(df: pd.DataFrame, columns=None):
+    for col in (columns if columns is not None else df.columns):
+        if df[col].dtype == 'object':
+            df[col] = pd.to_numeric(df[col], errors='ignore')
+        if df[col].dtype == 'object':
+            df[col] = pd.to_datetime(df[col], errors='ignore')
+    return df
