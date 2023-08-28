@@ -183,7 +183,7 @@ def slice(name, iterator):
     if not cli.flags.queryparameters:
         return [original[-1],]
 
-    qop = (cli.flags.queryparameters).get(name, 1)
+    qop = (cli.flags.queryparameters).get(name, 0)
     if qop == 1:
         return iterator
 
