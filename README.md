@@ -32,7 +32,7 @@ Run the `train.py` script to train a small linear model,
 and test your `flordb` installation.
 
 ```bash
-$ python train.py --flor myFirstRun
+$ python train.py
 ```
 
 Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#storage--data-layout)). All of this data is then expesed to the user via SQL or Pandas queries.
@@ -41,30 +41,11 @@ Flor will manage checkpoints, logs, command-line arguments, code changes, and ot
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
 
 ```bash
-$ pwd
-/Users/rogarcia/git/ml_tutorial
+$ python -m flor pivot
 
-$ ipython
-```
-
-```ipython
-In [1]: from flor import full_pivot, log_records
-In [2]: full_pivot(log_records())
-Out[2]: 
-                            projid       runid               tstamp        vid  epoch  step      loss hidden batch_size epochs     lr
-0   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   100  0.246695    500         32      5  0.001
-1   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   200  0.279637    500         32      5  0.001
-2   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   300  0.247390    500         32      5  0.001
-3   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   400  0.536536    500         32      5  0.001
-4   ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      1   500  0.198422    500         32      5  0.001
-..                             ...         ...                  ...        ...    ...   ...       ...    ...        ...    ...    ...
-85  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1400  0.003081    500         32      5  0.001
-86  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1500  0.002184    500         32      5  0.001
-87  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1600  0.042605    500         32      5  0.001
-88  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1700  0.007986    500         32      5  0.001
-89  ml_tutorial_flor.shadow.readme  myFirstRun  2023-07-19T09:01:51  c0418c...      5  1800  0.006866    500         32      5  0.001
-
-[90 rows x 11 columns]
+        projid               tstamp  filename device seed hidden epochs batch_size     lr print_every accuracy correct
+0  ml_tutorial  2023-08-28T15:04:07  train.py    cpu   78    500      5         32  0.001         500    97.71    9771
+1  ml_tutorial  2023-08-28T15:04:35  train.py    cpu    8    500      5         32  0.001         500    98.01    9801
 ```
 
 # Run some more experiments
