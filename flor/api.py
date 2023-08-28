@@ -194,7 +194,8 @@ def slice(name, iterator):
     
     assert isinstance(qop, (list, tuple))
     for i in qop:
-        new_slice.append(original[int(i)])
+        print("original", original)
+        new_slice.append(original[int(i) - 1])
     return new_slice
 
 
