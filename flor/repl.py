@@ -88,6 +88,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
             versions.checkout(active_branch)
             os.remove(temp_file.name)
             schedule = Schedule(apply_vars, where_clause)
+            
         print()
         print(schedule)
         print()
