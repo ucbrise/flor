@@ -1,6 +1,7 @@
 FlorDB: Multiversion Hindsight Logging for Model Training
 ================================
-[![PyPI](https://img.shields.io/pypi/v/flordb)](https://pypi.org/project/flordb/)
+[![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
+
 
 
 Flor (for "fast low-overhead recovery") is a record-replay system for deep learning, and other forms of machine learning that train models on GPUs. Flor was developed to speed-up hindsight logging: a cyclic-debugging practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging. Flor takes low-overhead checkpoints during training, or the record phase, and uses those checkpoints for replay speedups based on memoization and parallelism.
