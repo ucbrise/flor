@@ -144,6 +144,7 @@ class Schedule:
         return loglvl
     
     def iter_runs(self):
+        ts2vid = {pd.Timestamp(ts):vid for ts, vid, _ in versions.get_latest_autocommit()}
         ts = ''
         hexsha = ''
         return ts, hexsha
@@ -163,3 +164,12 @@ class Schedule:
             schedule = self.df.copy() # appease pandas warning
             schedule[[v for v in self.apply_vars if v not in schedule.columns]] = np.nan
             return schedule.__repr__()
+        
+    def _repr_html_(self):
+        if self.where_clause is None:
+            return self.df[self.df[self.apply_vars].isna().any(axis=1)]._repr_html_() # type: ignore
+        else:
+            schedule = self.df.copy() # appease pandas warning
+            schedule[[v for v in self.apply_vars if v not in schedule.columns]] = np.nan
+            return schedule._repr_html_() # type: ignore
+        
