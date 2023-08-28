@@ -144,6 +144,6 @@ def get_schedule(apply_vars, where_clause):
             common_columns = set(df.columns) & set(ext_df.columns)
             df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
         schedule = df.query(where_clause)
-        schedule = schedule.copy() # appease mypy warning
+        schedule = schedule.copy() # appease pandas warning
         schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
         return schedule
