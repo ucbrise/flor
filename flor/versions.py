@@ -68,7 +68,7 @@ def get_latest_autocommit():
             if str(v.message).count("FLOR::") == 1:
                 _, _, ts = v.message.strip().split("::")  # type: ignore
                 yield (
-                    ts,
+                    str(ts),
                     v.hexsha,
                     v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
                 )
