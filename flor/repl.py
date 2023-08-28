@@ -1,5 +1,6 @@
 import ast
 import json
+import re
 import numpy as np
 import pandas as pd
 from typing import List, Optional
@@ -36,7 +37,7 @@ def query(user_query: str):
         conn.close()
 
 
-def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
+def replay(apply_vars: List[str], where_clause: Optional[str]=None):
     versions.git_commit("Hindsight logging stmts added.")
 
     with open(".flor.json", 'r') as f:
@@ -55,11 +56,20 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     lev.visit(tree)
 
     # First, we convert named_vars to linenos
+    # TODO: 
+    # case when integer supplied through apply_vars, 
+    #     you will need to infer var_name from ast
     apply_linenos = [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]
+
+    # TODO: does schedule bring in dims?
+    schedule = get_schedule(apply_vars, where_clause)
+    if where_clause is None:
+        schedule = schedule[schedule[apply_vars].isna().any(axis=1)]
 
     # Do a forward pass to determine replay log level
     log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
     print("log level:", log_lvl)
+    # TODO: case when epoch=1,3,5
     if log_lvl == 0:
         query_op = []
     elif log_lvl == 1:
@@ -69,10 +79,6 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
     else:
         raise NotImplementedError("Please open a pull request")
 
-
-    schedule = get_schedule(apply_vars, pd_expression)
-    if pd_expression is None:
-        schedule = schedule[schedule[apply_vars].isna().any(axis=1)]
 
     if not schedule.empty:
         print()
@@ -106,7 +112,7 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
             versions.checkout(active_branch)
             os.remove(temp_file.name)
         
-    schedule = get_schedule(apply_vars, pd_expression)
+    schedule = get_schedule(apply_vars, where_clause)
 
     print()
     print(schedule)
@@ -116,9 +122,9 @@ def replay(apply_vars: List[str], pd_expression: Optional[str]=None):
 
 
     
-def get_schedule(apply_vars, pd_expression):
+def get_schedule(apply_vars, where_clause):
     df = pivot()
-    if pd_expression is None:
+    if where_clause is None:
         if (sub_vars := [v for v in apply_vars if v not in df.columns]):
             # Function to perform the natural join
             ext_df = pivot(*sub_vars)
@@ -127,15 +133,17 @@ def get_schedule(apply_vars, pd_expression):
         return df
     else:
         # Regular expression to match column names
-        ncv = NamedColumnVisitor()
-        ncv.visit(ast.parse(pd_expression))
+        column_pattern = re.compile(r'\b[A-Za-z_]\w*\b')
+        columns = set(re.findall(column_pattern, where_clause))
+
         # Convert to list if needed
-        columns_list = list(ncv.names)
-        print("columns in pd_expression:", columns_list)
+        columns_list = list(columns)
+        print("columns in where_clause:", columns_list)
         if columns_list:
             ext_df = pivot(*columns_list)
             common_columns = set(df.columns) & set(ext_df.columns)
             df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        schedule = eval(pd_expression)
-        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
+        schedule = df.query(where_clause)
+        for var in [v for v in apply_vars if v not in schedule.columns]:
+            schedule.loc[:,var] = np.nan
         return schedule
