@@ -197,7 +197,7 @@ def pivot(cursor, *args):
         # Execute the final SQL query
         cursor.execute(final_sql)
         df = pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
-        return utils.cast_dtypes(df)
+        return df
 
     if not args:
         return _pivot_star()
@@ -239,4 +239,4 @@ def pivot(cursor, *args):
         common_columns = set(df1.columns) & set(df2.columns)
         return pd.merge(df1, df2, on=list(common_columns), how="outer")
 
-    return utils.cast_dtypes(reduce(join_on_common_columns, dataframes))
+    return reduce(join_on_common_columns, dataframes)

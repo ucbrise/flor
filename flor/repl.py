@@ -1,6 +1,7 @@
 import ast
 import json
 import re
+import shutil
 import numpy as np
 import pandas as pd
 from typing import List, Optional
@@ -42,48 +43,18 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
 
     with open(".flor.json", 'r') as f:
         main_script = json.load(f)[-1]["FILENAME"]
-
-    with open(main_script, "r") as f:
-        anchor_script_buffer = f.read()
-        tree = ast.parse(anchor_script_buffer)
-
     
     temp_file = tempfile.NamedTemporaryFile(delete=False)
-    with open(temp_file.name, "w") as f:
-        f.write(anchor_script_buffer)
-
-    lev = LoggedExpVisitor()
-    lev.visit(tree)
+    shutil.copy2(main_script, temp_file.name)
 
     # First, we convert named_vars to linenos
-    # TODO: 
-    # case when integer supplied through apply_vars, 
-    #     you will need to infer var_name from ast
-    apply_linenos = [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars]
+    schedule = Schedule(apply_vars, where_clause, main_script)
 
-    # TODO: does schedule bring in dims?
-    schedule = get_schedule(apply_vars, where_clause)
-    if where_clause is None:
-        schedule = schedule[schedule[apply_vars].isna().any(axis=1)]
-
-    # Do a forward pass to determine replay log level
-    log_lvl = max([lev.line2level[lineno] for lineno in apply_linenos])
-    print("log level:", log_lvl)
-    # TODO: case when epoch=1,3,5
-    if log_lvl == 0:
-        query_op = []
-    elif log_lvl == 1:
-        query_op = ['epoch=1', 'step=0']
-    elif log_lvl == 2:
-        query_op = ['epoch=1', 'step=1']
-    else:
-        raise NotImplementedError("Please open a pull request")
-
-
-    if not schedule.empty:
+    if not schedule.is_empty():
         print()
         print(schedule)
         print()
+
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
@@ -111,39 +82,82 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
             versions.reset_hard()
             versions.checkout(active_branch)
             os.remove(temp_file.name)
-        
-    schedule = get_schedule(apply_vars, where_clause)
+            schedule = get_schedule(apply_vars, where_clause)
 
-    print()
-    print(schedule)
-    print()
+        print()
+        print(schedule)
+        print()
 
-        
-
-
-    
-def get_schedule(apply_vars, where_clause):
-    df = pivot()
-    if where_clause is None:
-        if (sub_vars := [v for v in apply_vars if v not in df.columns]):
-            # Function to perform the natural join
-            ext_df = pivot(*sub_vars)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        return df
     else:
-        # Regular expression to match column names
-        column_pattern = re.compile(r'\b[A-Za-z_]\w*\b')
-        columns = set(re.findall(column_pattern, where_clause))
+        print("Nothing to do.")
 
-        # Convert to list if needed
-        columns_list = list(columns)
-        print("columns in where_clause:", columns_list)
-        if columns_list:
-            ext_df = pivot(*columns_list)
-            common_columns = set(df.columns) & set(ext_df.columns)
-            df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-        schedule = df.query(where_clause)
-        schedule = schedule.copy() # appease pandas warning
-        schedule[[v for v in apply_vars if v not in schedule.columns]] = np.nan
-        return schedule
+
+        
+class Schedule:
+    def __init__(self, apply_vars, where_clause, main_script=None) -> None:
+        if main_script is None:
+            with open(".flor.json", 'r') as f:
+                main_script = json.load(f)[-1]["FILENAME"]
+        
+        with open(main_script, "r") as f:
+            tree = ast.parse(f.read())
+
+        self.lev = LoggedExpVisitor()
+        self.lev.visit(tree)
+        # TODO: 
+        # case when integer supplied through apply_vars, 
+        #     you will need to infer var_name from ast
+        self.apply_vars = apply_vars
+        self.apply_linenos = [int(v) if utils.is_integer(v) else self.lev.names[v] for v in apply_vars]
+        self.where_clause = where_clause
+        df = pivot()
+        if where_clause is None:
+            if (sub_vars := [v for v in apply_vars if v not in df.columns]):
+                # Function to perform the natural join
+                ext_df = pivot(*sub_vars)
+                common_columns = set(df.columns) & set(ext_df.columns)
+                df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+            self.df = df
+        else:
+            # Regular expression to match column names
+            column_pattern = re.compile(r'\b[A-Za-z_]\w*\b')
+            columns = set(re.findall(column_pattern, where_clause))
+
+            # Convert to list if needed
+            columns_list = list(columns)
+            self.vars_in_where = columns_list
+            print("columns in where_clause:", columns_list)
+            if columns_list:
+                ext_df = pivot(*columns_list)
+                common_columns = set(df.columns) & set(ext_df.columns)
+                df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
+            self.df = df.query(where_clause)
+
+    def is_empty(self):
+        return self.df.empty
+    
+    def get_loglvl(self):
+        self.dims = [c.split('_')[0] for c in self.df.columns if str(c).endswith('_iteration')]
+        loglvl = len(self.dims)
+        return loglvl
+    
+    def iter_runs():
+        ts = ''
+        hexsha = ''
+        return ts, hexsha
+
+    def __str__(self):
+        if self.where_clause is None:
+            return self.df[self.df[self.apply_vars].isna().any(axis=1)].__str__()
+        else:
+            schedule = self.df.copy() # appease pandas warning
+            schedule[[v for v in self.apply_vars if v not in schedule.columns]] = np.nan
+            return schedule.__str__()
+        
+    def __repr__(self):
+        if self.where_clause is None:
+            return self.df[self.df[self.apply_vars].isna().any(axis=1)].__repr__()
+        else:
+            schedule = self.df.copy() # appease pandas warning
+            schedule[[v for v in self.apply_vars if v not in schedule.columns]] = np.nan
+            return schedule.__repr__()
