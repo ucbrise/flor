@@ -56,6 +56,10 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
         print(schedule)
         print()
 
+        res = input("Continue [Y/n]? ")
+        if res.lower().strip() == 'n':
+            return schedule
+ 
         # Pick up on versions
         active_branch = versions.current_branch()
         try:
@@ -88,7 +92,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str]=None):
             versions.checkout(active_branch)
             os.remove(temp_file.name)
             schedule = Schedule(apply_vars, where_clause)
-            
+
         print()
         print(schedule)
         print()
