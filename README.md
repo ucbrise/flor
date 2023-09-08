@@ -1,4 +1,4 @@
-🌻 FlorDB: Multiversion Hindsight Logging for Model Training
+🌻 FlorDB: Multiversion Hindsight Logging for Continuous Training
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
