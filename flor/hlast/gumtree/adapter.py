@@ -1,3 +1,4 @@
+# type: ignore
 from abc import abstractmethod
 from itertools import zip_longest
 from typing import Any, Callable, Iterable, Optional, Protocol, TypeVar
