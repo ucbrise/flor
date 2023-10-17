@@ -241,7 +241,6 @@ def pivot(conn, *args):
         logs = logs.drop(columns=["ctx_id"])
         dataframes.append(logs)
 
-    # Function to perform the natural join
     def join_on_common_columns(df1, df2):
         common_columns = set(df1.columns) & set(df2.columns)
         return pd.merge(df1, df2, on=list(common_columns), how="outer")
