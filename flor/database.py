@@ -168,12 +168,13 @@ def get_column_names(cursor):
     return column_names
 
 
-def pivot(cursor, *args):
+def pivot(conn, *args):
     def _pivot_star():
-        cursor.execute(
-            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL;"
+        df = pd.read_sql(
+            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL",
+            conn,
         )
-        value_names = [str(singleton[0]).strip() for singleton in cursor.fetchall()]
+        value_names = df["value_name"].values
 
         # Build the dynamic part of the SQL query
         dynamic_sql = ", ".join(
@@ -195,19 +196,26 @@ def pivot(cursor, *args):
         """
 
         # Execute the final SQL query
-        cursor.execute(final_sql)
-        df = pd.DataFrame(cursor.fetchall(), columns=get_column_names(cursor))
-        return df
+        return pd.read_sql(
+            final_sql,
+            conn,
+            parse_dates=[
+                "tstamp",
+            ],
+            coerce_float=True,
+        )
 
     if not args:
         return _pivot_star()
 
     dataframes = []
-    loops = pd.DataFrame(read_from_loops(cursor), columns=get_column_names(cursor))
+    loops = pd.read_sql("SELECT * FROM LOOPS", conn, coerce_float=False)
     for value_name in args:
-        logs = pd.DataFrame(
-            read_from_logs(cursor, where_clause=f'value_name = "{value_name}"'),
-            columns=get_column_names(cursor)
+        logs = pd.read_sql(
+            f'SELECT * FROM logs WHERE value_name = "{value_name}"',
+            conn,
+            parse_dates=["tstamp"],
+            coerce_float=True,
         )
         logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
         logs = logs.rename(columns={"value": value_name})
@@ -221,11 +229,10 @@ def pivot(cursor, *args):
                 ],
             )
             loop_name = logs["loop_name"].values[0]
-            logs = logs.drop(columns=["loop_name"])
+            logs = logs.drop(columns=["loop_name", "loop_entries"])
             logs = logs.rename(
                 columns={
-                    "loop_entries": loop_name + "_entries",
-                    "loop_iteration": loop_name + "_iteration",
+                    "loop_iteration": loop_name,
                 }
             )
             logs["ctx_id"] = logs["parent_ctx_id"]
@@ -239,4 +246,6 @@ def pivot(cursor, *args):
         common_columns = set(df1.columns) & set(df2.columns)
         return pd.merge(df1, df2, on=list(common_columns), how="outer")
 
-    return reduce(join_on_common_columns, dataframes)
+    dataframes = reduce(join_on_common_columns, dataframes)
+    cols = [c for c in dataframes.columns if c not in args] + list(args)
+    return dataframes[cols]

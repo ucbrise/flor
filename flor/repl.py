@@ -18,10 +18,10 @@ from . import versions
 
 
 def pivot(*args):
-    conn, cursor = database.conn_and_cursor()
+    conn, _ = database.conn_and_cursor()
     # Query the distinct value_names
     try:
-        df = database.pivot(cursor, *(args if args else tuple()))
+        df = database.pivot(conn, *(args if args else tuple()))
         return df
     finally:
         conn.close()
@@ -199,7 +199,7 @@ class Schedule:
 
     def __str__(self):
         if self.where_clause is None:
-            return self.df[self.df[self.apply_vars].isna().any(axis=1)].__str__() # type: ignore
+            return self.df[self.df[self.apply_vars].isna().any(axis=1)].__str__()  # type: ignore
         else:
             schedule = self.df.copy()  # appease pandas warning
             schedule[[v for v in self.apply_vars if v not in schedule.columns]] = np.nan
