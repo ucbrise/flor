@@ -224,11 +224,8 @@ def pivot(conn, *args):
                 right=logs,
                 left=loops,
                 how="inner",
-                on=[
-                    "ctx_id",
-                ],
-            )
-            loop_name = logs["loop_name"].values[0]
+                on=["ctx_id",])
+            loop_name = logs["loop_name"].unique()[0]
             logs = logs.drop(columns=["loop_name", "loop_entries"])
             logs = logs.rename(
                 columns={
