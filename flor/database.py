@@ -245,6 +245,7 @@ def pivot(conn, *args):
         common_columns = set(df1.columns) & set(df2.columns)
         return pd.merge(df1, df2, on=list(common_columns), how="outer")
 
-    dataframes = reduce(join_on_common_columns, dataframes)
-    cols = [c for c in dataframes.columns if c not in args] + list(args)
-    return dataframes[cols]
+    all_joined = reduce(join_on_common_columns, dataframes)
+    cols = [c for c in all_joined.columns if c not in args]
+    cols += list(args)
+    return all_joined[cols]
