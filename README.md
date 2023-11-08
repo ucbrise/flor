@@ -1,6 +1,6 @@
 FLOR
 ================================
-[![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
+[![PyPI](https://img.shields.io/pypi/v/florflow.svg?nocache=1)](https://pypi.org/project/florflow/)
 
 
 
