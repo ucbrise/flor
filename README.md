@@ -1,4 +1,4 @@
-FlorDB: Multiversion Hindsight Logging for Continuous Training
+FLOR
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
@@ -8,7 +8,9 @@ Flor (for "fast low-overhead recovery") is a record-replay system for deep learn
 
 FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML.
 
-Flor and FlorDB are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
+FlorFlow will extend FlorDB to support Dataflow operations.
+
+Flor, FlorDB, and FlorFlow are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
 
 [![FlorDB Demo](https://img.youtube.com/vi/x4ObDb5B2Us/0.jpg)](https://youtu.be/x4ObDb5B2Us)
 
@@ -17,7 +19,7 @@ You can follow along yourself by starting a Jupyter server from this directory a
 # Installation
 
 ```bash
-pip install flordb
+pip install florflow
 ```
 
 # Getting Started
