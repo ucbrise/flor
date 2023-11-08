@@ -32,7 +32,7 @@ $ cd ml_tutorial/
 ```
 
 Run the `train.py` script to train a small linear model, 
-and test your `flordb` installation.
+and test your `florflow` installation.
 
 ```bash
 $ python train.py
@@ -71,7 +71,7 @@ $ python train.py --kwargs hidden=75
 
 # Application Programming Interface (API)
 
-FlorDB is shipped with utilities for serializing and checkpointing PyTorch state,
+Flor is shipped with utilities for serializing and checkpointing PyTorch state,
 and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
 
 The model developer passes objects for checkpointing to `flor.checkpointing(**kwargs)`,
