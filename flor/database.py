@@ -175,6 +175,9 @@ def pivot(conn, *args):
             conn,
         )
         value_names = df["value_name"].values
+        if not value_names:
+            print("No default values to pivot on")
+            return pd.DataFrame()
 
         # Build the dynamic part of the SQL query
         dynamic_sql = ", ".join(
@@ -224,7 +227,10 @@ def pivot(conn, *args):
                 right=logs,
                 left=loops,
                 how="inner",
-                on=["ctx_id",])
+                on=[
+                    "ctx_id",
+                ],
+            )
             loop_name = logs["loop_name"].unique()[0]
             logs = logs.drop(columns=["loop_name", "loop_entries"])
             logs = logs.rename(
