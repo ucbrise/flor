@@ -10,3 +10,4 @@ sh
 matplotlib
 scikit-learn
 seaborn
+tqdm
