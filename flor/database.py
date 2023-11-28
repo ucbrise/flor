@@ -175,7 +175,7 @@ def pivot(conn, *args):
             conn,
         )
         value_names = df["value_name"].values
-        if not value_names:
+        if len(value_names) == 0:
             print("No default values to pivot on")
             return pd.DataFrame()
 
