@@ -121,7 +121,6 @@ def cleanup():
         return
 
     # Add logging statements on REPLAY
-    os.path.makedirs(HOMEDIR, exist_ok=True)
     conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
     cursor = conn.cursor()
     database.create_tables(cursor)
