@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from dataclasses import dataclass
 from .versions import current_branch, to_shadow
+import sys
 
 
 @dataclass
@@ -84,26 +85,32 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
-    # Existing code
-    args = parser.parse_args()
-    flags.args = args
+    flor_commands = ["unpack", "replay", "query", "pivot"]
 
-    if args.replay_flor is not None:
+    # Check if any of the flor_commands is in the arguments
+    if any(command in sys.argv for command in flor_commands):
+        args = parser.parse_args()
+        flags.args = args
+    else:
+        flags.args = None
+
+    if flags.args is not None:
         flags.queryparameters = {}
-        for d in args.replay_flor:
-            flags.queryparameters.update(d)
-        replay_initialize()
+        if flags.args.replay_flor is not None:
+            for d in flags.args.replay_flor:
+                flags.queryparameters.update(d)
+            replay_initialize()
 
     # Process the key-value pair arguments
-    if args.kwargs is not None:
-        if not args.kwargs:
+    if flags.args is not None and flags.args.kwargs is not None:
+        if not flags.args.kwargs:
             raise RuntimeError("--kwargs called but no arguments added")
-        for kwarg in args.kwargs:
+        for kwarg in flags.args.kwargs:
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
 
-    if args.flor_command == "pivot":
-        flags.columns = args.columns
+    if flags.args is not None and flags.args.flor_command == "pivot":
+        flags.columns = flags.args.columns
 
     return flags
 

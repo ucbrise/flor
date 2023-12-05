@@ -87,7 +87,9 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     )
     layers[name] = 0
     for each in tqdm(
-        slice(name, iterator), position=pos, leave=(True if pos == 0 else False)
+        enumerate(
+            slice(name, iterator), position=pos, leave=(True if pos == 0 else False)
+        )
     ):
         layers[name] = list(iterator).index(each) + 1 if pos == 0 else layers[name] + 1
         start_t = time.perf_counter()
@@ -181,7 +183,9 @@ def slice(name, iterator):
     original = list(iterator)
 
     if not cli.flags.queryparameters:
-        return [original[-1],]
+        return [
+            original[-1],
+        ]
 
     qop = (cli.flags.queryparameters).get(name, 0)
     if qop == 1:
@@ -191,7 +195,6 @@ def slice(name, iterator):
     if qop == 0:
         return new_slice
 
-    
     assert isinstance(qop, (list, tuple))
     for i in qop:
         new_slice.append(original[int(i) - 1])
