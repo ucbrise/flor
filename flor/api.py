@@ -87,15 +87,15 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     )
     layers[name] = 0
     for each in tqdm(
-        enumerate(
-            slice(name, iterator), position=pos, leave=(True if pos == 0 else False)
-        )
+        enumerate(slice(name, iterator)),
+        position=pos,
+        leave=(True if pos == 0 else False),
     ):
-        layers[name] = list(iterator).index(each) + 1 if pos == 0 else layers[name] + 1
+        layers[name] = list(iterator).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
         start_t = time.perf_counter()
         if pos == 0 and cli.in_replay_mode():
             load_chkpt()
-        yield each
+        yield each  # type: ignore
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
             output_buffer.append(
