@@ -91,7 +91,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         position=pos,
         leave=(True if pos == 0 else False),
     ):
-        layers[name] = list(iterator).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
+        layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
         start_t = time.perf_counter()
         if pos == 0 and cli.in_replay_mode():
             load_chkpt()
