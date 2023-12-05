@@ -95,7 +95,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         start_t = time.perf_counter()
         if pos == 0 and cli.in_replay_mode():
             load_chkpt()
-        yield each  # type: ignore
+        yield each[1]  # type: ignore
         elapsed_t = time.perf_counter() - start_t
         if pos == 0:
             output_buffer.append(
