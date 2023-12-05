@@ -6,8 +6,9 @@ import pandas as pd
 
 import warnings
 
-warnings.filterwarnings('ignore', category=UserWarning, message='Could not infer format.*')
-
+warnings.filterwarnings(
+    "ignore", category=UserWarning, message="Could not infer format.*"
+)
 
 
 def is_jsonable(x):
@@ -74,6 +75,7 @@ def split_and_retrieve_elements(array, count=10):
 
     return first_10_left, last_10_right
 
+
 def is_integer(string):
     try:
         int(string)
@@ -81,10 +83,16 @@ def is_integer(string):
     except ValueError:
         return False
 
+
 def cast_dtypes(df: pd.DataFrame, columns=None):
-    for col in (columns if columns is not None else df.columns):
-        if df[col].dtype == 'object':
-            df[col] = pd.to_numeric(df[col], errors='ignore')
-        if df[col].dtype == 'object':
-            df[col] = pd.to_datetime(df[col], errors='ignore')
+    for col in columns if columns is not None else df.columns:
+        if df[col].dtype == "object":
+            df[col] = pd.to_numeric(df[col], errors="ignore")
+        if df[col].dtype == "object":
+            df[col] = pd.to_datetime(df[col], errors="ignore")
     return df
+
+
+def latest(df: pd.DataFrame):
+    # return df where tstamp is the latest tstamp (and only the latest tstamp)
+    return df[df["tstamp"] == df["tstamp"].max()]
