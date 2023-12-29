@@ -145,6 +145,7 @@ def commit():
         database.unpack(output_buffer, cursor)
     conn.commit()
     conn.close()
+    output_buffer.clear()
 
 
 @atexit.register
