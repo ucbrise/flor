@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from .constants import *
+from .clock import Clock
 from . import cli
 from . import utils
 from . import versions
@@ -130,14 +131,14 @@ def commit():
             output_buffer.append(
                 {
                     "PROJID": PROJID,
-                    "TSTAMP": TIMESTAMP,
+                    "TSTAMP": Clock.get_time(),
                     "FILENAME": SCRIPTNAME,
                 }
             )
             database.unpack(output_buffer, cursor)
             with open(".flor.json", "w") as f:
                 json.dump(output_buffer, f, indent=2)
-            versions.git_commit(f"FLOR::Auto-commit::{TIMESTAMP}")
+            versions.git_commit(f"FLOR::Auto-commit::{Clock.get_time()}")
     else:
         output_buffer.append(
             {"PROJID": PROJID, "TSTAMP": cli.flags.old_tstamp, "FILENAME": SCRIPTNAME}

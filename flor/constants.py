@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 import sys
 
@@ -8,12 +7,10 @@ HOMEDIR = os.path.join(os.path.expanduser("~"), ".flor")
 os.makedirs(HOMEDIR, exist_ok=True)
 SHADOW_BRANCH_PREFIX = "flor."
 SCRIPTNAME = os.path.basename(sys.argv[0])
-TIMESTAMP = datetime.now().isoformat(timespec="seconds")
 
 
 __all__ = [
     "SHADOW_BRANCH_PREFIX",
-    "TIMESTAMP",
     "CURRDIR",
     "PROJID",
     "HOMEDIR",

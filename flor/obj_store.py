@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from .constants import *
+from .clock import Clock
 from . import utils
 from . import cli
 
@@ -115,7 +116,7 @@ def deserialize(layers, name, obj):
 
 def get_shelf():
     if not cli.in_replay_mode():
-        tstamp = TIMESTAMP
+        tstamp = Clock.get_time()
     else:
         assert cli.flags.old_tstamp is not None
         tstamp = cli.flags.old_tstamp
