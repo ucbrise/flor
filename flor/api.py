@@ -147,6 +147,7 @@ def commit():
     conn.commit()
     conn.close()
     output_buffer.clear()
+    Clock.set_new_time()
 
 
 @atexit.register
