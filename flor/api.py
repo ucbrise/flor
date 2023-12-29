@@ -117,11 +117,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     )
 
 
-@atexit.register
-def cleanup():
-    if skip_cleanup:
-        return
-
+def commit():
     # Add logging statements on REPLAY
     conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
     cursor = conn.cursor()
@@ -149,6 +145,13 @@ def cleanup():
         database.unpack(output_buffer, cursor)
     conn.commit()
     conn.close()
+
+
+@atexit.register
+def cleanup():
+    if skip_cleanup:
+        return
+    commit()
 
 
 def _deferred_init():
@@ -201,4 +204,4 @@ def slice(name, iterator):
     return new_slice
 
 
-__all__ = ["log", "arg", "checkpointing", "loop"]
+__all__ = ["log", "arg", "checkpointing", "loop", "commit"]

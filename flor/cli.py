@@ -116,9 +116,7 @@ def parse_args():
 
 
 def in_replay_mode():
-    if cond := flags.queryparameters is not None:
-        pass
-    return cond
+    return flags.queryparameters is not None
 
 
 def replay_initialize():
