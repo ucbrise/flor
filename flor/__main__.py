@@ -33,7 +33,7 @@ def main():
             user_query = str(flags.args.q)
             df = repl.query(user_query)
             print(df)
-        elif flags.args.flor_command == "dataframes":
+        elif flags.args.flor_command == "dataframe":
             df = repl.dataframe(
                 *(flags.args.columns if flags.args.columns else tuple())
             )
