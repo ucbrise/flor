@@ -44,7 +44,7 @@ Flor will manage checkpoints, logs, command-line arguments, code changes, and ot
 From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
 
 ```bash
-$ python -m flor pivot
+$ python -m flor dataframe
 
         projid               tstamp  filename device seed hidden epochs batch_size     lr print_every accuracy correct
 0  ml_tutorial  2023-08-28T15:04:07  train.py    cpu   78    500      5         32  0.001         500    97.71    9771
