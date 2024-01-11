@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from dataclasses import dataclass
 from .versions import current_branch, to_shadow
+from .repl import dataframe
 import sys
 
 
@@ -111,6 +112,10 @@ def parse_args():
 
     if flags.args is not None and flags.args.flor_command == "dataframe":
         flags.columns = flags.args.columns
+        if flags.columns is None:
+            print(dataframe())
+        else:
+            print(dataframe(*flags.columns))
 
     return flags
 
