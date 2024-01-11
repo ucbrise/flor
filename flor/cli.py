@@ -77,7 +77,7 @@ def parse_args():
     )
 
     # Pivot command
-    pivot_parser = flor_parser.add_parser("pivot")
+    pivot_parser = flor_parser.add_parser("dataframe")
     pivot_parser.add_argument(
         "columns",
         nargs="?",
@@ -85,7 +85,7 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
-    flor_commands = ["unpack", "replay", "query", "pivot"]
+    flor_commands = ["unpack", "replay", "query", "dataframe"]
 
     # Check if any of the flor_commands is in the arguments
     if any(command in sys.argv for command in flor_commands):
@@ -109,7 +109,7 @@ def parse_args():
             key, value = kwarg.split("=")
             flags.hyperparameters[key] = value
 
-    if flags.args is not None and flags.args.flor_command == "pivot":
+    if flags.args is not None and flags.args.flor_command == "dataframe":
         flags.columns = flags.args.columns
 
     return flags
