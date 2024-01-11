@@ -34,7 +34,9 @@ def main():
             df = repl.query(user_query)
             print(df)
         elif flags.args.flor_command == "pivot":
-            df = repl.pivot(*(flags.args.columns if flags.args.columns else tuple()))
+            df = repl.dataframe(
+                *(flags.args.columns if flags.args.columns else tuple())
+            )
             print(df)
         elif flags.args.flor_command == "replay":
             if flags.args.where_clause:

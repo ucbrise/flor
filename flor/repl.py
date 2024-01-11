@@ -17,7 +17,7 @@ from . import database
 from . import versions
 
 
-def pivot(*args):
+def dataframe(*args):
     conn, _ = database.conn_and_cursor()
     # Query the distinct value_names
     try:
@@ -114,7 +114,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
         filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
         if schedule.vars_in_where is not None:
             filtered_vs += schedule.vars_in_where
-        schedule = pivot(*filtered_vs)
+        schedule = dataframe(*filtered_vs)
         print()
         print(schedule)
         print()
@@ -132,11 +132,11 @@ class Schedule:
         self.apply_vars = apply_vars
         self.where_clause = where_clause
         self.vars_in_where = None
-        df = pivot()
+        df = dataframe()
         if where_clause is None:
             if sub_vars := [v for v in apply_vars if v not in df.columns]:
                 # Function to perform the natural join
-                ext_df = pivot(*sub_vars)
+                ext_df = dataframe(*sub_vars)
                 common_columns = set(df.columns) & set(ext_df.columns)
                 df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
             self.df = df
@@ -150,7 +150,7 @@ class Schedule:
             self.vars_in_where = columns_list
             print("columns in where_clause:", columns_list)
             if columns_list:
-                ext_df = pivot(*columns_list)
+                ext_df = dataframe(*columns_list)
                 common_columns = set(df.columns) & set(ext_df.columns)
                 df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
             self.df = utils.cast_dtypes(df).query(where_clause)
