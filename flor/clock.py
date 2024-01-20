@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from . import cli
 
 
 class Clock:
@@ -18,7 +19,10 @@ class Clock:
 
     @classmethod
     def get_datetime(cls):
-        return cls.current_datetime
+        if cli.in_replay_mode():
+            return cli.flags.old_tstamp
+        else:
+            return cls.current_datetime
 
     @classmethod
     def set_new_datetime(cls):

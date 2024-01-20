@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from .constants import *
 from .clock import Clock
+from .orm import Loop, Log, to_json
 from . import cli
 from . import utils
 from . import versions
@@ -24,6 +25,9 @@ T = TypeVar("T")
 output_buffer = []
 
 layers = {}
+loop_ctx = None
+entries = {}
+
 checkpoints = []
 checkpointing_clock = Clock()
 
@@ -36,8 +40,14 @@ def log(name, value):
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
     output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", name), "value", serializable_value
+        Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            loop_ctx,
+            name,
+            serializable_value,
+            1,
         )
     )
     tqdm.write(utils.to_string(layers, name, serializable_value))
@@ -88,37 +98,50 @@ def checkpointing(**kwargs):
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
+    global loop_ctx
     clock = Clock()
     clock.set_start_time()
     pos = len(layers)
     layers[name] = 0
+    ent_n = entries.get(name, 1)
+    entries[name] = ent_n + 1
+    loop_ctx = Loop(loop_ctx, name, ent_n, layers[name])
     for each in tqdm(
         enumerate(slice(name, iterator)),
         position=pos,
         leave=(True if pos == 0 else False),
     ):
         layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
+        loop_ctx.iteration = layers[name]
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
         yield each[1]  # type: ignore
         if pos == 0 and not cli.in_replay_mode():
             ckpt()
     output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", "delta::loop"),
-            "value",
+        Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            loop_ctx,
+            "delta::loop",
             clock.get_delta(),
+            3,
         )
     )
     del layers[name]
+    loop_ctx = loop_ctx.parent
 
 
 def commit():
     # Add suffix time delta to output_buffer
     output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", "delta::suffix"),
-            "value",
+        Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            loop_ctx,
+            "delta::suffix",
             checkpointing_clock.get_delta(),
         )
     )
@@ -131,21 +154,10 @@ def commit():
         # RECORD
         branch = versions.current_branch()
         if branch is not None:
-            output_buffer.append(
-                {
-                    "PROJID": PROJID,
-                    "TSTAMP": Clock.get_datetime(),
-                    "FILENAME": SCRIPTNAME,
-                }
-            )
             database.unpack(output_buffer, cursor)
-            with open(".flor.json", "w") as f:
-                json.dump(output_buffer, f, indent=2)
+            to_json(output_buffer)
             versions.git_commit(f"FLOR::Auto-commit::{Clock.get_datetime()}")
     else:
-        output_buffer.append(
-            {"PROJID": PROJID, "TSTAMP": cli.flags.old_tstamp, "FILENAME": SCRIPTNAME}
-        )
         database.unpack(output_buffer, cursor)
     conn.commit()
     conn.close()

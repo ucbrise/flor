@@ -6,8 +6,10 @@ import os
 from pathlib import Path
 
 from .constants import *
-from .orm import ORM, Loop
+
+from .orm import Loop
 from . import utils
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def conn_and_cursor():
@@ -21,12 +23,7 @@ def unpack(output_buffer, cursor):
         return
     print("Unpacking ", output_buffer[-1])
 
-    # Structure the output buffer
-    orm = ORM()
-    stem = output_buffer[-1]
-    for obj in output_buffer[:-1]:
-        orm.parse_log(stem, obj, orm.parse_loop(obj))
-
+    loops: Dict[Tuple[int, str, int, int], int] = {}
     # Read existing loop ids to get ctx_ids, know when to create new ones
     for (
         ctx_id,
@@ -35,7 +32,7 @@ def unpack(output_buffer, cursor):
         loop_entries,
         loop_iteration,
     ) in read_from_loops(cursor):
-        orm.loops[
+        loops[
             (
                 int(parent_ctx_id)
                 if (isinstance(parent_ctx_id, str) or isinstance(parent_ctx_id, int))
@@ -59,17 +56,17 @@ def unpack(output_buffer, cursor):
                 int(loop.entries),
                 int(loop.iteration),
             )
-        ) in orm.loops:
-            return orm.loops[k]
+        ) in loops:
+            return loops[k]
         else:
-            v = len(orm.loops)
-            orm.loops[k] = v
+            v = len(loops)
+            loops[k] = v
             insert_data_into_loops(
                 v, parent_ctx_id, loop.name, loop.entries, loop.iteration, cursor
             )
             return v
 
-    for log_record in orm.logs:
+    for log_record in output_buffer:
         insert_data_into_logs(
             log_record.projid,
             log_record.tstamp,
