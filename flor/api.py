@@ -88,6 +88,8 @@ def checkpointing(**kwargs):
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
+    clock = Clock()
+    clock.set_start_time()
     pos = len(layers)
     layers[name] = 0
     for each in tqdm(
@@ -95,23 +97,19 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         position=pos,
         leave=(True if pos == 0 else False),
     ):
-        clock = Clock()
-        clock.set_start_time()
         layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
         yield each[1]  # type: ignore
-        elapsed_t = clock.get_delta()
-        output_buffer.append(
-            utils.add2copy(
-                utils.add2copy(layers, "value_name", "delta::iteration"),
-                "value",
-                elapsed_t,
-            )
+        if pos == 0 and not cli.in_replay_mode():
+            ckpt()
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", "delta::loop"),
+            "value",
+            clock.get_delta(),
         )
-        if pos == 0:
-            if is_due_ckpt(elapsed_t):
-                ckpt()
+    )
     del layers[name]
 
 
@@ -172,10 +170,6 @@ def _deferred_init():
                 versions.current_branch() is not None
             ), "Running from a detached HEAD?"
             versions.to_shadow()
-
-
-def is_due_ckpt(elapsed_t):
-    return not cli.in_replay_mode()
 
 
 def ckpt():
