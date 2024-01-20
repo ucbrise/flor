@@ -25,6 +25,7 @@ output_buffer = []
 
 layers = {}
 checkpoints = []
+checkpointing_clock = Clock()
 
 skip_cleanup = True
 
@@ -70,55 +71,59 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 
 @contextmanager
 def checkpointing(**kwargs):
+    # Add prefix time delta to output_buffer
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", "delta::prefix"),
+            "value",
+            checkpointing_clock.get_delta(),
+        )
+    )
     # set up the context
     checkpoints.extend(list(kwargs.items()))
     yield
     # tear down the context if needed
     checkpoints.clear()
+    checkpointing_clock.set_start_time()
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     pos = len(layers)
-    output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", f"enter::{name}"),
-            "value",
-            datetime.now().isoformat(timespec="seconds"),
-        )
-    )
     layers[name] = 0
     for each in tqdm(
         enumerate(slice(name, iterator)),
         position=pos,
         leave=(True if pos == 0 else False),
     ):
+        clock = Clock()
+        clock.set_start_time()
         layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
-        start_t = time.perf_counter()
         if pos == 0 and cli.in_replay_mode():
-            load_chkpt()
+            load_ckpt()
         yield each[1]  # type: ignore
-        elapsed_t = time.perf_counter() - start_t
-        if pos == 0:
-            output_buffer.append(
-                utils.add2copy(
-                    utils.add2copy(layers, "value_name", "auto::secs"),
-                    "value",
-                    elapsed_t,
-                )
+        elapsed_t = clock.get_delta()
+        output_buffer.append(
+            utils.add2copy(
+                utils.add2copy(layers, "value_name", "delta::iteration"),
+                "value",
+                elapsed_t,
             )
-            if is_due_chkpt(elapsed_t):
-                chkpt()
-    del layers[name]
-    output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", f"exit::{name}"),
-            "value",
-            datetime.now().isoformat(timespec="seconds"),
         )
-    )
+        if pos == 0:
+            if is_due_ckpt(elapsed_t):
+                ckpt()
+    del layers[name]
 
 
 def commit():
+    # Add suffix time delta to output_buffer
+    output_buffer.append(
+        utils.add2copy(
+            utils.add2copy(layers, "value_name", "delta::suffix"),
+            "value",
+            checkpointing_clock.get_delta(),
+        )
+    )
     # Add logging statements on REPLAY
     conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
     cursor = conn.cursor()
@@ -131,14 +136,14 @@ def commit():
             output_buffer.append(
                 {
                     "PROJID": PROJID,
-                    "TSTAMP": Clock.get_time(),
+                    "TSTAMP": Clock.get_datetime(),
                     "FILENAME": SCRIPTNAME,
                 }
             )
             database.unpack(output_buffer, cursor)
             with open(".flor.json", "w") as f:
                 json.dump(output_buffer, f, indent=2)
-            versions.git_commit(f"FLOR::Auto-commit::{Clock.get_time()}")
+            versions.git_commit(f"FLOR::Auto-commit::{Clock.get_datetime()}")
     else:
         output_buffer.append(
             {"PROJID": PROJID, "TSTAMP": cli.flags.old_tstamp, "FILENAME": SCRIPTNAME}
@@ -147,7 +152,8 @@ def commit():
     conn.commit()
     conn.close()
     output_buffer.clear()
-    Clock.set_new_time()
+    Clock.set_new_datetime()
+    checkpointing_clock.s_time = None
 
 
 @atexit.register
@@ -168,16 +174,16 @@ def _deferred_init():
             versions.to_shadow()
 
 
-def is_due_chkpt(elapsed_t):
+def is_due_ckpt(elapsed_t):
     return not cli.in_replay_mode()
 
 
-def chkpt():
+def ckpt():
     for name, obj in checkpoints:
         obj_store.serialize(layers, name, obj)
 
 
-def load_chkpt():
+def load_ckpt():
     for name, obj in checkpoints:
         obj_store.deserialize(layers, name, obj)
 

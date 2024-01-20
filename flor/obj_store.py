@@ -116,7 +116,7 @@ def deserialize(layers, name, obj):
 
 def get_shelf():
     if not cli.in_replay_mode():
-        tstamp = Clock.get_time()
+        tstamp = Clock.get_datetime()
     else:
         assert cli.flags.old_tstamp is not None
         tstamp = cli.flags.old_tstamp

@@ -1,4 +1,4 @@
-from .clock import start_time
+from .clock import Clock
 from .constants import *
 from . import cli
 
