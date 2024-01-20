@@ -53,7 +53,7 @@ class ORM:
                 self.entries[loop_address] += 1
             else:
                 self.entries[loop_address] = 1
-            loop_name, loop_iteration = obj.items()[-3]
+            loop_name, loop_iteration = list(obj.items())[-3]
 
             loop = Loop(None, loop_name, self.entries[loop_address], loop_iteration)
             if self.prev_loops and self.prev_loops[-1].name != loop_name:

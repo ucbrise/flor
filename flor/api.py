@@ -158,7 +158,6 @@ def commit():
 
 @atexit.register
 def cleanup():
-    pdb.set_trace()
     if skip_cleanup:
         return
     commit()

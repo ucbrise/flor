@@ -85,7 +85,7 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
-    flor_commands = ["unpack", "replay", "query", "dataframe"]
+    flor_commands = ["--kwargs", "unpack", "replay", "query", "dataframe"]
 
     # Check if any of the flor_commands is in the arguments
     if any(command in sys.argv for command in flor_commands):
@@ -94,12 +94,11 @@ def parse_args():
     else:
         flags.args = None
 
-    if flags.args is not None:
+    if flags.args is not None and flags.args.replay_flor is not None:
         flags.queryparameters = {}
-        if flags.args.replay_flor is not None:
-            for d in flags.args.replay_flor:
-                flags.queryparameters.update(d)
-            replay_initialize()
+        for d in flags.args.replay_flor:
+            flags.queryparameters.update(d)
+        replay_initialize()
 
     # Process the key-value pair arguments
     if flags.args is not None and flags.args.kwargs is not None:
