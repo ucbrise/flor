@@ -121,6 +121,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         yield each[1]  # type: ignore
         if pos == 0 and not cli.in_replay_mode():
             ckpt()
+    loop_ctx = loop_ctx.parent
     output_buffer.append(
         Log(
             PROJID,
@@ -133,7 +134,6 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         )
     )
     del layers[name]
-    loop_ctx = loop_ctx.parent
 
 
 def commit():
