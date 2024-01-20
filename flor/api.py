@@ -143,6 +143,7 @@ def commit():
             loop_ctx,
             "delta::suffix",
             checkpointing_clock.get_delta(),
+            3,
         )
     )
     # Add logging statements on REPLAY
