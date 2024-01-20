@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 from .constants import *
 from .clock import Clock
@@ -13,12 +14,8 @@ from typing import Any, Iterable, Iterator, TypeVar, Optional, Union
 from contextlib import contextmanager
 
 from tqdm import tqdm
-import json
 import atexit
 import sqlite3
-
-import time
-from datetime import datetime
 
 T = TypeVar("T")
 
@@ -44,7 +41,7 @@ def log(name, value):
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx,
+            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
             name,
             serializable_value,
             1,
@@ -87,7 +84,7 @@ def checkpointing(**kwargs):
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx,
+            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
             "delta::prefix",
             checkpointing_clock.get_delta(),
             3,
@@ -109,7 +106,9 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     layers[name] = 0
     ent_n = entries.get(name, 1)
     entries[name] = ent_n + 1
-    loop_ctx = Loop(loop_ctx, name, ent_n, layers[name])
+    loop_ctx = Loop(
+        loop_ctx if loop_ctx is None else deepcopy(loop_ctx), name, ent_n, layers[name]
+    )
     for each in tqdm(
         enumerate(slice(name, iterator)),
         position=pos,
@@ -127,7 +126,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx,
+            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
             "delta::loop",
             clock.get_delta(),
             3,
@@ -144,7 +143,7 @@ def commit():
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx,
+            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
             "delta::suffix",
             checkpointing_clock.get_delta(),
             3,
