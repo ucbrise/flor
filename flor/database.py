@@ -167,7 +167,7 @@ def get_column_names(cursor):
 def pivot(conn, *args):
     def _pivot_star():
         df = pd.read_sql(
-            "SELECT DISTINCT value_name FROM logs WHERE ctx_id IS NULL",
+            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL",
             conn,
         )
         value_names = df["value_name"].values
@@ -190,7 +190,7 @@ def pivot(conn, *args):
             filename,
             {dynamic_sql}
         FROM logs
-        WHERE AND ctx_id IS NULL
+        WHERE value_type = 1 AND ctx_id IS NULL
         GROUP BY projid, tstamp, filename;
         """
 
