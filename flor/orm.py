@@ -24,12 +24,14 @@ class Log:
     value: Any
     type: Val_Type
 
+
 class ORM:
     def __init__(self) -> None:
-        self.entries: Dict[str, int] = {}
         self.logs: List[Log] = []
         self.loops: Dict[Tuple[int, str, int, int], int] = {}
 
+        self.prev_loops = []
+        self.entries = {}
 
     def parse_log(self, stem, obj, loop):
         log_record = Log(
@@ -44,17 +46,19 @@ class ORM:
         self.logs.append(log_record)
         return log_record
 
-
     def parse_loop(self, obj):
-        loop = None
-        for k, v in self.entries.items():
-            if k in obj:
-                loop = Loop(loop, k, v, obj[k])
-        return loop
+        if len(obj) > 2:
+            loop_address = tuple(obj.keys())[0:-2]
+            if loop_address in self.entries:
+                self.entries[loop_address] += 1
+            else:
+                self.entries[loop_address] = 1
+            loop_name, loop_iteration = obj.items()[-3]
 
-
-    def parse_entries(self, obj):
-        if obj["value_name"].startswith("enter::"):
-            self.entries[obj["value_name"].split("::")[1]] = (
-                self.entries.get(obj["value_name"].split("::")[1], 0) + 1
-        )
+            loop = Loop(None, loop_name, self.entries[loop_address], loop_iteration)
+            if self.prev_loops and self.prev_loops[-1].name != loop_name:
+                for orm_loop in self.prev_loops:
+                    orm_loop.parent = loop
+                self.prev_loops.clear()
+            self.prev_loops.append(loop)
+            return loop

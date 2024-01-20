@@ -152,10 +152,13 @@ def commit():
     output_buffer.clear()
     Clock.set_new_datetime()
     checkpointing_clock.s_time = None
+    global skip_cleanup
+    skip_cleanup = True
 
 
 @atexit.register
 def cleanup():
+    pdb.set_trace()
     if skip_cleanup:
         return
     commit()

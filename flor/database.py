@@ -25,7 +25,6 @@ def unpack(output_buffer, cursor):
     orm = ORM()
     stem = output_buffer[-1]
     for obj in output_buffer[:-1]:
-        orm.parse_entries(obj)
         orm.parse_log(stem, obj, orm.parse_loop(obj))
 
     # Read existing loop ids to get ctx_ids, know when to create new ones
