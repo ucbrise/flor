@@ -83,10 +83,14 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 def checkpointing(**kwargs):
     # Add prefix time delta to output_buffer
     output_buffer.append(
-        utils.add2copy(
-            utils.add2copy(layers, "value_name", "delta::prefix"),
-            "value",
+        Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            loop_ctx,
+            "delta::prefix",
             checkpointing_clock.get_delta(),
+            3,
         )
     )
     # set up the context

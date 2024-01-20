@@ -74,7 +74,7 @@ def unpack(output_buffer, cursor):
             dfs(log_record.loop),
             log_record.name,
             log_record.value,
-            log_record.type.value,
+            log_record.type,
             cursor,
         )
 
