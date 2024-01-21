@@ -85,7 +85,14 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
-    flor_commands = ["--kwargs", "unpack", "replay", "query", "dataframe"]
+    flor_commands = [
+        "--kwargs",
+        "--replay_flor",
+        "unpack",
+        "replay",
+        "query",
+        "dataframe",
+    ]
 
     # Check if any of the flor_commands is in the arguments
     if any(command in sys.argv for command in flor_commands):
@@ -115,6 +122,7 @@ def parse_args():
 
 
 def in_replay_mode():
+    print("in_replay_mode", flags.queryparameters is not None)
     return flags.queryparameters is not None
 
 
@@ -128,7 +136,8 @@ def replay_initialize():
     with open(".flor.json", "r") as f:
         data = json.load(f)
     for obj in data:
-        if len(obj) == 2:
-            d = {obj["value_name"]: obj["value"]}
+        if obj["loop"] is None:
+            print(obj)
+            d = {obj["name"]: obj["value"]}
             flags.hyperparameters.update(d)
-    flags.old_tstamp = data[-1]["TSTAMP"]
+    flags.old_tstamp = data[0]["tstamp"]
