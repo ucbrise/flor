@@ -110,7 +110,9 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         loop_ctx if loop_ctx is None else deepcopy(loop_ctx), name, ent_n, layers[name]
     )
     for each in tqdm(
-        enumerate(slice(name, iterator)),
+        enumerate(slice(name, iterator))
+        if not cli.in_replay_mode()
+        else slice(name, iterator),
         position=pos,
         leave=(True if pos == 0 else False),
     ):
@@ -203,25 +205,20 @@ def load_ckpt():
 def slice(name, iterator):
     if not cli.in_replay_mode():
         return iterator
-    assert cli.flags.queryparameters is not None
     original = list(iterator)
-
-    if not cli.flags.queryparameters:
-        return [
-            original[-1],
-        ]
 
     qop = (cli.flags.queryparameters).get(name, 0)
     if qop == 1:
-        return iterator
+        return enumerate(iterator)
 
     new_slice = []
     if qop == 0:
+        new_slice.append((len(original) - 1, original[-1]))
         return new_slice
 
     assert isinstance(qop, (list, tuple))
     for i in qop:
-        new_slice.append(original[int(i) - 1])
+        new_slice.append((i, original[int(i)]))
     return new_slice
 
 
