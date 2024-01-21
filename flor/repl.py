@@ -15,6 +15,7 @@ from .hlast import backprop
 
 from . import database
 from . import versions
+from .clock import Clock
 
 
 def dataframe(*args):
@@ -65,6 +66,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     if res.lower().strip() == "n":
         return schedule
 
+    clock = Clock()
+    clock.set_start_time()
+
     # Pick up on versions
     active_branch = versions.current_branch()
     try:
@@ -111,6 +115,8 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
         versions.checkout(active_branch)
         os.remove(temp_file.name)
 
+    dt = clock.get_delta()
+
     filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
     if schedule.vars_in_where is not None:
         filtered_vs += schedule.vars_in_where
@@ -119,6 +125,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     print()
     print(schedule)
     print()
+    print(dt, "seconds")
 
     return schedule
 
