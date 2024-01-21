@@ -133,14 +133,7 @@ class Schedule:
         self.where_clause = where_clause
         self.vars_in_where = None
         df = dataframe()
-        if where_clause is None:
-            if sub_vars := [v for v in apply_vars if v not in df.columns]:
-                # Function to perform the natural join
-                ext_df = dataframe(*sub_vars)
-                common_columns = set(df.columns) & set(ext_df.columns)
-                df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-            self.df = df
-        else:
+        if where_clause is not None:
             # Regular expression to match column names
             column_pattern = re.compile(r"\b[A-Za-z_]\w*\b")
             columns = set(re.findall(column_pattern, where_clause))
