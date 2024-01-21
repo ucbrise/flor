@@ -73,8 +73,6 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     active_branch = versions.current_branch()
     try:
         for projid, ts, hexsha, main_script in schedule.iter_dims():
-            # TODO: we need to calculate epochs
-
             print("entering", str(ts), hexsha)
             versions.checkout(hexsha)
             for v, lineno in zip(
