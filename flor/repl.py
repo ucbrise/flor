@@ -158,12 +158,9 @@ class Schedule:
     def is_empty(self):
         return self.df.empty
 
-    def get_loglvl(self):
-        self.dims = [
-            c.split("_")[0] for c in self.df.columns if str(c).endswith("_iteration")
-        ]
-        loglvl = len(self.dims)
-        return loglvl
+    def get_loglvl(self, lev: LoggedExpVisitor):
+        loglevels = [lev.line2level[lev.names[v]] for v in self.apply_vars]
+        return max(loglevels)
 
     def iter_dims(self):
         ts2vid = {
