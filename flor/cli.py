@@ -122,7 +122,6 @@ def parse_args():
 
 
 def in_replay_mode():
-    print("in_replay_mode", flags.queryparameters is not None)
     return flags.queryparameters is not None
 
 
@@ -136,7 +135,7 @@ def replay_initialize():
     with open(".flor.json", "r") as f:
         data = json.load(f)
     for obj in data:
-        if obj["loop"] is None:
+        if obj["loop"] is None and obj["type"] == 1:
             print(obj)
             d = {obj["name"]: obj["value"]}
             flags.hyperparameters.update(d)

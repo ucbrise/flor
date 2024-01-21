@@ -87,20 +87,24 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                     raise e
             if loglvl == 0:
                 print("loglvl", loglvl, "no dims")
-                subprocess.run(["python", main_script, "--replay_flor"])
+                cmd = ["python", main_script, "--replay_flor"]
+                print(*cmd)
+                subprocess.run(cmd)
             elif loglvl == 1:
-                tup = ",".join([i + 1 for i in range(schedule.df["num_epochs"])]) + ","
+                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","
                 print("loglvl", loglvl, tup)
-                subprocess.run(
-                    ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
-                )
+                cmd = ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
+                print(*cmd)
+                subprocess.run(cmd)
             elif loglvl == 2:
-                tup = ",".join([i + 1 for i in range(schedule.df["num_epochs"])]) + ","
+                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","
                 print("loglvl", loglvl, tup)
-                subprocess.run(
-                    ["python", main_script, "--replay_flor"]
-                    + ["epoch=" + tup, "step=1"]
-                )
+                cmd = ["python", main_script, "--replay_flor"] + [
+                    "epoch=" + tup,
+                    "step=1",
+                ]
+                print(*cmd)
+                subprocess.run(cmd)
             else:
                 raise NotImplementedError(
                     "Please open a Pull Request on GitHub and describe your use-case."
