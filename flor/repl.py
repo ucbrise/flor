@@ -45,7 +45,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     schedule = Schedule(apply_vars, where_clause)
     if not schedule.is_empty():
         with open(".flor.json", "r") as f:
-            main_script = json.load(f)[-1]["FILENAME"]
+            main_script = json.load(f)[0]["filename"]
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         shutil.copy2(main_script, temp_file.name)
         with open(main_script, "r") as f:
