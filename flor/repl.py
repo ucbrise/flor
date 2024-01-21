@@ -68,7 +68,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     # Pick up on versions
     active_branch = versions.current_branch()
     try:
-        for projid, ts, hexsha, main_script, epochs in schedule.iter_dims():
+        for projid, ts, hexsha, main_script in schedule.iter_dims():
+            # TODO: we need to calculate epochs
+
             print("entering", str(ts), hexsha)
             versions.checkout(hexsha)
             for v, lineno in zip(
@@ -85,18 +87,17 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                 print("loglvl", loglvl, "no dims")
                 subprocess.run(["python", main_script, "--replay_flor"])
             elif loglvl == 1:
-                tup = ",".join(epochs) + ","
+                tup = ",".join([i + 1 for i in range(schedule.df["num_epochs"])]) + ","
                 print("loglvl", loglvl, tup)
                 subprocess.run(
-                    ["python", main_script, "--replay_flor"]
-                    + [schedule.dims[0] + "=" + tup]
+                    ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
                 )
             elif loglvl == 2:
-                tup = ",".join(epochs) + ","
+                tup = ",".join([i + 1 for i in range(schedule.df["num_epochs"])]) + ","
                 print("loglvl", loglvl, tup)
                 subprocess.run(
                     ["python", main_script, "--replay_flor"]
-                    + [schedule.dims[0] + "=" + tup, schedule.dims[1] + "=1"]
+                    + ["epoch=" + tup, "step=1"]
                 )
             else:
                 raise NotImplementedError(
@@ -192,6 +193,13 @@ class Schedule:
             self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
         elif loglvl == 2:
             base_df = dataframe("delta::prefix", "delta::suffix")
+            loop_df = dataframe("delta::loop")
+            loop_df["delta::loop"] = pd.to_numeric(
+                loop_df["delta::loop"], errors="coerce"
+            )
+            df_grouped = (
+                loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
+            )
             temp_df = query(
                 "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
             )
@@ -207,6 +215,7 @@ class Schedule:
                 + pd.to_numeric(merged_df["delta::suffix"])
             )
             merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
+            merged_df = pd.merge(merged_df, df_grouped, on=keys, how="inner")
             self.df = merged_df
         else:
             raise
@@ -243,7 +252,6 @@ class Schedule:
             for ts, vid, _ in versions.get_latest_autocommit()
         }
 
-        epochs: List[str] = []
         prev_row = None
 
         for row_dict in self.df.to_dict(orient="records"):
@@ -253,12 +261,7 @@ class Schedule:
             if prev_row is not None and curr_tstamp != prev_row["tstamp"]:
                 yield prev_row["projid"], prev_row["tstamp"], ts2vid[
                     prev_row["tstamp"]
-                ], prev_row["filename"], epochs
-                epochs.clear()
-
-            # Update epochs
-            if self.dims:
-                epochs.append(str(row_dict[self.dims[0] + "_iteration"]))
+                ], prev_row["filename"]
 
             # Update prev_row for the next iteration
             prev_row = row_dict
@@ -267,7 +270,7 @@ class Schedule:
         if prev_row is not None:
             yield prev_row["projid"], prev_row["tstamp"], ts2vid[
                 prev_row["tstamp"]
-            ], prev_row["filename"], epochs
+            ], prev_row["filename"]
 
     def __str__(self):
         if self.where_clause is None:
