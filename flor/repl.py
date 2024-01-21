@@ -29,8 +29,6 @@ def dataframe(*args):
 
 def query(user_query: str):
     conn, cursor = database.conn_and_cursor()
-    database.create_tables(cursor)
-
     try:
         df = database.query(cursor, user_query, aspandas=True)
         return df
@@ -43,83 +41,83 @@ def query(user_query: str):
 def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     versions.git_commit("Hindsight logging stmts added.")
     schedule = Schedule(apply_vars, where_clause)
-    if not schedule.is_empty():
-        with open(".flor.json", "r") as f:
-            main_script = json.load(f)[0]["filename"]
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        shutil.copy2(main_script, temp_file.name)
-        with open(main_script, "r") as f:
-            tree = ast.parse(f.read())
 
-        lev = LoggedExpVisitor()
-        lev.visit(tree)
+    with open(".flor.json", "r") as f:
+        main_script = json.load(f)[0]["filename"]
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    shutil.copy2(main_script, temp_file.name)
+    with open(main_script, "r") as f:
+        tree = ast.parse(f.read())
+    lev = LoggedExpVisitor()
+    lev.visit(tree)
 
-        print()
-        print(schedule)
-        print()
+    loglvl, mark = schedule.get_loglvl(lev)
+    schedule.estimate_cost(loglvl, mark)
 
-        res = input("Continue [Y/n]? ")
-        if res.lower().strip() == "n":
-            return schedule
+    print("log level", loglvl, "to", mark)
+    print()
+    print(schedule.df)
+    print()
 
-        # Pick up on versions
-        active_branch = versions.current_branch()
-        loglvl = schedule.get_loglvl()
-        try:
-            for projid, ts, hexsha, main_script, epochs in schedule.iter_dims():
-                print("entering", str(ts), hexsha)
-                versions.checkout(hexsha)
-                for v, lineno in zip(
-                    apply_vars,
-                    [
-                        int(v) if utils.is_integer(v) else lev.names[v]
-                        for v in apply_vars
-                    ],
-                ):
-                    print("applying: ", v, lineno)
-                    try:
-                        backprop(lineno, temp_file.name, main_script, main_script)
-                    except Exception as e:
-                        print("Exception raised during `backprop`", e)
-                        raise e
-                if loglvl == 0:
-                    print("loglvl", loglvl, "no dims")
-                    subprocess.run(["python", main_script, "--replay_flor"])
-                elif loglvl == 1:
-                    tup = ",".join(epochs) + ","
-                    print("loglvl", loglvl, tup)
-                    subprocess.run(
-                        ["python", main_script, "--replay_flor"]
-                        + [schedule.dims[0] + "=" + tup]
-                    )
-                elif loglvl == 2:
-                    tup = ",".join(epochs) + ","
-                    print("loglvl", loglvl, tup)
-                    subprocess.run(
-                        ["python", main_script, "--replay_flor"]
-                        + [schedule.dims[0] + "=" + tup, schedule.dims[1] + "=1"]
-                    )
-                else:
-                    raise NotImplementedError(
-                        "Please open a Pull Request on GitHub and describe your use-case."
-                    )
-        except Exception as e:
-            print("Exception raised during `schedule.iter_dims()`", e)
-            raise e
-        finally:
-            versions.reset_hard()
-            versions.checkout(active_branch)
-            os.remove(temp_file.name)
+    res = input(
+        f"Continue replay estimated to finish in {utils.discretize(sum(schedule.df['composite']))} [Y/n]? "
+    )
+    if res.lower().strip() == "n":
+        return schedule
 
-        filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
-        if schedule.vars_in_where is not None:
-            filtered_vs += schedule.vars_in_where
-        schedule = dataframe(*filtered_vs)
-        print()
-        print(schedule)
-        print()
-    else:
-        print("Nothing to do.")
+    # Pick up on versions
+    active_branch = versions.current_branch()
+    try:
+        for projid, ts, hexsha, main_script, epochs in schedule.iter_dims():
+            print("entering", str(ts), hexsha)
+            versions.checkout(hexsha)
+            for v, lineno in zip(
+                apply_vars,
+                [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars],
+            ):
+                print("applying: ", v, lineno)
+                try:
+                    backprop(lineno, temp_file.name, main_script, main_script)
+                except Exception as e:
+                    print("Exception raised during `backprop`", e)
+                    raise e
+            if loglvl == 0:
+                print("loglvl", loglvl, "no dims")
+                subprocess.run(["python", main_script, "--replay_flor"])
+            elif loglvl == 1:
+                tup = ",".join(epochs) + ","
+                print("loglvl", loglvl, tup)
+                subprocess.run(
+                    ["python", main_script, "--replay_flor"]
+                    + [schedule.dims[0] + "=" + tup]
+                )
+            elif loglvl == 2:
+                tup = ",".join(epochs) + ","
+                print("loglvl", loglvl, tup)
+                subprocess.run(
+                    ["python", main_script, "--replay_flor"]
+                    + [schedule.dims[0] + "=" + tup, schedule.dims[1] + "=1"]
+                )
+            else:
+                raise NotImplementedError(
+                    "Please open a Pull Request on GitHub and describe your use-case."
+                )
+    except Exception as e:
+        print("Exception raised during `schedule.iter_dims()`", e)
+        raise e
+    finally:
+        versions.reset_hard()
+        versions.checkout(active_branch)
+        os.remove(temp_file.name)
+
+    filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
+    if schedule.vars_in_where is not None:
+        filtered_vs += schedule.vars_in_where
+    schedule = dataframe(*filtered_vs)
+
+    print()
+    print(schedule)
+    print()
 
     return schedule
 
@@ -132,7 +130,6 @@ class Schedule:
         self.apply_vars = apply_vars
         self.where_clause = where_clause
         self.vars_in_where = None
-        df = dataframe()
         if where_clause is not None:
             # Regular expression to match column names
             column_pattern = re.compile(r"\b[A-Za-z_]\w*\b")
@@ -142,18 +139,103 @@ class Schedule:
             columns_list = list(columns)
             self.vars_in_where = columns_list
             print("columns in where_clause:", columns_list)
-            if columns_list:
-                ext_df = dataframe(*columns_list)
-                common_columns = set(df.columns) & set(ext_df.columns)
-                df = pd.merge(df, ext_df, on=list(common_columns), how="outer")
-            self.df = utils.cast_dtypes(df).query(where_clause)
+
+    def estimate_cost(self, loglvl: int, mark: str):
+        assert mark in ("prefix", "suffix")
+        keys = ["projid", "tstamp", "filename"]
+        pvt = dataframe()
+        if loglvl == 0:
+            if mark == "prefix":
+                self.df = dataframe("delta::prefix")
+                self.df["composite"] = pd.to_numeric(self.df["delta::prefix"])
+            else:
+                self.df = dataframe("delta::prefix", "delta::suffix")
+                self.df["composite"] = (
+                    pd.to_numeric(self.df["delta::prefix"])
+                    + pd.to_numeric(self.df["delta::suffix"])
+                    + 1
+                )
+            self.df = pd.merge(pvt, self.df, on=keys, how="inner")
+        elif loglvl == 1:
+            # i - delta::loop where i is the full duration for that iteration
+            df = dataframe("delta::loop")
+            df["delta::loop"] = pd.to_numeric(df["delta::loop"], errors="coerce")
+            df_grouped = (
+                df.groupby(keys)
+                .agg(
+                    num_epochs=("epoch", "max"), sum_nested_loops=("delta::loop", "sum")
+                )
+                .reset_index()
+            )
+            temp_df = query(
+                "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+            )
+            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)
+            temp_df = temp_df.rename(columns={"value": "coarse_loop"})
+            temp_df["coarse_loop"] = pd.to_numeric(
+                temp_df["coarse_loop"], errors="coerce"
+            )
+
+            merged_df = pd.merge(temp_df, df_grouped, on=keys, how="inner")
+            merged_df["marginal"] = (
+                merged_df["coarse_loop"] - merged_df["sum_nested_loops"]
+            )
+            merged_df.drop(columns=["coarse_loop", "sum_nested_loops"], inplace=True)
+            df = dataframe("delta::prefix", "delta::suffix")
+            merged_df = pd.merge(merged_df, df, on=keys, how="inner")
+            merged_df["composite"] = (
+                pd.to_numeric(merged_df["num_epochs"])
+                + merged_df["marginal"]
+                + pd.to_numeric(merged_df["delta::prefix"])
+                + pd.to_numeric(merged_df["delta::suffix"])
+            )
+            self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
+        elif loglvl == 2:
+            base_df = dataframe("delta::prefix", "delta::suffix")
+            temp_df = query(
+                "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+            )
+            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)
+            temp_df = temp_df.rename(columns={"value": "coarse_loop"})
+            temp_df["coarse_loop"] = pd.to_numeric(
+                temp_df["coarse_loop"], errors="coerce"
+            )
+            merged_df = pd.merge(temp_df, base_df, on=keys, how="inner")
+            merged_df["composite"] = (
+                pd.to_numeric(merged_df["coarse_loop"])
+                + pd.to_numeric(merged_df["delta::prefix"])
+                + pd.to_numeric(merged_df["delta::suffix"])
+            )
+            merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
+            self.df = merged_df
+        else:
+            raise
 
     def is_empty(self):
         return self.df.empty
 
     def get_loglvl(self, lev: LoggedExpVisitor):
+        # Get the largest lineno from self.apply_vars
+        max_lineno = max(lev.names[v] for v in self.apply_vars)
         loglevels = [lev.line2level[lev.names[v]] for v in self.apply_vars]
-        return max(loglevels)
+
+        # Check for monotonic growth
+        pairs = sorted(
+            [
+                (line, level)
+                for line, level in lev.line2level.items()
+                if line <= max_lineno
+            ],
+            key=lambda x: x[0],
+        )
+        is_monotonic = all(
+            pairs[i][1] <= pairs[i + 1][1] for i in range(len(pairs) - 1)
+        )
+
+        return (
+            max(loglevels),
+            "prefix" if is_monotonic else "suffix",
+        )
 
     def iter_dims(self):
         ts2vid = {

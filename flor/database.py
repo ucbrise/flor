@@ -156,7 +156,6 @@ def query(cursor, user_query, aspandas=False):
         return utils.cast_dtypes(pd.DataFrame(res, columns=get_column_names(cursor)))
     elif res:
         return res
-    return pd.DataFrame()
 
 
 def get_column_names(cursor):

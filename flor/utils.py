@@ -96,3 +96,14 @@ def cast_dtypes(df: pd.DataFrame, columns=None):
 def latest(df: pd.DataFrame):
     # return df where tstamp is the latest tstamp (and only the latest tstamp)
     return df[df["tstamp"] == df["tstamp"].max()]
+
+
+def discretize(cost_estimate: float):
+    if cost_estimate < 10:
+        return "under 10 seconds"
+    elif cost_estimate < 100:
+        return "under 2 minutes"
+    elif cost_estimate < 1000:
+        return "up to 15 minutes"
+    else:
+        return "more than 15 minutes"
