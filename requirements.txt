@@ -1,5 +1,5 @@
-cloudpickle>=0.5.3
-GitPython>=3.0.0
+cloudpickle
+GitPython
 astunparse
 apted
 bidict==0.21.3
@@ -8,5 +8,4 @@ numpy
 sh
 matplotlib
 scikit-learn
-seaborn
 tqdm

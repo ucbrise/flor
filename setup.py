@@ -24,6 +24,8 @@ setuptools.setup(
         "matplotlib",
         "scikit-learn",
         "numpy",
+        "tqdm"
+        
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
