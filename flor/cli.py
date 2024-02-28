@@ -56,6 +56,7 @@ def parse_args():
 
     # Unpack command
     unpack_parser = flor_parser.add_parser("unpack")
+    stat_parser = flor_parser.add_parser("stat")
 
     # Replay command
     replay_parser = flor_parser.add_parser(
@@ -85,6 +86,7 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
+
     flor_commands = [
         "--kwargs",
         "--replay_flor",
@@ -92,6 +94,7 @@ def parse_args():
         "replay",
         "query",
         "dataframe",
+        "stat"
     ]
 
     # Check if any of the flor_commands is in the arguments

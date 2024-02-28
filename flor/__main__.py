@@ -6,6 +6,9 @@ from . import repl
 
 
 import json
+import platform
+import sys
+import os
 
 
 def main():
@@ -43,6 +46,17 @@ def main():
                 repl.replay(flags.args.VARS, flags.args.where_clause)
             else:
                 repl.replay(flags.args.VARS)
+        elif flags.args.flor_command == "stat":
+            build_context = {
+                "architecture": platform.machine(),
+                "operating_system": platform.system(),
+                "os_version": platform.version(),
+                "python_version": platform.python_version(),
+                "in_anaconda": 'conda' in sys.version or 'Continuum' in sys.version or os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
+            }
+            for k,v in build_context.items():
+                print(k + ":", v)
+
 
 
 if __name__ == "__main__":
