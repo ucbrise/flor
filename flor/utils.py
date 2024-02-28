@@ -95,7 +95,9 @@ def cast_dtypes(df: pd.DataFrame, columns=None):
 
 def latest(df: pd.DataFrame):
     # return df where tstamp is the latest tstamp (and only the latest tstamp)
-    return df[df["tstamp"] == df["tstamp"].max()]
+    if not df.empty:
+        return df[df["tstamp"] == df["tstamp"].max()]
+    return df
 
 
 def discretize(cost_estimate: float):
