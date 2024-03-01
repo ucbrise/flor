@@ -73,35 +73,6 @@ def create_tables(cursor):
     )
 
 
-def insert_data_into_loops(
-    ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration, cursor
-):
-    cursor.execute(
-        """
-    INSERT INTO loops (ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration)
-    VALUES (?, ?, ?, ?, ?)
-    """,
-        (ctx_id, parent_ctx_id, loop_name, loop_entries, loop_iteration),
-    )
-
-
-def insert_data_into_logs(
-    projid, tstamp, filename, ctx_id, value_name, value, value_type, cursor
-):
-    cursor.execute(
-        """
-    INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """,
-        (projid, tstamp, filename, ctx_id, value_name, value, value_type),
-    )
-
-
-def read_from_loops(cursor):
-    cursor.execute("SELECT * FROM loops")
-    return cursor.fetchall()
-
-
 def read_from_logs(cursor, where_clause=None):
     if where_clause is None:
         cursor.execute("SELECT DISTINCT * FROM logs")
