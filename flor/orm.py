@@ -45,5 +45,6 @@ def to_json(output_buffer: List[Log]):
             return obj.name
         return str(obj)  # Fallback for unrecognized types
 
+    output_buffer = [_serialize(o) for o in output_buffer]
     with open(".flor.json", "w") as f:
         json.dump(output_buffer, f, default=_serialize, indent=2)
