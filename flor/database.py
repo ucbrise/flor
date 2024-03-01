@@ -21,89 +21,55 @@ def conn_and_cursor():
 def unpack(output_buffer, cursor):
     if not output_buffer:
         return
+    raise NotImplementedError()
     print("Unpacking ", output_buffer[-1])
-
-    loops: Dict[Tuple[int, str, int, int], int] = {}
-    # Read existing loop ids to get ctx_ids, know when to create new ones
-    for (
-        ctx_id,
-        parent_ctx_id,
-        loop_name,
-        loop_entries,
-        loop_iteration,
-    ) in read_from_loops(cursor):
-        loops[
-            (
-                int(parent_ctx_id)
-                if (isinstance(parent_ctx_id, str) or isinstance(parent_ctx_id, int))
-                else -1,
-                loop_name,
-                int(loop_entries),
-                int(loop_iteration),
-            )
-        ] = int(ctx_id)
-
-    def dfs(loop: Optional[Loop]):
-        if loop is None:
-            return None
-        parent_ctx_id = dfs(loop.parent)
-        if (
-            k := (
-                int(parent_ctx_id)
-                if (isinstance(parent_ctx_id, str) or isinstance(parent_ctx_id, int))
-                else -1,
-                loop.name,
-                int(loop.entries),
-                int(loop.iteration),
-            )
-        ) in loops:
-            return loops[k]
-        else:
-            v = len(loops)
-            loops[k] = v
-            insert_data_into_loops(
-                v, parent_ctx_id, loop.name, loop.entries, loop.iteration, cursor
-            )
-            return v
-
-    for log_record in output_buffer:
-        insert_data_into_logs(
-            log_record.projid,
-            log_record.tstamp,
-            log_record.filename,
-            dfs(log_record.loop),
-            log_record.name,
-            log_record.value,
-            log_record.type,
-            cursor,
-        )
 
 
 def create_tables(cursor):
     cursor.execute(
         """
-    CREATE TABLE IF NOT EXISTS loops (
-        ctx_id INTEGER,
-        parent_ctx_id INTEGER,
-        loop_name TEXT,
-        loop_entries INTEGER,
-        loop_iteration INTEGER
-    )
-    """
+        CREATE TABLE IF NOT EXISTS contexts (
+            ctx_id INTEGER,
+            parent_ctx_id INTEGER
+        )
+        """
     )
 
     cursor.execute(
         """
-    CREATE TABLE IF NOT EXISTS logs (
-        projid TEXT,
-        tstamp TEXT,
-        filename TEXT,
-        ctx_id INTEGER,
-        value_name TEXT,
-        value TEXT,
-        value_type INTEGER
+        CREATE TABLE IF NOT EXISTS loops (
+            l_ctx_id INTEGER,
+            l_name TEXT,
+            l_iteration INTEGER,
+            l_value TEXT
+        )
+        """
     )
-    """
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS funcs (
+            f_ctx_id INTEGER,
+            f_name TEXT,
+            f_int_arg INTEGER,
+            f_txt_arg TEXT
+
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS logs (
+            projid TEXT,
+            tstamp TEXT,
+            filename TEXT,
+            ctx_id INTEGER,
+            value_name TEXT,
+            value TEXT,
+            value_type INTEGER
+        )
+        """
     )
 
 
