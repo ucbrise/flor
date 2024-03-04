@@ -30,7 +30,7 @@ def create_tables(cursor):
         """
         CREATE TABLE IF NOT EXISTS contexts (
             ctx_id INTEGER,
-            parent_ctx_id INTEGER
+            p_ctx_id INTEGER
         )
         """
     )
