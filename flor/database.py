@@ -195,7 +195,9 @@ def pivot(conn, *args):
         return _pivot_star()
 
     dataframes = []
-    loops = pd.read_sql("SELECT * FROM LOOPS", conn, coerce_float=False)
+    loops = pd.read_sql("SELECT * FROM loops", conn, coerce_float=False)
+    funcs = pd.read_sql("SELECT * FROM funcs", conn, coerce_float=False)
+    contexts = pd.read_sql("SELECT * FROM contexts", conn, coerce_float=False)
     for value_name in args:
         logs = pd.read_sql(
             f'SELECT * FROM logs WHERE value_name = "{value_name}"',
