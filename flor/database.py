@@ -208,23 +208,55 @@ def pivot(conn, *args):
         logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
         logs = logs.rename(columns={"value": value_name})
         while logs["ctx_id"].notna().any():
-            logs = pd.merge(
-                right=logs,
+            merged = pd.merge(
                 left=loops,
+                right=logs,
                 how="inner",
-                on=[
-                    "ctx_id",
+                left_on=[
+                    "l_ctx_id",
                 ],
+                right_on=["ctx_id"],
             )
-            loop_name = logs["loop_name"].unique()[0]
-            logs = logs.drop(columns=["loop_name", "loop_entries"])
-            logs = logs.rename(
-                columns={
-                    "loop_iteration": loop_name,
-                }
-            )
-            logs["ctx_id"] = logs["parent_ctx_id"]
-            logs = logs.drop(columns=["parent_ctx_id"])
+            if merged.empty:
+                merged = pd.merge(
+                    left=funcs,
+                    right=logs,
+                    how="inner",
+                    left_on=[
+                        "f_ctx_id",
+                    ],
+                    right_on=["ctx_id"],
+                )
+                merged = merged.drop(columns=["f_ctx_id"])
+                logs = pd.merge(left=merged, right=contexts, how="inner", on=["ctx_id"])
+                func_name = logs["f_name"].unique()[0]
+                logs = logs.drop(
+                    columns=[
+                        "f_name",
+                    ]
+                )
+                logs = logs.rename(
+                    columns={
+                        "f_int_arg": f"{func_name}_int",
+                        "f_txt_arg": f"{func_name}_txt",
+                    }
+                )
+            else:
+                merged = merged.drop(columns=["l_ctx_id"])
+                logs = pd.merge(left=merged, right=contexts, how="inner", on=["ctx_id"])
+                loop_name = logs["l_name"].unique()[0]
+                logs = logs.drop(
+                    columns=[
+                        "l_name",
+                    ]
+                )
+                logs = logs.rename(
+                    columns={
+                        "l_iteration": loop_name,
+                    }
+                )
+            logs["ctx_id"] = logs["p_ctx_id"]
+            logs = logs.drop(columns=["p_ctx_id"])
 
         logs = logs.drop(columns=["ctx_id"])
         dataframes.append(logs)
