@@ -46,19 +46,37 @@ def unpack(output_buffer: List[orm.Log], cursor):
     if not output_buffer:
         return
     for each in output_buffer:
-        ctx_id = insert_context(cursor, each.ctx) if each.ctx is not None else None
-        cursor.execute(
-            """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                each.projid,
-                each.tstamp,
-                each.filename,
-                ctx_id,
-                each.name,
-                each.value,
-                each.type,
-            ),
+        ctx_id = (
+            insert_context(cursor, orm.to_context(each.ctx))
+            if each.ctx is not None
+            else None
         )
+        if isinstance(each, orm.Log):
+            cursor.execute(
+                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    each.projid,
+                    each.tstamp,
+                    each.filename,
+                    ctx_id,
+                    each.name,
+                    each.value,
+                    each.type,
+                ),
+            )
+        else:
+            cursor.execute(
+                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    each["projid"],
+                    each["tstamp"],
+                    each["filename"],
+                    ctx_id,
+                    each["name"],
+                    each["value"],
+                    each["type"],
+                ),
+            )
 
 
 def create_tables(cursor):
@@ -251,10 +269,9 @@ def pivot(conn, *args):
                     ]
                 )
                 logs = logs.rename(
-                    columns={
-                        "l_iteration": loop_name,
-                    }
+                    columns={"l_iteration": loop_name, "l_value": f"{loop_name}_value"}
                 )
+
             logs["ctx_id"] = logs["p_ctx_id"]
             logs = logs.drop(columns=["p_ctx_id"])
 

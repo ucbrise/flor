@@ -28,6 +28,16 @@ class Func(Context):
     txt_arg: str
 
 
+def to_context(d):
+    if isinstance(d, Context):
+        return d
+    p_context = None if d["ctx"] is None else to_context(d["ctx"])
+    if "iteration" in d:
+        return Loop(d["ctx_id"], p_context, d["name"], d["iteration"], d["value"])
+    else:
+        return Func(d["ctx_id"], p_context, d["name", d["int_arg"], d["txt_arg"]])
+
+
 @dataclass
 class Log:
     projid: str
