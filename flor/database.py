@@ -42,16 +42,12 @@ def insert_context(cursor, context):
     return context.ctx_id
 
 
-def unpack(output_buffer: List[orm.Log], cursor):
+def unpack(output_buffer, cursor):
     if not output_buffer:
         return
     for each in output_buffer:
-        ctx_id = (
-            insert_context(cursor, orm.to_context(each.ctx))
-            if each.ctx is not None
-            else None
-        )
         if isinstance(each, orm.Log):
+            ctx_id = insert_context(cursor, each.ctx) if each.ctx is not None else None
             cursor.execute(
                 """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
@@ -65,6 +61,12 @@ def unpack(output_buffer: List[orm.Log], cursor):
                 ),
             )
         else:
+            # Parse JSON dict
+            ctx_id = (
+                insert_context(cursor, orm.to_context(each["ctx"]))
+                if each["ctx"] is not None
+                else None
+            )
             cursor.execute(
                 """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (

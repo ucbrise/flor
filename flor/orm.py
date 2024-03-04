@@ -31,7 +31,7 @@ class Func(Context):
 def to_context(d):
     if isinstance(d, Context):
         return d
-    p_context = None if d["ctx"] is None else to_context(d["ctx"])
+    p_context = None if d["p_ctx"] is None else to_context(d["p_ctx"])
     if "iteration" in d:
         return Loop(d["ctx_id"], p_context, d["name"], d["iteration"], d["value"])
     else:
