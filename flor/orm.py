@@ -11,7 +11,7 @@ class Context:
 
 
 def generate_64bit_id() -> int:
-    return random.getrandbits(64)
+    return random.randint(-(2**63), 2**63 - 1)
 
 
 @dataclass
