@@ -109,6 +109,19 @@ def create_tables(cursor):
     )
 
 
+def deduplicate_table(cursor, table_name):
+    # Create a temporary table to store unique rows
+    cursor.execute(
+        f"""CREATE TEMPORARY TABLE temp_table AS SELECT DISTINCT * FROM {table_name}"""
+    )
+
+    # Delete the original table's contents
+    cursor.execute(f"""DELETE FROM {table_name}""")
+
+    # Insert the unique rows back into the original table
+    cursor.execute(f"""INSERT INTO {table_name} SELECT * FROM temp_table""")
+
+
 def read_from_logs(cursor, where_clause=None):
     if where_clause is None:
         cursor.execute("SELECT DISTINCT * FROM logs")

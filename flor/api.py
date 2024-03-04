@@ -169,6 +169,11 @@ def commit():
     else:
         database.unpack(output_buffer, cursor)
     conn.commit()
+    cursor = conn.cursor()
+    database.deduplicate_table(cursor, "funcs")
+    database.deduplicate_table(cursor, "loops")
+    database.deduplicate_table(cursor, "contexts")
+    conn.commit()
     conn.close()
     output_buffer.clear()
     Clock.set_new_datetime()
