@@ -121,6 +121,8 @@ def deduplicate_table(cursor, table_name):
     # Insert the unique rows back into the original table
     cursor.execute(f"""INSERT INTO {table_name} SELECT * FROM temp_table""")
 
+    cursor.execute("DROP TABLE temp_table")
+
 
 def read_from_logs(cursor, where_clause=None):
     if where_clause is None:
