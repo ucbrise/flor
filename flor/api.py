@@ -119,7 +119,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             deepcopy(parent_context) if parent_context is not None else None,
             name,
             layers[name],
-            str(each[1]),
+            str(each[1]) if utils.is_jsonable(each[1]) else None,
         )
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
