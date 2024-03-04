@@ -6,8 +6,8 @@ import os
 from pathlib import Path
 
 from .constants import *
+from . import orm
 
-from .orm import Loop
 from . import utils
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -18,11 +18,47 @@ def conn_and_cursor():
     return conn, cursor
 
 
-def unpack(output_buffer, cursor):
+def insert_context(cursor, context):
+    # Recursive
+    parent_context_id = (
+        insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
+    )
+    cursor.execute(
+        """INSERT INTO contexts (ctx_id, p_ctx_id) VALUES (?, ?)""",
+        (context.ctx_id, parent_context_id),
+    )
+    if isinstance(context, orm.Loop):
+        cursor.execute(
+            """INSERT INTO loops (l_ctx_id, l_name, l_iteration, l_value) VALUES (?, ?, ?, ?)""",
+            (context.ctx_id, context.name, context.iteration, context.value),
+        )
+    elif isinstance(context, orm.Func):
+        cursor.execute(
+            """INSERT INTO funcs (f_ctx_id, f_name, f_int_arg, f_txt_arg) VALUES (?, ?, ?, ?)""",
+            (context.ctx_id, context.name, context.int_arg, context.txt_arg),
+        )
+    else:
+        raise
+    return context.ctx_id
+
+
+def unpack(output_buffer: List[orm.Log], cursor):
     if not output_buffer:
         return
-    raise NotImplementedError()
-    print("Unpacking ", output_buffer[-1])
+    for each in output_buffer:
+        ctx_id = insert_context(cursor, each.ctx) if each.ctx is not None else None
+        cursor.execute(
+            """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                each.projid,
+                each.tstamp,
+                each.filename,
+                ctx_id,
+                each.name,
+                each.value,
+                each.type,
+            ),
+        )
 
 
 def create_tables(cursor):

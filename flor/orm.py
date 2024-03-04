@@ -1,15 +1,17 @@
 from dataclasses import dataclass, asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 import json
-from enum import Enum
-
-Val_Type = Enum("Val_Type", "RAW REF AUTO")
+import random
 
 
 @dataclass
 class Context:
     ctx_id: int
-    parent_ctx_id: Optional[int]
+    p_ctx: Optional["Context"]
+
+
+def generate_64bit_id() -> int:
+    return random.getrandbits(64)
 
 
 @dataclass
@@ -34,15 +36,13 @@ class Log:
     ctx: Optional[Context]
     name: str
     value: Any
-    type: Val_Type
+    type: int
 
 
 def to_json(output_buffer: List[Log]):
     def _serialize(obj):
         if is_dataclass(obj):
             return asdict(obj)
-        elif isinstance(obj, Enum):
-            return obj.name
         return str(obj)  # Fallback for unrecognized types
 
     output_buffer = [_serialize(o) for o in output_buffer]

@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 from .constants import *
 from .clock import Clock
-from .orm import Loop, Log, to_json
+from . import orm
 from . import cli
 from . import utils
 from . import versions
@@ -22,8 +22,7 @@ T = TypeVar("T")
 output_buffer = []
 
 layers = {}
-loop_ctx = None
-entries = {}
+context = None
 
 checkpoints = []
 checkpointing_clock = Clock()
@@ -37,11 +36,11 @@ def log(name, value):
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
     output_buffer.append(
-        Log(
+        orm.Log(
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
+            context if context is None else deepcopy(context),
             name,
             serializable_value,
             1,
@@ -80,11 +79,11 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 def checkpointing(**kwargs):
     # Add prefix time delta to output_buffer
     output_buffer.append(
-        Log(
+        orm.Log(
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
+            context if context is None else deepcopy(context),
             "delta::prefix",
             checkpointing_clock.get_delta(),
             3,
@@ -99,37 +98,41 @@ def checkpointing(**kwargs):
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
-    global loop_ctx
+    global context
     clock = Clock()
     clock.set_start_time()
     pos = len(layers)
     layers[name] = 0
-    ent_n = entries.get(name, 1)
-    entries[name] = ent_n + 1
-    loop_ctx = Loop(
-        loop_ctx if loop_ctx is None else deepcopy(loop_ctx), name, ent_n, layers[name]
-    )
+    parent_context = context
     for each in tqdm(
-        enumerate(slice(name, iterator))
-        if not cli.in_replay_mode()
-        else slice(name, iterator),
+        (
+            enumerate(slice(name, iterator))
+            if not cli.in_replay_mode()
+            else slice(name, iterator)
+        ),
         position=pos,
         leave=(True if pos == 0 else False),
     ):
         layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
-        loop_ctx.iteration = layers[name]
+        context = orm.Loop(
+            orm.generate_64bit_id(),
+            deepcopy(parent_context) if parent_context is not None else None,
+            name,
+            layers[name],
+            str(iterator[layers[name]]),
+        )
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
         yield each[1]  # type: ignore
         if pos == 0 and not cli.in_replay_mode():
             ckpt()
-    loop_ctx = loop_ctx.parent
+    context = parent_context
     output_buffer.append(
-        Log(
+        orm.Log(
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
+            deepcopy(context) if context is not None else None,
             "delta::loop",
             clock.get_delta(),
             3,
@@ -141,11 +144,11 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 def commit():
     # Add suffix time delta to output_buffer
     output_buffer.append(
-        Log(
+        orm.Log(
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            loop_ctx if loop_ctx is None else deepcopy(loop_ctx),
+            None if context is None else deepcopy(context),
             "delta::suffix",
             checkpointing_clock.get_delta(),
             3,
@@ -160,8 +163,8 @@ def commit():
         # RECORD
         branch = versions.current_branch()
         if branch is not None:
+            orm.to_json(output_buffer)
             database.unpack(output_buffer, cursor)
-            to_json(output_buffer)
             versions.git_commit(f"FLOR::Auto-commit::{Clock.get_datetime()}")
     else:
         database.unpack(output_buffer, cursor)
