@@ -113,13 +113,13 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         position=pos,
         leave=(True if pos == 0 else False),
     ):
-        layers[name] = list(enumerate(iterator)).index(each) + 1 if pos == 0 else layers[name] + 1  # type: ignore
+        layers[name] = int(each[0]) + 1
         context = orm.Loop(
             orm.generate_64bit_id(),
             deepcopy(parent_context) if parent_context is not None else None,
             name,
             layers[name],
-            str(iterator[layers[name]]),
+            str(each[1]),
         )
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
