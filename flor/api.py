@@ -106,13 +106,13 @@ def checkpointing(**kwargs):
 
 
 @contextmanager
-def func(name: str, int_arg: int, str_arg: str):
+def layer(name: str, idx: int, value: str):
     global context
     clock = Clock()
     clock.set_start_time()
-    layers[name] = int(int_arg)
+    layers[name] = int(idx)
     parent_context = context
-    tqdm.write(f"{name}({int_arg}, {str_arg})")
+    tqdm.write(f"entering {name} ({idx}, {value})")
     if cli.in_replay_mode():
         # TODO: load the end-state checkpoint
         load_ckpt()
@@ -122,8 +122,8 @@ def func(name: str, int_arg: int, str_arg: str):
             orm.generate_64bit_id(),
             deepcopy(parent_context) if parent_context is not None else None,
             name,
-            int(int_arg),
-            str(str_arg),
+            int(idx),
+            str(value),
         )
         yield
         ckpt()
@@ -275,4 +275,4 @@ def slice(name, iterator):
     return new_slice
 
 
-__all__ = ["log", "arg", "checkpointing", "loop", "func", "commit"]
+__all__ = ["log", "arg", "checkpointing", "loop", "layer", "commit"]
