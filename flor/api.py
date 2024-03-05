@@ -77,24 +77,69 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 
 @contextmanager
 def checkpointing(**kwargs):
-    # Add prefix time delta to output_buffer
+    try:
+        # Add prefix time delta to output_buffer
+        output_buffer.append(
+            orm.Log(
+                PROJID,
+                Clock.get_datetime(),
+                SCRIPTNAME,
+                context if context is None else deepcopy(context),
+                "delta::prefix",
+                checkpointing_clock.get_delta(),
+                3,
+            )
+        )
+        # set up the context
+        checkpoints.extend(list(kwargs.items()))
+        # TODO: while there are func skipblocks to load
+        yield
+    except Exception as e:
+        # Here you can handle the exception if needed, or log it, etc.
+        print(f"An error occurred: {e}")
+        # Optionally re-raise the exception if you want the error to propagate
+        raise
+    finally:
+        # This code runs whether an exception occurred or not
+        checkpoints.clear()
+        checkpointing_clock.set_start_time()
+
+
+@contextmanager
+def func(name: str, int_arg: int, str_arg: str):
+    global context
+    clock = Clock()
+    clock.set_start_time()
+    layers[name] = int(int_arg)
+    parent_context = context
+    tqdm.write(f"{name}({int_arg}, {str_arg})")
+    if cli.in_replay_mode():
+        # TODO: load the end-state checkpoint
+        load_ckpt()
+        raise
+    else:
+        context = orm.Func(
+            orm.generate_64bit_id(),
+            deepcopy(parent_context) if parent_context is not None else None,
+            name,
+            int(int_arg),
+            str(str_arg),
+        )
+        yield
+        ckpt()
+    context = parent_context
     output_buffer.append(
         orm.Log(
             PROJID,
             Clock.get_datetime(),
             SCRIPTNAME,
-            context if context is None else deepcopy(context),
-            "delta::prefix",
-            checkpointing_clock.get_delta(),
+            deepcopy(context) if context is not None else None,
+            "delta::func",
+            clock.get_delta(),
             3,
         )
     )
-    # set up the context
-    checkpoints.extend(list(kwargs.items()))
-    yield
-    # tear down the context if needed
-    checkpoints.clear()
-    checkpointing_clock.set_start_time()
+    del layers[name]
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
