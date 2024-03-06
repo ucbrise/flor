@@ -63,7 +63,7 @@ def unpack(output_buffer, cursor):
                     each.filename,
                     ctx_id,
                     each.name,
-                    each.value,
+                    str(each.value),
                     each.type,
                 ),
             )
@@ -80,7 +80,7 @@ def unpack(output_buffer, cursor):
                     each["filename"],
                     ctx_id,
                     each["name"],
-                    each["value"],
+                    str(each["value"]),
                     each["type"],
                 ),
             )
