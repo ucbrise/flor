@@ -228,6 +228,13 @@ def pivot(conn, *args):
             logs = logs.rename(
                 columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
             )
+            for col in (loop_name, f"{loop_name}_value"):
+                if logs[col].isna().all():
+                    logs = logs.drop(
+                        columns=[
+                            col,
+                        ]
+                    )
             logs["ctx_id"] = logs["p_ctx_id"]
             logs = logs.drop(columns=["p_ctx_id"])
 

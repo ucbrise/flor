@@ -115,7 +115,6 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
         str(value) if value is not None else None,
     )
     parent_context = context
-    # tqdm.write(f"entering {name} ({idx}, {value})")
     if cli.in_replay_mode():
         # TODO: load the end-state checkpoint
         load_ckpt()
