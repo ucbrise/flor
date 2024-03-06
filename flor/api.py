@@ -110,9 +110,12 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
     global context
     clock = Clock()
     clock.set_start_time()
-    layers[name] = int(idx) if idx is not None else None
+    layers[name] = (
+        int(idx) if idx is not None else None,
+        str(value) if value is not None else None,
+    )
     parent_context = context
-    tqdm.write(f"entering {name} ({idx}, {value})")
+    # tqdm.write(f"entering {name} ({idx}, {value})")
     if cli.in_replay_mode():
         # TODO: load the end-state checkpoint
         load_ckpt()
@@ -122,8 +125,8 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
             orm.generate_64bit_id(),
             deepcopy(parent_context) if parent_context is not None else None,
             name,
-            layers[name],
-            str(value) if value is not None else None,
+            layers[name][0],
+            layers[name][1],
         )
         yield
         ckpt()
@@ -147,7 +150,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     clock = Clock()
     clock.set_start_time()
     pos = len(layers)
-    layers[name] = 0
+    layers[name] = (0, None)
     parent_context = context
     for each in tqdm(
         (
@@ -158,13 +161,16 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         position=pos,
         leave=(True if pos == 0 else False),
     ):
-        layers[name] = int(each[0]) + 1
+        layers[name] = (
+            int(each[0]) + 1,
+            str(each[1]) if utils.is_jsonable(each[1]) else None,
+        )
         context = orm.Loop(
             orm.generate_64bit_id(),
             deepcopy(parent_context) if parent_context is not None else None,
             name,
-            layers[name],
-            str(each[1]) if utils.is_jsonable(each[1]) else None,
+            layers[name][0],
+            layers[name][1],
         )
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()

@@ -44,9 +44,7 @@ def add2copy(src, name, value):
 
 def to_string(src, name, value):
     if src:
-        return (
-            f"{', '.join([f'{k}: {v}' for k,v in src.items()])}, {name}: {str(value)}"
-        )
+        return f"{', '.join([f'{k}: {v}' if v is not None else f'{k}: {i}' for k,(i,v) in src.items()])}, {name}: {str(value)}"
     else:
         return f"{name}: {str(value)}"
 
@@ -55,9 +53,12 @@ def to_filename(src, name, ext):
     rolling_name = [
         name,
     ]
-    for k, v in src.items():
+    for k, (i, v) in src.items():
         rolling_name.append(str(k))
-        rolling_name.append(str(v))
+        if v is not None:
+            rolling_name.append(str(v))
+        else:
+            rolling_name.append(str(i))
     return Path("_".join(rolling_name)).with_suffix(ext)
 
 
