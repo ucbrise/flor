@@ -106,11 +106,11 @@ def checkpointing(**kwargs):
 
 
 @contextmanager
-def layer(name: str, idx: int, value: str):
+def iteration(name: str, idx: Optional[int], value: Optional[str]):
     global context
     clock = Clock()
     clock.set_start_time()
-    layers[name] = int(idx)
+    layers[name] = int(idx) if idx is not None else None
     parent_context = context
     tqdm.write(f"entering {name} ({idx}, {value})")
     if cli.in_replay_mode():
@@ -118,12 +118,12 @@ def layer(name: str, idx: int, value: str):
         load_ckpt()
         raise
     else:
-        context = orm.Func(
+        context = orm.Loop(
             orm.generate_64bit_id(),
             deepcopy(parent_context) if parent_context is not None else None,
             name,
-            int(idx),
-            str(value),
+            layers[name],
+            str(value) if value is not None else None,
         )
         yield
         ckpt()
@@ -134,7 +134,7 @@ def layer(name: str, idx: int, value: str):
             Clock.get_datetime(),
             SCRIPTNAME,
             deepcopy(context) if context is not None else None,
-            "delta::func",
+            "delta::iteration",
             clock.get_delta(),
             3,
         )
@@ -187,6 +187,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 
 def commit():
+    global skip_cleanup
     # Add suffix time delta to output_buffer
     output_buffer.append(
         orm.Log(
@@ -215,15 +216,12 @@ def commit():
         database.unpack(output_buffer, cursor)
     conn.commit()
     cursor = conn.cursor()
-    database.deduplicate_table(cursor, "funcs")
     database.deduplicate_table(cursor, "loops")
-    database.deduplicate_table(cursor, "contexts")
     conn.commit()
     conn.close()
     output_buffer.clear()
     Clock.set_new_datetime()
     checkpointing_clock.s_time = None
-    global skip_cleanup
     skip_cleanup = True
 
 
@@ -275,4 +273,4 @@ def slice(name, iterator):
     return new_slice
 
 
-__all__ = ["log", "arg", "checkpointing", "loop", "layer", "commit"]
+__all__ = ["log", "arg", "checkpointing", "loop", "iteration", "commit"]

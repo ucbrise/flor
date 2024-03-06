@@ -23,23 +23,30 @@ def insert_context(cursor, context):
     parent_context_id = (
         insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
     )
-    cursor.execute(
-        """INSERT INTO contexts (ctx_id, p_ctx_id) VALUES (?, ?)""",
-        (context.ctx_id, parent_context_id),
-    )
     if isinstance(context, orm.Loop):
         cursor.execute(
-            """INSERT INTO loops (l_ctx_id, l_name, l_iteration, l_value) VALUES (?, ?, ?, ?)""",
-            (context.ctx_id, context.name, context.iteration, context.value),
+            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
+            (
+                int(context.ctx_id),
+                parent_context_id,
+                str(context.name),
+                int(context.iteration) if context.iteration is not None else None,
+                str(context.value) if context.value is not None else None,
+            ),
         )
-    elif isinstance(context, orm.Func):
-        cursor.execute(
-            """INSERT INTO funcs (f_ctx_id, f_name, f_int_arg, f_txt_arg) VALUES (?, ?, ?, ?)""",
-            (context.ctx_id, context.name, context.int_arg, context.txt_arg),
-        )
+        return int(context.ctx_id)
     else:
-        raise
-    return context.ctx_id
+        cursor.execute(
+            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
+            (
+                int(context["ctx_id"]),
+                parent_context_id,
+                str(context["name"]),
+                int(context["iteration"]) if context["iteration"] is not None else None,
+                str(context["value"]) if context["value"] is not None else None,
+            ),
+        )
+        return int(context["ctx_id"])
 
 
 def unpack(output_buffer, cursor):
@@ -63,9 +70,7 @@ def unpack(output_buffer, cursor):
         else:
             # Parse JSON dict
             ctx_id = (
-                insert_context(cursor, orm.to_context(each["ctx"]))
-                if each["ctx"] is not None
-                else None
+                insert_context(cursor, each["ctx"]) if each["ctx"] is not None else None
             )
             cursor.execute(
                 """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -84,32 +89,12 @@ def unpack(output_buffer, cursor):
 def create_tables(cursor):
     cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS contexts (
-            ctx_id INTEGER,
-            p_ctx_id INTEGER
-        )
-        """
-    )
-
-    cursor.execute(
-        """
         CREATE TABLE IF NOT EXISTS loops (
-            l_ctx_id INTEGER,
+            ctx_id INTEGER,
+            p_ctx_id INTEGER,
             l_name TEXT,
-            l_iteration INTEGER,
+            iteration INTEGER,
             l_value TEXT
-        )
-        """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS funcs (
-            f_ctx_id INTEGER,
-            f_name TEXT,
-            f_int_arg INTEGER,
-            f_txt_arg TEXT
-
         )
         """
     )
@@ -216,8 +201,6 @@ def pivot(conn, *args):
 
     dataframes = []
     loops = pd.read_sql("SELECT * FROM loops", conn, coerce_float=False)
-    funcs = pd.read_sql("SELECT * FROM funcs", conn, coerce_float=False)
-    contexts = pd.read_sql("SELECT * FROM contexts", conn, coerce_float=False)
     for value_name in args:
         logs = pd.read_sql(
             f'SELECT * FROM logs WHERE value_name = "{value_name}"',
@@ -228,52 +211,21 @@ def pivot(conn, *args):
         logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
         logs = logs.rename(columns={"value": value_name})
         while logs["ctx_id"].notna().any():
-            merged = pd.merge(
+            logs = pd.merge(
                 left=loops,
                 right=logs,
                 how="inner",
-                left_on=[
-                    "l_ctx_id",
-                ],
-                right_on=["ctx_id"],
+                on=["ctx_id"],
             )
-            if merged.empty:
-                merged = pd.merge(
-                    left=funcs,
-                    right=logs,
-                    how="inner",
-                    left_on=[
-                        "f_ctx_id",
-                    ],
-                    right_on=["ctx_id"],
-                )
-                merged = merged.drop(columns=["f_ctx_id"])
-                logs = pd.merge(left=merged, right=contexts, how="inner", on=["ctx_id"])
-                func_name = logs["f_name"].unique()[0]
-                logs = logs.drop(
-                    columns=[
-                        "f_name",
-                    ]
-                )
-                logs = logs.rename(
-                    columns={
-                        "f_int_arg": f"{func_name}_int",
-                        "f_txt_arg": f"{func_name}_txt",
-                    }
-                )
-            else:
-                merged = merged.drop(columns=["l_ctx_id"])
-                logs = pd.merge(left=merged, right=contexts, how="inner", on=["ctx_id"])
-                loop_name = logs["l_name"].unique()[0]
-                logs = logs.drop(
-                    columns=[
-                        "l_name",
-                    ]
-                )
-                logs = logs.rename(
-                    columns={"l_iteration": loop_name, "l_value": f"{loop_name}_value"}
-                )
-
+            loop_name = logs["l_name"].unique()[0]
+            logs = logs.drop(
+                columns=[
+                    "l_name",
+                ]
+            )
+            logs = logs.rename(
+                columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
+            )
             logs["ctx_id"] = logs["p_ctx_id"]
             logs = logs.drop(columns=["p_ctx_id"])
 
