@@ -223,6 +223,8 @@ def pivot(conn, *args):
                     "l_name",
                 ]
             )
+            if logs["iteration"].notna().any():
+                logs["iteration"] = logs["iteration"].astype(int)
             logs = logs.rename(
                 columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
             )
