@@ -29,6 +29,6 @@ class Log:
 
 
 def to_json(output_buffer: List[Log]):
-    output_buffer = [asdict(o) for o in output_buffer]
+    buffer = [asdict(o) for o in output_buffer]
     with open(".flor.json", "w") as f:
-        json.dump(output_buffer, f, indent=2)
+        json.dump(buffer, f, indent=2)
