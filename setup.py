@@ -6,7 +6,7 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="florflow",
-    version="3.3.1",
+    version="3.3.2",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
     description="Fast Low-Overhead Recovery",
@@ -24,8 +24,7 @@ setuptools.setup(
         "matplotlib",
         "scikit-learn",
         "numpy",
-        "tqdm"
-        
+        "tqdm",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
