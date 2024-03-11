@@ -7,7 +7,7 @@ from git.exc import InvalidGitRepositoryError
 def git_commit(message="FLOR::Auto-commit"):
     try:
         # Get the current working directory and initialize a Repo object
-        repo = Repo(CURRDIR)
+        repo = Repo(CURRDIR, search_parent_directories=True)
 
         # Check if there are any uncommitted changes
         if repo.is_dirty(untracked_files=True):
@@ -27,7 +27,7 @@ def git_commit(message="FLOR::Auto-commit"):
 
 def current_branch():
     try:
-        repo = Repo(CURRDIR)
+        repo = Repo(CURRDIR, search_parent_directories=True)
         return repo.active_branch
     except InvalidGitRepositoryError:
         return None
@@ -37,7 +37,7 @@ def current_branch():
 
 def to_shadow():
     try:
-        repo = Repo(CURRDIR)
+        repo = Repo(CURRDIR, search_parent_directories=True)
         branch = repo.active_branch.name
         if branch.startswith(SHADOW_BRANCH_PREFIX):
             # Branch already has the 'flor.' prefix, continuing...
@@ -63,7 +63,7 @@ def to_shadow():
 
 def get_latest_autocommit():
     try:
-        repo = Repo(CURRDIR)
+        repo = Repo(CURRDIR, search_parent_directories=True)
         for v in repo.iter_commits():
             if str(v.message).count("FLOR::") == 1:
                 _, _, ts = v.message.strip().split("::")  # type: ignore
@@ -79,17 +79,18 @@ def get_latest_autocommit():
 
 
 def checkout(commit_hash):
-    repo = Repo(CURRDIR)
+    repo = Repo(CURRDIR, search_parent_directories=True)
     # Checkout to the desired commit
     print("Checking out ", commit_hash)
     repo.git.checkout(commit_hash)
 
 
 def get_head():
-    repo = Repo(CURRDIR)
+    repo = Repo(CURRDIR, search_parent_directories=True)
     current_head = repo.head.commit
     return current_head
 
+
 def reset_hard():
-    repo = Repo(CURRDIR)
-    repo.git.reset('--hard')
+    repo = Repo(CURRDIR, search_parent_directories=True)
+    repo.git.reset("--hard")
