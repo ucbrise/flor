@@ -4,6 +4,16 @@ from git.repo import Repo
 from git.exc import InvalidGitRepositoryError
 
 
+def get_repo_dir():
+    try:
+        repo = Repo(CURRDIR, search_parent_directories=True)
+        return repo.working_dir
+    except InvalidGitRepositoryError:
+        print("Not a valid Git repository")
+    except Exception as e:
+        print(f"An error occurred while getting the repository directory: {e}")
+
+
 def git_commit(message="FLOR::Auto-commit"):
     try:
         # Get the current working directory and initialize a Repo object
