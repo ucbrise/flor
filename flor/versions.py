@@ -1,7 +1,10 @@
-from .constants import *
-
 from git.repo import Repo
 from git.exc import InvalidGitRepositoryError
+
+import os
+
+CURRDIR = os.getcwd()
+SHADOW_BRANCH_PREFIX = "flor."
 
 
 def get_repo_dir():
