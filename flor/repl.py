@@ -91,13 +91,13 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 1:
-                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","
+                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","  # type: ignore
                 print("loglvl", loglvl, tup)
                 cmd = ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 2:
-                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","
+                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","  # type: ignore
                 print("loglvl", loglvl, tup)
                 cmd = ["python", main_script, "--replay_flor"] + [
                     "epoch=" + tup,
@@ -180,8 +180,8 @@ class Schedule:
             temp_df = query(
                 "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
             )
-            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)
-            temp_df = temp_df.rename(columns={"value": "coarse_loop"})
+            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+            temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
             temp_df["coarse_loop"] = pd.to_numeric(
                 temp_df["coarse_loop"], errors="coerce"
             )
@@ -212,8 +212,8 @@ class Schedule:
             temp_df = query(
                 "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
             )
-            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)
-            temp_df = temp_df.rename(columns={"value": "coarse_loop"})
+            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+            temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
             temp_df["coarse_loop"] = pd.to_numeric(
                 temp_df["coarse_loop"], errors="coerce"
             )
