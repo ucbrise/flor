@@ -206,10 +206,7 @@ def commit():
         )
     )
     # Add logging statements on REPLAY
-    conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
-    cursor = conn.cursor()
-    database.create_tables(cursor)
-
+    conn, cursor = database.conn_and_cursor()
     if not cli.in_replay_mode():
         # RECORD
         branch = versions.current_branch()
