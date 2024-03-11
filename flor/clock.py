@@ -20,8 +20,10 @@ class Clock:
     @classmethod
     def get_datetime(cls):
         if cli.in_replay_mode():
+            assert cli.flags.old_tstamp is not None
             return cli.flags.old_tstamp
         else:
+            assert cls.current_datetime is not None
             return cls.current_datetime
 
     @classmethod

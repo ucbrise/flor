@@ -260,7 +260,11 @@ def slice(name, iterator):
         return iterator
     original = list(iterator)
 
-    qop = (cli.flags.queryparameters).get(name, 0)
+    qop = (
+        (cli.flags.queryparameters).get(name, 0)
+        if cli.flags.queryparameters is not None
+        else 0
+    )
     if qop == 1:
         return enumerate(iterator)
 
