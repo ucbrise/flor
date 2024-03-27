@@ -20,9 +20,16 @@ def conn_and_cursor():
 
 def insert_context(cursor, context):
     # Recursive
-    parent_context_id = (
-        insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
-    )
+    if isinstance(context, dict):
+        parent_context_id = (
+            insert_context(cursor, context["p_ctx"])
+            if context["p_ctx"] is not None
+            else None
+        )
+    else:
+        parent_context_id = (
+            insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
+        )
     if isinstance(context, orm.Loop):
         cursor.execute(
             """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
