@@ -5,8 +5,8 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="florflow",
-    version="3.3.3",
+    name="flordb",
+    version="3.4.0",
     author="Rolando Garcia",
     author_email="rogarcia@berkeley.edu",
     description="Fast Low-Overhead Recovery",

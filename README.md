@@ -1,16 +1,14 @@
-FLOR
+FlorDB
 ================================
-[![PyPI](https://img.shields.io/pypi/v/florflow.svg?nocache=1)](https://pypi.org/project/florflow/)
+[![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
 
 
 Flor (for "fast low-overhead recovery") is a record-replay system for deep learning, and other forms of machine learning that train models on GPUs. Flor was developed to speed-up hindsight logging: a cyclic-debugging practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging. Flor takes low-overhead checkpoints during training, or the record phase, and uses those checkpoints for replay speedups based on memoization and parallelism.
 
-FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML.
+FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML. FlorDB has been extended to support Dataflow operations.
 
-FlorFlow will extend FlorDB to support Dataflow operations.
-
-Flor, FlorDB, and FlorFlow are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
+Flor and its evolutions are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
 
 [![FlorDB Demo](https://img.youtube.com/vi/x4ObDb5B2Us/0.jpg)](https://youtu.be/x4ObDb5B2Us)
 
@@ -19,7 +17,7 @@ You can follow along yourself by starting a Jupyter server from this directory a
 # Installation
 
 ```bash
-pip install florflow
+pip install flordb
 ```
 
 # Getting Started
@@ -130,7 +128,7 @@ The `name`(s) you use for the variables you intercept with `flor.log` and `flor.
 
 To cite this work, please refer to the [Multiversion Hindsight Logging](https://arxiv.org/abs/2310.07898) paper (pre-print '23).
 
-FLOR is open source software developed at UC Berkeley. 
+FlorDB is open source software developed at UC Berkeley. 
 [Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
 are the primary faculty members leading this work.
 
@@ -148,4 +146,4 @@ Finally, we thank [Vikram Sreekanti](https://www.vikrams.io/), [Dan Crankshaw](h
 
 
 ## License
-FLOR is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
+FlorDB is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
