@@ -38,8 +38,8 @@ $ python train.py
 
 Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#storage--data-layout)). All of this data is then expesed to the user via SQL or Pandas queries.
 
-# View your experiment history
-From the same directory you ran the examples above, open an iPython terminal, then load and pivot the log records.
+# Flor Dataframe
+To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:
 
 ```bash
 $ python -m flor dataframe
