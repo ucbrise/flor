@@ -10,10 +10,6 @@ FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, ex
 
 Flor and its evolutions are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
 
-[![FlorDB Demo](https://img.youtube.com/vi/x4ObDb5B2Us/0.jpg)](https://youtu.be/x4ObDb5B2Us)
-
-You can follow along yourself by starting a Jupyter server from this directory and opening [`tutorial.ipynb`](tutorial.ipynb).
-
 # Installation
 
 ```bash
@@ -30,13 +26,13 @@ $ cd ml_tutorial/
 ```
 
 Run the `train.py` script to train a small linear model, 
-and test your `florflow` installation.
+and test your `flordb` installation.
 
 ```bash
 $ python train.py
 ```
 
-Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details [below](#storage--data-layout)). All of this data is then expesed to the user via SQL or Pandas queries.
+Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details below). All of this data is then exposed to the user via SQL or Pandas queries.
 
 # Flor Dataframe
 To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:
@@ -121,7 +117,7 @@ $ cat train.py | grep flor.log
         flor.log("loss", loss.item()),
 ```
 
-The `name`(s) you use for the variables you intercept with `flor.log` and `flor.arg` will become a column (measure) in the full pivoted view (see [Viewing your exp history](#view-your-experiment-history)).
+The `name`(s) you use for the variables you intercept with `flor.log` and `flor.arg` will become a column (measure) in the full pivoted view.
 
 
 ## Publications
@@ -132,17 +128,19 @@ FlorDB is open source software developed at UC Berkeley.
 [Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
 are the primary faculty members leading this work.
 
-This work is released as part of [Rolando Garcia](https://rlnsanz.github.io/)'s doctoral dissertation at UC Berkeley,
+This work is released as part of [Rolando Garcia](https://rlnsanz.github.io/)'s [doctoral dissertation](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html) at UC Berkeley,
 and has been the subject of study by Eric Liu and Anusha Dandamudi, 
 both of whom completed their master's theses on FLOR.
 Our list of publications are reproduced below.
 Finally, we thank [Vikram Sreekanti](https://www.vikrams.io/), [Dan Crankshaw](https://dancrankshaw.com/), and [Neeraja Yadwadkar](https://cs.stanford.edu/~neeraja/) for guidance, comments, and advice.
 [Bobby Yan](https://bobbyy.org/) was instrumental in the development of FLOR and its corresponding experimental evaluation.
 
+* [The Management of Context in the Machine Learning Lifecycle](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html). _R Garcia_. EECS Department, University of California, Berkeley, 2024. UCB/EECS-2024-142.
 * [Multiversion Hindsight Logging for Continuous Training](https://arxiv.org/abs/2310.07898). _R Garcia, A Dandamudi, G Matute, L Wan, JE Gonzalez, JM Hellerstein, K Sen_. pre-print on ArXiv, 2023.
 * [Hindsight Logging for Model Training](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf). _R Garcia, E Liu, V Sreekanti, B Yan, A Dandamudi, JE Gonzalez, JM Hellerstein, K Sen_. The VLDB Journal, 2021.
 * [Fast Low-Overhead Logging Extending Time](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2021/EECS-2021-117.html). _A Dandamudi_. EECS Department, UC Berkeley Technical Report, 2021.
 * [Low Overhead Materialization with FLOR](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2020/EECS-2020-79.html). _E Liu_. EECS Department, UC Berkeley Technical Report, 2020. 
+* [Context: The Missing Piece in the Machine Learning Lifecycle](https://rlnsanz.github.io/dat/Flor_CMI_18_CameraReady.pdf). _R Garcia, V Sreekanti, N Yadwadkar, D Crankshaw, JE Gonzalez, JM Hellerstein. CMI, 2018.
 
 
 ## License
