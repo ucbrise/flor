@@ -21,7 +21,7 @@ def is_jsonable(x):
 
 def duck_cast(v: str, default: Any):
     if isinstance(default, bool):
-        return bool(v)
+        return v.lower() in ("yes", "y", "true", "t", "1")
     if isinstance(default, int):
         return int(v)
     elif isinstance(default, float):
