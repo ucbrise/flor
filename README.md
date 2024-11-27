@@ -9,13 +9,30 @@ FlorDB contains a record-replay sub-system to enable hindsight logging: a post-h
 
 FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
 
-# Installation
+## Installation
+To install the latest stable version of FlorDB, run:
 
 ```bash
 pip install flordb
 ```
 
-# Getting Started
+### Development Installation
+
+For developers who want to contribute, are co-authors on a FlorDB manuscript and plan to run experiments, or need the latest features, install directly from the source:
+
+```bash
+git clone https://github.com/ucbrise/flor.git
+cd flor
+pip install -e .
+```
+
+To keep your local copy up-to-date with the latest changes, remember to regularly pull updates from the repository (from within the `flor` directory):
+
+```bash
+git pull origin
+```
+
+## Getting Started
 
 We start by selecting (or creating) a `git` repository to save our model training code as we iterate and experiment. Flor automatically commits your changes on every run, so no change is lost. Below we provide a sample repository you can use to follow along:
 
@@ -33,7 +50,7 @@ $ python train.py
 
 Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details below). All of this data is then exposed to the user via SQL or Pandas queries.
 
-# Flor Dataframe
+## Flor Dataframe
 To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:
 
 ```bash
@@ -44,7 +61,7 @@ $ python -m flor dataframe
 1  ml_tutorial  2023-08-28T15:04:35  train.py    cpu    8    500      5         32  0.001         500    98.01    9801
 ```
 
-# Run some more experiments
+## Run some more experiments
 
 The `train.py` script has been prepared in advance to define and manage four different hyper-parameters:
 
@@ -62,7 +79,7 @@ $ python train.py --kwargs hidden=75
 ```
 
 
-# Application Programming Interface (API)
+## Application Programming Interface (API)
 
 Flor is shipped with utilities for serializing and checkpointing PyTorch state,
 and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
