@@ -3,12 +3,12 @@ FlorDB
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
 
+FlorDB is a hindsight logging database for the AI/ML lifecycle. It works in tandem with any workflow management solution for Python, such as `Make`, `Airflow`, `MLFlow`, `Docker`, `Slurm`, and `Jupyter`, to manage model developers' logs, execution data, versions of code (via `git`), and `torch` checkpoints. In addition to serving as a nimble experiment management solution for ML Engineers, FlorDB subsumes functionality from bespoke ML systems used for managing data and metadata, operating as a **model registry**, **feature store**, and **labeling solution** as needed.
 
-Flor (for "fast low-overhead recovery") is a record-replay system for deep learning, and other forms of machine learning that train models on GPUs. Flor was developed to speed-up hindsight logging: a cyclic-debugging practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging. Flor takes low-overhead checkpoints during training, or the record phase, and uses those checkpoints for replay speedups based on memoization and parallelism.
+FlorDB encapsulates a record-replay sub-system to enable hindsight logging: a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. When checkpoints are specified, Flor takes low-overhead snapshots during the run, and uses those checkpoints for replay speedups based on memoization, program slicing, and parallelism.
 
-FlorDB integrates Flor, `git` and `sqlite3` to manage model developer's logs, execution data, versions of code, and training checkpoints. In addition to serving as an experiment management solution for ML Engineers, FlorDB extends hindsight logging across model trainging versions for the retroactive evaluation of iterative ML. FlorDB has been extended to support Dataflow operations.
 
-Flor and its evolutions are software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab.
+FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
 
 # Installation
 
