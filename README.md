@@ -5,7 +5,7 @@ FlorDB
 
 FlorDB is a hindsight logging database for the AI/ML lifecycle. It works in tandem with any workflow management solution for Python, such as `Make`, `Airflow`, `MLFlow`, `Docker`, `Slurm`, and `Jupyter`, to manage model developers' logs, execution data, versions of code (via `git`), and `torch` checkpoints. In addition to serving as a nimble experiment management solution for ML Engineers, FlorDB subsumes functionality from bespoke ML systems used for managing data and metadata, operating as a **model registry**, **feature store**, and **labeling solution** as needed.
 
-FlorDB encapsulates a record-replay sub-system to enable hindsight logging: a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. When checkpoints are specified, Flor takes low-overhead snapshots during the run, and uses those checkpoints for replay speedups based on memoization, program slicing, and parallelism.
+FlorDB contains a record-replay sub-system to enable hindsight logging: a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. When checkpoints are specified, Flor takes low-overhead snapshots during the run, and uses those checkpoints for replay speedups based on memoization, program slicing, and parallelism.
 
 
 FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
