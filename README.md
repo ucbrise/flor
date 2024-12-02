@@ -32,23 +32,68 @@ To keep your local copy up-to-date with the latest changes, remember to regularl
 git pull origin
 ```
 
-## Getting Started
+## Just start logging
 
-We start by selecting (or creating) a `git` repository to save our model training code as we iterate and experiment. Flor automatically commits your changes on every run, so no change is lost. Below we provide a sample repository you can use to follow along:
+FlorDB is designed to be easy to use. 
+You don't need to define a schema, or set up a database.
+Just start logging your runs with a single line of code:
 
-```bash
-$ git clone git@github.com:ucbepic/ml_tutorial
-$ cd ml_tutorial/
+```python
+import flor
+
+flor.log("msg", "Hello world!")
+```
+```
+msg: Hello, World!
+
+Changes committed successfully
 ```
 
-Run the `train.py` script to train a small linear model, 
-and test your `flordb` installation.
+You can read your logs with a Flor Dataframe:
 
-```bash
-$ python train.py
+```python
+import flor
+
+flor.dataframe("msg")
 ```
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
-Flor will manage checkpoints, logs, command-line arguments, code changes, and other experiment metadata on each run (More details below). All of this data is then exposed to the user via SQL or Pandas queries.
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>projid</th>
+      <th>tstamp</th>
+      <th>filename</th>
+      <th>msg</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>notebooks</td>
+      <td>2024-12-02 10:18:06</td>
+      <td>ipykernel_launcher.py</td>
+      <td>Hello World!</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+## Logging your experiments
+
 
 ## Flor Dataframe
 To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:

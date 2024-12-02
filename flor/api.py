@@ -279,4 +279,12 @@ def slice(name, iterator):
     return new_slice
 
 
-__all__ = ["log", "arg", "checkpointing", "loop", "iteration", "commit"]
+__all__ = [
+    "log",
+    "arg",
+    "checkpointing",
+    "loop",
+    "iteration",
+    "commit",
+    "output_buffer",
+]

@@ -9,3 +9,4 @@ sh
 matplotlib
 scikit-learn
 tqdm
+ipython
