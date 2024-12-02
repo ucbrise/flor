@@ -93,7 +93,8 @@ flor.dataframe("msg")
 </div>
 
 ## Logging your experiments
-
+FlorDB has a low floor, but a high ceiling. 
+This means you can start logging with a single line of code, but you can also log complex experiments with many hyper-parameters and metrics.
 
 ## Flor Dataframe
 To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:
