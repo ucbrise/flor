@@ -2,22 +2,25 @@ from .clock import Clock
 from .constants import *
 from . import cli
 
-from IPython import get_ipython
-
 from .api import *
 from .repl import query, dataframe, replay
 from . import utils
 from . import database
 
-ip = get_ipython()
-if ip is not None:
+try:
+    from IPython import get_ipython
 
-    def _callback(*args):
-        if output_buffer:
-            commit()
+    ip = get_ipython()
+    if ip is not None:
 
-    ip.events.register("post_run_cell", _callback)
-else:
+        def _callback(*args):
+            if output_buffer:
+                commit()
+
+        ip.events.register("post_run_cell", _callback)
+    else:
+        cli.parse_args()
+except ImportError:
     cli.parse_args()
 
 

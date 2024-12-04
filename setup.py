@@ -25,6 +25,8 @@ setuptools.setup(
         "scikit-learn",
         "numpy",
         "tqdm",
+        "sh",
+        "ipython",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -94,32 +94,25 @@ flor.dataframe("msg")
 
 ## Logging your experiments
 FlorDB has a low floor, but a high ceiling. 
-This means you can start logging with a single line of code, but you can also log complex experiments with many hyper-parameters and metrics.
+You can start logging with a single line of code, but you can also log complex experiments with many hyper-parameters and metrics.
 
-## Flor Dataframe
-To view the experiment history you logged, open an iPython terminal from the same directory you ran the examples above, as follows:
 
-```bash
-$ python -m flor dataframe
 
-        projid               tstamp  filename device seed hidden epochs batch_size     lr print_every accuracy correct
-0  ml_tutorial  2023-08-28T15:04:07  train.py    cpu   78    500      5         32  0.001         500    97.71    9771
-1  ml_tutorial  2023-08-28T15:04:35  train.py    cpu    8    500      5         32  0.001         500    98.01    9801
-```
+### Logging hyper-parameters
+You can log hyper-parameters with `flor.arg`:
 
-## Run some more experiments
-
-The `train.py` script has been prepared in advance to define and manage four different hyper-parameters:
-
-```bash
-$ cat train.py | grep flor.arg
+```python
 hidden_size = flor.arg("hidden", default=500)
 num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
 ```
 
-You can control any of the hyper-parameters (e.g. `hidden`) using Flor's command-line interface:
+When the experiment is run, the hyper-parameters are logged, and their values are stored in FlorDB.
+During replay, `flor.arg` reads the values from the database, so you can easily reproduce the experiment.
+
+
+You can set the value of any `flor.arg` from the command line:
 ```bash 
 $ python train.py --kwargs hidden=75
 ```
