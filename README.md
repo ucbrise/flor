@@ -56,7 +56,7 @@ import flor
 
 flor.dataframe("msg")
 ```
-<img src="img/just_start.png" alt="msg dataframe" style="max-width: 400px;">
+![msg dataframe](img/just_start.png)
 
 ## Logging your experiments
 FlorDB has a low floor, but a high ceiling. 
@@ -106,7 +106,7 @@ To view the hyper-parameters and metrics logged during training, you can use the
 import flor
 flor.dataframe("hidden", "batch_size", "lr", "loss")
 ```
-<img src="img/loss_df.png" alt="loss dataframe" style="max-width: 400px;">
+![loss dataframe](img/loss_df.png)
 
 ### Logging hyper-parameters
 As shown above, you can log hyper-parameters with `flor.arg`:
@@ -135,9 +135,8 @@ $ python train.py --kwargs hidden=250 lr=5e-4
 ```
 
 
-
-
-
+## Hindsight Logging for when you miss something
+Hindsight logging is a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. FlorDB supports hindsight logging across multiple versions with its record-replay sub-system.
 
 ## Publications
 
