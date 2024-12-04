@@ -56,7 +56,7 @@ import flor
 
 flor.dataframe("msg")
 ```
-<img src="img/just_start.png" alt="msg dataframe" style="max-width: 600px;">
+<img src="img/just_start.png" alt="msg dataframe" style="max-width: 400px;">
 
 ## Logging your experiments
 FlorDB has a low floor, but a high ceiling. 
@@ -106,7 +106,7 @@ To view the hyper-parameters and metrics logged during training, you can use the
 import flor
 flor.dataframe("hidden", "batch_size", "lr", "loss")
 ```
-<img src="img/loss_df.png" alt="loss dataframe" style="max-width: 600px;">
+<img src="img/loss_df.png" alt="loss dataframe" style="max-width: 400px;">
 
 ### Logging hyper-parameters
 As shown above, you can log hyper-parameters with `flor.arg`:
