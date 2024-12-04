@@ -56,92 +56,33 @@ import flor
 
 flor.dataframe("msg")
 ```
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>projid</th>
-      <th>tstamp</th>
-      <th>filename</th>
-      <th>msg</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>notebooks</td>
-      <td>2024-12-02 10:18:06</td>
-      <td>ipykernel_launcher.py</td>
-      <td>Hello World!</td>
-    </tr>
-  </tbody>
-</table>
-</div>
+<img src="img/just_start.png" alt="msg dataframe" style="max-width: 600px;">
 
 ## Logging your experiments
 FlorDB has a low floor, but a high ceiling. 
 You can start logging with a single line of code, but you can also log complex experiments with many hyper-parameters and metrics.
 
+Here's how you can modify your existing PyTorch training script to incorporate FlorDB logging:
 
-
-### Logging hyper-parameters
-You can log hyper-parameters with `flor.arg`:
-
-```python
-hidden_size = flor.arg("hidden", default=500)
-num_epochs = flor.arg("epochs", 5)
-batch_size = flor.arg("batch_size", 32)
-learning_rate = flor.arg("lr", 1e-3)
-```
-
-When the experiment is run, the hyper-parameters are logged, and their values are stored in FlorDB.
-During replay, `flor.arg` reads the values from the database, so you can easily reproduce the experiment.
-
-
-You can set the value of any `flor.arg` from the command line:
-```bash 
-$ python train.py --kwargs hidden=75
-```
-
-
-## Application Programming Interface (API)
-
-Flor is shipped with utilities for serializing and checkpointing PyTorch state,
-and utilities for resuming, auto-parallelizing, and memoizing executions from checkpoint.
-
-The model developer passes objects for checkpointing to `flor.checkpointing(**kwargs)`,
-and gives it control over loop iterators by 
-calling `flor.loop(name, iterator)` as follows:
 
 ```python
 import flor
 import torch
 
+# Define and log hyper-parameters
 hidden_size = flor.arg("hidden", default=500)
-num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
+...
 
+# Initialize your data loaders, model, optimizer, and loss function
 trainloader: torch.utils.data.DataLoader
 testloader:  torch.utils.data.DataLoader
 optimizer:   torch.optim.Optimizer
 net:         torch.nn.Module
 criterion:   torch.nn._Loss
 
+# Use FlorDB's checkpointing to manage model states
 with flor.checkpointing(model=net, optimizer=optimizer):
     for epoch in flor.loop("epoch", range(num_epochs)):
         for data in flor.loop("step", trainloader):
@@ -150,29 +91,52 @@ with flor.checkpointing(model=net, optimizer=optimizer):
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
-            flor.log("loss", loss.item())
             optimizer.step()
+
+            # Log the loss value for each step
+            flor.log("loss", loss.item())
+
+        # Evaluate the model on the test set
         eval(net, testloader)
 ```
-As shown, 
-we wrap both the nested training loop and main loop with `flor.loop` so Flor can manage their state. Flor will use loop iteration boundaries to store selected checkpoints adaptively, and on replay time use those same checkpoints to resume training from the appropriate epoch.  
 
-### Logging API
+To view the hyper-parameters and metrics logged during training, you can use the `flor.dataframe` function:
 
-You call `flor.log(name, value)` and `flor.arg(name, default=None)` to log metrics and register tune-able hyper-parameters, respectively. 
+```python
+import flor
+flor.dataframe("hidden", "batch_size", "lr", "loss")
+```
+<img src="img/loss_df.png" alt="loss dataframe" style="max-width: 600px;">
 
-```bash
-$ cat train.py | grep flor.arg
+### Logging hyper-parameters
+As shown above, you can log hyper-parameters with `flor.arg`:
+
+```python
+# Define and log hyper-parameters
+
 hidden_size = flor.arg("hidden", default=500)
-num_epochs = flor.arg("epochs", 5)
 batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
+...
+seed = flor.arg("seed", default=randint(1, 10000))
 
-$ cat train.py | grep flor.log
-        flor.log("loss", loss.item()),
+# Set the random seed for reproducibility
+torch.manual_seed(seed)
 ```
 
-The `name`(s) you use for the variables you intercept with `flor.log` and `flor.arg` will become a column (measure) in the full pivoted view.
+When the experiment is run, the hyper-parameters are logged, and their values are stored in FlorDB.
+
+During replay, `flor.arg` reads the values from the database, so you can easily reproduce the experiment.
+
+### Setting hyper-parameters from the command line
+You can set the value of any `flor.arg` from the command line:
+```bash 
+$ python train.py --kwargs hidden=250 lr=5e-4
+```
+
+
+
+
 
 
 ## Publications
