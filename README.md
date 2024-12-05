@@ -128,7 +128,7 @@ During replay, `flor.arg` reads the values from the database, so you can easily 
 ### Setting hyper-parameters from the command line
 You can set the value of any `flor.arg` from the command line:
 ```bash 
-$ python train.py --kwargs hidden=250 lr=5e-4
+python train.py --kwargs hidden=250 lr=5e-4
 ```
 
 
