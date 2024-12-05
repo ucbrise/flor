@@ -10,3 +10,4 @@ matplotlib
 scikit-learn
 tqdm
 ipython
+ipykernel

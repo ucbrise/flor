@@ -27,6 +27,7 @@ setuptools.setup(
         "tqdm",
         "sh",
         "ipython",
+        "ipykernel",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

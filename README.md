@@ -40,12 +40,10 @@ Just start logging your runs with a single line of code:
 
 ```python
 import flor
-
 flor.log("msg", "Hello world!")
 ```
 ```
 msg: Hello, World!
-
 Changes committed successfully
 ```
 
@@ -53,7 +51,6 @@ You can read your logs with a Flor Dataframe:
 
 ```python
 import flor
-
 flor.dataframe("msg")
 ```
 ![msg dataframe](img/just_start.png)
@@ -137,6 +134,81 @@ $ python train.py --kwargs hidden=250 lr=5e-4
 
 ## Hindsight Logging for when you miss something
 Hindsight logging is a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. FlorDB supports hindsight logging across multiple versions with its record-replay sub-system.
+
+### Clone a sample repository
+To demonstrate hindsight logging, we will use a sample repository that contains a simple PyTorch training script. Let's clone the repository and install the requirements:
+
+```bash
+git clone https://github.com/rlnsanz/ml_tutorial.git
+cd ml_tutorial
+make install
+```
+
+### Record the first two runs
+Once you have the repository cloned, and the dependencies installed, you can record the first run with FlorDB:
+
+```bash
+python train.py
+```
+```bash
+Created and switched to new branch: flor.shadow
+device: cuda
+seed: 4179
+hidden: 500
+epochs: 5
+batch_size: 32
+lr: 0.001
+print_every: 500
+epoch: 0, step: 500, loss: 1.2232707738876343
+epoch: 0, step: 1000, loss: 0.9084039926528931
+...
+epoch: 4, step: 1500, loss: 0.4354817569255829
+epoch: 4, val_acc: 91.3   
+5it [00:23,  4.69s/it]    
+accuracy: 91.26
+correct: 9126
+Changes committed successfully
+```
+Notice that the `train.py` script logs the loss and accuracy during training. The loss is logged for each step, and the accuracy is logged at the end of each epoch.
+
+Next, you'll want to run training with different hyper-parameters. You can do this by setting the hyper-parameters from the command line:
+
+```bash
+python train.py --kwargs epochs=3 batch_size=64 lr=0.0005
+```
+```bash
+device: cuda
+seed: 6589
+hidden: 500
+epochs: 3
+batch_size: 64
+lr: 0.0005
+print_every: 500
+epoch: 0, step: 500, loss: 0.2713785469532013
+epoch: 0, val_acc: 92.35 
+epoch: 1, step: 500, loss: 0.2224295288324356
+epoch: 1, val_acc: 92.05 
+epoch: 2, step: 500, loss: 0.24274785816669464
+epoch: 2, val_acc: 91.75 
+3it [00:11,  4.00s/it]   
+accuracy: 92.41
+correct: 9241
+Changes committed successfully
+```
+
+Now, you have two runs recorded in FlorDB. You can view the hyper-parameters and metrics logged during training with the `flor.dataframe` function:
+
+```python
+import flor
+flor.dataframe("device", "seed", "epochs", "batch_size", "lr", "accuracy")
+```
+![dataframe of two runs](img/two_runs.png)
+
+### Replay the previous runs
+
+Although we logged the learning rate at the beginning of training, we forgot to log the learning rate during training. We can replay the previous runs and log the learning rate for each epoch:
+
+...
 
 ## Publications
 
