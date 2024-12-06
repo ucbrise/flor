@@ -86,11 +86,23 @@ def is_integer(string):
 
 
 def cast_dtypes(df: pd.DataFrame, columns=None):
-    for col in columns if columns is not None else df.columns:
+    target_columns = columns if columns is not None else df.columns
+    for col in target_columns:
         if df[col].dtype == "object":
-            df[col] = pd.to_numeric(df[col], errors="ignore")
-        if df[col].dtype == "object":
-            df[col] = pd.to_datetime(df[col], errors="ignore")
+            # Attempt to convert to numeric first
+            try:
+                df[col] = pd.to_numeric(df[col], errors="raise")
+            except ValueError:
+                # If it fails, try coerce (turns non-numeric into NaN)
+                pass
+
+            # After numeric attempt, if still object, try datetime
+            if df[col].dtype == "object":
+                try:
+                    df[col] = pd.to_datetime(df[col], errors="raise")
+                except ValueError:
+                    # If datetime also fails, revert to no conversion or coerce
+                    pass
     return df
 
 

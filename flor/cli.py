@@ -23,9 +23,9 @@ flags = Flags({}, None, None, None, None)
 def parse_replay_flor(arg):
     parts = arg.split()
     return {
-        p.split("=")[0]: eval(p.split("=")[1])
-        if "::" not in p
-        else str(p.split("=")[1])
+        p.split("=")[0]: (
+            eval(p.split("=")[1]) if "::" not in p else str(p.split("=")[1])
+        )
         for p in parts
     }
 
@@ -86,7 +86,6 @@ def parse_args():
         help="List of logged variables, comma-separated",
     )
 
-
     flor_commands = [
         "--kwargs",
         "--replay_flor",
@@ -94,7 +93,7 @@ def parse_args():
         "replay",
         "query",
         "dataframe",
-        "stat"
+        "stat",
     ]
 
     # Check if any of the flor_commands is in the arguments
@@ -136,7 +135,7 @@ def replay_initialize():
     with open(".flor.json", "r") as f:
         data = json.load(f)
     for obj in data:
-        if obj["loop"] is None and obj["type"] == 1:
+        if obj["ctx"] is None and obj["type"] == 1:
             d = {obj["name"]: obj["value"]}
             flags.hyperparameters.update(d)
     flags.old_tstamp = data[0]["tstamp"]

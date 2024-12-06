@@ -23,6 +23,8 @@ def dataframe(*args):
     # Query the distinct value_names
     try:
         df = database.pivot(conn, *(args if args else tuple()))
+        df.drop_duplicates(inplace=True)
+        df.reset_index(drop=True, inplace=True)
         return df
     finally:
         conn.close()
@@ -55,14 +57,21 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     loglvl, mark = schedule.get_loglvl(lev)
     schedule.estimate_cost(loglvl, mark)
 
-    print("log level", loglvl, "to", mark)
+    level_mapper = {0: "prefix", 1: "outer loop", 2: "nested loop"}
+
+    print(
+        "log level",
+        level_mapper[loglvl],
+        "to suffix." if mark == "suffix" else "without suffix.",
+    )
     print()
     print(schedule.df)
     print()
 
     res = input(
-        f"Continue replay estimated to finish in {utils.discretize(sum(schedule.df['composite']))} [Y/n]? "
+        f"Continue replay estimated to finish in {utils.discretize(sum(schedule.df['composite']))} [y/N]? "
     )
+    res = res if res else "n"
     if res.lower().strip() == "n":
         return schedule
 
@@ -91,13 +100,37 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 1:
-                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","  # type: ignore
+                tup = (
+                    ",".join(
+                        [
+                            str(i)
+                            for i in range(
+                                schedule.df[schedule.df["tstamp"] == ts][
+                                    "num_epochs"
+                                ].values[0]
+                            )
+                        ]
+                    )
+                    + ","
+                )
                 print("loglvl", loglvl, tup)
                 cmd = ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 2:
-                tup = ",".join([i for i in range(schedule.df["num_epochs"])]) + ","  # type: ignore
+                tup = (
+                    ",".join(
+                        [
+                            str(i)
+                            for i in range(
+                                schedule.df[schedule.df["tstamp"] == ts][
+                                    "num_epochs"
+                                ].values[0]
+                            )
+                        ]
+                    )
+                    + ","
+                )
                 print("loglvl", loglvl, tup)
                 cmd = ["python", main_script, "--replay_flor"] + [
                     "epoch=" + tup,
