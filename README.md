@@ -272,7 +272,7 @@ flor.dataframe("seed", "batch_size", "lr", "gradient_norm")
 ## Publications
 
 To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://arxiv.org/pdf/2408.02498). Published in the 15th Annual Conference
-on Innovative Data Systems Research (CIDR ’25). January 19-22, Amsterdam.
+on Innovative Data Systems Research (CIDR ’25).
 
 FlorDB is open source software developed at UC Berkeley. 
 [Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
