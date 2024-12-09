@@ -271,7 +271,7 @@ flor.dataframe("seed", "batch_size", "lr", "gradient_norm")
 
 ## Building AI/ML Applications with FlorDB
 FlorDB is more than just for logging: it's a versatile tool that can be used to manage the entire AI/ML lifecycle. 
-FlorDB takes a metadata-centric approach (i.e. "[context](https://rlnsanz.github.io/dat/Flor_CMI_18_CameraReady.pdf)") to managing AI/ML workflows, allowing you to store and query metadata about your experiments, models, and datasets. As demonstrated in the Document Parser, FlorDB can be used to easily define **model registries**, **feature stores**, **feedback loops**, and other ML System views common in AI/ML applications.
+FlorDB takes a metadata-centric approach (i.e. based on "[context](https://rlnsanz.github.io/dat/Flor_CMI_18_CameraReady.pdf)") to managing AI/ML workflows, allowing you to store and query metadata about your experiments, models, and datasets. As demonstrated in the Document Parser, FlorDB can be used to easily define **model registries**, **feature stores**, **feedback loops**, and other ML System views common in AI/ML applications.
 
 ![alt text](img/doc_parser.png)
 
