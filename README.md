@@ -308,4 +308,5 @@ Our list of publications are reproduced below:
 
 
 ## License
-FlorDB is licensed under the [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+FlorDB is licensed under the [Apache v2 License](https://www.google.com/url?sa=E&source=gmail&q=https://www.google.com/url?sa=E%26source=gmail%26q=https://www.apache.org/licenses/LICENSE-2.0), which allows you to freely use, modify, and distribute the software for any purpose, with attribution.
