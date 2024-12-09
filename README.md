@@ -283,6 +283,19 @@ The Document Parser is a Flask-based web application designed to process PDF doc
 
 A working implementation of the Document Parser, along with example usage, can be found in the [Document Parser repository](https://github.com/rlnsanz/document_parser). This repository provides a template for getting started with FlorDB and demonstrates how it can be integrated into a real-world machine learning application.
 
+## Model Training Examples
+AI/ML applications typically make use of a variety of models, each part of a larger ecosystem with its own hyper-parameters and training data. FlorDB can be used to manage these models, store their metadata, and track their evolution throughout the development lifecycle. The following PyTorch examples use HuggingFace and should be a good starting point for people looking to get started training or fine-tuning models with FlorDB.
+
+
+| Model        | Model Size | Data          | Data Size | Objective                  | Evaluation   | Application              |
+|--------------|------------|---------------|-----------|---------------------------|--------------|--------------------------|
+| [ResNet-152](https://github.com/rlnsanz/xp-resnet152)   | 242 MB     | ImageNet-1k   | 156 GB    | image classification      | accuracy     | computer vision          |
+| [BERT](https://github.com/rlnsanz/xp-BERT)         | 440 MB     | Wikipedia     | 40.8 GB   | masked language modeling  | accuracy     | natural language processing |
+| [GPT-2](https://github.com/rlnsanz/xp-gpt2)        | 548 MB     | Wikipedia     | 40.8 GB   | text generation           | perplexity   | natural language processing |
+| [LayoutLMv3](https://github.com/rlnsanz/xp-layoutlmv3)   | 501 MB     | FUNSD         | 36 MB     | form understanding        | F1-score     | document intelligence    |
+| [DETR](https://github.com/rlnsanz/xp-DETR)         | 167 MB     | CPPE-5        | 234 MB    | object detection          | μ-precision  | computer vision          |
+| [TAPAS](https://github.com/rlnsanz/xp-tapas-base)        | 443 MB     | WTQ           | 429 MB    | table question answering  | accuracy     | document intelligence    |
+
 
 ## Publications
 
