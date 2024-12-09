@@ -269,6 +269,21 @@ flor.dataframe("seed", "batch_size", "lr", "gradient_norm")
 ```
 ![alt text](img/gradient_norm.png)
 
+## Building AI/ML Applications with FlorDB
+FlorDB is more than just for logging: it's a versatile tool that can be used to manage the entire AI/ML lifecycle. 
+FlorDB takes a metadata-centric approach (i.e. "context") to managing AI/ML workflows, allowing you to store and query metadata about your experiments, models, and datasets. As demonstrated in the Document Parser, FlorDB can be used to easily define **model registries**, **feature stores**, **feedback loops**, and other ML System views common in AI/ML applications.
+
+![alt text](img/doc_parser.png)
+
+### Document Parser
+
+The Document Parser is a Flask-based web application designed to process PDF documents. It allows users to split PDFs, extract text, and prepare data for analysis using NLP techniques. The parser converts PDF documents into text and images. It then performs featurization, which includes extracting text and inferring page features (such as headings, page numbers, etc). This process transforms raw PDF data into a structured format suitable for machine learning applications. FlorDB enhances this process by serving as a **feature store** during featurization and a **model registry** during inference. It automates the selection of optimal model checkpoints, streamlines document and image processing, and facilitates debugging with hindsight logging. FlorDB also manages training data and model repositories for training pipelines. The application's core functionalities are structured around Flask routes that handle web requests, including displaying and manipulating PDFs, and incorporating human-in-the-loop feedback (i.e. whether two contiguous pages belong in the same document, for document segmentation). This feedback loop allows domain experts to review and correct model predictions, which are then used to iteratively improve model performance and maintain data quality.
+
+**Try it yourself!**
+
+A working implementation of the Document Parser, along with example usage, can be found in the [Document Parser repository](https://github.com/rlnsanz/document_parser). This repository provides a template for getting started with FlorDB and demonstrates how it can be integrated into a real-world machine learning application.
+
+
 ## Publications
 
 To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://arxiv.org/pdf/2408.02498). Published in the 15th Annual Conference
