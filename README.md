@@ -3,11 +3,9 @@ FlorDB
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
 
-FlorDB is a hindsight logging database for the AI/ML lifecycle. It works in tandem with any workflow management solution for Python, such as Make, Airflow, MLFlow, Docker, Slurm, and Jupyter, to manage model developers' logs, execution data, versions of code (via `git`), and `torch` checkpoints. In addition to serving as a nimble experiment management solution for ML Engineers, FlorDB subsumes functionality from bespoke ML systems, operating as a **model registry**, **feature store**, **labeling solution**, and others, as needed.
+FlorDB is a hindsight logging database for the AI/ML lifecycle. It works in tandem with any workflow management solution for Python, such as Make, Airflow, MLFlow, Slurm, and Jupyter, to manage model developers' logs, execution data, versions of code (via `git`), and `torch` checkpoints. In addition to serving as a nimble experiment management solution for ML Engineers, FlorDB subsumes functionality from bespoke ML systems, operating as a **model registry**, **feature store**, **labeling solution**, and others, as needed.
 
-FlorDB contains a record-replay sub-system to enable hindsight logging: a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed. When model weights are updated during training, Flor takes low-overhead checkpoints, and uses those checkpoints for replay speedups based on memoization, program slicing, and parallelism. As we will soon discuss, most FlorDB use-cases (e.g. data prep, featurization) do not involve `torch` checkpointing and can use the Flor data model independently of the record-replay sub-system.
-
-FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
+FlorDB contains a record-replay sub-system to enable hindsight logging: a post-hoc analysis practice that involves adding logging statements *after* encountering a surprise, and efficiently re-training with more logging as needed.
 
 ## Installation
 To install the latest stable version of FlorDB, run:
@@ -298,17 +296,15 @@ AI/ML applications typically make use of a variety of models, each part of a lar
 
 
 ## Publications
+FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
 
 To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://arxiv.org/pdf/2408.02498). Published in the 15th Annual Conference
 on Innovative Data Systems Research (CIDR ’25).
 
 FlorDB is open source software developed at UC Berkeley. 
 [Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
-are the primary faculty members leading this work.
+are the primary faculty members leading this work. FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees.
 
-This work is released as part of [Rolando Garcia](https://rlnsanz.github.io/)'s [doctoral dissertation](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html) at UC Berkeley,
-and has been the subject of study by Eric Liu and Anusha Dandamudi, 
-both of whom completed their master's theses on FLOR.
 Our list of publications are reproduced below:
 
 * [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle](https://arxiv.org/pdf/2408.02498). _R Garcia, P Kallanagoudar, C Anand, SE Chasins, JM Hellerstein, EMT Kerrison, AG Parameswaran_. CIDR, 2025.
