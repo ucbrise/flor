@@ -2,10 +2,9 @@ FlorDB
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB is a hindsight logging database for the AI/ML lifecycle that works seamlessly with Python workflow tools like Make, Airflow, MLFlow, Slurm, and Jupyter. It manages model developers' logs, execution data, code versions (via `git`), and `torch` checkpoints while serving as a foundation for production ML systems.
+FlorDB is a hindsight logging database for the AI/ML lifecycle that works seamlessly with Python workflow tools such as Make, Airflow, MLFlow, Slurm, and Jupyter. It manages model developers' logs, execution data, code versions (via `git`), and `torch` checkpoints while serving as a foundation for production ML systems.
 
-A key innovation in FlorDB is hindsight logging: the ability to add logging statements *after* encountering a surprise and efficiently re-train with more logging as needed. This sets FlorDB apart from traditional experiment tracking tools.
-
+A key innovation in FlorDB is hindsight logging: the ability to add logging statements *after* encountering a surprise and efficiently re-train with more logging as needed. 
 Whether you're tracking experiments or building production systems, FlorDB can serve as a **model registry**, **feature store**, and **labeling solution** &mdash; adapting to your ML infrastructure needs as they evolve &mdash; like views over data.
 
 ## Installation
