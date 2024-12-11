@@ -261,7 +261,7 @@ with flor.checkpointing(model=net, optimizer=optimizer):
 ```
 
 During inference, we can automatically select the best model:
-XXX TODO I think there is code missing below to filter for best?
+<!-- XXX TODO I think there is code missing below to filter for best? -->
 
 ```python
 # infer.py
@@ -274,7 +274,7 @@ best_model = flor.dataframe("acc", "recall")
 
 One of the most powerful aspects is how FlorDB handles human feedback. In our PDF Parser application, we have a Flask interface where experts can review and correct model predictions:
 
-XXX TODO it's unclear from the code snippet how you are gettign human corrections and how they're distinguished from machine predictions.
+<!-- XXX TODO it's unclear from the code snippet how you are gettign human corrections and how they're distinguished from machine predictions. -->
 
 ```python
 # app.py
@@ -296,7 +296,7 @@ The key here is that FlorDB maintains complete provenance of both machine predic
 - Use corrections to improve model training
 - Maintain data quality over time
 
-XXX TODO The above asserts benefits that aren't really apparent from the demo.
+<!-- XXX TODO The above asserts benefits that aren't really apparent from the demo. -->
 
 ```python
 import flor
@@ -345,7 +345,7 @@ run: featurize infer
 
 We've decided to manage dependencies and dataflow using Make, but you could just as easily use Airflow, Kubeflow, or any other workflow management system. FlorDB operates at the Python layer, and adapts to your existing infrastructure, making it easy to integrate into your AI/ML applications.
 
-XXX TODO Walk the audience through how running "make foo" results in flor being invoked.
+<!-- XXX TODO Walk the audience through how running "make foo" results in flor being invoked. -->
 
 # Wrapping Up
 
