@@ -1,15 +1,17 @@
 # Getting Started with FlorDB
 
-Today I'm excited to introduce FlorDB, a versatile logging database that simplifies how we manage the AI and machine learning lifecycle.
+Today I'm excited to introduce FlorDB, a versatile *hindsight logging database* that simplifies how we manage the AI and machine learning lifecycle.
 
-Let me start by explaining what makes FlorDB unique. While there are many tools out there for managing ML workflows, FlorDB introduces something particularly useful: hindsight logging. Imagine you're deep into training a model, and you suddenly realize you forgot to track an important metric. Traditionally, this would mean starting over from scratch. But with FlorDB, you can add those logging statements after the fact and efficiently replay your training with the new logging in place.
+Let me start by explaining what makes FlorDB unique. While there are many tools out there for managing ML workflows, FlorDB introduces something particularly useful: *hindsight logging*. Imagine you're many hours into training a model, and you suddenly realize you forgot to track an important metric. Traditionally, this would mean starting over from scratch. But with FlorDB, you can add those logging statements after the fact and efficiently replay your training with the new logging in place -- often in just seconds.
 
 FlorDB is designed to integrate seamlessly with your existing workflow. Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, or Slurm for cluster management – FlorDB works alongside all of them.
 
 What makes FlorDB particularly useful is its adaptability. It can serve as your:
+- Git-aware logging library
+- Checkpoint/Restore system for long-running Python tasks
 - Model registry for version control
-- Feature store for managing training data
-- Labeling solution for data annotation
+- Feature store for materializing results of featurization
+- Label management solution for data annotation
 - And more, adapting to your specific needs
 
 ## Installation
@@ -70,7 +72,11 @@ batch_size = flor.arg("batch_size", 32)
 learning_rate = flor.arg("lr", 1e-3)
 ```
 
-Notice how we're using `flor.arg` here. This does two important things: it logs the parameter values, and it makes them configurable from the command line. This means you can easily run experiments with different parameters without changing your code.
+Notice how we're using `flor.arg` here. This does two important things: it logs the parameter values, and it makes them configurable from the command line. This means you can easily run experiments with different parameters without changing your code:
+
+```bash
+python train.py --kwargs hidden=250 lr=5e-4
+```
 
 Next, let's look at the training loop. FlorDB provides a checkpointing system that works seamlessly with PyTorch:
 
@@ -97,12 +103,6 @@ Let me highlight a few important features here:
 - The `flor.checkpointing` context manager handles saving and loading model states
 - `flor.loop` helps track iteration progress
 - `flor.log` captures metrics like loss values during training
-
-One particularly useful feature is that you can set these hyperparameters directly from the command line. For example:
-
-```bash
-python train.py --kwargs hidden=250 lr=5e-4
-```
 
 To view all this logged information, you can use a Flor Dataframe just like before, but now with multiple columns:
 
@@ -225,7 +225,7 @@ What's important to note is that FlorDB automatically tracks:
 - The relationship between documents, pages, and their features
 - Complete provenance of how features were computed
 
-All this happens without needing a predefined schema or complex setup.
+All this happens without needing a predefined schema or complex setup. We'll see this in action next.
 
 ### FlorDB as a Model Registry 
 
@@ -261,6 +261,7 @@ with flor.checkpointing(model=net, optimizer=optimizer):
 ```
 
 During inference, we can automatically select the best model:
+XXX TODO I think there is code missing below to filter for best?
 
 ```python
 # infer.py
@@ -272,6 +273,8 @@ best_model = flor.dataframe("acc", "recall")
 ### FlorDB for Feedback Loops
 
 One of the most powerful aspects is how FlorDB handles human feedback. In our PDF Parser application, we have a Flask interface where experts can review and correct model predictions:
+
+XXX TODO it's unclear from the code snippet how you are gettign human corrections and how they're distinguished from machine predictions.
 
 ```python
 # app.py
@@ -292,6 +295,8 @@ The key here is that FlorDB maintains complete provenance of both machine predic
 - Track which predictions were corrected
 - Use corrections to improve model training
 - Maintain data quality over time
+
+XXX TODO The above asserts benefits that aren't really apparent from the demo.
 
 ```python
 import flor
@@ -339,6 +344,8 @@ run: featurize infer
 ```
 
 We've decided to manage dependencies and dataflow using Make, but you could just as easily use Airflow, Kubeflow, or any other workflow management system. FlorDB operates at the Python layer, and adapts to your existing infrastructure, making it easy to integrate into your AI/ML applications.
+
+XXX TODO Walk the audience through how running "make foo" results in flor being invoked.
 
 # Wrapping Up
 
