@@ -95,14 +95,6 @@ with flor.checkpointing(model=net, optimizer=optimizer):
         eval(net, testloader)
 ```
 
-To view the hyper-parameters and metrics logged during training, you can use the `flor.dataframe` function:
-
-```python
-import flor
-flor.dataframe("hidden", "batch_size", "lr", "loss")
-```
-![loss dataframe](img/loss_df.png)
-
 ### Logging hyper-parameters
 As shown above, you can log hyper-parameters with `flor.arg`:
 
@@ -128,6 +120,16 @@ You can set the value of any `flor.arg` from the command line:
 ```bash 
 python train.py --kwargs hidden=250 lr=5e-4
 ```
+
+### Viewing your experiment history
+To view the hyper-parameters and metrics logged during training, you can use the `flor.dataframe` function:
+
+```python
+import flor
+flor.dataframe("hidden", "batch_size", "lr", "loss")
+```
+![loss dataframe](img/loss_df.png)
+
 
 
 ## Hindsight Logging for when you miss something
