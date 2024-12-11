@@ -4,7 +4,7 @@ Today I'm excited to introduce FlorDB, a versatile logging database that simplif
 
 Let me start by explaining what makes FlorDB unique. While there are many tools out there for managing ML workflows, FlorDB introduces something particularly useful: hindsight logging. Imagine you're deep into training a model, and you suddenly realize you forgot to track an important metric. Traditionally, this would mean starting over from scratch. But with FlorDB, you can add those logging statements after the fact and efficiently replay your training with the new logging in place.
 
-FlorDB is designed to integrate seamlessly with your existing workflow. Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, Docker for containerization, or Slurm for cluster management – FlorDB works alongside all of them.
+FlorDB is designed to integrate seamlessly with your existing workflow. Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, or Slurm for cluster management – FlorDB works alongside all of them.
 
 What makes FlorDB particularly useful is its adaptability. It can serve as your:
 - Model registry for version control
