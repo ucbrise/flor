@@ -115,13 +115,17 @@ This gives you a comprehensive view of your experiment, showing how different hy
 
 [Pause for transition]
 
-Now that we've covered basic experiment logging, let me show you one of FlorDB's most powerful features: hindsight logging...
-
 ## Hindsight Logging
 
-Let me introduce you to one of FlorDB's most distinctive capabilities: hindsight logging - (which is) the ability to add logging statements after your experiments have run. It's particularly useful when you realize you need to track something you didn't think of initially. Let me walk you through a practical example.
+Now that we've covered basic experiment logging, let me introduce you to one of FlorDB's most distinctive capabilities: hindsight logging - (which is) the ability to add logging statements after your experiments have run. 
 
-First, let's use a sample repository to demonstrate this. You can get it by running:
+It's particularly useful when you realize you need to track something you didn't think of initially. 
+
+Let me walk you through a practical example.
+
+First, let's use a sample repository to demonstrate this. 
+
+You can get it by running:
 
 ```bash
 git clone https://github.com/rlnsanz/ml_tutorial.git
@@ -163,7 +167,13 @@ import flor
 flor.dataframe("device", "seed", "epochs", "batch_size", "lr", "accuracy")
 ```
 
-Here's where hindsight logging becomes valuable. Imagine you're analyzing these runs and realize you need to know what the gradient norms were during training. A naive solution is simply to retrain both models from scratch after adding the relevant logging statement. With FlorDB, you simply add the new logging statement to the latest version of your code and replay your previous runs efficiently.
+Here's where hindsight logging becomes valuable. 
+
+Imagine you're analyzing these runs and realize you need to know what the gradient norms were during training. 
+
+A naive solution is simply to retrain both models from scratch after adding the relevant logging statement. 
+
+With FlorDB, you simply add the new logging statement to the latest version of your code and replay your previous runs efficiently.
 
 Here's how we add gradient norm logging to our training script:
 
@@ -181,22 +191,26 @@ To replay our previous runs with this new logging, we simply use:
 python -m flor replay gradient_norm
 ```
 
-FlorDB will analyze your previous runs and replay them efficiently, only executing the parts needed to capture the new information. When it's done, you can view the updated results:
+FlorDB will analyze your previous runs and replay them efficiently, only executing the parts needed to capture the new information. 
+
+When it's done, you can view the updated results:
 
 ```python
 import flor
 flor.dataframe("seed", "batch_size", "lr", "gradient_norm")
 ```
 
-The power here is that we didn't have to modify our original experiments or rerun them from scratch. FlorDB handled all the complexity of propagating logging statements back in time and replaying the necessary parts of our training history.
+Notice how the gradient norm, data recovered with hindsight logging, is now just another column in the Flor Dataframe.
+
+The power here is that we didn't have to modify our original experiments or rerun them from scratch. 
+
+FlorDB handled all the complexity of propagating logging statements back in time and replaying the necessary parts of our training history efficiently.
 
 [Pause for transition]
 
-Now that we've covered the core features of FlorDB, let me show you how it fits into larger AI/ML applications...
-
 ## Building AI/ML Applications with FlorDB
 
-Let me show you how FlorDB serves as more than just a logging system. In the real world, AI/ML applications need to manage complex pipelines spanning multiple components - from feature computation to model training to human feedback. Let me demonstrate this using our Document Parser application.
+Now that we've covered the core features of FlorDB, let me show you how it fits into larger AI/ML applications. In the real world, AI/ML applications need to manage complex pipelines spanning multiple components - from feature computation to model training to human feedback. Let me demonstrate this using our Document Parser application.
 
 ### FlorDB as a Feature Store
 
@@ -307,7 +321,7 @@ This gives you a complete view of the data, including both machine-generated and
 
 ### Putting it all together
 
-Let's look at how all these pieces fit together in a real ML application. Here's our complete pipeline as defined in the Makefile:
+Finally Let's look at how all these pieces fit together in a real ML application. Here's our complete pipeline as defined in the Makefile:
 
 ```Makefile
 process_pdfs: $(PDFS) pdf_demux.py
@@ -357,15 +371,6 @@ To recap, the simplest way to get started is to install FlorDB via pip:
 pip install flordb
 ```
 
-### Resources
-- Source code and example projects: https://github.com/ucbrise/flor
-- Sample applications like the PDF Parser: https://github.com/rlnsanz/document_parser
-
-### Getting Help
-- For bug reports: Open an issue on the GitHub repository
-- For academic collaborations or research questions, you can contact Rolando Garcia at rolando.garcia@asu.edu
-
-### Join the Community
 FlorDB is actively maintained and developed at ASU's School of Computing & Augmented Intelligence (SCAI), building on years of research at UC Berkeley's RISE Lab. We welcome contributions and feedback from the community.
 
 If you're interested in learning more about the research behind FlorDB, check out our papers:
