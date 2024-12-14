@@ -7,6 +7,11 @@ FlorDB is a hindsight logging database for the AI/ML lifecycle that works seamle
 A key innovation in FlorDB is hindsight logging: the ability to add logging statements *after* encountering a surprise and efficiently re-train with more logging as needed. 
 Whether you're tracking experiments or building production systems, FlorDB can serve as a **model registry**, **feature store**, and **labeling solution** &mdash; adapting to your ML infrastructure needs as they evolve &mdash; like views over data.
 
+## Quick Start Video
+For a walkthrough of FlorDB's features and how to get started, check out our tutorial video:
+
+[▶️ Watch the FlorDB Tutorial on YouTube](https://youtu.be/mKENSkk3S4Y?si=urRHD6wk9PawsYqQ)
+
 ## Installation
 To install the latest stable version of FlorDB, run:
 
