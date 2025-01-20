@@ -305,16 +305,15 @@ AI/ML applications typically make use of a variety of models, each part of a lar
 ## Publications
 FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
 
-To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://arxiv.org/pdf/2408.02498). Published in the 15th Annual Conference
-on Innovative Data Systems Research (CIDR ’25).
+To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf). Published in the 15th Annual Conference
+on Innovative Data Systems Research (CIDR ’25). 
+Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
 
 FlorDB is open source software developed at UC Berkeley. 
-[Joe Hellerstein](https://dsf.berkeley.edu/jmh/) (databases), [Joey Gonzalez](http://people.eecs.berkeley.edu/~jegonzal/) (machine learning), and [Koushik Sen](https://people.eecs.berkeley.edu/~ksen) (programming languages) 
-are the primary faculty members leading this work. FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees.
+FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees.
+The list of publications resulting from our work is presented below:
 
-Our list of publications are reproduced below:
-
-* [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle](https://arxiv.org/pdf/2408.02498). _R Garcia, P Kallanagoudar, C Anand, SE Chasins, JM Hellerstein, EMT Kerrison, AG Parameswaran_. CIDR, 2025.
+* [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf). _R Garcia, P Kallanagoudar, C Anand, SE Chasins, JM Hellerstein, EMT Kerrison, AG Parameswaran_. CIDR, 2025.
 * [The Management of Context in the Machine Learning Lifecycle](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html). _R Garcia_. EECS Department, University of California, Berkeley, 2024. UCB/EECS-2024-142.
 * [Multiversion Hindsight Logging for Continuous Training](https://arxiv.org/abs/2310.07898). _R Garcia, A Dandamudi, G Matute, L Wan, JE Gonzalez, JM Hellerstein, K Sen_. pre-print on ArXiv, 2023.
 * [Hindsight Logging for Model Training](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf). _R Garcia, E Liu, V Sreekanti, B Yan, A Dandamudi, JE Gonzalez, JM Hellerstein, K Sen_. The VLDB Journal, 2021.
