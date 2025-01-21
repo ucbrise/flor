@@ -2,12 +2,15 @@ FlorDB
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB is a nimble hindsight logging database for the AI/ML lifecycle that works seamlessly with Python workflow tools such as Make, Airflow, MLFlow, Slurm, and Jupyter/IPython. It manages model developers' logs, execution data, code versions (via `git`), and `torch` checkpoints while serving as a foundation for production ML systems. Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
+FlorDB is a nimble hindsight logging database that simplifies how we manage the AI and machine learning lifecycle.
+It's designed to integrate seamlessly with your existing workflow. 
+Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, or Slurm for cluster management – FlorDB works alongside all of them.
+Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
 The goals of FlorDB are as follows:
 
 1. **Faster, More Flexible Experimentation:** users can quickly iterate on model training, and track hyper-parameters without worrying about missing something, thanks to hindsight logging.
-1. **Better Reproducibility and Provenance:** by capturing the full history (from code changes to model checkpoints) and derivations of executions, FlorDB is built around reproducibility and provenance.
-1. **Long Term Maintainability:** FlorDB provides a single robust system for logging, storing, and retrieving all the context/metadata needed to manage AI/ML projects over their full lifecycle.
+1. **Better Reproducibility and Provenance:** by capturing the full history and lineage (from code changes to model checkpoints and build DAGs), FlorDB ensures that every step in your workflow is traceable and versioned, making it easy to replicate experiments, validate outcomes, and maintain end-to-end transparency over the entire AI/ML lifecycle.
+1. **Long Term Maintainability:** FlorDB provides a single robust system for logging, storing, and retrieving all the context/metadata needed for anyone to manage AI/ML projects over their full lifecycle.
 
 ## Quick Start Video
 For a walkthrough of FlorDB's features and how to get started, check out our tutorial video:
