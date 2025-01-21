@@ -23,8 +23,8 @@ def dataframe(*args):
     # Query the distinct value_names
     try:
         df = database.pivot(conn, *(args if args else tuple()))
-        df.drop_duplicates(inplace=True)
-        df.reset_index(drop=True, inplace=True)
+        df = df.drop_duplicates()
+        df = df.reset_index(drop=True)
         return df
     finally:
         conn.close()
