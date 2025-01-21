@@ -13,7 +13,7 @@ The goals of FlorDB are as follows:
 1. **Long Term Maintainability:** FlorDB provides a single robust system for logging, storing, and retrieving all the context/metadata needed for anyone to manage AI/ML projects over their full lifecycle.
 
 ### Roadmap
-Next, we will show you:
+Here's what we'll cover next:
 
 *   **Easy Integration:**
     *   Seamlessly integrate FlorDB into existing PyTorch code.
