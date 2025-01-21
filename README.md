@@ -12,6 +12,27 @@ The goals of FlorDB are as follows:
 1. **Better Reproducibility and Provenance:** by capturing the full history and lineage (from code changes to model checkpoints and build DAGs), FlorDB ensures that every step in your workflow is traceable and versioned, making it easy to replicate experiments, validate outcomes, and maintain end-to-end transparency over the entire AI/ML lifecycle.
 1. **Long Term Maintainability:** FlorDB provides a single robust system for logging, storing, and retrieving all the context/metadata needed for anyone to manage AI/ML projects over their full lifecycle.
 
+### Roadmap
+Next, we will show you:
+
+*   **Easy Integration:**
+    *   Seamlessly integrate FlorDB into existing PyTorch code.
+    *   Log hyper-parameters and track model training with minimal changes.
+    *   Manage and version experiments effortlessly.
+
+*   **Hindsight Logging in Action:**
+    *   Retroactively add logging to past runs *without* full retraining.
+    *   Debug and iterate on models more efficiently.
+    *   Capture crucial information you initially missed.
+
+*   **Building AI/ML Applications:**
+    *   See FlorDB as a foundation for complex systems.
+    *   **Document Parser Example:**
+        *   FlorDB as a feature store.
+        *   FlorDB as a model registry.
+        *   Facilitating human-in-the-loop feedback for model improvement.
+
+
 ## Quick Start Video
 For a walkthrough of FlorDB's features and how to get started, check out our tutorial video:
 
