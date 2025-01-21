@@ -1,4 +1,4 @@
-FlorDB
+Flow with FlorDB
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
