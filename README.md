@@ -6,7 +6,6 @@ FlorDB is a nimble hindsight logging database that simplifies how we manage the 
 We center our approach on the developer-favored technique for generating metadata — log statements — leveraging the fact that logging creates context. 
 FlorDB is designed to integrate seamlessly with your existing workflow. 
 Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, or Slurm for cluster management – FlorDB works alongside all of them.
-Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
 The goals of FlorDB are as follows:
 
 1. **Faster, More Flexible Experimentation:** users can quickly iterate on model training, and track hyper-parameters without worrying about missing something, thanks to hindsight logging.
@@ -312,7 +311,7 @@ AI/ML applications typically make use of a variety of models, each part of a lar
 FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.edu/) Lab (2017 - 2024). It is actively maintained by [Rolando Garcia](https://rlnsanz.github.io) (rolando.garcia@asu.edu) at ASU's School of Computing & Augmented Intelligence (SCAI).
 
 To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf). Published in the 15th Annual Conference
-on Innovative Data Systems Research (CIDR ’25). 
+on Innovative Data Systems Research (CIDR ’25). Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
 
 FlorDB is open source software developed at UC Berkeley. 
 FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees.
