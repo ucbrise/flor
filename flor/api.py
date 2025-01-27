@@ -33,19 +33,23 @@ skip_cleanup = True
 def log(name, value):
     if skip_cleanup:
         _deferred_init()
-
-    serializable_value = value if utils.is_jsonable(value) else str(value)
-    output_buffer.append(
-        orm.Log(
-            PROJID,
-            Clock.get_datetime(),
-            SCRIPTNAME,
-            context if context is None else deepcopy(context),
-            name,
-            serializable_value,
-            1,
+    if cli.in_replay_mode():
+        # Check that name is in logging statement propagation list
+        pass
+    else:
+        # RECORD
+        serializable_value = value if utils.is_jsonable(value) else str(value)
+        output_buffer.append(
+            orm.Log(
+                PROJID,
+                Clock.get_datetime(),
+                SCRIPTNAME,
+                context if context is None else deepcopy(context),
+                name,
+                serializable_value,
+                1,
+            )
         )
-    )
     tqdm.write(utils.to_string(layers, name, serializable_value))
 
     return value
