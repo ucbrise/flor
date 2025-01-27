@@ -49,8 +49,6 @@ def main():
                 repl.replay(flags.args.VARS, flags.args.where_clause)
             else:
                 repl.replay(flags.args.VARS)
-            # atexit remove the .flor_replay.json file
-
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),
@@ -64,13 +62,6 @@ def main():
             for k, v in build_context.items():
                 print(k + ":", v)
 
-
-def remove_replay_file():
-    if os.path.exists(".flor_replay.json"):
-        os.remove(".flor_replay.json")
-
-
-atexit.register(remove_replay_file)
 
 if __name__ == "__main__":
     main()
