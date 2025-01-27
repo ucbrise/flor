@@ -43,8 +43,6 @@ def main():
             )
             print(df)
         elif flags.args.flor_command == "replay":
-            with open(".flor_replay.json", "w") as f:
-                json.dump(flags.args.VARS, f)
             if flags.args.where_clause:
                 repl.replay(flags.args.VARS, flags.args.where_clause)
             else:

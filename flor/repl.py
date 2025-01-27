@@ -96,7 +96,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                     raise e
             if loglvl == 0:
                 print("loglvl", loglvl, "no dims")
-                cmd = ["python", main_script, "--replay_flor"]
+                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)]
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 1:
@@ -114,7 +114,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                     + ","
                 )
                 print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor"] + ["epoch=" + tup]
+                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
+                    "epoch=" + tup
+                ]
                 print(*cmd)
                 subprocess.run(cmd)
             elif loglvl == 2:
@@ -132,7 +134,7 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                     + ","
                 )
                 print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor"] + [
+                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
                     "epoch=" + tup,
                     "step=1",
                 ]

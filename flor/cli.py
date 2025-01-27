@@ -22,12 +22,14 @@ flags = Flags({}, None, None, None, None)
 
 def parse_replay_flor(arg):
     parts = arg.split()
-    return {
-        p.split("=")[0]: (
-            eval(p.split("=")[1]) if "::" not in p else str(p.split("=")[1])
-        )
-        for p in parts
-    }
+    d = {}
+    for part in parts:
+        if "=" not in part:
+            d["VARS"] = part.split(",")
+        else:
+            key, value = part.split("=")
+            d[key] = value.split(",")
+    return d
 
 
 def parse_columns(column_string):
@@ -132,8 +134,6 @@ def replay_initialize():
         flags.args is not None and flags.args.kwargs is None
     ), "Cannot set --kwargs in replay, would rewrite history"
     # read .flor_replay.json into flags.args.VARS
-    with open(".flor_replay.json", "r") as f:
-        flags.args.VARS = json.load(f)
     # update flags.hyperparameters
     with open(".flor.json", "r") as f:
         data = json.load(f)

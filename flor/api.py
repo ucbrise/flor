@@ -37,7 +37,7 @@ def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     tqdm.write(utils.to_string(layers, name, serializable_value))
 
-    if cli.in_replay_mode() and name not in cli.flags.args.VARS:
+    if cli.in_replay_mode() and name not in cli.flags.queryparameters["VARS"]:
         # Check that name is in logging statement propagation list
         return value
 
