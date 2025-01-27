@@ -42,21 +42,27 @@ def main():
             )
             print(df)
         elif flags.args.flor_command == "replay":
-            if flags.args.where_clause:
-                repl.replay(flags.args.VARS, flags.args.where_clause)
-            else:
-                repl.replay(flags.args.VARS)
+            with open(".flor_replay.json", "w") as f:
+                json.dump(flags.args.VARS, f)
+            try:
+                if flags.args.where_clause:
+                    repl.replay(flags.args.VARS, flags.args.where_clause)
+                else:
+                    repl.replay(flags.args.VARS)
+            finally:
+                os.remove(".flor_replay.json")
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),
                 "operating_system": platform.system(),
                 "os_version": platform.version(),
                 "python_version": platform.python_version(),
-                "in_anaconda": 'conda' in sys.version or 'Continuum' in sys.version or os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
+                "in_anaconda": "conda" in sys.version
+                or "Continuum" in sys.version
+                or os.path.exists(os.path.join(sys.prefix, "conda-meta")),
             }
-            for k,v in build_context.items():
+            for k, v in build_context.items():
                 print(k + ":", v)
-
 
 
 if __name__ == "__main__":

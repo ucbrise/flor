@@ -131,6 +131,9 @@ def replay_initialize():
     assert (
         flags.args is not None and flags.args.kwargs is None
     ), "Cannot set --kwargs in replay, would rewrite history"
+    # read .flor_replay.json into flags.args.VARS
+    with open(".flor_replay.json", "r") as f:
+        flags.args.VARS = json.load(f)
     # update flags.hyperparameters
     with open(".flor.json", "r") as f:
         data = json.load(f)
