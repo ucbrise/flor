@@ -12,14 +12,6 @@ import os
 import atexit
 
 
-def remove_replay_file():
-    if os.path.exists(".flor_replay.json"):
-        os.remove(".flor_replay.json")
-
-
-atexit.register(remove_replay_file)
-
-
 def main():
     if flags.args is not None and flags.args.flor_command is not None:
         if flags.args.flor_command == "unpack":
@@ -72,6 +64,13 @@ def main():
             for k, v in build_context.items():
                 print(k + ":", v)
 
+
+def remove_replay_file():
+    if os.path.exists(".flor_replay.json"):
+        os.remove(".flor_replay.json")
+
+
+atexit.register(remove_replay_file)
 
 if __name__ == "__main__":
     main()
