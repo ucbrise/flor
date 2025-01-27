@@ -275,7 +275,7 @@ When you confirm the replay, Flor will replay the past versions shown in the sch
 
 ```python
 import flor
-flor.dataframe("seed", "batch_size", "lr", "gradient_norm")
+flor.dataframe("seed", "batch_size", "lr", "accuracy", "gradient_norm")
 ```
 ![alt text](img/gradient_norm.png)
 
