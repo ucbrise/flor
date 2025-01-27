@@ -9,6 +9,15 @@ import json
 import platform
 import sys
 import os
+import atexit
+
+
+def remove_replay_file():
+    if os.path.exists(".flor_replay.json"):
+        os.remove(".flor_replay.json")
+
+
+atexit.register(remove_replay_file)
 
 
 def main():
@@ -44,13 +53,12 @@ def main():
         elif flags.args.flor_command == "replay":
             with open(".flor_replay.json", "w") as f:
                 json.dump(flags.args.VARS, f)
-            try:
-                if flags.args.where_clause:
-                    repl.replay(flags.args.VARS, flags.args.where_clause)
-                else:
-                    repl.replay(flags.args.VARS)
-            finally:
-                os.remove(".flor_replay.json")
+            if flags.args.where_clause:
+                repl.replay(flags.args.VARS, flags.args.where_clause)
+            else:
+                repl.replay(flags.args.VARS)
+            # atexit remove the .flor_replay.json file
+
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),
