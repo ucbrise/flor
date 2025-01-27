@@ -279,6 +279,8 @@ def slice(name, iterator):
         return new_slice
 
     assert isinstance(qop, (list, tuple))
+    # filter out strings that are not integers
+    qop = [i for i in qop if i.isnumeric()]
     for i in qop:
         new_slice.append((i, original[int(i)]))
     return new_slice
