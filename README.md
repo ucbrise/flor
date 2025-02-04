@@ -2,7 +2,7 @@ Flow with FlorDB
 ================================
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB is a nimble hindsight logging database that simplifies how we manage the AI and machine learning lifecycle.
+FlorDB is a nimble hindsight logging database that simplifies how we manage context in the AI and machine learning lifecycle.
 We center our approach on the developer-favored technique for generating metadata — log statements — leveraging the fact that logging creates context. 
 FlorDB is designed to integrate seamlessly with your existing workflow. 
 Whether you're using Make for basic automation, Airflow for complex pipelines, MLFlow for experiment tracking, or Slurm for cluster management – FlorDB works alongside all of them.
