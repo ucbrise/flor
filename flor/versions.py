@@ -71,7 +71,7 @@ def to_shadow():
                 print(f"Created and switched to new branch: {new_branch_name}")
             except Exception as e:
                 # Likely branch already exists due to race condition
-                repo.git.checkout(new_branch_name)
+                # repo.git.checkout(new_branch_name)
                 branch = repo.active_branch.name
                 print(
                     f"Branch '{new_branch_name}' already exists. Switched to branch: {branch}"
