@@ -65,9 +65,17 @@ def to_shadow():
                 new_branch_name = f"{base_shadow_name}{suffix}"
                 suffix += 1
 
-            # Create a new branch with the unique name
-            repo.git.checkout("-b", new_branch_name)
-            print(f"Created and switched to new branch: {new_branch_name}")
+            try:
+                # Try to create a new branch with the unique name
+                repo.git.checkout("-b", new_branch_name)
+                print(f"Created and switched to new branch: {new_branch_name}")
+            except Exception as e:
+                # Likely branch already exists due to race condition
+                # repo.git.checkout(new_branch_name)
+                branch = repo.active_branch.name
+                print(
+                    f"Branch '{new_branch_name}' already exists. Switched to branch: {branch}"
+                )
     except InvalidGitRepositoryError:
         print("Not a valid Git repository")
     except Exception as e:
