@@ -230,18 +230,18 @@ def pivot(conn, *args):
                     "l_name",
                 ]
             )
-            if logs["iteration"].notna().any():
+            if logs["iteration"].notna().all():
                 logs["iteration"] = logs["iteration"].astype(int)
             logs = logs.rename(
                 columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
             )
-            for col in (loop_name, f"{loop_name}_value"):
-                if logs[col].isna().all():
-                    logs = logs.drop(
-                        columns=[
-                            col,
-                        ]
-                    )
+            if logs[loop_name].isna().any():
+                logs = logs.drop(columns=[loop_name])
+            if logs[f"{loop_name}_value"].isna().all():
+                logs = logs.drop(columns=[f"{loop_name}_value"])
+
+            assert loop_name in logs or f"{loop_name}_value" in logs
+
             logs["ctx_id"] = logs["p_ctx_id"]
             logs = logs.drop(columns=["p_ctx_id"])
 
