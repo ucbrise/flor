@@ -42,6 +42,17 @@ git pull origin
 
 ## Just start logging
 
+> Prerequisite: FlorDB performs automatic commits; *you must run your script or notebook inside a Git repository*. If you are not inside a Git repo, initialize one first (you only need to do this once per project).
+
+```bash
+mkdir flor_sandbox
+cd flor_sandbox
+git init
+
+ipython
+```
+
+
 FlorDB is designed to be easy to use. 
 You don't need to define a schema, or set up a database.
 Just start logging your runs with a single line of code:

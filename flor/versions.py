@@ -29,7 +29,7 @@ def git_commit(message="FLOR::Auto-commit"):
 
             # Commit the changes
             repo.git.commit(m=message)
-            print("\nChanges committed successfully.")
+            print("\nRun committed successfully.")
         else:
             print("\nNo changes to commit.")
     except InvalidGitRepositoryError:

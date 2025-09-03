@@ -5,7 +5,6 @@ apted
 bidict==0.21.3
 pandas
 numpy
-sh
 matplotlib
 scikit-learn
 tqdm
