@@ -172,7 +172,7 @@ Once you have the repository cloned, and the dependencies installed, you can rec
 python train.py
 ```
 ```bash
-Created and switched to new branch: flor.shadow
+Created and switched to new branch: flor.branch
 device: cuda
 seed: 9288
 hidden: 500

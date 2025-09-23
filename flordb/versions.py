@@ -56,7 +56,7 @@ def to_shadow():
             # Branch already has the 'flor.' prefix, continuing...
             return
         else:
-            base_shadow_name = "flor.shadow"
+            base_shadow_name = SHADOW_BRANCH_PREFIX + "branch"
             new_branch_name = base_shadow_name
             suffix = 1
 
