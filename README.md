@@ -220,7 +220,7 @@ Changes committed successfully.
 Now, you have two runs recorded in FlorDB. You can view the hyper-parameters and metrics logged during training with the `flor.dataframe` function:
 
 ```python
-import flor
+import flordb as flor
 flor.dataframe("device", "seed", "epochs", "batch_size", "lr", "accuracy")
 ```
 ![alt text](img/two_runs.png)
@@ -266,7 +266,7 @@ with flor.checkpointing(model=net, optimizer=optimizer):
 We call the Flor Replay function with the name of the (comma-separated) variable(s) we want to hindsight log. In this case, we want to hindsight log the gradient norm at the start of each epoch, so we pass the variable name `gradient_norm`. From the command line:
 
 ```bash
-python -m flor replay gradient_norm
+python -m flordb replay gradient_norm
 ```
 ```
 Changes committed successfully.
@@ -285,7 +285,7 @@ The replay command will print a schedule of past versions to be replayed, includ
 When you confirm the replay, Flor will replay the past versions shown in the schedule, and hindsight log the gradient norm for each epoch. You can view the new metrics logged during replay with the `flor.dataframe` function:
 
 ```python
-import flor
+import flordb as flor
 flor.dataframe("seed", "batch_size", "lr", "accuracy", "gradient_norm")
 ```
 ![alt text](img/gradient_norm.png)
