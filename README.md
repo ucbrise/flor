@@ -58,7 +58,7 @@ You don't need to define a schema, or set up a database.
 Just start logging your runs with a single line of code:
 
 ```python
-import flor
+import flordb as flor
 flor.log("msg", "Hello world!")
 ```
 ```
@@ -69,7 +69,6 @@ Changes committed successfully
 You can read your logs with a Flor Dataframe:
 
 ```python
-import flor
 flor.dataframe("msg")
 ```
 ![msg dataframe](img/just_start.png)
@@ -82,7 +81,7 @@ Here's how you can modify your existing PyTorch training script to incorporate F
 
 
 ```python
-import flor
+import flordb as flor
 import torch
 
 # Define and log hyper-parameters
@@ -146,7 +145,7 @@ python train.py --kwargs hidden=250 lr=5e-4
 To view the hyper-parameters and metrics logged during training, you can use the `flor.dataframe` function:
 
 ```python
-import flor
+import flordb as flor
 flor.dataframe("hidden", "batch_size", "lr", "loss")
 ```
 ![loss dataframe](img/loss_df.png)
@@ -324,8 +323,7 @@ FlorDB is software developed at UC Berkeley's [RISE](https://rise.cs.berkeley.ed
 To cite this work, please refer to [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle ](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf). Published in the 15th Annual Conference
 on Innovative Data Systems Research (CIDR ’25). Building on Ground's foundational work on data context services ([Hellerstein et al., 2017](https://www.cidrdb.org/cidr2017/papers/p111-hellerstein-cidr17.pdf)), FlorDB extends comprehensive context management to the ML lifecycle.
 
-FlorDB is open source software developed at UC Berkeley. 
-FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees.
+FlorDB has been the subject of study by Eric Liu and Anusha Dandamudi for their masters degrees, and Bobby Yan for his undergraduate thesis.
 The list of publications resulting from our work is presented below:
 
 * [Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf). _R Garcia, P Kallanagoudar, C Anand, SE Chasins, JM Hellerstein, EMT Kerrison, AG Parameswaran_. CIDR, 2025.
