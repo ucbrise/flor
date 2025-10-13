@@ -146,7 +146,7 @@ FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State Univ
 
 ## 🛠 License
 
-[Apache v2 License](https://www.google.com/url?sa=E&source=gmail&q=https://www.google.com/url?sa=E%26source=gmail%26q=https://www.apache.org/licenses/LICENSE-2.0) — free to use, modify, and distribute.
+[Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0) — free to use, modify, and distribute.
 
 ---
 
