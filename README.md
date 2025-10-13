@@ -1,10 +1,11 @@
 # FlorDB: Log-First Context Management for ML Practitioners
 
+[![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
+
+
 FlorDB brings experiment tracking, provenance, and reproducibility to your ML workflow—using the one thing every engineer already writes: **logs**.
 
 Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, schema, or service. Just import it, log as you normally would, and gain full history, lineage, and replay capabilities across your training runs.
-
----
 
 ## 🚀 Why FlorDB?
 
@@ -15,12 +16,10 @@ Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, 
   Missed a metric? Add a log *after the fact* and replay past runs to capture it—no rerunning from scratch.
 
 - **Reproducibility Without Friction**  
-  Every run is versioned via Git, every hyperparameter is recorded, and every model checkpoint is stored—automatically.
+  Every run is versioned via Git, every hyperparameter is recorded, and every model checkpoint is linked and queryable—automatically.
 
 - **Works With Your Stack**  
   Makefiles, Airflow, Slurm, HuggingFace, PyTorch—you don’t change your workflow. FlorDB fits in.
-
----
 
 ## 📦 Installation
 
@@ -53,14 +52,21 @@ ipython
 import flordb as flor
 flor.log("message", "Hello ML World!")
 ```
+```
+message: Hello, ML World!
+Changes committed successfully
+```
 
 Retrieve logs anytime:
 
 ```python
 flor.dataframe("message")
 ```
+```
+         projid              tstamp filename          message
+0  flor_sandbox 2025-10-13 18:13:48  ipython  Hello ML World!
 
----
+```
 
 ## 🧪 Track Experiments with Zero Overhead
 
@@ -92,7 +98,15 @@ View metrics across runs:
 flor.dataframe("lr", "batch_size", "loss")
 ```
 
----
+```
+        projid              tstamp  filename  epoch  step      lr batch_size                 loss
+0  ml_tutorial 2025-10-13 18:18:14  train.py      1   500  0.0005         64  0.20570574700832367
+1  ml_tutorial 2025-10-13 18:18:14  train.py      2   500  0.0005         64   0.1964433193206787
+2  ml_tutorial 2025-10-13 18:18:14  train.py      3   500  0.0005         64  0.11040152609348297
+3  ml_tutorial 2025-10-13 18:18:14  train.py      4   500  0.0005         64    0.155434250831604
+4  ml_tutorial 2025-10-13 18:18:14  train.py      5   500  0.0005         64   0.0741351768374443
+```
+
 
 ## 🔍 Hindsight Logging: Fix It After You See It
 
@@ -102,15 +116,13 @@ Forgot to log gradient norms?
 flor.log("grad_norm", ...)
 ```
 
-Replay past runs—no retraining required:
+Just add the logging statement to the script and run:
 
 ```bash
 python -m flordb replay grad_norm
 ```
 
-FlorDB replays only what’s needed, injecting the new log and committing results.
-
----
+FlorDB replays only what’s needed, injecting the new log across copies of historical versions and committing results.
 
 ## 🏗 Real ML Systems Built on FlorDB
 
@@ -120,25 +132,21 @@ FlorDB powers full AI/ML lifecycle tooling:
 - **Document Parsing & Feedback Loops**
 - **Continuous Training Pipelines**
 
-See our Document Parser example for real-world integration.
+See our [Scan Studio](https://github.com/bwerick/scan_studio) and [Document Parser](https://github.com/rlnsanz/document_parser) examples for real-world integration.
 
----
 
 ## 📚 Publications
 
 FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State University.
 
-- *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* (CIDR 2025)  
-- *Hindsight Logging for Model Training* (VLDBJ 2021)  
-- *The Management of Context in the ML Lifecycle* (UCB Tech Report 2024)  
+- *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025]((https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf)))  
+- *The Management of Context in the ML Lifecycle* ([UCB Tech Report 2024](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html))  
+- *Hindsight Logging for Model Training* ([PVLDB 2021](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf))  
 
-Full reference list in the repository.
-
----
 
 ## 🛠 License
 
-Apache 2.0 — free to use, modify, and distribute.
+[Apache v2 License](https://www.google.com/url?sa=E&source=gmail&q=https://www.google.com/url?sa=E%26source=gmail%26q=https://www.apache.org/licenses/LICENSE-2.0) — free to use, modify, and distribute.
 
 ---
 
