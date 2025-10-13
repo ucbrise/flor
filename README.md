@@ -139,7 +139,7 @@ See our [Scan Studio](https://github.com/bwerick/scan_studio) and [Document Pars
 
 FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State University.
 
-- *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025]((https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf)))  
+- *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf))  
 - *The Management of Context in the ML Lifecycle* ([UCB Tech Report 2024](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html))  
 - *Hindsight Logging for Model Training* ([PVLDB 2021](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf))  
 
@@ -147,8 +147,6 @@ FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State Univ
 ## 🛠 License
 
 [Apache v2 License](https://www.apache.org/licenses/LICENSE-2.0) — free to use, modify, and distribute.
-
----
 
 ## 💡 Get Involved
 
