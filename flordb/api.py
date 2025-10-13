@@ -15,7 +15,6 @@ from contextlib import contextmanager
 
 from tqdm import tqdm
 import atexit
-import sqlite3
 
 T = TypeVar("T")
 
@@ -270,7 +269,7 @@ def slice(name, iterator):
         if cli.flags.queryparameters is not None
         else 0
     )
-    if qop == 1:
+    if qop == 1 or not cli.flags.queryparameters["WEV"]:
         return enumerate(iterator)
 
     new_slice = []

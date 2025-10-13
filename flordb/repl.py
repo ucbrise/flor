@@ -10,7 +10,7 @@ import tempfile
 import os
 
 from . import utils
-from .hlast.visitors import LoggedExpVisitor, NamedColumnVisitor
+from .hlast.visitors import LoggedExpVisitor, WithExpVisitor
 from .hlast import backprop
 
 from . import database
@@ -51,19 +51,29 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     shutil.copy2(main_script, temp_file.name)
     with open(main_script, "r") as f:
         tree = ast.parse(f.read())
-    lev = LoggedExpVisitor()
+    lev, wev = LoggedExpVisitor(), WithExpVisitor()
+    wev.visit(tree)
     lev.visit(tree)
 
-    loglvl, mark = schedule.get_loglvl(lev)
+    if not wev.found:
+        # "No `with flor.checkpointing(...):` statement found in main script."
+        loglvl, mark = 3, "suffix"
+    else:
+        loglvl, mark = schedule.get_loglvl(lev)
+
+    assert mark in ("prefix", "suffix")
+    level_mapper = {0: "prefix", 1: "outer loop", 2: "nested loop", 3: "full scan"}
+
     schedule.estimate_cost(loglvl, mark)
 
-    level_mapper = {0: "prefix", 1: "outer loop", 2: "nested loop"}
-
-    print(
-        "log level",
-        level_mapper[loglvl],
-        "to suffix." if mark == "suffix" else "without suffix.",
-    )
+    if loglvl == 3:
+        print("log level full scan, replaying from flor.args.")
+    elif loglvl < 3:
+        print(
+            "log level",
+            level_mapper[loglvl],
+            "to suffix." if mark == "suffix" else "without suffix.",
+        )
     print()
     print(schedule.df)
     print()
@@ -94,8 +104,8 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                 except Exception as e:
                     print("Exception raised during `backprop`", e)
                     raise e
-            if loglvl == 0:
-                print("loglvl", loglvl, "no dims")
+            if loglvl == 0 or loglvl == 3:
+                print("loglvl", loglvl)
                 cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)]
                 print(*cmd)
                 subprocess.run(cmd)
@@ -188,81 +198,91 @@ class Schedule:
     def estimate_cost(self, loglvl: int, mark: str):
         assert mark in ("prefix", "suffix")
         keys = ["projid", "tstamp", "filename"]
-        pvt = dataframe()
-        if loglvl == 0:
-            if mark == "prefix":
-                self.df = dataframe("delta::prefix")
-                self.df["composite"] = pd.to_numeric(self.df["delta::prefix"])
-            else:
-                self.df = dataframe("delta::prefix", "delta::suffix")
-                self.df["composite"] = (
-                    pd.to_numeric(self.df["delta::prefix"])
-                    + pd.to_numeric(self.df["delta::suffix"])
-                    + 1
-                )
+        if loglvl == 3:
+            # Full scan, delta::suffix is the estimate per run
+            pvt = dataframe()
+            self.df = dataframe("delta::suffix")
+            self.df["composite"] = pd.to_numeric(self.df["delta::suffix"])
             self.df = pd.merge(pvt, self.df, on=keys, how="inner")
-        elif loglvl == 1:
-            # i - delta::loop where i is the full duration for that iteration
-            df = dataframe("delta::loop")
-            df["delta::loop"] = pd.to_numeric(df["delta::loop"], errors="coerce")
-            df_grouped = (
-                df.groupby(keys)
-                .agg(
-                    num_epochs=("epoch", "max"), sum_nested_loops=("delta::loop", "sum")
-                )
-                .reset_index()
-            )
-            temp_df = query(
-                "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
-            )
-            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
-            temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-            temp_df["coarse_loop"] = pd.to_numeric(
-                temp_df["coarse_loop"], errors="coerce"
-            )
-
-            merged_df = pd.merge(temp_df, df_grouped, on=keys, how="inner")
-            merged_df["marginal"] = (
-                merged_df["coarse_loop"] - merged_df["sum_nested_loops"]
-            )
-            merged_df.drop(columns=["coarse_loop", "sum_nested_loops"], inplace=True)
-            df = dataframe("delta::prefix", "delta::suffix")
-            merged_df = pd.merge(merged_df, df, on=keys, how="inner")
-            merged_df["composite"] = (
-                pd.to_numeric(merged_df["num_epochs"])
-                + merged_df["marginal"]
-                + pd.to_numeric(merged_df["delta::prefix"])
-                + pd.to_numeric(merged_df["delta::suffix"])
-            )
-            self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
-        elif loglvl == 2:
-            base_df = dataframe("delta::prefix", "delta::suffix")
-            loop_df = dataframe("delta::loop")
-            loop_df["delta::loop"] = pd.to_numeric(
-                loop_df["delta::loop"], errors="coerce"
-            )
-            df_grouped = (
-                loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
-            )
-            temp_df = query(
-                "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
-            )
-            temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
-            temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-            temp_df["coarse_loop"] = pd.to_numeric(
-                temp_df["coarse_loop"], errors="coerce"
-            )
-            merged_df = pd.merge(temp_df, base_df, on=keys, how="inner")
-            merged_df["composite"] = (
-                pd.to_numeric(merged_df["coarse_loop"])
-                + pd.to_numeric(merged_df["delta::prefix"])
-                + pd.to_numeric(merged_df["delta::suffix"])
-            )
-            merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
-            merged_df = pd.merge(merged_df, df_grouped, on=keys, how="inner")
-            self.df = merged_df
         else:
-            raise
+            pvt = dataframe()
+            if loglvl == 0:
+                if mark == "prefix":
+                    self.df = dataframe("delta::prefix")
+                    self.df["composite"] = pd.to_numeric(self.df["delta::prefix"])
+                else:
+                    self.df = dataframe("delta::prefix", "delta::suffix")
+                    self.df["composite"] = (
+                        pd.to_numeric(self.df["delta::prefix"])
+                        + pd.to_numeric(self.df["delta::suffix"])
+                        + 1
+                    )
+                self.df = pd.merge(pvt, self.df, on=keys, how="inner")
+            elif loglvl == 1:
+                # i - delta::loop where i is the full duration for that iteration
+                df = dataframe("delta::loop")
+                df["delta::loop"] = pd.to_numeric(df["delta::loop"], errors="coerce")
+                df_grouped = (
+                    df.groupby(keys)
+                    .agg(
+                        num_epochs=("epoch", "max"),
+                        sum_nested_loops=("delta::loop", "sum"),
+                    )
+                    .reset_index()
+                )
+                temp_df = query(
+                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+                )
+                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
+                temp_df["coarse_loop"] = pd.to_numeric(
+                    temp_df["coarse_loop"], errors="coerce"
+                )
+
+                merged_df = pd.merge(temp_df, df_grouped, on=keys, how="inner")
+                merged_df["marginal"] = (
+                    merged_df["coarse_loop"] - merged_df["sum_nested_loops"]
+                )
+                merged_df.drop(
+                    columns=["coarse_loop", "sum_nested_loops"], inplace=True
+                )
+                df = dataframe("delta::prefix", "delta::suffix")
+                merged_df = pd.merge(merged_df, df, on=keys, how="inner")
+                merged_df["composite"] = (
+                    pd.to_numeric(merged_df["num_epochs"])
+                    + merged_df["marginal"]
+                    + pd.to_numeric(merged_df["delta::prefix"])
+                    + pd.to_numeric(merged_df["delta::suffix"])
+                )
+                self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
+            elif loglvl == 2:
+                base_df = dataframe("delta::prefix", "delta::suffix")
+                loop_df = dataframe("delta::loop")
+                loop_df["delta::loop"] = pd.to_numeric(
+                    loop_df["delta::loop"], errors="coerce"
+                )
+                df_grouped = (
+                    loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
+                )
+                temp_df = query(
+                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+                )
+                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
+                temp_df["coarse_loop"] = pd.to_numeric(
+                    temp_df["coarse_loop"], errors="coerce"
+                )
+                merged_df = pd.merge(temp_df, base_df, on=keys, how="inner")
+                merged_df["composite"] = (
+                    pd.to_numeric(merged_df["coarse_loop"])
+                    + pd.to_numeric(merged_df["delta::prefix"])
+                    + pd.to_numeric(merged_df["delta::suffix"])
+                )
+                merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
+                merged_df = pd.merge(merged_df, df_grouped, on=keys, how="inner")
+                self.df = merged_df
+            else:
+                raise
 
     def is_empty(self):
         return self.df.empty

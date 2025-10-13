@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from .versions import current_branch, to_shadow
 import sys
 
+from .hlast.visitors import WithExpVisitor
+import ast
+
 
 @dataclass
 class Flags:
@@ -137,6 +140,15 @@ def replay_initialize():
     # update flags.hyperparameters
     with open(".flor.json", "r") as f:
         data = json.load(f)
+        filename = data[0]["filename"]
+
+    with open(filename, "r") as f:
+        tree = ast.parse(f.read())
+    wev = WithExpVisitor()
+    wev.visit(tree)
+
+    flags.queryparameters["WEV"] = wev.found
+
     for obj in data:
         if obj["ctx"] is None and obj["type"] == 1:
             d = {obj["name"]: obj["value"]}

@@ -1,4 +1,4 @@
-import setuptools
+import setuptools  # type: ignore
 import io
 
 with io.open("README.md", mode="r", encoding="utf-8") as fh:
@@ -6,10 +6,10 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="flordb",
-    version="3.4.10",
+    version="3.4.11",
     author="Rolando Garcia",
-    author_email="rogarcia@berkeley.edu",
-    description="Fast Low-Overhead Recovery",
+    author_email="rolando.garcia@asu.edu",
+    description="A hindsight logging dataabase for MLOps",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ucbrise/flor",

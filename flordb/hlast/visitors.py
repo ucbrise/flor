@@ -4,13 +4,38 @@ import ast
 
 from .. import utils
 
+
+class WithExpVisitor(ast.NodeVisitor):
+    def __init__(self):
+        super().__init__()
+        self.found = False
+
+    def visit_With(self, node: ast.With):
+        """
+        Checks for the existence of a with statement:
+        with flor.checkpointing(...):
+            ...
+        """
+        pred = (
+            isinstance(node.items[0].context_expr, ast.Call)
+            and isinstance(node.items[0].context_expr.func, ast.Attribute)
+            and isinstance(node.items[0].context_expr.func.value, ast.Name)
+            and node.items[0].context_expr.func.value.id == "flor"
+            and node.items[0].context_expr.func.attr == "checkpointing"
+        )
+        if pred:
+            self.found = True
+        else:
+            self.generic_visit(node)
+
+
 class LoggedExpVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
         self.names: Dict[str, int] = {}
 
         self.line2level: Dict[int, int] = {}
-        self.lvl = 0 
+        self.lvl = 0
 
     def visit_For(self, node: ast.For):
         iter_s = ast.unparse(node.iter).strip()
@@ -38,23 +63,12 @@ class LoggedExpVisitor(ast.NodeVisitor):
             self.line2level[node.lineno] = self.lvl
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")
-        
+
     def generic_visit(self, node: AST) -> Any:
-        if hasattr(node, 'lineno'):
+        if hasattr(node, "lineno"):
             self.line2level[node.lineno] = self.lvl
         return super().generic_visit(node)
 
-class NamedColumnVisitor(ast.NodeVisitor):
-    def __init__(self) -> None:
-        super().__init__()
-        self.names = set([])
-
-    def visit_Constant(self, node: Constant) -> Any:
-        if not utils.is_integer(node.value):
-            self.names.add(node.value)
-        return super().visit_Constant(node)
-
-    
 
 class NoGradVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -88,6 +102,7 @@ class NoGradVisitor(ast.NodeVisitor):
             finally:
                 self.feeding = feeding  # type: ignore
 
+
 class NoGradTransformer(ast.NodeTransformer):
     def __init__(self, old_tree) -> None:
         super().__init__()
@@ -98,4 +113,3 @@ class NoGradTransformer(ast.NodeTransformer):
             return self.generic_visit(self.their_tree)
         else:
             return self.generic_visit(node)
-    
