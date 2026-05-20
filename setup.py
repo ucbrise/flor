@@ -6,7 +6,7 @@ with io.open("README.md", mode="r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="flordb",
-    version="3.4.12",
+    version="4.0.0",
     author="Rolando Garcia",
     author_email="rolando.garcia@asu.edu",
     description="A hindsight logging dataabase for MLOps",
