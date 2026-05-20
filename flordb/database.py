@@ -2,8 +2,6 @@ from functools import reduce
 from typing import Dict, Optional
 import pandas as pd
 import sqlite3
-import os
-from pathlib import Path
 
 from .constants import *
 from . import orm
@@ -13,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def conn_and_cursor():
-    conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     return conn, cursor
 

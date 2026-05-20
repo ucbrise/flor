@@ -4,7 +4,7 @@ import json
 import os
 import random
 
-from . import versions
+from .constants import RUNS_DIR
 
 
 def generate_64bit_id() -> int:
@@ -31,7 +31,23 @@ class Log:
     type: int
 
 
-def to_json(output_buffer: List[Log]):
-    buffer = [asdict(o) for o in output_buffer]
-    with open(os.path.join(versions.get_repo_dir(), ".flor.json"), "w") as f:
-        json.dump(buffer, f, indent=2)
+def run_jsonl_path(tstamp: str) -> str:
+    return os.path.join(RUNS_DIR, f"{tstamp}.jsonl")
+
+
+def to_jsonl(output_buffer: List[Log], tstamp: str):
+    path = run_jsonl_path(tstamp)
+    with open(path, "w") as f:
+        for record in output_buffer:
+            f.write(json.dumps(asdict(record)) + "\n")
+
+
+def read_jsonl(path: str) -> List[dict]:
+    records = []
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            records.append(json.loads(line))
+    return records

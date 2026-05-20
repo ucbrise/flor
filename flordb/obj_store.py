@@ -121,7 +121,6 @@ def get_shelf():
         assert cli.flags.old_tstamp is not None
         tstamp = cli.flags.old_tstamp
 
-    OBJSTORE = Path(HOMEDIR) / "obj_store"
-    SHELF = OBJSTORE / PROJID / tstamp
+    SHELF = Path(OBJSTORE_DIR) / tstamp
     os.makedirs(SHELF, exist_ok=True)
     return SHELF

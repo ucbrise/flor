@@ -2,10 +2,11 @@ from .constants import *
 from .cli import flags
 from . import database
 from . import versions
+from . import orm
 from . import repl
 
 
-import json
+import glob
 import platform
 import sys
 import os
@@ -18,21 +19,17 @@ def main():
             conn, cursor = database.conn_and_cursor()
             database.create_tables(cursor)
 
-            start_branch = versions.current_branch()
-            assert start_branch is not None
-            known_tstamps = [t for t, in database.read_known_tstamps(cursor)]
-            try:
-                for triplet in versions.get_latest_autocommit():
-                    ts_start, next_commit, _ = triplet
-                    if ts_start in known_tstamps:
-                        break
-                    versions.checkout(next_commit)
-                    with open(".flor.json", "r") as f:
-                        database.unpack(json.load(f), cursor)
-                conn.commit()
-                conn.close()
-            finally:
-                versions.checkout(start_branch.name)
+            known_tstamps = {t for t, in database.read_known_tstamps(cursor)}
+            jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
+            for path in jsonl_paths:
+                tstamp = os.path.splitext(os.path.basename(path))[0]
+                if tstamp in known_tstamps:
+                    continue
+                records = orm.read_jsonl(path)
+                database.unpack(records, cursor)
+
+            conn.commit()
+            conn.close()
         elif flags.args.flor_command == "query":
             user_query = str(flags.args.q)
             df = repl.query(user_query)

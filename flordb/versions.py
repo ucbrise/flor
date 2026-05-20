@@ -5,6 +5,7 @@ import os
 
 CURRDIR = os.getcwd()
 SHADOW_BRANCH_PREFIX = "flor."
+AUTO_COMMIT_SUBJECT_PREFIX = "FLOR::Auto-commit::"
 
 
 def get_repo_dir():
@@ -15,6 +16,27 @@ def get_repo_dir():
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while getting the repository directory: {e}")
+
+
+def ensure_gitignored(entry: str):
+    repo_dir = get_repo_dir()
+    if repo_dir is None:
+        return
+    gitignore_path = os.path.join(str(repo_dir), ".gitignore")
+    entry = entry.strip()
+    if os.path.exists(gitignore_path):
+        with open(gitignore_path, "r") as f:
+            lines = [line.strip() for line in f.readlines()]
+        if entry in lines:
+            return
+        needs_newline = bool(lines) and lines[-1] != ""
+        with open(gitignore_path, "a") as f:
+            if needs_newline:
+                f.write("\n")
+            f.write(entry + "\n")
+    else:
+        with open(gitignore_path, "w") as f:
+            f.write(entry + "\n")
 
 
 def git_commit(message="FLOR::Auto-commit"):
@@ -86,17 +108,35 @@ def get_latest_autocommit():
     try:
         repo = Repo(CURRDIR, search_parent_directories=True)
         for v in repo.iter_commits():
-            if str(v.message).count("FLOR::") == 1:
-                _, _, ts = v.message.strip().split("::")  # type: ignore
-                yield (
-                    str(ts),
-                    v.hexsha,
-                    v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
-                )
+            message = str(v.message)
+            if AUTO_COMMIT_SUBJECT_PREFIX not in message:
+                continue
+            subject = message.strip().splitlines()[0]
+            if not subject.startswith(AUTO_COMMIT_SUBJECT_PREFIX):
+                continue
+            ts = subject[len(AUTO_COMMIT_SUBJECT_PREFIX):]
+            yield (
+                str(ts),
+                v.hexsha,
+                v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
+            )
     except InvalidGitRepositoryError:
         print("Not a valid Git repository")
     except Exception as e:
         print(f"An error occurred while processing the branch: {e}")
+
+
+def read_args(commit_message: str) -> dict:
+    """Parse k=v lines out of an auto-commit message body."""
+    lines = commit_message.strip().splitlines()
+    args = {}
+    for line in lines[1:]:
+        line = line.strip()
+        if not line or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        args[key.strip()] = value.strip()
+    return args
 
 
 def checkout(commit_hash):

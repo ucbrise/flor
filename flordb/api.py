@@ -19,6 +19,7 @@ import atexit
 T = TypeVar("T")
 
 output_buffer = []
+run_args: dict = {}
 
 layers = {}
 context = None
@@ -61,6 +62,7 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
         assert name in cli.flags.hyperparameters
         historical_v = cli.flags.hyperparameters[name]
         log(name, historical_v)
+        run_args[name] = historical_v
         return historical_v
     elif name in cli.flags.hyperparameters:
         # CLI
@@ -68,12 +70,15 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
         if default is not None:
             v = utils.duck_cast(v, default)
             log(name, v)
+            run_args[name] = v
             return v
         log(name, v)
+        run_args[name] = v
         return v
     elif default is not None:
         # default
         log(name, default)
+        run_args[name] = default
         return default
     else:
         raise
@@ -197,11 +202,12 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 def commit():
     global skip_cleanup
+    tstamp = Clock.get_datetime()
     # Add suffix time delta to output_buffer
     output_buffer.append(
         orm.Log(
             PROJID,
-            Clock.get_datetime(),
+            tstamp,
             SCRIPTNAME,
             None if context is None else deepcopy(context),
             "delta::suffix",
@@ -215,9 +221,9 @@ def commit():
         # RECORD
         branch = versions.current_branch()
         if branch is not None:
-            orm.to_json(output_buffer)
+            orm.to_jsonl(output_buffer, tstamp)
             database.unpack(output_buffer, cursor)
-            versions.git_commit(f"FLOR::Auto-commit::{Clock.get_datetime()}")
+            versions.git_commit(_build_commit_message(tstamp, run_args))
     else:
         database.unpack(output_buffer, cursor)
     conn.commit()
@@ -226,9 +232,18 @@ def commit():
     conn.commit()
     conn.close()
     output_buffer.clear()
+    run_args.clear()
     Clock.set_new_datetime()
     checkpointing_clock.s_time = None
     skip_cleanup = True
+
+
+def _build_commit_message(tstamp: str, args: dict) -> str:
+    subject = f"{versions.AUTO_COMMIT_SUBJECT_PREFIX}{tstamp}"
+    if not args:
+        return subject
+    body = "\n".join(f"{k}={v}" for k, v in args.items())
+    return f"{subject}\n\n{body}"
 
 
 @atexit.register
@@ -246,6 +261,7 @@ def _deferred_init():
             assert (
                 versions.current_branch() is not None
             ), "Running from a detached HEAD?"
+            versions.ensure_gitignored(".flor/")
             versions.to_shadow()
 
 

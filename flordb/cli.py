@@ -1,10 +1,13 @@
-import json
 import argparse
+import glob
+import os
 from argparse import Namespace
 from typing import Any, Dict, Optional, Tuple
 
 from dataclasses import dataclass
 from .versions import current_branch, to_shadow
+from .constants import RUNS_DIR
+from . import orm
 import sys
 
 from .hlast.visitors import WithExpVisitor
@@ -136,11 +139,11 @@ def replay_initialize():
     assert (
         flags.args is not None and flags.args.kwargs is None
     ), "Cannot set --kwargs in replay, would rewrite history"
-    # read .flor_replay.json into flags.args.VARS
-    # update flags.hyperparameters
-    with open(".flor.json", "r") as f:
-        data = json.load(f)
-        filename = data[0]["filename"]
+    jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
+    assert jsonl_paths, f"No runs found in {RUNS_DIR}; cannot initialize replay."
+    latest = jsonl_paths[-1]
+    data = orm.read_jsonl(latest)
+    filename = data[0]["filename"]
 
     with open(filename, "r") as f:
         tree = ast.parse(f.read())

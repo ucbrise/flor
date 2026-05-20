@@ -1,5 +1,5 @@
 import ast
-import json
+import glob
 import re
 import shutil
 import numpy as np
@@ -15,6 +15,8 @@ from .hlast import backprop
 
 from . import database
 from . import versions
+from . import orm
+from .constants import RUNS_DIR
 from .clock import Clock
 
 
@@ -45,8 +47,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     versions.git_commit("Hindsight logging stmts added.")
     schedule = Schedule(apply_vars, where_clause)
 
-    with open(".flor.json", "r") as f:
-        main_script = json.load(f)[0]["filename"]
+    jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
+    assert jsonl_paths, f"No runs found in {RUNS_DIR}; cannot replay."
+    main_script = orm.read_jsonl(jsonl_paths[-1])[0]["filename"]
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     shutil.copy2(main_script, temp_file.name)
     with open(main_script, "r") as f:
