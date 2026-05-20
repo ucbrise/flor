@@ -17,6 +17,7 @@ The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB
 3. **No `~/.flor` state.** Everything is project-local under `.flor/`: query-cache DB at `.flor/<projid>.db`, object store at `.flor/obj_store/<tstamp>/`.
 4. **One commit per run is guaranteed** even when source and args are unchanged: each run rewrites `.flor.cmd` (tracked at repo root) with the run tstamp and CLI invocation, which dirties the tree.
 5. **`flor unpack` rebuilds the cache** by walking `.flor/runs/*.jsonl` directly — no historical git checkouts.
+6. **Self-describing loop context.** Each record's `ctx` is either `null` (run-level) or a flat list of `{name, iteration, value}` segments from outermost to innermost loop. No opaque IDs, no recursive `p_ctx` — nesting depth is `len(ctx)`, and the JSONL is readable end-to-end without a join table. Internally the cache stores `ctx` as JSON-encoded text on `logs`; the old `loops` table and `ctx_id` FK are gone.
 
 ## Data sync-ing
 

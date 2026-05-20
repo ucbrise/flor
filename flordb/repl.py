@@ -234,9 +234,9 @@ class Schedule:
                     .reset_index()
                 )
                 temp_df = query(
-                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+                    "SELECT * FROM logs WHERE ctx is null and value_name='delta::loop';"
                 )
-                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+                temp_df.drop(columns=["ctx", "value_name", "value_type"], inplace=True)  # type: ignore
                 temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
                 temp_df["coarse_loop"] = pd.to_numeric(
                     temp_df["coarse_loop"], errors="coerce"
@@ -268,9 +268,9 @@ class Schedule:
                     loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
                 )
                 temp_df = query(
-                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
+                    "SELECT * FROM logs WHERE ctx is null and value_name='delta::loop';"
                 )
-                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
+                temp_df.drop(columns=["ctx", "value_name", "value_type"], inplace=True)  # type: ignore
                 temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
                 temp_df["coarse_loop"] = pd.to_numeric(
                     temp_df["coarse_loop"], errors="coerce"

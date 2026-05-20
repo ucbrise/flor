@@ -1,5 +1,6 @@
+import json
+from dataclasses import asdict
 from functools import reduce
-from typing import Dict, Optional
 import pandas as pd
 import sqlite3
 
@@ -16,42 +17,14 @@ def conn_and_cursor():
     return conn, cursor
 
 
-def insert_context(cursor, context):
-    # Recursive
-    if isinstance(context, dict):
-        parent_context_id = (
-            insert_context(cursor, context["p_ctx"])
-            if context["p_ctx"] is not None
-            else None
-        )
-    else:
-        parent_context_id = (
-            insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
-        )
-    if isinstance(context, orm.Loop):
-        cursor.execute(
-            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
-            (
-                int(context.ctx_id),
-                parent_context_id,
-                str(context.name),
-                int(context.iteration) if context.iteration is not None else None,
-                str(context.value) if context.value is not None else None,
-            ),
-        )
-        return int(context.ctx_id)
-    else:
-        cursor.execute(
-            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
-            (
-                int(context["ctx_id"]),
-                parent_context_id,
-                str(context["name"]),
-                int(context["iteration"]) if context["iteration"] is not None else None,
-                str(context["value"]) if context["value"] is not None else None,
-            ),
-        )
-        return int(context["ctx_id"])
+def _ctx_to_json(ctx) -> Optional[str]:
+    if not ctx:
+        return None
+    if isinstance(ctx, list):
+        # list of orm.Segment dataclasses or already-dict segments
+        segs = [asdict(s) if hasattr(s, "__dataclass_fields__") else dict(s) for s in ctx]
+        return json.dumps(segs)
+    raise TypeError(f"ctx must be a list or None, got {type(ctx).__name__}")
 
 
 def unpack(output_buffer, cursor):
@@ -59,31 +32,28 @@ def unpack(output_buffer, cursor):
         return
     for each in output_buffer:
         if isinstance(each, orm.Log):
-            ctx_id = insert_context(cursor, each.ctx) if each.ctx is not None else None
+            ctx_json = _ctx_to_json(each.ctx)
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
                     each.projid,
                     each.tstamp,
                     each.filename,
-                    ctx_id,
+                    ctx_json,
                     each.name,
                     str(each.value),
                     each.type,
                 ),
             )
         else:
-            # Parse JSON dict
-            ctx_id = (
-                insert_context(cursor, each["ctx"]) if each["ctx"] is not None else None
-            )
+            ctx_json = _ctx_to_json(each.get("ctx"))
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (
                     each["projid"],
                     each["tstamp"],
                     each["filename"],
-                    ctx_id,
+                    ctx_json,
                     each["name"],
                     str(each["value"]),
                     each["type"],
@@ -92,17 +62,16 @@ def unpack(output_buffer, cursor):
 
 
 def create_tables(cursor):
+    # Migrate away from the old (ctx_id-based) schema if present.
+    cursor.execute("DROP TABLE IF EXISTS loops")
     cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS loops (
-            ctx_id INTEGER,
-            p_ctx_id INTEGER,
-            l_name TEXT,
-            iteration INTEGER,
-            l_value TEXT
-        )
-        """
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='logs'"
     )
+    if cursor.fetchone() is not None:
+        cursor.execute("PRAGMA table_info(logs)")
+        cols = {row[1] for row in cursor.fetchall()}
+        if "ctx" not in cols:
+            cursor.execute("DROP TABLE logs")
 
     cursor.execute(
         """
@@ -110,7 +79,7 @@ def create_tables(cursor):
             projid TEXT,
             tstamp TEXT,
             filename TEXT,
-            ctx_id INTEGER,
+            ctx TEXT,
             value_name TEXT,
             value TEXT,
             value_type INTEGER
@@ -120,17 +89,11 @@ def create_tables(cursor):
 
 
 def deduplicate_table(cursor, table_name):
-    # Create a temporary table to store unique rows
     cursor.execute(
         f"""CREATE TEMPORARY TABLE temp_table AS SELECT DISTINCT * FROM {table_name}"""
     )
-
-    # Delete the original table's contents
     cursor.execute(f"""DELETE FROM {table_name}""")
-
-    # Insert the unique rows back into the original table
     cursor.execute(f"""INSERT INTO {table_name} SELECT * FROM temp_table""")
-
     cursor.execute("DROP TABLE temp_table")
 
 
@@ -161,10 +124,18 @@ def get_column_names(cursor):
     return column_names
 
 
+def _parse_ctx_cell(s):
+    if s is None:
+        return []
+    if isinstance(s, float) and pd.isna(s):
+        return []
+    return json.loads(s)
+
+
 def pivot(conn, *args):
     def _pivot_star():
         df = pd.read_sql(
-            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL",
+            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx IS NULL",
             conn,
         )
         value_names = df["value_name"].values
@@ -172,7 +143,6 @@ def pivot(conn, *args):
             print("No default values to pivot on")
             return pd.DataFrame()
 
-        # Build the dynamic part of the SQL query
         dynamic_sql = ", ".join(
             [
                 f"MAX(CASE WHEN value_name = '{value_name}' THEN value ELSE NULL END) AS '{value_name}'"
@@ -180,18 +150,16 @@ def pivot(conn, *args):
             ]
         )
 
-        # Construct the final SQL query
         final_sql = f"""
         SELECT projid,
             tstamp,
             filename,
             {dynamic_sql}
         FROM logs
-        WHERE value_type = 1 AND ctx_id IS NULL
+        WHERE value_type = 1 AND ctx IS NULL
         GROUP BY projid, tstamp, filename;
         """
 
-        # Execute the final SQL query
         return pd.read_sql(
             final_sql,
             conn,
@@ -205,7 +173,6 @@ def pivot(conn, *args):
         return _pivot_star()
 
     dataframes = []
-    loops = pd.read_sql("SELECT * FROM loops", conn, coerce_float=False)
     for value_name in args:
         logs = pd.read_sql(
             f'SELECT * FROM logs WHERE value_name = "{value_name}"',
@@ -213,37 +180,37 @@ def pivot(conn, *args):
             parse_dates=["tstamp"],
             coerce_float=True,
         )
-        logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
+        logs = logs[["projid", "tstamp", "filename", "ctx", "value"]]
         logs = logs.rename(columns={"value": value_name})
-        while logs["ctx_id"].notna().any():
-            logs = pd.merge(
-                left=loops,
-                right=logs,
-                how="inner",
-                on=["ctx_id"],
-            )
-            loop_name = logs["l_name"].unique()[0]
-            logs = logs.drop(
-                columns=[
-                    "l_name",
-                ]
-            )
-            if logs["iteration"].notna().all():
-                logs["iteration"] = logs["iteration"].astype(int)
-            logs = logs.rename(
-                columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
-            )
-            if logs[loop_name].isna().any():
-                logs = logs.drop(columns=[loop_name])
-            if logs[f"{loop_name}_value"].isna().all():
-                logs = logs.drop(columns=[f"{loop_name}_value"])
 
-            assert loop_name in logs or f"{loop_name}_value" in logs
+        parsed = logs["ctx"].apply(_parse_ctx_cell)
+        logs = logs.drop(columns=["ctx"])
 
-            logs["ctx_id"] = logs["p_ctx_id"]
-            logs = logs.drop(columns=["p_ctx_id"])
+        max_depth = int(parsed.map(len).max()) if len(parsed) else 0
 
-        logs = logs.drop(columns=["ctx_id"])
+        # Walk leaf to root, matching the previous JOIN-from-leaf-upward order.
+        for depth in range(max_depth - 1, -1, -1):
+            seg = parsed.apply(lambda lst, d=depth: lst[d] if d < len(lst) else None)
+            non_null = seg.dropna()
+            if non_null.empty:
+                continue
+            loop_name = non_null.iloc[0]["name"]
+
+            iter_col = seg.apply(
+                lambda s: s.get("iteration") if isinstance(s, dict) else None
+            )
+            val_col = seg.apply(
+                lambda s: s.get("value") if isinstance(s, dict) else None
+            )
+
+            # Match prior behavior: only surface iteration column if every row has one.
+            if iter_col.notna().all() and not iter_col.empty:
+                logs[loop_name] = iter_col.astype(int)
+
+            # Only surface _value column if at least one row carries it.
+            if val_col.notna().any():
+                logs[f"{loop_name}_value"] = val_col
+
         dataframes.append(logs)
 
     def join_on_common_columns(df1, df2):

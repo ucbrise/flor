@@ -2,22 +2,15 @@ from dataclasses import dataclass, asdict
 from typing import Any, List, Optional
 import json
 import os
-import random
 
 from .constants import RUNS_DIR
 
 
-def generate_64bit_id() -> int:
-    return random.randint(-(2**63), 2**63 - 1)
-
-
 @dataclass
-class Loop:
-    ctx_id: int
-    p_ctx: Optional["Loop"]
+class Segment:
     name: str
-    iteration: int
-    value: str
+    iteration: Optional[int]
+    value: Optional[str]
 
 
 @dataclass
@@ -25,7 +18,7 @@ class Log:
     projid: str
     tstamp: str
     filename: str
-    ctx: Optional[Loop]
+    ctx: Optional[List[Segment]]
     name: str
     value: Any
     type: int
