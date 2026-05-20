@@ -5,7 +5,7 @@ from . import cli
 
 class Clock:
     start_time = time.perf_counter()
-    current_datetime = datetime.now().isoformat(timespec="seconds")
+    current_datetime = datetime.now().isoformat(timespec="microseconds")
 
     def __init__(self) -> None:
         self.s_time = None
@@ -28,5 +28,5 @@ class Clock:
 
     @classmethod
     def set_new_datetime(cls):
-        cls.current_datetime = datetime.now().isoformat(timespec="seconds")
+        cls.current_datetime = datetime.now().isoformat(timespec="microseconds")
         cls.start_time = time.perf_counter()

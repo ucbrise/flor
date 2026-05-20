@@ -1,4 +1,6 @@
 import os
+import shlex
+import sys
 from copy import deepcopy
 from pathlib import Path
 from .constants import *
@@ -15,6 +17,8 @@ from contextlib import contextmanager
 
 from tqdm import tqdm
 import atexit
+
+CMD_FILE = os.path.join(CURRDIR, ".flor.cmd")
 
 T = TypeVar("T")
 
@@ -223,6 +227,7 @@ def commit():
         if branch is not None:
             orm.to_jsonl(output_buffer, tstamp)
             database.unpack(output_buffer, cursor)
+            _write_cmd_file(tstamp)
             versions.git_commit(_build_commit_message(tstamp, run_args))
     else:
         database.unpack(output_buffer, cursor)
@@ -244,6 +249,12 @@ def _build_commit_message(tstamp: str, args: dict) -> str:
         return subject
     body = "\n".join(f"{k}={v}" for k, v in args.items())
     return f"{subject}\n\n{body}"
+
+
+def _write_cmd_file(tstamp: str):
+    cmd = " ".join(shlex.quote(a) for a in [sys.executable, *sys.argv])
+    with open(CMD_FILE, "w") as f:
+        f.write(f"{tstamp}\n{cmd}\n")
 
 
 @atexit.register

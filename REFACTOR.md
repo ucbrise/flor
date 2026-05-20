@@ -6,12 +6,17 @@ If a script performs io, like `print` or `logging`, FlorDB will automatically ca
 
 ## LLM Ready Data Layout
 
-Right now flor writes all the logs to a single JSON file, once per run, and each run that file is overwritten, simultaneously, flor writes to a sqlite database in the user's home directory `~/.flor/projid.db`. This was fine when we were interfacing with flor using just `flor.log` and `flor.dataframe`, but it can be a limitationlofor the LLM Access Path. Instead, we want a new data layout:
+The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB at `~/.flor/<projid>.db` — was thin enough for `flor.log` / `flor.dataframe` but too thin for the LLM Access Path. New layout (implemented):
 
-1. The files will live in a working tree (e.g. `.flor/runs/*.jsonl`) — easiest to grep. Should be auto-gitignored to avoid pollution. Data sync will be described separately.
-2. The `flor.arg` should be stored in the git commit, e.g. seeds, so some semblance of reproducibility is possible if the log files are destroyed on merge.
-3. Do away with the `~/.flor` state, keep project level scope.
-4. the db is a query cache, and it should be stored in the project `.flor` directory.
+1. **Per-run logs** at `.flor/runs/<tstamp>.jsonl` (microsecond tstamps, one JSON record per line). The whole `.flor/` directory is auto-added to `.gitignore` on first run; data sync is a separate concern.
+2. **Reproducibility metadata** (`flor.arg` values, including seeds) lives in the shadow-branch auto-commit message body as `k=v` lines under the `FLOR::Auto-commit::<tstamp>` subject — survives even when log files are gone.
+3. **No `~/.flor` state.** Everything is project-local under `.flor/`: query-cache DB at `.flor/<projid>.db`, object store at `.flor/obj_store/<tstamp>/`.
+4. **One commit per run is guaranteed** even when source and args are unchanged: each run rewrites `.flor.cmd` (tracked at repo root) with the run tstamp and CLI invocation, which dirties the tree.
+5. **`flor unpack` rebuilds the cache** by walking `.flor/runs/*.jsonl` directly — no historical git checkouts.
+
+## Object Store and Flor Checkpointing
+
+In many cases, students will clone a project, which already does torch logging, and fail to do flor checkpointing. This leads to a failure where there shouldn't be any, we can just piggy back off the checkpoints that were already taken. It will take some clever engineering but an elegant solution is possible.
 
 ## Data sync-ing
 
