@@ -10,8 +10,15 @@ from .constants import RUNS_DIR
 from . import orm
 import sys
 
-from .hlast.visitors import WithExpVisitor
+from .hlast.visitors import WithExpVisitor, ResumeBlockVisitor
 import ast
+
+
+@dataclass
+class ResumeSpec:
+    path: str
+    lhs_name: str
+    applies: list  # list[tuple[str, str]] — (target_name, key)
 
 
 @dataclass
@@ -21,6 +28,7 @@ class Flags:
     old_tstamp: Optional[str]
     args: Optional[Any]
     columns: Optional[Tuple[str]]
+    resume_spec: Optional[ResumeSpec] = None
 
 
 flags = Flags({}, None, None, None, None)
@@ -161,6 +169,20 @@ def replay_initialize():
     wev.visit(tree)
 
     flags.queryparameters["WEV"] = wev.found
+
+    rbv = ResumeBlockVisitor()
+    rbv.visit(tree)
+    if rbv.found:
+        flags.resume_spec = ResumeSpec(
+            path=rbv.path,  # type: ignore[arg-type]
+            lhs_name=rbv.lhs_name,  # type: ignore[arg-type]
+            applies=list(rbv.applies),
+        )
+    elif rbv.unscoped_match:
+        print(
+            "FLOR: torch.load resume pattern found outside module scope; "
+            "auto-restore disabled. Use flor.checkpointing(...) for replay."
+        )
 
     for obj in data:
         if obj["ctx"] is None and obj["type"] == 1:

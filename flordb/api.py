@@ -1,3 +1,4 @@
+import inspect
 import os
 import shlex
 import sys
@@ -199,12 +200,17 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     clock.set_start_time()
     layers[name] = (0, None)
     context.append(orm.Segment(name, 0, None))
+    # On replay we materialize so _auto_restore can index into the previous
+    # iter's value for the mirror filename lookup. On forward we keep the
+    # original lazy iterator semantics.
+    if cli.in_replay_mode():
+        materialized: Optional[list] = list(iterator)
+        iter_source: Any = slice(name, materialized)
+    else:
+        materialized = None
+        iter_source = enumerate(iterator)
     for each in tqdm(
-        (
-            enumerate(slice(name, iterator))
-            if not cli.in_replay_mode()
-            else slice(name, iterator)
-        ),
+        iter_source,
         position=pos,
         leave=(True if pos == 0 else False),
     ):
@@ -215,6 +221,8 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
+            if materialized is not None:
+                _auto_restore(name, int(each[0]), materialized)
         iter_clock = Clock()
         iter_clock.set_start_time()
         yield each[1]  # type: ignore
@@ -441,6 +449,92 @@ def _install_torch_hooks():
     _orig_torch_load = torch.load
     torch.save = _flor_torch_save  # type: ignore[assignment]
     torch.load = _flor_torch_load  # type: ignore[assignment]
+
+
+# ---------------------------------------------------------------------------
+# AST-driven auto-restore (no flor.checkpointing(...) required)
+#
+# When cli.replay_initialize() finds a module-scope `torch.load(...)` +
+# `X.load_state_dict(loaded[key])` pattern in the user's script, flor.loop
+# calls _auto_restore at the start of each replayed outer-iter to splice the
+# matching obj_store mirror back into the user's module/function frame. The
+# user's own resume code (e.g. line 84 of v4/train.py) is left intact -- it
+# still runs once before the loop -- but its result is overwritten per-iter.
+# ---------------------------------------------------------------------------
+
+
+def _find_user_frame():
+    """Walk outward from the current frame, return the first frame whose
+    code filename basename matches SCRIPTNAME. Works whether the resume
+    block and flor.loop live at module scope or inside a function in the
+    user script.
+    """
+    f = inspect.currentframe()
+    if f is None:
+        return None
+    f = f.f_back
+    while f is not None:
+        if os.path.basename(f.f_code.co_filename) == SCRIPTNAME:
+            return f
+        f = f.f_back
+    return None
+
+
+def _auto_restore(name: str, position: int, materialized: list) -> None:
+    spec = cli.flags.resume_spec
+    if spec is None or position <= 0:
+        return
+    user_frame = _find_user_frame()
+    if user_frame is None:
+        return
+    try:
+        import torch  # type: ignore
+    except ImportError:
+        return
+
+    saved_layer = layers.get(name)
+    try:
+        # Walk backward over the original iteration positions to find the
+        # most recent mirror that actually exists on disk (handles throttled
+        # saves where ckpt_interval_s skipped some iters).
+        found_layer = None
+        for k in range(position - 1, -1, -1):
+            prev_val = materialized[k]
+            v = str(prev_val) if utils.is_jsonable(prev_val) else None
+            layers[name] = (k + 1, v)
+            try:
+                stem, ext = _user_path_stem_ext(spec.path)
+                candidate = obj_store.get_shelf() / utils.to_filename(
+                    layers, stem, ext
+                )
+                if candidate.exists():
+                    found_layer = (k + 1, v)
+                    break
+            except Exception:
+                continue
+        if found_layer is None:
+            return
+        layers[name] = found_layer
+        # _flor_torch_load consults `layers` -- the swap above redirects the
+        # read to the historical mirror without changing the user-visible
+        # path string.
+        loaded = torch.load(spec.path)
+        scope = dict(user_frame.f_globals)
+        scope.update(user_frame.f_locals)
+        for target_name, key in spec.applies:
+            target = scope.get(target_name)
+            if target is None:
+                continue
+            apply = getattr(target, "load_state_dict", None)
+            if apply is None:
+                continue
+            try:
+                apply(loaded[key])
+            except Exception:
+                pass
+    finally:
+        if saved_layer is not None:
+            layers[name] = saved_layer
 
 
 def slice(name, iterator):

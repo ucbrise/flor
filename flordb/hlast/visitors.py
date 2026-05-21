@@ -100,6 +100,128 @@ class LoggedExpVisitor(ast.NodeVisitor):
         return super().generic_visit(node)
 
 
+class ResumeBlockVisitor(ast.NodeVisitor):
+    """
+    Locate the PyTorch resume-from-checkpoint pattern at module scope:
+
+        <lhs> = torch.load(<literal-path>)
+        <target>.load_state_dict(<lhs>[<key>])
+        ...
+
+    Captures path, lhs name, and the (target, key) pairs so flor.loop can
+    auto-restore historical state on replay without `flor.checkpointing(...)`
+    enrollment. Only module-scope matches are emitted; function/class-nested
+    patterns are recorded in `unscoped_match` so the caller can warn.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self._depth = 0
+        self.path: Optional[str] = None
+        self.lhs_name: Optional[str] = None
+        self.applies: list = []
+        self.unscoped_match: bool = False
+
+    @property
+    def found(self) -> bool:
+        return (
+            self.path is not None
+            and self.lhs_name is not None
+            and bool(self.applies)
+        )
+
+    def visit_FunctionDef(self, node):
+        self._depth += 1
+        try:
+            self.generic_visit(node)
+        finally:
+            self._depth -= 1
+
+    def visit_AsyncFunctionDef(self, node):
+        self._depth += 1
+        try:
+            self.generic_visit(node)
+        finally:
+            self._depth -= 1
+
+    def visit_ClassDef(self, node):
+        self._depth += 1
+        try:
+            self.generic_visit(node)
+        finally:
+            self._depth -= 1
+
+    def visit_Assign(self, node: ast.Assign):
+        if self._is_torch_load_assign(node):
+            if self._depth != 0:
+                self.unscoped_match = True
+            elif self.path is None:
+                self._capture_load(node)
+        self.generic_visit(node)
+
+    def visit_Expr(self, node: ast.Expr):
+        if isinstance(node.value, ast.Call) and self._is_load_state_dict_call(
+            node.value
+        ):
+            if self._depth != 0:
+                self.unscoped_match = True
+            else:
+                self._capture_apply(node.value)
+        self.generic_visit(node)
+
+    @staticmethod
+    def _is_torch_load_assign(node: ast.Assign) -> bool:
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            return False
+        v = node.value
+        return (
+            isinstance(v, ast.Call)
+            and isinstance(v.func, ast.Attribute)
+            and v.func.attr == "load"
+            and isinstance(v.func.value, ast.Name)
+            and v.func.value.id == "torch"
+        )
+
+    @staticmethod
+    def _is_load_state_dict_call(call: ast.Call) -> bool:
+        return (
+            isinstance(call.func, ast.Attribute)
+            and call.func.attr == "load_state_dict"
+            and isinstance(call.func.value, ast.Name)
+        )
+
+    def _capture_load(self, node: ast.Assign):
+        call = node.value
+        if not isinstance(call, ast.Call) or not call.args:
+            return
+        arg = call.args[0]
+        if not (isinstance(arg, ast.Constant) and isinstance(arg.value, (str, bytes))):
+            # Dynamic paths fall back to `flor.checkpointing(...)`.
+            return
+        self.path = str(arg.value) if isinstance(arg.value, str) else arg.value.decode()
+        target0 = node.targets[0]
+        assert isinstance(target0, ast.Name)
+        self.lhs_name = target0.id
+
+    def _capture_apply(self, call: ast.Call):
+        if self.lhs_name is None or not call.args:
+            return
+        arg = call.args[0]
+        if not isinstance(arg, ast.Subscript):
+            return
+        if not (isinstance(arg.value, ast.Name) and arg.value.id == self.lhs_name):
+            return
+        slice_node = arg.slice
+        if isinstance(slice_node, ast.Constant):
+            key = slice_node.value
+        else:
+            return
+        assert isinstance(call.func, ast.Attribute) and isinstance(
+            call.func.value, ast.Name
+        )
+        self.applies.append((call.func.value.id, key))
+
+
 class NoGradVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
