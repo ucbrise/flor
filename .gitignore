@@ -1,3 +1,4 @@
+examples/data/
 .vscode/
 .venv/
 .project
@@ -165,3 +166,6 @@ dmypy.json
 cython_debug/
 examples/.replay.json
 labnb.ipynb
+
+.flor/
+examples/v4/ckpt.pth

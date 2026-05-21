@@ -203,9 +203,11 @@ def pivot(conn, *args):
                 lambda s: s.get("value") if isinstance(s, dict) else None
             )
 
-            # Match prior behavior: only surface iteration column if every row has one.
-            if iter_col.notna().all() and not iter_col.empty:
-                logs[loop_name] = iter_col.astype(int)
+            # Surface the iteration column whenever any row carries it. Rows
+            # without that ctx depth get NaN. Use Int64 (nullable) so the
+            # column survives groupby/max without collapsing to float.
+            if iter_col.notna().any():
+                logs[loop_name] = iter_col.astype("Int64")
 
             # Only surface _value column if at least one row carries it.
             if val_col.notna().any():

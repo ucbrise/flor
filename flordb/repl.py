@@ -43,7 +43,24 @@ def query(user_query: str):
         conn.close()
 
 
-def replay(apply_vars: List[str], where_clause: Optional[str] = None):
+def replay(
+    apply_vars: List[str],
+    narrow: Optional[str] = None,
+    where_clause: Optional[str] = None,
+):
+    """
+    Re-run historical runs to compute apply_vars that weren't logged originally.
+
+    apply_vars: log names (or linenos) introduced as hindsight statements in the
+        current script. Each historical run is re-executed with these vars
+        applied via backprop.
+    narrow: optional `--replay_flor`-style narrowing spec, e.g. "epoch=2" or
+        "epoch=2 step=". Pass-through to the subprocess. If None, the
+        orchestrator picks a default based on where in the loop nesting the
+        apply_vars sit.
+    where_clause: optional SQL-style filter on the schedule (legacy; only used
+        for column-name discovery today).
+    """
     versions.git_commit("Hindsight logging stmts added.")
     schedule = Schedule(apply_vars, where_clause)
 
@@ -59,24 +76,22 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     lev.visit(tree)
 
     if not wev.found:
-        # "No `with flor.checkpointing(...):` statement found in main script."
-        loglvl, mark = 3, "suffix"
+        # No flor.loop and no `with flor.checkpointing(...):` in the script --
+        # no narrowable scope. Full re-run.
+        loglvl = 3
     else:
-        loglvl, mark = schedule.get_loglvl(lev)
+        loglvl = max(lev.line2level[lev.names[v]] for v in apply_vars)
+        # Cap to the number of flor.loops actually present so we don't try to
+        # narrow a depth that doesn't exist.
+        loglvl = min(loglvl, len(lev.loop_names))
 
-    assert mark in ("prefix", "suffix")
-    level_mapper = {0: "prefix", 1: "outer loop", 2: "nested loop", 3: "full scan"}
+    level_mapper = {0: "run-level (no loop)", 1: "outer loop", 2: "nested loop", 3: "full scan"}
 
-    schedule.estimate_cost(loglvl, mark)
+    schedule.estimate_cost(loglvl, lev.loop_names)
 
-    if loglvl == 3:
-        print("log level full scan, replaying from flor.args.")
-    elif loglvl < 3:
-        print(
-            "log level",
-            level_mapper[loglvl],
-            "to suffix." if mark == "suffix" else "without suffix.",
-        )
+    print(f"log level: {level_mapper.get(loglvl, str(loglvl))}")
+    if narrow:
+        print(f"narrow (user-supplied): {narrow}")
     print()
     print(schedule.df)
     print()
@@ -91,7 +106,6 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     clock = Clock()
     clock.set_start_time()
 
-    # Pick up on versions
     active_branch = versions.current_branch()
     try:
         for projid, ts, hexsha, main_script in schedule.iter_dims():
@@ -107,56 +121,13 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
                 except Exception as e:
                     print("Exception raised during `backprop`", e)
                     raise e
-            if loglvl == 0 or loglvl == 3:
-                print("loglvl", loglvl)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)]
-                print(*cmd)
-                subprocess.run(cmd)
-            elif loglvl == 1:
-                tup = (
-                    ",".join(
-                        [
-                            str(i)
-                            for i in range(
-                                schedule.df[schedule.df["tstamp"] == ts][
-                                    "num_epochs"
-                                ].values[0]
-                            )
-                        ]
-                    )
-                    + ","
-                )
-                print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
-                    "epoch=" + tup
-                ]
-                print(*cmd)
-                subprocess.run(cmd)
-            elif loglvl == 2:
-                tup = (
-                    ",".join(
-                        [
-                            str(i)
-                            for i in range(
-                                schedule.df[schedule.df["tstamp"] == ts][
-                                    "num_epochs"
-                                ].values[0]
-                            )
-                        ]
-                    )
-                    + ","
-                )
-                print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
-                    "epoch=" + tup,
-                    "step=1",
-                ]
-                print(*cmd)
-                subprocess.run(cmd)
-            else:
-                raise NotImplementedError(
-                    "Please open a Pull Request on GitHub and describe your use-case."
-                )
+
+            narrow_args = _narrow_args(loglvl, ts, schedule, lev, narrow)
+            cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + (
+                narrow_args
+            )
+            print(*cmd)
+            subprocess.run(cmd)
     except Exception as e:
         print("Exception raised during `schedule.iter_dims()`", e)
         raise e
@@ -180,6 +151,53 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     return schedule
 
 
+def _narrow_args(
+    loglvl: int,
+    ts,
+    schedule: "Schedule",
+    lev: LoggedExpVisitor,
+    user_narrow: Optional[str],
+) -> List[str]:
+    """
+    Build the loop-narrowing key=value list appended to --replay_flor.
+
+    If the user passed a `narrow` string, use it verbatim (space-separated).
+    Otherwise pick a default based on loglvl:
+      loglvl 0 or 3 -> no narrowing.
+      loglvl 1      -> iterate every index of the outermost flor.loop,
+                       inner loops default to last-only via slice().
+      loglvl 2      -> iterate every outer index AND every inner index up to
+                       the depth above loglvl; the deepest one (where the
+                       hindsight log sits) defaults to last-only.
+    """
+    if user_narrow:
+        return [s for s in user_narrow.split() if "=" in s]
+
+    if loglvl == 0 or loglvl == 3:
+        return []
+
+    args: List[str] = []
+    # Resolve how many iterations the outermost loop had in this run.
+    n_outer = int(
+        schedule.df[schedule.df["tstamp"] == ts]["num_outer"].values[0]
+    )
+    outer_name = lev.loop_names[0] if lev.loop_names else "epoch"
+    tup = ",".join(str(i) for i in range(n_outer)) + ","
+    args.append(f"{outer_name}={tup}")
+
+    # For loglvl >= 2 we also iterate inner loops up to (loglvl - 1) depths.
+    # Deeper than that we leave at the slice() default (last-only).
+    for depth in range(1, loglvl - 1):
+        if depth >= len(lev.loop_names):
+            break
+        # We don't yet know per-outer-iter how many inner iters there were;
+        # fall back to a wide range. The slice() default for unknown numeric
+        # indices is to pick original[int(i)], which is bounded by the actual
+        # length at runtime.
+        args.append(f"{lev.loop_names[depth]}=0,1,")
+    return args
+
+
 class Schedule:
     def __init__(self, apply_vars, where_clause) -> None:
         # TODO:
@@ -198,120 +216,87 @@ class Schedule:
             self.vars_in_where = columns_list
             print("columns in where_clause:", columns_list)
 
-    def estimate_cost(self, loglvl: int, mark: str):
-        assert mark in ("prefix", "suffix")
-        keys = ["projid", "tstamp", "filename"]
-        if loglvl == 3:
-            # Full scan, delta::suffix is the estimate per run
-            pvt = dataframe()
-            self.df = dataframe("delta::suffix")
-            self.df["composite"] = pd.to_numeric(self.df["delta::suffix"])
-            self.df = pd.merge(pvt, self.df, on=keys, how="inner")
-        else:
-            pvt = dataframe()
-            if loglvl == 0:
-                if mark == "prefix":
-                    self.df = dataframe("delta::prefix")
-                    self.df["composite"] = pd.to_numeric(self.df["delta::prefix"])
-                else:
-                    self.df = dataframe("delta::prefix", "delta::suffix")
-                    self.df["composite"] = (
-                        pd.to_numeric(self.df["delta::prefix"])
-                        + pd.to_numeric(self.df["delta::suffix"])
-                        + 1
-                    )
-                self.df = pd.merge(pvt, self.df, on=keys, how="inner")
-            elif loglvl == 1:
-                # i - delta::loop where i is the full duration for that iteration
-                df = dataframe("delta::loop")
-                df["delta::loop"] = pd.to_numeric(df["delta::loop"], errors="coerce")
-                df_grouped = (
-                    df.groupby(keys)
-                    .agg(
-                        num_epochs=("epoch", "max"),
-                        sum_nested_loops=("delta::loop", "sum"),
-                    )
-                    .reset_index()
-                )
-                temp_df = query(
-                    "SELECT * FROM logs WHERE ctx is null and value_name='delta::loop';"
-                )
-                temp_df.drop(columns=["ctx", "value_name", "value_type"], inplace=True)  # type: ignore
-                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-                temp_df["coarse_loop"] = pd.to_numeric(
-                    temp_df["coarse_loop"], errors="coerce"
-                )
+    def estimate_cost(self, loglvl: int, loop_names: List[str]):
+        """
+        Build self.df: one row per historical tstamp with a `composite` column
+        giving a wall-time estimate for the narrowed re-run.
 
-                merged_df = pd.merge(temp_df, df_grouped, on=keys, how="inner")
-                merged_df["marginal"] = (
-                    merged_df["coarse_loop"] - merged_df["sum_nested_loops"]
-                )
-                merged_df.drop(
-                    columns=["coarse_loop", "sum_nested_loops"], inplace=True
-                )
-                df = dataframe("delta::prefix", "delta::suffix")
-                merged_df = pd.merge(merged_df, df, on=keys, how="inner")
-                merged_df["composite"] = (
-                    pd.to_numeric(merged_df["num_epochs"])
-                    + merged_df["marginal"]
-                    + pd.to_numeric(merged_df["delta::prefix"])
-                    + pd.to_numeric(merged_df["delta::suffix"])
-                )
-                self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
-            elif loglvl == 2:
-                base_df = dataframe("delta::prefix", "delta::suffix")
-                loop_df = dataframe("delta::loop")
-                loop_df["delta::loop"] = pd.to_numeric(
-                    loop_df["delta::loop"], errors="coerce"
-                )
-                df_grouped = (
-                    loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
-                )
-                temp_df = query(
-                    "SELECT * FROM logs WHERE ctx is null and value_name='delta::loop';"
-                )
-                temp_df.drop(columns=["ctx", "value_name", "value_type"], inplace=True)  # type: ignore
-                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-                temp_df["coarse_loop"] = pd.to_numeric(
-                    temp_df["coarse_loop"], errors="coerce"
-                )
-                merged_df = pd.merge(temp_df, base_df, on=keys, how="inner")
-                merged_df["composite"] = (
-                    pd.to_numeric(merged_df["coarse_loop"])
-                    + pd.to_numeric(merged_df["delta::prefix"])
-                    + pd.to_numeric(merged_df["delta::suffix"])
-                )
-                merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
-                merged_df = pd.merge(merged_df, df_grouped, on=keys, how="inner")
-                self.df = merged_df
-            else:
-                raise
+        loop_names: outermost-to-innermost flor.loop names from the AST. Used
+            to generalize the schedule beyond the legacy "epoch"/"step" pair.
+        """
+        keys = ["projid", "tstamp", "filename"]
+        pvt = dataframe()
+
+        if loglvl == 3:
+            # Full scan -- whole-run wall time is the only useful estimate.
+            df = dataframe("time::script")
+            df["composite"] = pd.to_numeric(df["time::script"])
+            self.df = pd.merge(pvt, df, on=keys, how="inner")
+            return
+
+        if loglvl == 0:
+            # Apply var sits before any flor.loop -- setup time is what dominates.
+            df = dataframe("time::setup", "time::teardown")
+            df["composite"] = pd.to_numeric(df["time::setup"]) + pd.to_numeric(
+                df["time::teardown"]
+            )
+            self.df = pd.merge(pvt, df, on=keys, how="inner")
+            return
+
+        # loglvl in {1, 2}: narrowed loop replay. Estimate = setup + outer-loop
+        # wall time + teardown. Outer-loop wall time comes from the time::loop
+        # record at the run level (ctx is null). We MAX-aggregate because the
+        # DB may have multiple inserts per tstamp from prior replays; the
+        # original (slowest) run is the safe upper bound.
+        outer_name = loop_names[0] if loop_names else "epoch"
+        outer_loop_wall = query(
+            "SELECT projid, tstamp, filename, MAX(CAST(value AS REAL)) AS outer_loop_s "
+            "FROM logs WHERE ctx IS NULL AND value_name = 'time::loop' "
+            "GROUP BY projid, tstamp, filename;"
+        )
+
+        # num_outer: how many iterations the outermost loop ran. Prefer the
+        # inner-loop ctx records (each carries the outer iter index); fall
+        # back to counting time::iter records when there's no nested loop.
+        loops_df = dataframe("time::loop")
+        if outer_name in loops_df.columns:
+            num_outer = (
+                loops_df.dropna(subset=[outer_name])
+                .drop_duplicates(subset=keys + [outer_name])
+                .groupby(keys)
+                .agg(num_outer=(outer_name, "max"))
+                .reset_index()
+            )
+            num_outer["num_outer"] = pd.to_numeric(num_outer["num_outer"])
+        else:
+            iters = query(
+                "SELECT projid, tstamp, filename, COUNT(DISTINCT ctx) AS num_outer "
+                "FROM logs WHERE value_name = 'time::iter' "
+                "GROUP BY projid, tstamp, filename;"
+            )
+            num_outer = iters
+
+        # Edge timings: also MAX-dedupe (one ctx-null time::setup record per
+        # tstamp originally, but replays may have added more).
+        edges = query(
+            "SELECT projid, tstamp, filename, "
+            "MAX(CASE WHEN value_name='time::setup'    THEN CAST(value AS REAL) END) AS setup_s, "
+            "MAX(CASE WHEN value_name='time::teardown' THEN CAST(value AS REAL) END) AS teardown_s "
+            "FROM logs WHERE ctx IS NULL AND value_name IN ('time::setup','time::teardown') "
+            "GROUP BY projid, tstamp, filename;"
+        )
+
+        merged = pd.merge(outer_loop_wall, num_outer, on=keys, how="inner")
+        merged = pd.merge(merged, edges, on=keys, how="inner")
+        merged["composite"] = (
+            merged["setup_s"].fillna(0)
+            + merged["outer_loop_s"]
+            + merged["teardown_s"].fillna(0)
+        )
+        self.df = pd.merge(pvt, merged, on=keys, how="inner")
 
     def is_empty(self):
         return self.df.empty
-
-    def get_loglvl(self, lev: LoggedExpVisitor):
-        # Get the largest lineno from self.apply_vars
-        max_lineno = max(lev.names[v] for v in self.apply_vars)
-        loglevels = [lev.line2level[lev.names[v]] for v in self.apply_vars]
-
-        # Check for monotonic growth
-        pairs = sorted(
-            [
-                (line, level)
-                for line, level in lev.line2level.items()
-                if line <= max_lineno
-            ],
-            key=lambda x: x[0],
-        )
-        is_monotonic = all(
-            pairs[i][1] <= pairs[i + 1][1] for i in range(len(pairs) - 1)
-        )
-
-        return (
-            max(loglevels),
-            "prefix" if is_monotonic else "suffix",
-        )
 
     def iter_dims(self):
         ts2vid = {

@@ -8,6 +8,15 @@ If a script performs io, like `print` or `logging`, FlorDB will automatically ca
 
 In many cases, students will clone a project, which already does torch logging, and fail to do flor checkpointing. This leads to a failure where there shouldn't be any, we can just piggy back off the checkpoints that were already taken. It will take some clever engineering but an elegant solution is possible.
 
+I should be able to checkpoint on a single `flor.loop`, I shouldn't require nested loops for flor profiling (time measurments) and adaptive checkpointing to work.
+
+Implemented (v4):
+
+1. **`torch.save` / `torch.load` are piggy-backed.** Cloned scripts that already call `torch.save` get checkpointed into `.flor/obj_store/` for free; no `flor.checkpointing(...)` block needed. On replay, `torch.load` is redirected to the matching mirror. See [examples/v4/train.py](examples/v4/train.py).
+2. **Adaptive trigger works on a single `flor.loop`.** Outermost iteration boundary + time guard (default 60s, tunable via `flor.set_ckpt_interval`). No nesting required. The same throttle gates the `torch.save` mirror to keep disk bounded.
+3. **`flor.checkpointing(...)` is now optional** — kept as an explicit-enrollment path for non-torch objects (sklearn, etc.). Profiling records are anchored on `flor.loop` / `flor.iteration` boundaries instead of this block.
+4. **Profiling renamed `delta::*` → `time::*`** with `setup` / `iter` / `loop` / `teardown` scopes, plus a new always-emitted `time::script` (total wall time) so flat `flor.log`-only scripts also get a profiling number.
+
 ## LLM Ready Data Layout
 
 The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB at `~/.flor/<projid>.db` — was thin enough for `flor.log` / `flor.dataframe` but too thin for the LLM Access Path. New layout (implemented):

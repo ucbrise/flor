@@ -6,16 +6,19 @@ from .. import utils
 
 
 class WithExpVisitor(ast.NodeVisitor):
+    """
+    Signals to the replay planner that the script has a checkpointable scope.
+
+    Pre-v4: the only signal was `with flor.checkpointing(...):`.
+    v4: any `flor.loop` is also a checkpointable scope (piggy-backed via
+    torch.save / torch.load hooks), so its presence is sufficient.
+    """
+
     def __init__(self):
         super().__init__()
         self.found = False
 
     def visit_With(self, node: ast.With):
-        """
-        Checks for the existence of a with statement:
-        with flor.checkpointing(...):
-            ...
-        """
         pred = (
             isinstance(node.items[0].context_expr, ast.Call)
             and isinstance(node.items[0].context_expr.func, ast.Attribute)
@@ -28,6 +31,12 @@ class WithExpVisitor(ast.NodeVisitor):
         else:
             self.generic_visit(node)
 
+    def visit_For(self, node: ast.For):
+        iter_s = ast.unparse(node.iter).strip()
+        if iter_s.startswith("flor.loop"):
+            self.found = True
+        self.generic_visit(node)
+
 
 class LoggedExpVisitor(ast.NodeVisitor):
     def __init__(self):
@@ -36,13 +45,34 @@ class LoggedExpVisitor(ast.NodeVisitor):
 
         self.line2level: Dict[int, int] = {}
         self.lvl = 0
+        # loop_names[i] is the name of the flor.loop at nesting depth (i+1)
+        # in the order they appear on the dominant nesting path. So for
+        #   for epoch in flor.loop("epoch", ...):
+        #       for step in flor.loop("step", ...):
+        #           ...
+        # we get loop_names == ["epoch", "step"].
+        self.loop_names: list[str] = []
 
     def visit_For(self, node: ast.For):
         iter_s = ast.unparse(node.iter).strip()
         if iter_s.startswith("flor.loop"):
             start_lvl = self.lvl
+            loop_name: Optional[str] = None
+            try:
+                call = node.iter
+                if isinstance(call, ast.Call) and call.args:
+                    first = call.args[0]
+                    if isinstance(first, ast.Constant) and isinstance(
+                        first.value, str
+                    ):
+                        loop_name = first.value
+            except Exception:
+                pass
             try:
                 self.lvl += 1
+                # Record the loop name at this depth on first encounter.
+                if loop_name is not None and len(self.loop_names) < self.lvl:
+                    self.loop_names.append(loop_name)
                 self.generic_visit(node)
             finally:
                 self.lvl = start_lvl

@@ -1,6 +1,7 @@
 import os
 import shlex
 import sys
+import time
 from pathlib import Path
 from .constants import *
 from .clock import Clock
@@ -28,9 +29,48 @@ layers = {}
 context: List[orm.Segment] = []
 
 checkpoints = []
-checkpointing_clock = Clock()
+
+# Adaptive-checkpoint trigger: at the end of each outermost flor.loop iteration
+# (and on any user torch.save call), checkpoint at most once per ckpt_interval_s.
+ckpt_interval_s: float = 60.0
+_last_ckpt_time: Optional[float] = None
+
+# Setup/teardown profiling anchors. `_setup_emitted` flips on first outermost
+# flor.loop / flor.iteration entry (emitting time::setup once, measured from
+# script start). `_last_main_exit_time` is updated at each outermost loop /
+# iteration exit; commit() then emits time::teardown = perf_counter() - that.
+_setup_emitted: bool = False
+_last_main_exit_time: Optional[float] = None
 
 skip_cleanup = True
+
+
+def set_ckpt_interval(seconds: float) -> None:
+    global ckpt_interval_s
+    ckpt_interval_s = float(seconds)
+
+
+def _emit_setup_once():
+    global _setup_emitted
+    if _setup_emitted:
+        return
+    output_buffer.append(
+        orm.Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            _ctx_snapshot(),
+            "time::setup",
+            Clock().get_delta(),
+            3,
+        )
+    )
+    _setup_emitted = True
+
+
+def _mark_main_segment_end():
+    global _last_main_exit_time
+    _last_main_exit_time = time.perf_counter()
 
 
 def _ctx_snapshot() -> Optional[List[orm.Segment]]:
@@ -93,18 +133,12 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 
 @contextmanager
 def checkpointing(**kwargs):
+    # Optional explicit-enrollment helper. The torch.save hook is the default
+    # piggy-back path; use this for non-torch objects (sklearn estimators, dicts,
+    # etc.) that you want serialized at every adaptive ckpt() trigger.
+    # Profiling records (time::setup / time::teardown) are now anchored on
+    # outermost flor.loop boundaries, not on this block.
     try:
-        output_buffer.append(
-            orm.Log(
-                PROJID,
-                Clock.get_datetime(),
-                SCRIPTNAME,
-                _ctx_snapshot(),
-                "delta::prefix",
-                checkpointing_clock.get_delta(),
-                3,
-            )
-        )
         checkpoints.extend(list(kwargs.items()))
         yield
     except Exception as e:
@@ -112,11 +146,14 @@ def checkpointing(**kwargs):
         raise
     finally:
         checkpoints.clear()
-        checkpointing_clock.set_start_time()
 
 
 @contextmanager
 def iteration(name: str, idx: Optional[int], value: Optional[str]):
+    _deferred_init()
+    pos = len(layers)
+    if pos == 0:
+        _emit_setup_once()
     clock = Clock()
     clock.set_start_time()
     layers[name] = (
@@ -139,18 +176,27 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
             Clock.get_datetime(),
             SCRIPTNAME,
             _ctx_snapshot(),
-            "delta::iteration",
+            "time::iter",
             clock.get_delta(),
             3,
         )
     )
+    if pos == 0:
+        _mark_main_segment_end()
     del layers[name]
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
+    global _last_ckpt_time
+    _deferred_init()
+    pos = len(layers)
+    if pos == 0:
+        _emit_setup_once()
+        # Reset so the first iter's ckpt always fires; later iters get
+        # throttled by the time guard.
+        _last_ckpt_time = None
     clock = Clock()
     clock.set_start_time()
-    pos = len(layers)
     layers[name] = (0, None)
     context.append(orm.Segment(name, 0, None))
     for each in tqdm(
@@ -169,9 +215,30 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
+        iter_clock = Clock()
+        iter_clock.set_start_time()
         yield each[1]  # type: ignore
+        output_buffer.append(
+            orm.Log(
+                PROJID,
+                Clock.get_datetime(),
+                SCRIPTNAME,
+                _ctx_snapshot(),
+                "time::iter",
+                iter_clock.get_delta(),
+                3,
+            )
+        )
         if pos == 0 and not cli.in_replay_mode():
-            ckpt()
+            now = time.perf_counter()
+            if _last_ckpt_time is None or (now - _last_ckpt_time) >= ckpt_interval_s:
+                ckpt()
+                _last_ckpt_time = now
+    if pos == 0 and not cli.in_replay_mode():
+        # Force a final checkpoint at outermost loop exit so end-of-run state
+        # is always captured, regardless of the time guard.
+        ckpt()
+        _last_ckpt_time = time.perf_counter()
     context.pop()
     output_buffer.append(
         orm.Log(
@@ -179,28 +246,47 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             Clock.get_datetime(),
             SCRIPTNAME,
             _ctx_snapshot(),
-            "delta::loop",
+            "time::loop",
             clock.get_delta(),
             3,
         )
     )
+    if pos == 0:
+        _mark_main_segment_end()
     del layers[name]
 
 
 def commit():
-    global skip_cleanup
+    global skip_cleanup, _setup_emitted, _last_main_exit_time
     tstamp = Clock.get_datetime()
+    # time::script is the total wall time of the run -- always emitted, so
+    # flat scripts (featurization, mapping, anything that's just a sequence of
+    # flor.log calls with no loop) still get a profiling number out of the box.
     output_buffer.append(
         orm.Log(
             PROJID,
             tstamp,
             SCRIPTNAME,
             _ctx_snapshot(),
-            "delta::suffix",
-            checkpointing_clock.get_delta(),
+            "time::script",
+            Clock().get_delta(),
             3,
         )
     )
+    # time::teardown only makes sense if a loop/iteration boundary anchored
+    # a "main work" segment. Skip it on flat scripts to avoid a meaningless 0.
+    if _last_main_exit_time is not None:
+        output_buffer.append(
+            orm.Log(
+                PROJID,
+                tstamp,
+                SCRIPTNAME,
+                _ctx_snapshot(),
+                "time::teardown",
+                time.perf_counter() - _last_main_exit_time,
+                3,
+            )
+        )
     conn, cursor = database.conn_and_cursor()
     if not cli.in_replay_mode():
         # RECORD
@@ -217,7 +303,8 @@ def commit():
     output_buffer.clear()
     run_args.clear()
     Clock.set_new_datetime()
-    checkpointing_clock.s_time = None
+    _setup_emitted = False
+    _last_main_exit_time = None
     skip_cleanup = True
 
 
@@ -252,6 +339,7 @@ def _deferred_init():
             ), "Running from a detached HEAD?"
             versions.ensure_gitignored(".flor/")
             versions.to_shadow()
+    _install_torch_hooks()
 
 
 def ckpt():
@@ -262,6 +350,97 @@ def ckpt():
 def load_ckpt():
     for name, obj in checkpoints:
         obj_store.deserialize(layers, name, obj)
+
+
+# ---------------------------------------------------------------------------
+# torch.save / torch.load piggy-back hooks
+#
+# Lets cloned scripts that already call torch.save be checkpointed by flor
+# without an explicit `with flor.checkpointing(...):` block. On forward runs,
+# any torch.save called inside a flor.loop is mirrored into the project-local
+# object store at .flor/obj_store/<run-tstamp>/, using a ctx-aware filename so
+# each iteration produces its own snapshot. On replay, torch.load is redirected
+# to the matching mirror so the user's own resume-from-checkpoint code restores
+# the historical state.
+# ---------------------------------------------------------------------------
+
+_orig_torch_save = None
+_orig_torch_load = None
+
+
+def _coerce_to_path(path) -> Path:
+    # torch.save / torch.load accept str, os.PathLike, or a binary file object.
+    # str/PathLike include pathlib.Path, which has a .name (basename) attribute,
+    # so we must NOT branch on hasattr(path, "name"); that would discard the
+    # directory part. Only file-like objects fall back to .name.
+    if isinstance(path, (str, bytes, os.PathLike)):
+        return Path(os.fsdecode(path))
+    name = getattr(path, "name", None)
+    return Path(str(name)) if name else Path("ckpt.pth")
+
+
+def _user_path_stem_ext(path):
+    p = _coerce_to_path(path)
+    return p.stem or "ckpt", (p.suffix or ".pth")
+
+
+def _path_in_obj_store(path) -> bool:
+    try:
+        p = _coerce_to_path(path).resolve()
+        return str(p).startswith(str(Path(OBJSTORE_DIR).resolve()))
+    except Exception:
+        return False
+
+
+def _flor_torch_save(obj, path, *args, **kwargs):
+    global _last_ckpt_time
+    assert _orig_torch_save is not None
+    result = _orig_torch_save(obj, path, *args, **kwargs)
+    if not layers or cli.in_replay_mode():
+        return result
+    # Don't mirror writes that already land in our own obj_store -- those are
+    # ckpt() calls (or other flor-driven saves) and would just produce
+    # duplicates with deeper-nested filenames.
+    if _path_in_obj_store(path):
+        return result
+    now = time.perf_counter()
+    if _last_ckpt_time is not None and (now - _last_ckpt_time) < ckpt_interval_s:
+        return result
+    try:
+        stem, ext = _user_path_stem_ext(path)
+        flor_path = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+        _orig_torch_save(obj, str(flor_path), *args, **kwargs)
+        _last_ckpt_time = now
+    except Exception:
+        pass
+    return result
+
+
+def _flor_torch_load(path, *args, **kwargs):
+    assert _orig_torch_load is not None
+    if cli.in_replay_mode() and layers:
+        try:
+            stem, ext = _user_path_stem_ext(path)
+            flor_path = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+            if flor_path.exists():
+                return _orig_torch_load(str(flor_path), *args, **kwargs)
+        except Exception:
+            pass
+    return _orig_torch_load(path, *args, **kwargs)
+
+
+def _install_torch_hooks():
+    global _orig_torch_save, _orig_torch_load
+    if _orig_torch_save is not None:
+        return
+    try:
+        import torch
+    except ImportError:
+        return
+    _orig_torch_save = torch.save
+    _orig_torch_load = torch.load
+    torch.save = _flor_torch_save  # type: ignore[assignment]
+    torch.load = _flor_torch_load  # type: ignore[assignment]
 
 
 def slice(name, iterator):
@@ -297,4 +476,6 @@ __all__ = [
     "iteration",
     "commit",
     "output_buffer",
+    "set_ckpt_interval",
+    "ckpt_interval_s",
 ]

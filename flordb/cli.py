@@ -78,6 +78,16 @@ def parse_args():
     replay_parser.add_argument(
         "where_clause", nargs="?", type=str, help="Optional SQL WHERE clause"
     )
+    replay_parser.add_argument(
+        "--narrow",
+        type=str,
+        default=None,
+        help=(
+            "Pass-through narrowing spec for --replay_flor, e.g. "
+            "\"epoch=2\" to replay only one epoch, or \"epoch=2 step=\" "
+            "to also skip the nested step loop entirely."
+        ),
+    )
 
     # Query command
     query_parser = flor_parser.add_parser("query")

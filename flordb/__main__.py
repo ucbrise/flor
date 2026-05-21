@@ -40,10 +40,11 @@ def main():
             )
             print(df)
         elif flags.args.flor_command == "replay":
-            if flags.args.where_clause:
-                repl.replay(flags.args.VARS, flags.args.where_clause)
-            else:
-                repl.replay(flags.args.VARS)
+            repl.replay(
+                flags.args.VARS,
+                narrow=flags.args.narrow,
+                where_clause=flags.args.where_clause,
+            )
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),
