@@ -4,12 +4,13 @@ import re
 import shutil
 import numpy as np
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import subprocess
 import tempfile
 import os
 
 from . import utils
+from .cli import IterSpec
 from .hlast.visitors import LoggedExpVisitor, WithExpVisitor
 from .hlast import backprop
 
@@ -43,21 +44,32 @@ def query(user_query: str):
         conn.close()
 
 
+def _apply_var_to_lineno(v: str, lev: LoggedExpVisitor) -> int:
+    """`@42` -> 42; bare names look up via the AST visitor."""
+    if v.startswith("@"):
+        return int(v[1:])
+    return lev.names[v]
+
+
+def _apply_var_is_lineno(v: str) -> bool:
+    return v.startswith("@")
+
+
 def replay(
     apply_vars: List[str],
-    narrow: Optional[str] = None,
+    narrow_iters: Optional[List[Tuple[str, IterSpec]]] = None,
     where_clause: Optional[str] = None,
 ):
     """
     Re-run historical runs to compute apply_vars that weren't logged originally.
 
-    apply_vars: log names (or linenos) introduced as hindsight statements in the
-        current script. Each historical run is re-executed with these vars
+    apply_vars: log names (or `@LINENO`) introduced as hindsight statements in
+        the current script. Each historical run is re-executed with these vars
         applied via backprop.
-    narrow: optional `--replay_flor`-style narrowing spec, e.g. "epoch=2" or
-        "epoch=2 step=". Pass-through to the subprocess. If None, the
-        orchestrator picks a default based on where in the loop nesting the
-        apply_vars sit.
+    narrow_iters: optional list of (loop_name, IterSpec) overrides forwarded
+        to the inner script as `--iter NAME=SPEC` flags. If None, the
+        orchestrator picks defaults based on where the apply_vars sit in the
+        loop nesting.
     where_clause: optional SQL-style filter on the schedule (legacy; only used
         for column-name discovery today).
     """
@@ -90,8 +102,8 @@ def replay(
     schedule.estimate_cost(loglvl, lev.loop_names)
 
     print(f"log level: {level_mapper.get(loglvl, str(loglvl))}")
-    if narrow:
-        print(f"narrow (user-supplied): {narrow}")
+    if narrow_iters:
+        print(f"narrow (user-supplied): {[(n, s) for n, s in narrow_iters]}")
     print()
     print(schedule.df)
     print()
@@ -111,10 +123,8 @@ def replay(
         for projid, ts, hexsha, main_script in schedule.iter_dims():
             print("entering", str(ts), hexsha)
             versions.checkout(hexsha)
-            for v, lineno in zip(
-                apply_vars,
-                [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars],
-            ):
+            for v in apply_vars:
+                lineno = _apply_var_to_lineno(v, lev)
                 print("applying: ", v, lineno)
                 try:
                     backprop(lineno, temp_file.name, main_script, main_script)
@@ -122,10 +132,14 @@ def replay(
                     print("Exception raised during `backprop`", e)
                     raise e
 
-            narrow_args = _narrow_args(loglvl, ts, schedule, lev, narrow)
-            cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + (
-                narrow_args
-            )
+            narrow_args = _narrow_args(loglvl, ts, schedule, lev, narrow_iters)
+            cmd = [
+                "python", main_script,
+                "--replay_flor",
+                "--apply", ",".join(apply_vars),
+            ]
+            for name, spec in narrow_args:
+                cmd += ["--iter", f"{name}={_spec_to_cli(spec)}"]
             print(*cmd)
             subprocess.run(cmd)
     except Exception as e:
@@ -138,7 +152,7 @@ def replay(
 
     dt = clock.get_delta()
 
-    filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
+    filtered_vs = [v for v in apply_vars if not _apply_var_is_lineno(v)]
     if schedule.vars_in_where is not None:
         filtered_vs += schedule.vars_in_where
     schedule = dataframe(*filtered_vs)
@@ -151,50 +165,52 @@ def replay(
     return schedule
 
 
+def _spec_to_cli(spec: IterSpec) -> str:
+    if spec.kind in ("all", "last", "none"):
+        return spec.kind
+    return ",".join(str(i) for i in spec.indices)
+
+
 def _narrow_args(
     loglvl: int,
     ts,
     schedule: "Schedule",
     lev: LoggedExpVisitor,
-    user_narrow: Optional[str],
-) -> List[str]:
+    user_narrow: Optional[List[Tuple[str, IterSpec]]],
+) -> List[Tuple[str, IterSpec]]:
     """
-    Build the loop-narrowing key=value list appended to --replay_flor.
+    Pick the per-loop IterSpecs forwarded to the inner script as --iter flags.
 
-    If the user passed a `narrow` string, use it verbatim (space-separated).
-    Otherwise pick a default based on loglvl:
-      loglvl 0 or 3 -> no narrowing.
-      loglvl 1      -> iterate every index of the outermost flor.loop,
-                       inner loops default to last-only via slice().
-      loglvl 2      -> iterate every outer index AND every inner index up to
-                       the depth above loglvl; the deepest one (where the
-                       hindsight log sits) defaults to last-only.
+    If the user passed `narrow_iters`, use it verbatim. Otherwise default by
+    loglvl:
+      loglvl 0 or 3 -> no narrowing (script-wide replay).
+      loglvl 1      -> outer loop: every index; inner loops default to `last`
+                       implicitly (cli.iter_spec_for falls back).
+      loglvl 2      -> outer + every inner index up to (loglvl - 1) depths;
+                       deepest loop (where the hindsight log sits) stays at
+                       the implicit `last` default.
     """
     if user_narrow:
-        return [s for s in user_narrow.split() if "=" in s]
+        return list(user_narrow)
 
     if loglvl == 0 or loglvl == 3:
         return []
 
-    args: List[str] = []
-    # Resolve how many iterations the outermost loop had in this run.
+    args: List[Tuple[str, IterSpec]] = []
     n_outer = int(
         schedule.df[schedule.df["tstamp"] == ts]["num_outer"].values[0]
     )
     outer_name = lev.loop_names[0] if lev.loop_names else "epoch"
-    tup = ",".join(str(i) for i in range(n_outer)) + ","
-    args.append(f"{outer_name}={tup}")
+    args.append((outer_name, IterSpec("indices", tuple(range(n_outer)))))
 
     # For loglvl >= 2 we also iterate inner loops up to (loglvl - 1) depths.
-    # Deeper than that we leave at the slice() default (last-only).
+    # Deeper than that we leave at the implicit `last` default (one iter).
     for depth in range(1, loglvl - 1):
         if depth >= len(lev.loop_names):
             break
-        # We don't yet know per-outer-iter how many inner iters there were;
-        # fall back to a wide range. The slice() default for unknown numeric
-        # indices is to pick original[int(i)], which is bounded by the actual
-        # length at runtime.
-        args.append(f"{lev.loop_names[depth]}=0,1,")
+        # We don't know per-outer-iter how many inner iters there were; use a
+        # wide range and let slice() bound it at runtime via the index filter.
+        args.append((lev.loop_names[depth], IterSpec("indices", (0, 1))))
     return args
 
 
@@ -249,15 +265,20 @@ class Schedule:
         # DB may have multiple inserts per tstamp from prior replays; the
         # original (slowest) run is the safe upper bound.
         outer_name = loop_names[0] if loop_names else "epoch"
+        # Cost estimation is a baseline for "how long would re-running take?"
+        # Replay rows reflect a narrowed run (fewer iters, projected vars) and
+        # would make the baseline misleadingly fast; filter to forward only.
         outer_loop_wall = query(
             "SELECT projid, tstamp, filename, MAX(CAST(value AS REAL)) AS outer_loop_s "
             "FROM logs WHERE ctx IS NULL AND value_name = 'time::loop' "
+            "AND source = 'forward' "
             "GROUP BY projid, tstamp, filename;"
         )
 
         # num_outer: how many iterations the outermost loop ran. Prefer the
         # inner-loop ctx records (each carries the outer iter index); fall
-        # back to counting time::iter records when there's no nested loop.
+        # back to the outermost-loop's `time::iter::n` summary when there's
+        # no nested loop (ctx IS NULL pinpoints the outermost aggregate).
         loops_df = dataframe("time::loop")
         if outer_name in loops_df.columns:
             num_outer = (
@@ -267,11 +288,15 @@ class Schedule:
                 .agg(num_outer=(outer_name, "max"))
                 .reset_index()
             )
-            num_outer["num_outer"] = pd.to_numeric(num_outer["num_outer"])
+            # `iteration` is 0-indexed (matches positional narrowing); count
+            # of outer iters is therefore max(iteration) + 1.
+            num_outer["num_outer"] = pd.to_numeric(num_outer["num_outer"]) + 1
         else:
             iters = query(
-                "SELECT projid, tstamp, filename, COUNT(DISTINCT ctx) AS num_outer "
-                "FROM logs WHERE value_name = 'time::iter' "
+                "SELECT projid, tstamp, filename, "
+                "MAX(CAST(value AS INTEGER)) AS num_outer "
+                "FROM logs WHERE ctx IS NULL AND value_name = 'time::iter::n' "
+                "AND source = 'forward' "
                 "GROUP BY projid, tstamp, filename;"
             )
             num_outer = iters
@@ -283,6 +308,7 @@ class Schedule:
             "MAX(CASE WHEN value_name='time::setup'    THEN CAST(value AS REAL) END) AS setup_s, "
             "MAX(CASE WHEN value_name='time::teardown' THEN CAST(value AS REAL) END) AS teardown_s "
             "FROM logs WHERE ctx IS NULL AND value_name IN ('time::setup','time::teardown') "
+            "AND source = 'forward' "
             "GROUP BY projid, tstamp, filename;"
         )
 

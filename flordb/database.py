@@ -27,14 +27,24 @@ def _ctx_to_json(ctx) -> Optional[str]:
     raise TypeError(f"ctx must be a list or None, got {type(ctx).__name__}")
 
 
-def unpack(output_buffer, cursor):
+def unpack(output_buffer, cursor, source: str = "forward"):
+    # `source` tags every row inserted by this call. Forward runs and the
+    # `flor unpack` CLI (which rebuilds the cache from JSONL) both insert
+    # 'forward'; replay inserts 'replay'. The cache mixes both, read paths
+    # default to forward, and `flor unpack` wipes replay state on rebuild.
     if not output_buffer:
         return
+    if source not in ("forward", "replay"):
+        raise ValueError(f"source must be 'forward' or 'replay', got {source!r}")
+    insert_sql = (
+        "INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, "
+        "value_type, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
     for each in output_buffer:
         if isinstance(each, orm.Log):
             ctx_json = _ctx_to_json(each.ctx)
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                insert_sql,
                 (
                     each.projid,
                     each.tstamp,
@@ -43,12 +53,13 @@ def unpack(output_buffer, cursor):
                     each.name,
                     str(each.value),
                     each.type,
+                    source,
                 ),
             )
         else:
             ctx_json = _ctx_to_json(each.get("ctx"))
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                insert_sql,
                 (
                     each["projid"],
                     each["tstamp"],
@@ -57,6 +68,7 @@ def unpack(output_buffer, cursor):
                     each["name"],
                     str(each["value"]),
                     each["type"],
+                    source,
                 ),
             )
 
@@ -67,11 +79,19 @@ def create_tables(cursor):
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='logs'"
     )
-    if cursor.fetchone() is not None:
+    existing = cursor.fetchone() is not None
+    if existing:
         cursor.execute("PRAGMA table_info(logs)")
         cols = {row[1] for row in cursor.fetchall()}
         if "ctx" not in cols:
             cursor.execute("DROP TABLE logs")
+            existing = False
+        elif "source" not in cols:
+            # Pre-tag rows existed only because JSONL was unpacked, which is
+            # always forward truth -- default backfill matches that history.
+            cursor.execute(
+                "ALTER TABLE logs ADD COLUMN source TEXT NOT NULL DEFAULT 'forward'"
+            )
 
     cursor.execute(
         """
@@ -82,7 +102,8 @@ def create_tables(cursor):
             ctx TEXT,
             value_name TEXT,
             value TEXT,
-            value_type INTEGER
+            value_type INTEGER,
+            source TEXT NOT NULL DEFAULT 'forward'
         )
         """
     )
@@ -133,9 +154,16 @@ def _parse_ctx_cell(s):
 
 
 def pivot(conn, *args):
+    # Pivot surfaces both forward and replay rows. Replay values are not
+    # noise -- the user opted in by running `flor replay --apply ...` to see
+    # them. The `source` column rides along on every row so they're
+    # distinguishable (and joins across variables stay within a source --
+    # forward joins to forward, replay to replay -- because `source` ends up
+    # in the common-columns set for the per-variable merge).
     def _pivot_star():
         df = pd.read_sql(
-            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx IS NULL",
+            "SELECT DISTINCT value_name FROM logs "
+            "WHERE value_type = 1 AND ctx IS NULL",
             conn,
         )
         value_names = df["value_name"].values
@@ -154,10 +182,11 @@ def pivot(conn, *args):
         SELECT projid,
             tstamp,
             filename,
+            source,
             {dynamic_sql}
         FROM logs
         WHERE value_type = 1 AND ctx IS NULL
-        GROUP BY projid, tstamp, filename;
+        GROUP BY projid, tstamp, filename, source;
         """
 
         return pd.read_sql(
@@ -180,7 +209,7 @@ def pivot(conn, *args):
             parse_dates=["tstamp"],
             coerce_float=True,
         )
-        logs = logs[["projid", "tstamp", "filename", "ctx", "value"]]
+        logs = logs[["projid", "tstamp", "filename", "ctx", "source", "value"]]
         logs = logs.rename(columns={"value": value_name})
 
         parsed = logs["ctx"].apply(_parse_ctx_cell)

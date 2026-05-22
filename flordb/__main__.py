@@ -19,6 +19,11 @@ def main():
             conn, cursor = database.conn_and_cursor()
             database.create_tables(cursor)
 
+            # Replay rows are scratch keyed off the historical tstamp; an
+            # `unpack` rebuilds from JSONL (forward truth), so wipe replay
+            # scratch first to make the rebuild idempotent.
+            cursor.execute("DELETE FROM logs WHERE source = 'replay'")
+
             known_tstamps = {t for t, in database.read_known_tstamps(cursor)}
             jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
             for path in jsonl_paths:
@@ -26,7 +31,7 @@ def main():
                 if tstamp in known_tstamps:
                     continue
                 records = orm.read_jsonl(path)
-                database.unpack(records, cursor)
+                database.unpack(records, cursor, source="forward")
 
             conn.commit()
             conn.close()
@@ -42,7 +47,7 @@ def main():
         elif flags.args.flor_command == "replay":
             repl.replay(
                 flags.args.VARS,
-                narrow=flags.args.narrow,
+                narrow_iters=flags.args.narrow_iters or None,
                 where_clause=flags.args.where_clause,
             )
         elif flags.args.flor_command == "stat":

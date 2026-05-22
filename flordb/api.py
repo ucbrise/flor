@@ -1,6 +1,7 @@
 import inspect
 import os
 import shlex
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -43,6 +44,14 @@ _last_ckpt_time: Optional[float] = None
 _setup_emitted: bool = False
 _last_main_exit_time: Optional[float] = None
 
+# Logical-replay state. When the user requests an iter whose mirror was thrown
+# away by ckpt_interval_s throttling, the outer flor.loop falls back to the
+# most-recent earlier mirror and fast-forwards through intermediate iters with
+# full inner-loop execution and suppressed logs. These flags coordinate that
+# across the outer loop, inner slice(), and log().
+_logical_replay_active: bool = False
+_suppress_logs: bool = False
+
 skip_cleanup = True
 
 
@@ -74,6 +83,29 @@ def _mark_main_segment_end():
     _last_main_exit_time = time.perf_counter()
 
 
+def _emit_iter_summary(deltas: List[float]) -> None:
+    # Replaces the per-iter time::iter stream with a distributional summary
+    # anchored on the loop's parent ctx (or None at the outermost level).
+    # `time::iter` carries the mean so `flor.dataframe("time::iter")` keeps
+    # behaving like a single time-valued column; std and n live on companion
+    # value names for callers that want the spread or the iteration count.
+    if not deltas:
+        return
+    n = len(deltas)
+    mean = statistics.fmean(deltas)
+    std = statistics.stdev(deltas) if n >= 2 else 0.0
+    ts = Clock.get_datetime()
+    ctx = _ctx_snapshot()
+    for value_name, value in (
+        ("time::iter", mean),
+        ("time::iter::std", std),
+        ("time::iter::n", n),
+    ):
+        output_buffer.append(
+            orm.Log(PROJID, ts, SCRIPTNAME, ctx, value_name, value, 3)
+        )
+
+
 def _ctx_snapshot() -> Optional[List[orm.Segment]]:
     return list(context) if context else None
 
@@ -85,8 +117,17 @@ def log(name, value):
     serializable_value = value if utils.is_jsonable(value) else str(value)
     tqdm.write(utils.to_string(layers, name, serializable_value))
 
-    if cli.in_replay_mode() and name not in cli.flags.queryparameters["VARS"]:
-        # Check that name is in logging statement propagation list
+    if (
+        cli.in_replay_mode()
+        and cli.flags.apply_vars is not None
+        and name not in cli.flags.apply_vars
+    ):
+        # --apply was given; only the projected names are emitted.
+        return value
+
+    if _suppress_logs:
+        # Logical-replay fast-forward iter: training advances, but the
+        # user didn't ask for this iter's values, so don't emit them.
         return value
 
     output_buffer.append(
@@ -188,7 +229,7 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
-    global _last_ckpt_time
+    global _last_ckpt_time, _logical_replay_active, _suppress_logs
     _deferred_init()
     pos = len(layers)
     if pos == 0:
@@ -196,47 +237,56 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         # Reset so the first iter's ckpt always fires; later iters get
         # throttled by the time guard.
         _last_ckpt_time = None
+        _logical_replay_active = False
+        _suppress_logs = False
     clock = Clock()
     clock.set_start_time()
     layers[name] = (0, None)
     context.append(orm.Segment(name, 0, None))
-    # On replay we materialize so _auto_restore can index into the previous
-    # iter's value for the mirror filename lookup. On forward we keep the
-    # original lazy iterator semantics.
+    # On replay we materialize so the planner / restore code can index into a
+    # specific iter's value to build the matching obj_store filename. On
+    # forward we keep the original lazy iterator semantics.
+    logical_silent: set = set()
+    logical_mirror_pos: Optional[int] = None
     if cli.in_replay_mode():
         materialized: Optional[list] = list(iterator)
-        iter_source: Any = slice(name, materialized)
+        if pos == 0:
+            iter_source: Any
+            iter_source, logical_mirror_pos, logical_silent, _logical_replay_active = (
+                _build_outer_replay_plan(name, materialized)
+            )
+        else:
+            iter_source = slice(name, materialized)
     else:
         materialized = None
         iter_source = enumerate(iterator)
+    first_outer_iter = True
+    iter_deltas: List[float] = []
     for each in tqdm(
         iter_source,
         position=pos,
         leave=(True if pos == 0 else False),
     ):
         layers[name] = (
-            int(each[0]) + 1,
+            int(each[0]),
             str(each[1]) if utils.is_jsonable(each[1]) else None,
         )
         context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
         if pos == 0 and cli.in_replay_mode():
             load_ckpt()
             if materialized is not None:
-                _auto_restore(name, int(each[0]), materialized)
+                if _logical_replay_active:
+                    _suppress_logs = int(each[0]) in logical_silent
+                    if first_outer_iter and logical_mirror_pos is not None:
+                        _restore_from_mirror(name, logical_mirror_pos, materialized)
+                else:
+                    _suppress_logs = False
+                    _restore_from_mirror(name, int(each[0]), materialized)
+            first_outer_iter = False
         iter_clock = Clock()
         iter_clock.set_start_time()
         yield each[1]  # type: ignore
-        output_buffer.append(
-            orm.Log(
-                PROJID,
-                Clock.get_datetime(),
-                SCRIPTNAME,
-                _ctx_snapshot(),
-                "time::iter",
-                iter_clock.get_delta(),
-                3,
-            )
-        )
+        iter_deltas.append(iter_clock.get_delta())
         if pos == 0 and not cli.in_replay_mode():
             now = time.perf_counter()
             if _last_ckpt_time is None or (now - _last_ckpt_time) >= ckpt_interval_s:
@@ -248,6 +298,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         ckpt()
         _last_ckpt_time = time.perf_counter()
     context.pop()
+    _emit_iter_summary(iter_deltas)
     output_buffer.append(
         orm.Log(
             PROJID,
@@ -261,6 +312,8 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     )
     if pos == 0:
         _mark_main_segment_end()
+        _logical_replay_active = False
+        _suppress_logs = False
     del layers[name]
 
 
@@ -301,11 +354,13 @@ def commit():
         branch = versions.current_branch()
         if branch is not None:
             orm.to_jsonl(output_buffer, tstamp)
-            database.unpack(output_buffer, cursor)
+            database.unpack(output_buffer, cursor, source="forward")
             _write_cmd_file(tstamp)
             versions.git_commit(_build_commit_message(tstamp, run_args))
     else:
-        database.unpack(output_buffer, cursor)
+        # Replay rows are scratch -- not written to JSONL or git, and wiped
+        # whenever `flor unpack` rebuilds the cache from JSONL truth.
+        database.unpack(output_buffer, cursor, source="replay")
     conn.commit()
     conn.close()
     output_buffer.clear()
@@ -455,11 +510,14 @@ def _install_torch_hooks():
 # AST-driven auto-restore (no flor.checkpointing(...) required)
 #
 # When cli.replay_initialize() finds a module-scope `torch.load(...)` +
-# `X.load_state_dict(loaded[key])` pattern in the user's script, flor.loop
-# calls _auto_restore at the start of each replayed outer-iter to splice the
-# matching obj_store mirror back into the user's module/function frame. The
-# user's own resume code (e.g. line 84 of v4/train.py) is left intact -- it
-# still runs once before the loop -- but its result is overwritten per-iter.
+# `X.load_state_dict(loaded[key])` pattern in the user's script, flor.loop's
+# outer replay plan picks which obj_store mirror to splice into the user's
+# module/function frame: the iter's own mirror in the fast path, or the most
+# recent earlier one when ckpt_interval_s threw the matching mirror away
+# (logical replay -- intermediate iters then fast-forward through the body
+# with logs suppressed). The user's own resume code (e.g. line 84 of
+# v4/train.py) is left intact -- it still runs once before the loop -- but
+# its result is overwritten per-iter.
 # ---------------------------------------------------------------------------
 
 
@@ -480,41 +538,59 @@ def _find_user_frame():
     return None
 
 
-def _auto_restore(name: str, position: int, materialized: list) -> None:
+def _mirror_path_for(name: str, k: int, materialized: list, spec) -> Path:
+    """Build the obj_store mirror path for iter position k of `name`."""
+    prev_val = materialized[k]
+    v = str(prev_val) if utils.is_jsonable(prev_val) else None
+    saved_layer = layers.get(name)
+    try:
+        layers[name] = (k + 1, v)
+        stem, ext = _user_path_stem_ext(spec.path)
+        return obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+    finally:
+        if saved_layer is not None:
+            layers[name] = saved_layer
+        else:
+            layers.pop(name, None)
+
+
+def _mirror_exists_at(name: str, k: int, materialized: list, spec) -> bool:
+    try:
+        return _mirror_path_for(name, k, materialized, spec).exists()
+    except Exception:
+        return False
+
+
+def _find_latest_mirror_at_or_before(
+    name: str, position: int, materialized: list, spec
+) -> Optional[int]:
+    for k in range(position, -1, -1):
+        if _mirror_exists_at(name, k, materialized, spec):
+            return k
+    return None
+
+
+def _restore_from_mirror(name: str, k: int, materialized: list) -> bool:
+    """Splice the obj_store mirror at iter position k into the user's frame
+    by swapping `layers` so _flor_torch_load redirects torch.load(spec.path)
+    to the historical file, then re-running the user's load_state_dict calls.
+    """
     spec = cli.flags.resume_spec
-    if spec is None or position <= 0:
-        return
+    if spec is None or k is None or k < 0:
+        return False
     user_frame = _find_user_frame()
     if user_frame is None:
-        return
+        return False
     try:
         import torch  # type: ignore
     except ImportError:
-        return
+        return False
 
+    prev_val = materialized[k]
+    v = str(prev_val) if utils.is_jsonable(prev_val) else None
     saved_layer = layers.get(name)
     try:
-        # Walk backward over the original iteration positions to find the
-        # most recent mirror that actually exists on disk (handles throttled
-        # saves where ckpt_interval_s skipped some iters).
-        found_layer = None
-        for k in range(position - 1, -1, -1):
-            prev_val = materialized[k]
-            v = str(prev_val) if utils.is_jsonable(prev_val) else None
-            layers[name] = (k + 1, v)
-            try:
-                stem, ext = _user_path_stem_ext(spec.path)
-                candidate = obj_store.get_shelf() / utils.to_filename(
-                    layers, stem, ext
-                )
-                if candidate.exists():
-                    found_layer = (k + 1, v)
-                    break
-            except Exception:
-                continue
-        if found_layer is None:
-            return
-        layers[name] = found_layer
+        layers[name] = (k + 1, v)
         # _flor_torch_load consults `layers` -- the swap above redirects the
         # read to the historical mirror without changing the user-visible
         # path string.
@@ -532,9 +608,85 @@ def _auto_restore(name: str, position: int, materialized: list) -> None:
                 apply(loaded[key])
             except Exception:
                 pass
+        return True
     finally:
         if saved_layer is not None:
             layers[name] = saved_layer
+
+
+def _build_outer_replay_plan(name: str, materialized: list):
+    """Decide which outer-loop iters to run on replay.
+
+    Returns (iter_source, logical_mirror_pos, silent_set, logical_active).
+
+    Fast path: when every requested iter has its own obj_store mirror, return
+    the narrowed slice as-is -- each iter restores from its own mirror.
+
+    Logical replay: when at least one requested iter is missing its mirror
+    (typically because ckpt_interval_s throttled the save), expand to a
+    contiguous range starting just after the most-recent earlier mirror and
+    ending at max(requested). Caller restores from that mirror at the first
+    expanded iter, then fast-forwards through the body with inner loops run
+    in full. Silent iters (those not in the user's request) have their logs
+    suppressed; requested iters log normally.
+
+    Aborts loudly if no mirror exists at or before the earliest requested
+    iter -- there is no earlier state to start from.
+    """
+    if not cli.flags.wev_found:
+        # No flor.loop / no `with flor.checkpointing(...)` in the script --
+        # nothing to narrow, run the loop end-to-end.
+        return list(enumerate(materialized)), None, set(), False
+
+    spec = cli.iter_spec_for(name)
+
+    if spec.kind == "all":
+        return list(enumerate(materialized)), None, set(), False
+    if spec.kind == "none":
+        return [], None, set(), False
+    if spec.kind == "last":
+        last_idx = len(materialized) - 1
+        return [(last_idx, materialized[last_idx])], None, set(), False
+
+    # spec.kind == "indices"
+    n = len(materialized)
+    out_of_range = [i for i in spec.indices if not (0 <= i < n)]
+    if out_of_range:
+        raise RuntimeError(
+            f"FLOR: --iter {name}={list(spec.indices)} requests index "
+            f"{out_of_range} but the loop only has {n} iteration(s) "
+            f"(valid range: 0..{n - 1}). Re-run forward with more iterations "
+            f"or narrow to an in-range index."
+        )
+    requested = list(spec.indices)
+    if not requested:
+        return [], None, set(), False
+
+    resume = cli.flags.resume_spec
+    if resume is None:
+        return [(i, materialized[i]) for i in requested], None, set(), False
+
+    if all(_mirror_exists_at(name, r, materialized, resume) for r in requested):
+        return [(i, materialized[i]) for i in requested], None, set(), False
+
+    target_min = requested[0]
+    mirror_pos = _find_latest_mirror_at_or_before(
+        name, target_min, materialized, resume
+    )
+    if mirror_pos is None:
+        raise RuntimeError(
+            f"FLOR: cannot replay {name}={list(requested)}: no checkpoint mirror "
+            f"found at or before position {target_min}. The historical run "
+            f"(ckpt_interval_s={ckpt_interval_s}s) may have discarded every "
+            f"earlier mirror -- re-run forward with a lower interval to "
+            f"enable replay from this point."
+        )
+
+    requested_set = set(requested)
+    expanded = list(range(mirror_pos + 1, requested[-1] + 1))
+    silent = {i for i in expanded if i not in requested_set}
+    plan = [(i, materialized[i]) for i in expanded]
+    return plan, mirror_pos, silent, True
 
 
 def slice(name, iterator):
@@ -542,24 +694,33 @@ def slice(name, iterator):
         return iterator
     original = list(iterator)
 
-    qop = (
-        (cli.flags.queryparameters).get(name, 0)
-        if cli.flags.queryparameters is not None
-        else 0
-    )
-    if qop == 1 or not cli.flags.queryparameters["WEV"]:
-        return enumerate(iterator)
+    # During logical replay, every nested loop must run end-to-end so that
+    # training (or whatever the iter body does) actually advances the state
+    # the outer fast-forward depends on. User-supplied narrowing for inner
+    # loops is intentionally overridden in this mode.
+    if _logical_replay_active:
+        return list(enumerate(original))
 
-    new_slice = []
-    if qop == 0:
-        new_slice.append((len(original) - 1, original[-1]))
-        return new_slice
+    if not cli.flags.wev_found:
+        return list(enumerate(original))
 
-    assert isinstance(qop, (list, tuple))
-    qop = [i for i in qop if i.isnumeric()]
-    for i in qop:
-        new_slice.append((i, original[int(i)]))
-    return new_slice
+    spec = cli.iter_spec_for(name)
+    if spec.kind == "all":
+        return list(enumerate(original))
+    if spec.kind == "none":
+        return []
+    if spec.kind == "last":
+        return [(len(original) - 1, original[-1])]
+    # spec.kind == "indices"
+    n = len(original)
+    out_of_range = [i for i in spec.indices if not (0 <= i < n)]
+    if out_of_range:
+        raise RuntimeError(
+            f"FLOR: --iter {name}={list(spec.indices)} requests index "
+            f"{out_of_range} but the loop only has {n} iteration(s) "
+            f"(valid range: 0..{n - 1})."
+        )
+    return [(i, original[i]) for i in spec.indices]
 
 
 __all__ = [

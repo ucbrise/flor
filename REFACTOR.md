@@ -31,3 +31,90 @@ The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB
 ## Data sync-ing
 
 We can't really have the logs living in git, but we want some measure or reproducibility. That's a balancing act.
+
+## Replay is a query, not a run (implemented)
+
+`.flor/runs/<tstamp>.jsonl` is the immutable observation of one forward run,
+pinned to its `FLOR::Auto-commit::<tstamp>` shadow-branch commit. `flor.replay`
+never touches that file — it inserts into the sqlite cache only, tagged
+`source='replay'`. Replay rows are user-requested data (the whole point of
+`--apply val_acc --override device=cpu` is to *see* the replayed value), so
+they ride alongside forward rows in the cache, distinguishable but not
+hidden:
+
+- New `logs.source` column (`'forward'` | `'replay'`). Existing DBs are
+  migrated via `ALTER TABLE ... DEFAULT 'forward'` — historically all rows
+  came from JSONL, which is forward truth, so the backfill is correct.
+- `database.unpack(buffer, cursor, source=...)` tags every insert. The
+  `flor unpack` CLI and forward `commit()` pass `'forward'`; replay
+  `commit()` passes `'replay'`.
+- `database.pivot` / `flor.dataframe(...)` surface a `source` column on
+  every row so forward and replay observations are visible together. Joins
+  across multiple variables stay within a source (because `source` lands in
+  the common-columns set for the per-variable merge), so you won't
+  accidentally pair a forward `loss` with a replay `val_acc`.
+- The repl cost-estimator queries (`time::loop`, `time::iter::n`,
+  `time::setup`/`teardown`) *do* filter `source='forward'`. Cost estimation
+  must be a forward baseline — a narrowed replay's `time::loop` would be
+  misleadingly fast.
+- `flor unpack` runs `DELETE FROM logs WHERE source='replay'` before
+  walking JSONL, so it actually rebuilds to forward-run truth (previously
+  replay rows accumulated and silently survived re-unpack). Replays are
+  always reproducible from the historical commit, so wiping them on
+  rebuild is loss-free.
+- `flor.query(sql)` is a raw pass-through — filter on `source` yourself
+  for replay-only or forward-only slices.
+
+## Time logging is heavy, log aggregates (implemented)
+
+`flor.loop` no longer emits one `time::iter` per inner iteration. Per-iter
+wall times are collected in memory and summarized at loop exit as three
+records anchored on the loop's parent ctx:
+
+- `time::iter` — mean (so `flor.dataframe("time::iter")` keeps returning a
+  single time-valued column)
+- `time::iter::std` — sample stdev (0.0 when n=1)
+- `time::iter::n` — iteration count
+
+For the v4 train example this collapses ~9,400 `time::iter` rows per run
+into 6 (one summary triple per loop scope). The repl cost-estimator's
+fallback (`flordb/repl.py`) now reads `time::iter::n` directly with
+`ctx IS NULL` to recover the outermost iteration count without a
+`COUNT(DISTINCT ctx)` scan. `flor.iteration()` (the explicit single-iter
+context manager) is unchanged — it's already one record per call.
+
+## --replay_flor syntax and UX
+
+Old surface (v3 and prior):
+
+```
+python train.py --replay_flor "loss,val_acc epoch=0,2 step="
+```
+
+One flag, one quoted string, positional/keyword detection inside the string,
+magic-int defaults (no key → last only, `step=` → skip entirely), hard mutex
+with `--kwargs`, name-vs-lineno ambiguity.
+
+New surface (v4):
+
+```
+python train.py --replay_flor \
+    --apply loss,val_acc \
+    --iter epoch=0,2 \
+    --iter step=all \
+    --override device=cpu
+```
+
+- `--replay_flor` is the **mode switch** — presence ≡ replay. `in_replay_mode()`
+  is `flags.replay_flor is True`. `--apply` / `--iter` never imply replay.
+- `--apply VARS` — comma-separated projection. Linenos use `@N` (e.g. `@42`).
+  Absent ≡ no projection (every `flor.log` flows).
+- `--iter NAME=SPEC`, repeatable. SPEC ∈ {`all`, `last`, `none`, `0,2,5`}.
+  Loops not mentioned default to `last` — adaptive-checkpoint replay needs a
+  default jump-target and `last` is the cheapest correct one. First time a
+  loop is defaulted, flor prints a one-line tip pointing at the explicit verbs.
+- `--override k=v`, repeatable. Replaces the blanket `--kwargs` mutex.
+  Allowed for any key not logged in the historical run, plus an explicit
+  env-knob allowlist (`cli.ENV_OVERRIDE_ALLOWLIST` = `{device, ckpt_interval_s}`).
+  Overriding a historically-logged `flor.arg` that isn't on the allowlist is
+  rejected with an error pointing at re-running forward.
