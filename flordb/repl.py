@@ -44,21 +44,48 @@ def query(user_query: str):
         conn.close()
 
 
+def _apply_var_is_lineno(v: str) -> bool:
+    return v.startswith("@")
+
+
 def _apply_var_to_lineno(v: str, lev: LoggedExpVisitor) -> int:
     """`@42` -> 42; bare names look up via the AST visitor."""
     if v.startswith("@"):
         return int(v[1:])
+    if v not in lev.names:
+        raise RuntimeError(
+            f"FLOR: --apply {v!r} does not match any flor.log(...) in the current "
+            f"script. Known names: {sorted(lev.names)}"
+        )
     return lev.names[v]
 
 
-def _apply_var_is_lineno(v: str) -> bool:
-    return v.startswith("@")
+def _apply_var_to_name(v: str, lev: LoggedExpVisitor) -> str:
+    """`@42` -> the log name at line 42; bare names pass through (validated).
+
+    Everything downstream of the AST -- the child's `--apply` projection, the
+    Schedule columns, the final dataframe -- is keyed by log *name*, so linenos
+    have to be resolved exactly once, here.
+    """
+    if not _apply_var_is_lineno(v):
+        _apply_var_to_lineno(v, lev)  # validate
+        return v
+    lineno = _apply_var_to_lineno(v, lev)
+    name = lev.linenos.get(lineno)
+    if name is None:
+        raise RuntimeError(
+            f"FLOR: --apply {v!r} points at line {lineno}, which is not a "
+            f"flor.log(...) call in the current script. Logged lines: "
+            f"{sorted(lev.linenos)}"
+        )
+    return name
 
 
 def replay(
     apply_vars: List[str],
     narrow_iters: Optional[List[Tuple[str, IterSpec]]] = None,
     where_clause: Optional[str] = None,
+    overrides: Optional[List[Tuple[str, str]]] = None,
 ):
     """
     Re-run historical runs to compute apply_vars that weren't logged originally.
@@ -72,9 +99,11 @@ def replay(
         loop nesting.
     where_clause: optional SQL-style filter on the schedule (legacy; only used
         for column-name discovery today).
+    overrides: optional (key, value) pairs forwarded to the inner script as
+        `--override KEY=VALUE`. The child validates them against the historical
+        run's flor.arg records (see cli.ENV_OVERRIDE_ALLOWLIST).
     """
     versions.git_commit("Hindsight logging stmts added.")
-    schedule = Schedule(apply_vars, where_clause)
 
     jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
     assert jsonl_paths, f"No runs found in {RUNS_DIR}; cannot replay."
@@ -87,12 +116,19 @@ def replay(
     wev.visit(tree)
     lev.visit(tree)
 
+    # Resolve `@LINENO` forms once, up front. `apply_linenos` drives backprop
+    # (which is line-oriented); `apply_names` drives everything else: schedule
+    # columns, the child's --apply projection, and the result dataframe.
+    apply_linenos = [_apply_var_to_lineno(v, lev) for v in apply_vars]
+    apply_names = [_apply_var_to_name(v, lev) for v in apply_vars]
+    schedule = Schedule(apply_names, where_clause)
+
     if not wev.found:
         # No flor.loop and no `with flor.checkpointing(...):` in the script --
         # no narrowable scope. Full re-run.
         loglvl = 3
     else:
-        loglvl = max(lev.line2level[lev.names[v]] for v in apply_vars)
+        loglvl = max(lev.line2level[ln] for ln in apply_linenos)
         # Cap to the number of flor.loops actually present so we don't try to
         # narrow a depth that doesn't exist.
         loglvl = min(loglvl, len(lev.loop_names))
@@ -123,8 +159,7 @@ def replay(
         for projid, ts, hexsha, main_script in schedule.iter_dims():
             print("entering", str(ts), hexsha)
             versions.checkout(hexsha)
-            for v in apply_vars:
-                lineno = _apply_var_to_lineno(v, lev)
+            for v, lineno in zip(apply_names, apply_linenos):
                 print("applying: ", v, lineno)
                 try:
                     backprop(lineno, temp_file.name, main_script, main_script)
@@ -136,12 +171,22 @@ def replay(
             cmd = [
                 "python", main_script,
                 "--replay_flor",
-                "--apply", ",".join(apply_vars),
+                "--apply", ",".join(apply_names),
             ]
             for name, spec in narrow_args:
                 cmd += ["--iter", f"{name}={_spec_to_cli(spec)}"]
+            for k, v in overrides or []:
+                cmd += ["--override", f"{k}={v}"]
             print(*cmd)
-            subprocess.run(cmd)
+            proc = subprocess.run(cmd)
+            if proc.returncode != 0:
+                # The child validates --override and --iter against the
+                # historical run; a nonzero exit means it logged nothing, so
+                # say so rather than letting the result df come back empty.
+                print(
+                    f"FLOR: replay of {ts} exited with code {proc.returncode}; "
+                    f"no rows recorded for that run."
+                )
     except Exception as e:
         print("Exception raised during `schedule.iter_dims()`", e)
         raise e
@@ -152,7 +197,9 @@ def replay(
 
     dt = clock.get_delta()
 
-    filtered_vs = [v for v in apply_vars if not _apply_var_is_lineno(v)]
+    # apply_names is already lineno-free, so `@N` replays land in the result
+    # dataframe under the name they were logged with.
+    filtered_vs = list(apply_names)
     if schedule.vars_in_where is not None:
         filtered_vs += schedule.vars_in_where
     schedule = dataframe(*filtered_vs)
@@ -216,9 +263,9 @@ def _narrow_args(
 
 class Schedule:
     def __init__(self, apply_vars, where_clause) -> None:
-        # TODO:
-        # case when integer supplied through apply_vars,
-        #     you will need to infer var_name from ast
+        # apply_vars must be resolved log *names* -- `@LINENO` forms are
+        # translated by _apply_var_to_name before we get here, because these
+        # strings are used directly as dataframe column labels.
         self.apply_vars = apply_vars
         self.where_clause = where_clause
         self.vars_in_where = None

@@ -42,6 +42,10 @@ class LoggedExpVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
         self.names: Dict[str, int] = {}
+        # Inverse of `names`. Not derivable from it: two flor.log calls may
+        # share a name, and `names` keeps only the last lineno for those.
+        # `--apply @LINENO` resolves through here.
+        self.linenos: Dict[int, str] = {}
 
         self.line2level: Dict[int, int] = {}
         self.lvl = 0
@@ -90,6 +94,7 @@ class LoggedExpVisitor(ast.NodeVisitor):
             return self.generic_visit(node)
         if len(node.args) == 2 and isinstance(node.args[0], ast.Constant):
             self.names[str(node.args[0].value)] = node.lineno
+            self.linenos[node.lineno] = str(node.args[0].value)
             self.line2level[node.lineno] = self.lvl
         else:
             raise IndexError("FLOR: Did you give flor.log a key? It takes 2 args.")

@@ -88,6 +88,10 @@ class Flags:
     apply_vars: Optional[List[str]] = None     # --apply VARS (None = no projection)
     iter_specs: Dict[str, IterSpec] = field(default_factory=dict)  # --iter NAME=SPEC
     overrides: Dict[str, str] = field(default_factory=dict)        # --override K=V
+    # Historical flor.arg values from the replayed run's JSONL, JSON-typed.
+    # Kept separate from `hyperparameters` (which --override writes strings
+    # into) so api.arg can cast an override to the type it is replacing.
+    historical_args: Dict[str, Any] = field(default_factory=dict)
     wev_found: bool = False                    # WithExpVisitor result from the script
     old_tstamp: Optional[str] = None
     resume_spec: Optional["ResumeSpec"] = None
@@ -108,6 +112,21 @@ flags = Flags()
 
 def parse_columns(column_string):
     return [str(each) for each in column_string.split()]
+
+
+def _argv_mentions(argv: List[str], commands: List[str]) -> bool:
+    """True if argv contains any of `commands`, in bare or `--flag=value` form.
+
+    Bare-token matching alone would let `python train.py --apply=loss` slip
+    through unparsed: the script would silently run forward instead of
+    reporting that --apply requires --replay_flor.
+    """
+    for tok in argv:
+        if tok in commands:
+            return True
+        if tok.startswith("-") and "=" in tok and tok.split("=", 1)[0] in commands:
+            return True
+    return False
 
 
 def parse_args():
@@ -184,6 +203,20 @@ def parse_args():
             "Repeatable: --iter epoch=2 --iter step=none."
         ),
     )
+    # Distinct dest from the top-level --override: this one is a passthrough
+    # to the replayed child process, not a flag on this (orchestrator) run, so
+    # it must not trip the "requires --replay_flor" check below.
+    replay_parser.add_argument(
+        "--override",
+        dest="replay_overrides",
+        action="append",
+        default=[],
+        type=parse_override_arg,
+        help=(
+            "Forwarded to each replayed run as --override KEY=VALUE "
+            "(e.g. device=cpu). Repeatable."
+        ),
+    )
 
     query_parser = flor_parser.add_parser("query")
     query_parser.add_argument(
@@ -211,7 +244,7 @@ def parse_args():
         "stat",
     ]
 
-    if any(command in sys.argv for command in flor_commands):
+    if _argv_mentions(sys.argv[1:], flor_commands):
         args = parser.parse_args()
         flags.args = args
     else:
@@ -326,6 +359,7 @@ def replay_initialize():
             f"flordb.cli.ENV_OVERRIDE_ALLOWLIST if it is truly env-shaped."
         )
 
+    flags.historical_args = dict(historical_hps)
     flags.hyperparameters.update(historical_hps)
     flags.hyperparameters.update(flags.overrides)
     flags.old_tstamp = data[0]["tstamp"]

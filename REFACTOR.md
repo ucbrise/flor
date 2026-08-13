@@ -118,3 +118,34 @@ python train.py --replay_flor \
   env-knob allowlist (`cli.ENV_OVERRIDE_ALLOWLIST` = `{device, ckpt_interval_s}`).
   Overriding a historically-logged `flor.arg` that isn't on the allowlist is
   rejected with an error pointing at re-running forward.
+
+### Orchestrator parity (`flor replay`)
+
+The flags above are the *child* surface. `flor replay` spawns those children,
+and the two surfaces have to agree:
+
+- **`--override` is forwarded.** `flor replay VARS --override device=cpu`
+  passes the pair through to every replayed run. The child still does the
+  validation (allowlist + historical-arg check), so a bad override fails in
+  the child; a nonzero child exit is now reported per-run instead of silently
+  yielding an empty result frame.
+- **`@LINENO` is resolved to a log name once, in the orchestrator.**
+  `LoggedExpVisitor.linenos` (the inverse of `.names`, and not derivable from
+  it — two `flor.log` calls can share a name) turns `@137` into `val_acc`
+  before it is used as a schedule column, a child `--apply` value, or a result
+  column. Only `backprop` still consumes the raw lineno. Previously `@N` was
+  passed through verbatim and matched no log name in the child, so the
+  projection filtered out everything the replay computed.
+- **`flor.arg` records bypass the `--apply` projection.** Args are run
+  configuration, not observations: without them a projected replay row can't
+  be joined against the hyperparameters that produced it (and the join is
+  source-scoped, so it would drop out entirely).
+- **`--override` values are cast to the type they replace.** Historical args
+  come back JSON-typed from the run's JSONL; CLI overrides arrive as strings.
+  `cli.flags.historical_args` keeps the typed originals so `flor.arg` can
+  `duck_cast` the override against them (falling back to the declared default
+  for keys with no history).
+- **Flag detection accepts `--flag=value`.** The argv scan that decides
+  whether to run argparse at all used to match bare tokens only, so
+  `python train.py --apply=loss` ran forward silently instead of reporting
+  that `--apply` requires `--replay_flor`.

@@ -110,7 +110,7 @@ def _ctx_snapshot() -> Optional[List[orm.Segment]]:
     return list(context) if context else None
 
 
-def log(name, value):
+def log(name, value, _bypass_projection: bool = False):
     if skip_cleanup:
         _deferred_init()
 
@@ -121,6 +121,7 @@ def log(name, value):
         cli.in_replay_mode()
         and cli.flags.apply_vars is not None
         and name not in cli.flags.apply_vars
+        and not _bypass_projection
     ):
         # --apply was given; only the projected names are emitted.
         return value
@@ -150,7 +151,17 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
         # GIT
         assert name in cli.flags.hyperparameters
         historical_v = cli.flags.hyperparameters[name]
-        log(name, historical_v)
+        if name in cli.flags.overrides:
+            # Historical values come back JSON-typed from the run's JSONL, but
+            # --override arrives as a CLI string. Cast it to the type it is
+            # replacing (or, for keys with no history, the declared default).
+            proto = cli.flags.historical_args.get(name, default)
+            if proto is not None:
+                historical_v = utils.duck_cast(historical_v, proto)
+        # Args are run configuration, not observations: they must survive an
+        # --apply projection or the replay rows can't be joined against the
+        # hyperparameters that produced them.
+        log(name, historical_v, _bypass_projection=True)
         run_args[name] = historical_v
         return historical_v
     elif name in cli.flags.hyperparameters:

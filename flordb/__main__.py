@@ -49,6 +49,7 @@ def main():
                 flags.args.VARS,
                 narrow_iters=flags.args.narrow_iters or None,
                 where_clause=flags.args.where_clause,
+                overrides=flags.args.replay_overrides or None,
             )
         elif flags.args.flor_command == "stat":
             build_context = {
