@@ -7,7 +7,7 @@ FlorDB brings experiment tracking, provenance, and reproducibility to your ML wo
 
 Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, schema, or service. Just import it, log as you normally would, and gain full history, lineage, and replay capabilities across your training runs.
 
-## 🚀 Why FlorDB?
+## 🌻 Why FlorDB?
 
 - **Log-Driven Experiment Tracking**  
   No dashboards to configure or schemas to design. `flor.log(...)` writes structured, queryable metadata; `flor.arg(...)` turns a constant into a CLI-settable hyperparameter that is recorded with the run.
