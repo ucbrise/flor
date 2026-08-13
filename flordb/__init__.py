@@ -39,6 +39,11 @@ def _should_capture() -> bool:
         # displayhook, so a tee installed here would see the wrong stream and
         # duplicate cell output. Explicit flor.log is the interactive path.
         return False
+    if SCRIPTNAME in ("-c", ""):
+        # `python -c '...'` and the bare REPL. Capturing io is what registers a
+        # run now (see api._register_run), so leaving these on would turn every
+        # ad-hoc query into a recorded run with its own auto-commit.
+        return False
     if cli.flags.args is not None and cli.flags.args.flor_command is not None:
         # `flor unpack` / `query` / `dataframe` / `replay` / `stat`: flor's own
         # CLI output, recording which would be the redundancy this feature is

@@ -377,6 +377,91 @@ class TestCapturedRun:
 
 
 @pytest.mark.slow
+class TestZeroCodeChanges:
+    """`import flordb` and nothing else -- the case the feature exists for.
+
+    Nothing here reaches log / arg / loop, so captured io is the only thing
+    that can register the run. Without that, commit() is never reached from
+    the atexit hook and the entire run is dropped on the floor.
+    """
+
+    PRINT_ONLY = (
+        "import flordb as flor\n"
+        "\n"
+        "for epoch in range(3):\n"
+        "    print(f'epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}')\n"
+    )
+
+    @pytest.fixture
+    def ran(self, project):
+        project.write("train.py", self.PRINT_ONLY)
+        project.run("train.py")
+        return project
+
+    def test_the_run_is_written_at_all(self, ran):
+        assert len(ran.run_files()) == 1
+
+    def test_prints_are_the_records(self, ran):
+        assert [v for n, v, _ in rows(ran) if n == "io::stdout"] == [
+            "epoch 0 | loss: 0.5000",
+            "epoch 1 | loss: 0.3333",
+            "epoch 2 | loss: 0.2500",
+        ]
+
+    def test_the_run_still_gets_its_auto_commit(self, ran):
+        subjects = [m.strip().splitlines()[0] for m in ran.git_log() if m.strip()]
+        assert any(s.startswith("FLOR::Auto-commit::") for s in subjects)
+
+    def test_the_run_reaches_the_cache(self, ran):
+        conn = ran.db()
+        try:
+            (count,) = conn.execute(
+                "SELECT COUNT(*) FROM logs WHERE value_name = 'io::stdout'"
+            ).fetchone()
+        finally:
+            conn.close()
+        assert count == 3
+
+    def test_a_silent_script_records_nothing(self, project):
+        # No io, no flor calls: importing flordb must stay inert.
+        project.write("quiet.py", "import flordb as flor\nx = 1 + 1\n")
+        project.run("quiet.py")
+        assert project.run_files() == []
+
+
+@pytest.mark.slow
+class TestAdHocInvocations:
+    """`python -c` and the bare REPL are not runs.
+
+    Since captured io now registers a run, leaving capture on for these would
+    turn every ad-hoc query into a recorded run with its own auto-commit.
+    """
+
+    def test_dash_c_does_not_record_a_run(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        before = len(project.run_files())
+        project.run("-c", "import flordb as flor; print(flor.io())")
+        assert len(project.run_files()) == before
+
+    def test_dash_c_does_not_add_a_commit(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        before = len(project.git_log())
+        project.run("-c", "import flordb as flor; print('noise')")
+        assert len(project.git_log()) == before
+
+    def test_reading_back_does_not_pollute_the_io_table(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        before = len(channels(rows(project)))
+        project.run(
+            "-c", "import flordb as flor; print(flor.io().to_string())"
+        )
+        assert len(channels(rows(project))) == before
+
+
+@pytest.mark.slow
 class TestDisabling:
     def test_env_var_turns_capture_off(self, project):
         project.write("train.py", TRAIN)

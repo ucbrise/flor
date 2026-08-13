@@ -74,39 +74,58 @@ flor.dataframe("message")
 
 ## 🪵 Already Using `print` and `logging`? Just Import
 
-You don't have to rewrite anything to get started. FlorDB captures your
-existing output and indexes it against the run:
+Add one import to a script you already have. Nothing else changes:
 
 ```python
 import logging
-import flordb as flor
-
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-for epoch in flor.loop("epoch", range(3)):
+import flordb as flor          # <-- the only new line
+
+for epoch in range(3):
     print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
     logging.info("checkpoint saved")
 ```
 
-Your terminal looks exactly the same. Afterwards:
+Your terminal looks exactly the same. But the run is now versioned, committed,
+and queryable:
 
 ```python
 flor.io()
 ```
 
 ```
-   projid                     tstamp  filename   source  epoch epoch_value        channel                    line
-0  readme 2026-08-13 12:06:56.386954  train.py  forward      0           0     io::stdout  epoch 0 | loss: 0.5000
-1  readme 2026-08-13 12:06:56.386954  train.py  forward      0           0  io::log::info        checkpoint saved
-2  readme 2026-08-13 12:06:56.386954  train.py  forward      1           1     io::stdout  epoch 1 | loss: 0.3333
-3  readme 2026-08-13 12:06:56.386954  train.py  forward      1           1  io::log::info        checkpoint saved
-4  readme 2026-08-13 12:06:56.386954  train.py  forward      2           2     io::stdout  epoch 2 | loss: 0.2500
-5  readme 2026-08-13 12:06:56.386954  train.py  forward      2           2  io::log::info        checkpoint saved
+  projid                     tstamp  filename   source        channel                    line
+0  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 0 | loss: 0.5000
+1  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
+2  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 1 | loss: 0.3333
+3  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
+4  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 2 | loss: 0.2500
+5  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
 ```
 
-The `import` alone is enough to start capturing; naming your loop with
-`flor.loop` is what earns the `epoch` column. Filter by channel with
-`flor.io("io::stdout")` or `flor.io("io::log::error")`.
+Filter by channel with `flor.io("io::stdout")` or `flor.io("io::log::error")`.
+
+**Then adopt as much as you want.** Every further step buys a specific thing.
+Naming the loop is the first one — it tells FlorDB what an iteration is, so
+your output lands at the right grain:
+
+```python
+for epoch in flor.loop("epoch", range(3)):   # was: for epoch in range(3):
+```
+
+```
+  projid                     tstamp  filename   source  epoch epoch_value        channel                    line
+0  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0     io::stdout  epoch 0 | loss: 0.5000
+1  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0  io::log::info        checkpoint saved
+2  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1     io::stdout  epoch 1 | loss: 0.3333
+3  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1  io::log::info        checkpoint saved
+4  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2     io::stdout  epoch 2 | loss: 0.2500
+5  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2  io::log::info        checkpoint saved
+```
+
+That `epoch` column is what the rest of FlorDB is built on: checkpoints
+addressable by iteration, and replay that can jump to one.
 
 Captured text stays out of `flor.dataframe()` — it isn't a metric — but FlorDB
 can pull metrics out of it if you ask. See what that would do to *your* logs

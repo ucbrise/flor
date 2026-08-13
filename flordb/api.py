@@ -203,6 +203,34 @@ def _ctx_key(ctx):
 _last_io_record: Optional[tuple] = None
 
 
+_init_failed: bool = False
+
+
+def _register_run():
+    """Make sure the run will be committed at exit.
+
+    In the zero-code-change case -- a script whose only flor reference is
+    `import flordb` -- nothing ever calls log / arg / loop / iteration, so
+    captured io is the only thing that can flip `skip_cleanup` and get the run
+    written. Without this, the whole run is silently dropped at exit.
+
+    Reported rather than raised: this runs underneath a `print`, inside the
+    tee's catch-all, so an exception here would be swallowed and the user would
+    be left wondering where their run went.
+    """
+    global _init_failed
+    if not skip_cleanup or _init_failed:
+        return
+    try:
+        _deferred_init()
+    except Exception as e:
+        _init_failed = True
+        capture.flor_print(
+            f"FLOR: captured this script's output, but the run cannot be "
+            f"recorded: {e}"
+        )
+
+
 def _emit_io(channel: str, text: str) -> None:
     """Sink for flordb.capture -- one call per captured line.
 
@@ -212,6 +240,7 @@ def _emit_io(channel: str, text: str) -> None:
     """
     global _last_io_record
     ctx = _ctx_snapshot()
+    buffered = False
 
     if _recording(channel):
         key = (channel, _ctx_key(ctx), text)
@@ -228,6 +257,7 @@ def _emit_io(channel: str, text: str) -> None:
                     VALUE_TYPE_IO,
                 )
             )
+            buffered = True
 
     # Gated separately from the raw line: `--apply loss` on a print-only script
     # means the user wants the extracted `loss`, not the text it came from.
@@ -245,6 +275,10 @@ def _emit_io(channel: str, text: str) -> None:
                         VALUE_TYPE_LOG,
                     )
                 )
+                buffered = True
+
+    if buffered:
+        _register_run()
 
 
 def arg(name: str, default: Optional[Any] = None) -> Any:
@@ -510,6 +544,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 def commit():
     global skip_cleanup, _setup_emitted, _last_main_exit_time, _last_io_record
+    global _init_failed
     # Record any trailing output that never got a newline. Done here rather
     # than from its own atexit hook so it is guaranteed to land before the
     # buffer is serialized -- cleanup() below is itself an atexit hook, and
@@ -565,6 +600,7 @@ def commit():
     _setup_emitted = False
     _last_main_exit_time = None
     _last_io_record = None
+    _init_failed = False
     capture.reset_run_state()
     skip_cleanup = True
 

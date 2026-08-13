@@ -57,6 +57,20 @@ that matter (`http://host:80`, `2026-08-13T11:27:06`, `acc: 90%`,
 the io already in the cache so the user sees the false-positive rate on their
 own logs before enabling it.
 
+**Captured io registers the run.** `commit()` is reached from an `atexit` hook
+that returns early unless `skip_cleanup` has been flipped, and only
+`_deferred_init()` flips it — from `log` / `arg` / `loop` / `iteration`. A
+script whose only flor reference is `import flordb` reaches none of those, so
+before `api._register_run` the headline case recorded its io into
+`output_buffer` and then dropped the entire run at exit. The init is *reported*
+rather than raised on failure: it runs underneath a user `print`, inside the
+tee's catch-all, so an exception there would be swallowed silently.
+
+That in turn means capture must stay off wherever a `print` shouldn't amount to
+a run: `python -c '...'` and the bare REPL (`SCRIPTNAME` of `-c` or `""`) are
+skipped alongside the `flor` subcommands, or every ad-hoc query would record a
+run and add an auto-commit.
+
 Known limitation: capture is off under IPython, which swaps `sys.stdout` per
 cell and routes results through its own displayhook. `flor.log` is the
 interactive path.
