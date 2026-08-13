@@ -184,13 +184,37 @@ def parse_args():
     replay_parser = flor_parser.add_parser(
         "replay", help="Replay with specified VARS over historical runs"
     )
+    # Positional VARS / WHERE are the pre-v4 spelling, kept working. New code
+    # should use --apply / --where, which match the script-side surface
+    # (`python train.py --replay_flor --apply ... --iter ... --override ...`).
     replay_parser.add_argument(
         "VARS",
-        type=lambda s: s.split(","),
-        help="List of logged variables (or @LINENO), comma-separated",
+        nargs="?",
+        type=parse_apply_vars,
+        help="Deprecated positional form of --apply.",
     )
     replay_parser.add_argument(
-        "where_clause", nargs="?", type=str, help="Optional SQL WHERE clause"
+        "where_clause",
+        nargs="?",
+        type=str,
+        help="Deprecated positional form of --where.",
+    )
+    replay_parser.add_argument(
+        "--apply",
+        dest="replay_apply",
+        type=parse_apply_vars,
+        default=None,
+        help=(
+            "Comma-separated log names (or @LINENO) to recompute over historical "
+            "runs, e.g. --apply loss,val_acc."
+        ),
+    )
+    replay_parser.add_argument(
+        "--where",
+        dest="replay_where",
+        type=str,
+        default=None,
+        help="Optional SQL WHERE clause used for column discovery.",
     )
     replay_parser.add_argument(
         "--iter",
@@ -276,6 +300,36 @@ def parse_args():
         flags.columns = flags.args.columns
 
     return flags
+
+
+def resolve_replay_args(args) -> Tuple[List[str], Optional[str]]:
+    """Reconcile the two spellings of `flor replay`'s inputs.
+
+    New:    flor replay --apply loss,val_acc --where "epoch > 2"
+    Legacy: flor replay loss,val_acc "epoch > 2"
+
+    Mixing them is rejected rather than guessed at: with --apply given, a bare
+    positional would silently land in the VARS slot, so `flor replay --apply
+    loss "epoch > 2"` would replay a variable named `epoch > 2`.
+    """
+    apply_vars = args.replay_apply
+    where = args.replay_where
+    if apply_vars is None:
+        apply_vars = args.VARS
+        if where is None:
+            where = args.where_clause
+    elif args.VARS:
+        raise RuntimeError(
+            f"flor replay: --apply was given, so the positional form is not "
+            f"accepted (got {' '.join(args.VARS)!r}). Pass a filter as "
+            f"--where instead."
+        )
+    if not apply_vars:
+        raise RuntimeError(
+            "flor replay: nothing to apply. Name the hindsight variables to "
+            "recompute, e.g. `flor replay --apply loss,val_acc`."
+        )
+    return list(apply_vars), where
 
 
 def in_replay_mode() -> bool:

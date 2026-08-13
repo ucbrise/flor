@@ -119,6 +119,53 @@ python train.py --replay_flor \
   Overriding a historically-logged `flor.arg` that isn't on the allowlist is
   rejected with an error pointing at re-running forward.
 
+The orchestrator (`python -m flordb replay`) takes the same verbs:
+
+```
+python -m flordb replay --apply grad_norm --where "epoch > 2" \
+    --iter epoch=0,2 --override device=cpu
+```
+
+`--iter` / `--override` are forwarded to each replayed child process. The
+pre-v4 positional form (`flor replay grad_norm "epoch > 2"`) still parses;
+`cli.resolve_replay_args` reconciles the two and rejects mixing them, because
+a stray positional next to `--apply` would land in the VARS slot and get
+replayed as if it were a variable name.
+
+## flor.iteration under replay (implemented)
+
+`flor.iteration(name, idx, value)` is the explicit single-iteration marker for
+scripts that drive their own loop (or run one process per iteration). It used
+to abort with a bare `raise` under `--replay_flor`; it now behaves like the
+outermost `flor.loop`:
+
+- restores that iteration's state on entry — enrolled `flor.checkpointing`
+  objects first, then the AST-detected torch resume block;
+- never writes to the object store (`obj_store.get_shelf()` is keyed on the
+  *historical* tstamp during replay, so a checkpoint write would overwrite the
+  mirror it is reading from);
+- narrows by suppressing logs rather than skipping work. Flor doesn't own the
+  iteration space here — it can't enumerate the iterations ahead of time, and
+  can't skip the body of a `with` block — so `--iter name=0,2` decides which
+  iterations *record*, and the body always runs. `--iter name=last` isn't
+  decidable in this mode and logs everything with a one-line notice.
+
+Mirror addressing (`_layer_for`) is now shared between `flor.loop` and
+`flor.iteration`, and reproduces the forward run's `layers` entry exactly:
+index `k`, value stringified only when jsonable. It previously wrote `k + 1`,
+which silently mismatched the forward filename for any outer loop over
+non-jsonable values (a dataloader, say).
+
+## Tests
+
+`tests/` holds a pytest suite: unit coverage for the CLI verbs, `layers` /
+filename addressing, the sqlite schema and its migrations, the AST visitors,
+and the replay narrowing rules; plus `-m slow` end-to-end tests that spawn real
+forward runs and replays in throwaway git repos (`make test` / `make
+test-fast`). The torch tests assert that a narrowed replay recovers the *same*
+value the forward run logged, which is the actual contract of mirror
+addressing and of logical replay's fast-forward.
+
 ### Orchestrator parity (`flor replay`)
 
 The flags above are the *child* surface. `flor replay` spawns those children,

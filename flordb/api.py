@@ -205,7 +205,11 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
         run_args[name] = default
         return default
     else:
-        raise
+        raise RuntimeError(
+            f"FLOR: flor.arg({name!r}) has no default and no value was supplied. "
+            f"Give it one -- flor.arg({name!r}, <value>) -- or pass "
+            f"--kwargs {name}=<value> on the command line."
+        )
 
 
 @contextmanager
@@ -225,8 +229,39 @@ def checkpointing(**kwargs):
         checkpoints.clear()
 
 
+def _iteration_requested(name: str, idx: Optional[int]) -> bool:
+    """Whether this flor.iteration should emit logs during replay.
+
+    flor.iteration doesn't own its iteration space -- the user's own loop (or
+    one process per iteration) supplies `idx` -- so flor can neither enumerate
+    the iterations up front nor skip the body of a `with` block. Narrowing is
+    therefore expressed as log suppression, the same mechanism flor.loop uses
+    for fast-forward iters under logical replay: the body runs (state has to
+    advance), but nothing is recorded for iterations the user didn't ask for.
+    """
+    spec = cli.flags.iter_specs.get(name)
+    if spec is None or spec.kind == "all":
+        return True
+    if spec.kind == "none":
+        return False
+    if spec.kind == "last":
+        if name not in _unbounded_last_warned:
+            _unbounded_last_warned.add(name)
+            print(
+                f"FLOR: --iter {name}=last is not decidable for flor.iteration "
+                f"(flor can't know which iteration is the last one); logging every "
+                f"iteration instead. Use --iter {name}=<indices> to filter."
+            )
+        return True
+    return idx in spec.indices
+
+
+_unbounded_last_warned: set = set()
+
+
 @contextmanager
 def iteration(name: str, idx: Optional[int], value: Optional[str]):
+    global _suppress_logs
     _deferred_init()
     pos = len(layers)
     if pos == 0:
@@ -237,16 +272,35 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
         int(idx) if idx is not None else None,
         str(value) if value is not None else None,
     )
-    if cli.in_replay_mode():
-        # TODO: load the end-state checkpoint
-        load_ckpt()
-        raise
     context.append(orm.Segment(name, layers[name][0], layers[name][1]))
+    replaying = cli.in_replay_mode()
+    outer_suppress = _suppress_logs
+    if replaying:
+        # Restore this iteration's historical state the same way the outermost
+        # flor.loop does: explicitly enrolled objects first, then the
+        # AST-detected torch resume block (outermost scope only -- a nested
+        # iteration shares the outer scope's restored state).
+        load_ckpt()
+        if pos == 0 and cli.flags.resume_spec is not None:
+            _restore_from_mirror(name, layers[name][0], layers[name][1])
+        _suppress_logs = outer_suppress or not _iteration_requested(
+            name, layers[name][0]
+        )
     try:
         yield
-        ckpt()
+        if not replaying:
+            # Replay reads from the object store keyed on the *historical*
+            # tstamp (obj_store.get_shelf); writing there would overwrite the
+            # mirrors the replay is reading from.
+            ckpt()
     finally:
+        _suppress_logs = outer_suppress
         context.pop()
+        if pos == 0:
+            _mark_main_segment_end()
+        del layers[name]
+    # Anchored on the parent ctx (context was popped above), matching how
+    # flor.loop anchors its time::iter summary.
     output_buffer.append(
         orm.Log(
             PROJID,
@@ -258,9 +312,6 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
             3,
         )
     )
-    if pos == 0:
-        _mark_main_segment_end()
-    del layers[name]
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
@@ -313,10 +364,14 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
                 if _logical_replay_active:
                     _suppress_logs = int(each[0]) in logical_silent
                     if first_outer_iter and logical_mirror_pos is not None:
-                        _restore_from_mirror(name, logical_mirror_pos, materialized)
+                        _restore_from_mirror(
+                            name, *_layer_for(materialized, logical_mirror_pos)
+                        )
                 else:
                     _suppress_logs = False
-                    _restore_from_mirror(name, int(each[0]), materialized)
+                    _restore_from_mirror(
+                        name, *_layer_for(materialized, int(each[0]))
+                    )
             first_outer_iter = False
         iter_clock = Clock()
         iter_clock.set_start_time()
@@ -573,20 +628,43 @@ def _find_user_frame():
     return None
 
 
-def _mirror_path_for(name: str, k: int, materialized: list, spec) -> Path:
-    """Build the obj_store mirror path for iter position k of `name`."""
-    prev_val = materialized[k]
-    v = str(prev_val) if utils.is_jsonable(prev_val) else None
-    saved_layer = layers.get(name)
+def _layer_for(materialized: list, k: int):
+    """The `layers` entry the forward run held while executing iter position k.
+
+    Mirror filenames are derived from `layers`, so this has to match what
+    flor.loop writes on the forward pass exactly (index k, value stringified
+    only when it's jsonable) or the replay looks for a file that isn't there.
+    """
+    v = materialized[k]
+    return k, (str(v) if utils.is_jsonable(v) else None)
+
+
+@contextmanager
+def _layer_swapped(name: str, iteration: Optional[int], value: Optional[str]):
+    """Temporarily present `layers` as it looked at a historical iteration.
+
+    Both the mirror-path computation and _flor_torch_load read `layers`, so
+    swapping it is how we address a specific iteration's checkpoint without
+    changing any user-visible path.
+    """
+    had = name in layers
+    saved = layers.get(name)
+    layers[name] = (iteration, value)
     try:
-        layers[name] = (k + 1, v)
-        stem, ext = _user_path_stem_ext(spec.path)
-        return obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+        yield
     finally:
-        if saved_layer is not None:
-            layers[name] = saved_layer
+        if had:
+            layers[name] = saved  # type: ignore[assignment]
         else:
             layers.pop(name, None)
+
+
+def _mirror_path_for(name: str, k: int, materialized: list, spec) -> Path:
+    """Build the obj_store mirror path for iter position k of `name`."""
+    iteration, value = _layer_for(materialized, k)
+    with _layer_swapped(name, iteration, value):
+        stem, ext = _user_path_stem_ext(spec.path)
+        return obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
 
 
 def _mirror_exists_at(name: str, k: int, materialized: list, spec) -> bool:
@@ -605,13 +683,15 @@ def _find_latest_mirror_at_or_before(
     return None
 
 
-def _restore_from_mirror(name: str, k: int, materialized: list) -> bool:
-    """Splice the obj_store mirror at iter position k into the user's frame
-    by swapping `layers` so _flor_torch_load redirects torch.load(spec.path)
-    to the historical file, then re-running the user's load_state_dict calls.
+def _restore_from_mirror(
+    name: str, iteration: Optional[int], value: Optional[str]
+) -> bool:
+    """Splice the obj_store mirror for one historical iteration into the user's
+    frame: swap `layers` so _flor_torch_load redirects torch.load(spec.path) to
+    the mirror file, then re-run the user's load_state_dict calls.
     """
     spec = cli.flags.resume_spec
-    if spec is None or k is None or k < 0:
+    if spec is None or iteration is None or iteration < 0:
         return False
     user_frame = _find_user_frame()
     if user_frame is None:
@@ -621,14 +701,7 @@ def _restore_from_mirror(name: str, k: int, materialized: list) -> bool:
     except ImportError:
         return False
 
-    prev_val = materialized[k]
-    v = str(prev_val) if utils.is_jsonable(prev_val) else None
-    saved_layer = layers.get(name)
-    try:
-        layers[name] = (k + 1, v)
-        # _flor_torch_load consults `layers` -- the swap above redirects the
-        # read to the historical mirror without changing the user-visible
-        # path string.
+    with _layer_swapped(name, iteration, value):
         loaded = torch.load(spec.path)
         scope = dict(user_frame.f_globals)
         scope.update(user_frame.f_locals)
@@ -644,9 +717,6 @@ def _restore_from_mirror(name: str, k: int, materialized: list) -> bool:
             except Exception:
                 pass
         return True
-    finally:
-        if saved_layer is not None:
-            layers[name] = saved_layer
 
 
 def _build_outer_replay_plan(name: str, materialized: list):

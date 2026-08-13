@@ -1,4 +1,5 @@
 from .constants import *
+from . import cli
 from .cli import flags
 from . import database
 from . import versions
@@ -45,10 +46,11 @@ def main():
             )
             print(df)
         elif flags.args.flor_command == "replay":
+            apply_vars, where_clause = cli.resolve_replay_args(flags.args)
             repl.replay(
-                flags.args.VARS,
+                apply_vars,
                 narrow_iters=flags.args.narrow_iters or None,
-                where_clause=flags.args.where_clause,
+                where_clause=where_clause,
                 overrides=flags.args.replay_overrides or None,
             )
         elif flags.args.flor_command == "stat":

@@ -19,7 +19,9 @@ def serialize_torch(layers, name, obj):
         torch.save(obj.state_dict(), path)
         return path.name
     else:
-        raise
+        # `serialize` walks the backends in order and catches these to try the
+        # next one, so the exception is control flow, not a user-facing error.
+        raise TypeError(f"{name!r} is not a torch Module or Optimizer")
 
 
 def serialize_numpy(layers, name, obj):
@@ -30,7 +32,7 @@ def serialize_numpy(layers, name, obj):
         np.save(path, obj)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a numpy ndarray")
 
 
 def serialize_scikit(layers, name, obj):
@@ -50,7 +52,7 @@ def serialize_scikit(layers, name, obj):
             pickle.dump(obj, f)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a scikit-learn estimator")
 
 
 def serialize_pandas(layers, name, obj):
@@ -61,7 +63,7 @@ def serialize_pandas(layers, name, obj):
         obj.to_parquet(path)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a pandas DataFrame")
 
 
 def serialize(layers, name, obj):
@@ -111,7 +113,18 @@ def deserialize(layers, name, obj):
         obj.clear()
         obj.update(loaded_obj)
     else:
-        raise
+        # Reached during replay when the requested iteration has no checkpoint
+        # in the object store -- usually because the adaptive throttle skipped
+        # it. Failing loudly beats replaying from an uninitialized object and
+        # reporting the resulting numbers as historical fact.
+        stem = utils.to_filename(layers, name, "").stem
+        raise RuntimeError(
+            f"FLOR: no checkpoint for {name!r} at this iteration. Looked for "
+            f"{stem}.{{pth,npy,parquet,pkl}} in {get_shelf()}. The run being "
+            f"replayed likely throttled this iteration's checkpoint "
+            f"(flor.set_ckpt_interval); narrow to an iteration that has one, or "
+            f"re-run forward with a smaller interval."
+        )
 
 
 def get_shelf():
