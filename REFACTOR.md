@@ -145,6 +145,11 @@ and the two surfaces have to agree:
   `cli.flags.historical_args` keeps the typed originals so `flor.arg` can
   `duck_cast` the override against them (falling back to the declared default
   for keys with no history).
+- **A `flor.arg` the replayed run never logged falls back to its default**,
+  with a one-time warning naming the key and pointing at `--override`. Adding
+  a new `flor.arg` alongside a hindsight `flor.log` is normal, and it used to
+  abort replay with a bare `AssertionError`. A new arg with *no* default still
+  raises, but with a message that says what to do about it.
 - **Flag detection accepts `--flag=value`.** The argv scan that decides
   whether to run argparse at all used to match bare tokens only, so
   `python train.py --apply=loss` ran forward silently instead of reporting

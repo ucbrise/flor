@@ -52,6 +52,10 @@ _last_main_exit_time: Optional[float] = None
 _logical_replay_active: bool = False
 _suppress_logs: bool = False
 
+# flor.arg names the replayed run never logged, which fell back to their
+# declared default. Tracked so the warning prints once per name per session.
+_replay_defaulted_args: set = set()
+
 skip_cleanup = True
 
 
@@ -149,7 +153,27 @@ def log(name, value, _bypass_projection: bool = False):
 def arg(name: str, default: Optional[Any] = None) -> Any:
     if cli.in_replay_mode():
         # GIT
-        assert name in cli.flags.hyperparameters
+        if name not in cli.flags.hyperparameters:
+            # A flor.arg added to the script since the run being replayed:
+            # there is no recorded value to reproduce. Fall back to the
+            # declared default so hindsight logging still works, but say so --
+            # for this key the replay is not a faithful reproduction.
+            if default is None:
+                raise RuntimeError(
+                    f"FLOR: flor.arg({name!r}) was not logged by the run being "
+                    f"replayed, and has no default to fall back on. Give it a "
+                    f"default, or pass --override {name}=<value>."
+                )
+            if name not in _replay_defaulted_args:
+                _replay_defaulted_args.add(name)
+                print(
+                    f"FLOR: flor.arg({name!r}) is absent from the replayed run; "
+                    f"using default {default!r}. Pass --override {name}=<value> "
+                    f"to replay it with a different value."
+                )
+            log(name, default, _bypass_projection=True)
+            run_args[name] = default
+            return default
         historical_v = cli.flags.hyperparameters[name]
         if name in cli.flags.overrides:
             # Historical values come back JSON-typed from the run's JSONL, but
