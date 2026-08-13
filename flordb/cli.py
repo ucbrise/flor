@@ -11,6 +11,7 @@ from . import orm
 import sys
 
 from .hlast.visitors import WithExpVisitor, ResumeBlockVisitor
+from .capture import flor_print
 import ast
 
 
@@ -242,6 +243,30 @@ def parse_args():
         ),
     )
 
+    capture_parser = flor_parser.add_parser(
+        "capture", help="Inspect automatically captured print / logging output"
+    )
+    capture_parser.add_argument(
+        "--preview",
+        action="store_true",
+        help=(
+            "Show which metrics flor.set_capture(extract=True) would pull out "
+            "of the io already captured. Writes nothing."
+        ),
+    )
+    capture_parser.add_argument(
+        "--channel",
+        type=str,
+        default=None,
+        help="Restrict to one channel (io::stdout, io::stderr, io::log[::level]).",
+    )
+    capture_parser.add_argument(
+        "--limit",
+        type=int,
+        default=40,
+        help="Rows to show (default 40).",
+    )
+
     query_parser = flor_parser.add_parser("query")
     query_parser.add_argument(
         "q", type=str, help="SQL query to execute on the database"
@@ -266,6 +291,7 @@ def parse_args():
         "query",
         "dataframe",
         "stat",
+        "capture",
     ]
 
     if _argv_mentions(sys.argv[1:], flor_commands):
@@ -347,7 +373,7 @@ def iter_spec_for(name: str) -> IterSpec:
         return spec
     if name not in _defaulted_loops:
         _defaulted_loops.add(name)
-        print(
+        flor_print(
             f"FLOR: --iter {name}=... not given; defaulting to 'last'. "
             f"Use --iter {name}=all (or =none, =0,2,...) to override."
         )
@@ -389,7 +415,7 @@ def replay_initialize():
             applies=list(rbv.applies),
         )
     elif rbv.unscoped_match:
-        print(
+        flor_print(
             "FLOR: torch.load resume pattern found outside module scope; "
             "auto-restore disabled. Use flor.checkpointing(...) for replay."
         )

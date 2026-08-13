@@ -4,6 +4,68 @@
 
 If a script performs io, like `print` or `logging`, FlorDB will automatically capture the output of subsequent runs, and also be able to parse and integrate historical logs of various formats and layouts. This means you can start using FlorDB with zero code changes, and it will automatically index and structure your logs for easy retrieval and analysis (with minimal duplication).
 
+### Capturing live runs (implemented)
+
+`flordb/capture.py` tees `sys.stdout` / `sys.stderr` and wraps `logging`
+dispatch, installed from `flordb/__init__` at import time — not from
+`_deferred_init()`, because the whole point is the script whose only flor
+reference is `import flordb`, which never reaches a first flor call.
+
+Captured lines become ordinary records on `output_buffer`, so JSONL writing,
+`ctx` addressing, and forward/replay `source` tagging all come for free:
+
+- **Channels** ride in `value_name`: `io::stdout`, `io::stderr`, and
+  `io::log::<level>` (`io::log::info`, …). `LIKE 'io::%'` selects all captured
+  io; the logger name prefixes the value when it isn't `root`.
+- **`value_type = 2`** (`VALUE_TYPE_IO`) keeps io out of `flor.dataframe()`,
+  whose pivot filters `value_type = 1`. Reading it back is `flor.io()`, or
+  `flor.dataframe("io::stdout")` to treat it as a column like any other.
+- **Narrowing is shared with `flor.log`.** Both go through `api._recording`, so
+  captured io obeys the `--apply` projection (`--apply loss,io::stdout` to
+  include it) and is suppressed on logical-replay fast-forward iterations.
+
+"Least redundancy" is the constraint that shapes the implementation. Two paths
+would otherwise record the same observation twice:
+
+1. `flor.log` echoes every value to the terminal itself. That `tqdm.write` now
+   runs inside `capture.muted()`, as do flor's other user-facing messages
+   (converted to `capture.flor_print`) and flor's own progress bars (given the
+   raw stream via `capture.raw_stderr()`).
+2. A `logging` record that reaches a `StreamHandler` also lands on stderr.
+   Registering a `logging.Handler` would put flor in handler order *beside*
+   that one, so the tee would see its write and record a second row. Instead
+   `logging.Logger.handle` is wrapped: the record is captured once, from the
+   structured side where `levelname` and the logger name still exist, and the
+   entire downstream dispatch runs muted. Level and filter decisions have
+   already been made by the caller, so the user's logging config is respected.
+
+Volume is bounded by construction. A repainting progress bar emits thousands of
+`\r` fragments and no newline; only the text after the final carriage return is
+still on screen, so a bar collapses to one record at close. Lines are truncated
+at `max_line`, runs are capped at `max_records`, consecutive identical lines
+within one loop iteration collapse to one row (the next iteration has a
+different `ctx`, so it survives), and `flor.set_capture(...)` / `FLOR_CAPTURE=0`
+turn any of it off.
+
+**Structuring is opt-in.** `capture.extract_pairs` recognizes `k: v` / `k=v`
+where the value is numeric, and `flor.set_capture(extract=True)` promotes hits
+to real `value_type=1` metric rows *alongside* the raw line — raw is truth,
+promotion is derived. It is off by default because a false positive silently
+invents a column in `flor.dataframe`. The regex lookarounds reject the cases
+that matter (`http://host:80`, `2026-08-13T11:27:06`, `acc: 90%`,
+`ckpt=/tmp/x.pth`), and `flor capture --preview` dry-runs the extractor over
+the io already in the cache so the user sees the false-positive rate on their
+own logs before enabling it.
+
+Known limitation: capture is off under IPython, which swaps `sys.stdout` per
+cell and routes results through its own displayhook. `flor.log` is the
+interactive path.
+
+**Still open** (the other half of this section): parsing and integrating
+*historical* logs — a `flor ingest slurm-*.out` that turns log files produced
+before FlorDB was in the picture into `.flor/runs/*.jsonl`. The record shape
+above is what it would target.
+
 ### Object Store and Flor Checkpointing
 
 In many cases, students will clone a project, which already does torch logging, and fail to do flor checkpointing. This leads to a failure where there shouldn't be any, we can just piggy back off the checkpoints that were already taken. It will take some clever engineering but an elegant solution is possible.
@@ -30,7 +92,7 @@ The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB
 
 ## Data sync-ing
 
-We can't really have the logs living in git, but we want some measure or reproducibility. That's a balancing act.
+We can't really have the logs living in git, but we want some measure of reproducibility. That's a balancing act.
 
 ## Replay is a query, not a run (implemented)
 

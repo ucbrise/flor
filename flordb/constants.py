@@ -21,6 +21,12 @@ os.makedirs(OBJSTORE_DIR, exist_ok=True)
 
 SCRIPTNAME = os.path.basename(sys.argv[0])
 
+# `logs.value_type`. Only VALUE_TYPE_LOG is pivoted by flor.dataframe(), which
+# is what keeps captured io and profiling out of the metric table by default.
+VALUE_TYPE_LOG = 1  # flor.log / flor.arg
+VALUE_TYPE_IO = 2  # captured print / logging
+VALUE_TYPE_TIME = 3  # time::* profiling
+
 __all__ = [
     "CURRDIR",
     "PROJID",
@@ -29,4 +35,7 @@ __all__ = [
     "OBJSTORE_DIR",
     "DB_PATH",
     "SCRIPTNAME",
+    "VALUE_TYPE_LOG",
+    "VALUE_TYPE_IO",
+    "VALUE_TYPE_TIME",
 ]

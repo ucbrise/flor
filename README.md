@@ -12,6 +12,9 @@ Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, 
 - **Log-Driven Experiment Tracking**  
   No dashboards to configure or schemas to design. `flor.log(...)` writes structured, queryable metadata; `flor.arg(...)` turns a constant into a CLI-settable hyperparameter that is recorded with the run.
 
+- **Zero Code Changes to Start**  
+  Already using `print` or `logging`? Import FlorDB and your existing output is captured, versioned, and indexed by loop iteration — no rewrite required.
+
 - **Hindsight Logging & Replay**  
   Missed a metric? Add a log *after the fact* and replay past runs to capture it—no rerunning from scratch.
 
@@ -67,6 +70,71 @@ flor.dataframe("message")
          projid              tstamp filename   source          message
 0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
 
+```
+
+## 🪵 Already Using `print` and `logging`? Just Import
+
+You don't have to rewrite anything to get started. FlorDB captures your
+existing output and indexes it against the run:
+
+```python
+import logging
+import flordb as flor
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+for epoch in flor.loop("epoch", range(3)):
+    print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
+    logging.info("checkpoint saved")
+```
+
+Your terminal looks exactly the same. Afterwards:
+
+```python
+flor.io()
+```
+
+```
+   projid                     tstamp  filename   source  epoch epoch_value        channel                    line
+0  readme 2026-08-13 12:06:56.386954  train.py  forward      0           0     io::stdout  epoch 0 | loss: 0.5000
+1  readme 2026-08-13 12:06:56.386954  train.py  forward      0           0  io::log::info        checkpoint saved
+2  readme 2026-08-13 12:06:56.386954  train.py  forward      1           1     io::stdout  epoch 1 | loss: 0.3333
+3  readme 2026-08-13 12:06:56.386954  train.py  forward      1           1  io::log::info        checkpoint saved
+4  readme 2026-08-13 12:06:56.386954  train.py  forward      2           2     io::stdout  epoch 2 | loss: 0.2500
+5  readme 2026-08-13 12:06:56.386954  train.py  forward      2           2  io::log::info        checkpoint saved
+```
+
+The `import` alone is enough to start capturing; naming your loop with
+`flor.loop` is what earns the `epoch` column. Filter by channel with
+`flor.io("io::stdout")` or `flor.io("io::log::error")`.
+
+Captured text stays out of `flor.dataframe()` — it isn't a metric — but FlorDB
+can pull metrics out of it if you ask. See what that would do to *your* logs
+before turning it on:
+
+```bash
+python -m flordb capture --preview
+```
+
+```
+Would extract 3 value(s) across 1 metric(s) from 6 captured line(s): loss
+
+  loss                 0.5            <- epoch 0 | loss: 0.5000
+  loss                 0.3333         <- epoch 1 | loss: 0.3333
+  loss                 0.25           <- epoch 2 | loss: 0.2500
+
+Nothing was written. Enable with flor.set_capture(extract=True) in your script.
+```
+
+With `flor.set_capture(extract=True)`, `loss` becomes a real column in
+`flor.dataframe("loss")` while the raw line stays on record. It is off by
+default because a bad guess would invent a column you didn't ask for.
+
+Capture is tunable and easy to switch off:
+
+```python
+flor.set_capture(max_records=50_000)   # per-run ceiling (default 10,000)
+flor.set_capture(False)                # or FLOR_CAPTURE=0 in the environment
 ```
 
 ## 🧪 Track Experiments with Zero Overhead

@@ -56,6 +56,13 @@ try:
 finally:
     sys.argv = _argv
 
+# Importing flordb also tees sys.stdout/sys.stderr and wraps logging dispatch,
+# which would absorb pytest's own output into flordb.api.output_buffer. The
+# subprocess-based tests exercise the installed path for real; in-process tests
+# drive `capture` directly.
+flordb.capture.uninstall()
+flordb.api.output_buffer.clear()
+
 
 @pytest.fixture
 def sandbox():
@@ -111,10 +118,15 @@ def project(tmp_path):
                 f.write(source)
             return path
 
-        def run(self, *argv, check=True):
-            env = dict(os.environ)
-            env["PYTHONPATH"] = REPO_ROOT + os.pathsep + env.get("PYTHONPATH", "")
-            env["PYTHONUNBUFFERED"] = "1"
+        def run(self, *argv, check=True, env=None):
+            environ = dict(os.environ)
+            environ["PYTHONPATH"] = (
+                REPO_ROOT + os.pathsep + environ.get("PYTHONPATH", "")
+            )
+            environ["PYTHONUNBUFFERED"] = "1"
+            if env:
+                environ.update(env)
+            env = environ
             proc = subprocess.run(
                 [sys.executable, *argv],
                 cwd=self.root,

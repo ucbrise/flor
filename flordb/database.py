@@ -153,6 +153,63 @@ def _parse_ctx_cell(s):
     return json.loads(s)
 
 
+def expand_ctx(logs):
+    """Turn the JSON `ctx` column into one column per loop, in place.
+
+    Each `flor.loop` / `flor.iteration` segment contributes `<name>` (the
+    iteration index) and, when the iterated value was jsonable,
+    `<name>_value`. Walks leaf to root so the column order matches the
+    JOIN-from-leaf-upward order the pre-v4 schema produced.
+    """
+    parsed = logs["ctx"].apply(_parse_ctx_cell)
+    logs = logs.drop(columns=["ctx"])
+
+    max_depth = int(parsed.map(len).max()) if len(parsed) else 0
+
+    for depth in range(max_depth - 1, -1, -1):
+        seg = parsed.apply(lambda lst, d=depth: lst[d] if d < len(lst) else None)
+        non_null = seg.dropna()
+        if non_null.empty:
+            continue
+        loop_name = non_null.iloc[0]["name"]
+
+        iter_col = seg.apply(
+            lambda s: s.get("iteration") if isinstance(s, dict) else None
+        )
+        val_col = seg.apply(lambda s: s.get("value") if isinstance(s, dict) else None)
+
+        # Surface the iteration column whenever any row carries it. Rows
+        # without that ctx depth get NaN. Use Int64 (nullable) so the
+        # column survives groupby/max without collapsing to float.
+        if iter_col.notna().any():
+            logs[loop_name] = iter_col.astype("Int64")
+
+        # Only surface _value column if at least one row carries it.
+        if val_col.notna().any():
+            logs[f"{loop_name}_value"] = val_col
+
+    return logs
+
+
+def read_io(conn, channel=None):
+    """Captured print / logging rows, with loop context expanded to columns."""
+    sql = f"SELECT * FROM logs WHERE value_type = {VALUE_TYPE_IO}"
+    params: Tuple[Any, ...] = ()
+    if channel is not None:
+        # LIKE so `io::log` selects every level at once.
+        sql += " AND (value_name = ? OR value_name LIKE ?)"
+        params = (channel, channel.rstrip(":") + "::%")
+    sql += " ORDER BY rowid"
+    logs = pd.read_sql(sql, conn, params=params, parse_dates=["tstamp"])
+    if logs.empty:
+        return logs
+    logs = logs[["projid", "tstamp", "filename", "ctx", "source", "value_name", "value"]]
+    logs = logs.rename(columns={"value_name": "channel", "value": "line"})
+    logs = expand_ctx(logs)
+    trailing = ["channel", "line"]
+    return logs[[c for c in logs.columns if c not in trailing] + trailing]
+
+
 def pivot(conn, *args):
     # Pivot surfaces both forward and replay rows. Replay values are not
     # noise -- the user opted in by running `flor replay --apply ...` to see
@@ -163,7 +220,7 @@ def pivot(conn, *args):
     def _pivot_star():
         df = pd.read_sql(
             "SELECT DISTINCT value_name FROM logs "
-            "WHERE value_type = 1 AND ctx IS NULL",
+            f"WHERE value_type = {VALUE_TYPE_LOG} AND ctx IS NULL",
             conn,
         )
         value_names = df["value_name"].values
@@ -185,7 +242,7 @@ def pivot(conn, *args):
             source,
             {dynamic_sql}
         FROM logs
-        WHERE value_type = 1 AND ctx IS NULL
+        WHERE value_type = {VALUE_TYPE_LOG} AND ctx IS NULL
         GROUP BY projid, tstamp, filename, source;
         """
 
@@ -211,36 +268,7 @@ def pivot(conn, *args):
         )
         logs = logs[["projid", "tstamp", "filename", "ctx", "source", "value"]]
         logs = logs.rename(columns={"value": value_name})
-
-        parsed = logs["ctx"].apply(_parse_ctx_cell)
-        logs = logs.drop(columns=["ctx"])
-
-        max_depth = int(parsed.map(len).max()) if len(parsed) else 0
-
-        # Walk leaf to root, matching the previous JOIN-from-leaf-upward order.
-        for depth in range(max_depth - 1, -1, -1):
-            seg = parsed.apply(lambda lst, d=depth: lst[d] if d < len(lst) else None)
-            non_null = seg.dropna()
-            if non_null.empty:
-                continue
-            loop_name = non_null.iloc[0]["name"]
-
-            iter_col = seg.apply(
-                lambda s: s.get("iteration") if isinstance(s, dict) else None
-            )
-            val_col = seg.apply(
-                lambda s: s.get("value") if isinstance(s, dict) else None
-            )
-
-            # Surface the iteration column whenever any row carries it. Rows
-            # without that ctx depth get NaN. Use Int64 (nullable) so the
-            # column survives groupby/max without collapsing to float.
-            if iter_col.notna().any():
-                logs[loop_name] = iter_col.astype("Int64")
-
-            # Only surface _value column if at least one row carries it.
-            if val_col.notna().any():
-                logs[f"{loop_name}_value"] = val_col
+        logs = expand_ctx(logs)
 
         dataframes.append(logs)
 

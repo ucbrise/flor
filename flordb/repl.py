@@ -33,6 +33,26 @@ def dataframe(*args):
         conn.close()
 
 
+def io(channel: Optional[str] = None):
+    """Captured print / logging output, as a dataframe.
+
+    Automatically captured io is kept out of `dataframe()` on purpose -- it is
+    text, not metrics -- so this is the way to read it back. Rows carry the
+    same loop columns as any other record, plus `channel` and `line`.
+
+        flor.io()                  # everything
+        flor.io("io::stdout")      # prints only
+        flor.io("io::log")         # every logging level
+        flor.io("io::log::error")  # one level
+
+    """
+    conn, _ = database.conn_and_cursor()
+    try:
+        return database.read_io(conn, channel).reset_index(drop=True)
+    finally:
+        conn.close()
+
+
 def query(user_query: str):
     conn, cursor = database.conn_and_cursor()
     try:

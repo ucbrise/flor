@@ -1,4 +1,5 @@
 from .constants import *
+from . import capture
 from . import cli
 from .cli import flags
 from . import database
@@ -53,6 +54,43 @@ def main():
                 where_clause=where_clause,
                 overrides=flags.args.replay_overrides or None,
             )
+        elif flags.args.flor_command == "capture":
+            df = repl.io(flags.args.channel)
+            if df.empty:
+                print(
+                    "No captured io yet. Run a script that prints or logs, or "
+                    "check that capture is on (FLOR_CAPTURE / flor.set_capture)."
+                )
+            elif not flags.args.preview:
+                print(df.head(flags.args.limit))
+            else:
+                # Dry run of the opt-in structurer: show what turning
+                # flor.set_capture(extract=True) on would add to the metric
+                # table, without writing a single row.
+                hits = []
+                for line in df["line"]:
+                    for name, value in capture.extract_pairs(str(line)):
+                        hits.append((name, value, line))
+                if not hits:
+                    print(
+                        f"Nothing extractable from {len(df)} captured line(s). "
+                        f"flor.set_capture(extract=True) would add no metrics."
+                    )
+                else:
+                    names = sorted({n for n, _, _ in hits})
+                    print(
+                        f"Would extract {len(hits)} value(s) across "
+                        f"{len(names)} metric(s) from {len(df)} captured "
+                        f"line(s): {', '.join(names)}\n"
+                    )
+                    for name, value, line in hits[: flags.args.limit]:
+                        print(f"  {name:<20} {value:<14} <- {line}")
+                    if len(hits) > flags.args.limit:
+                        print(f"  ... {len(hits) - flags.args.limit} more")
+                    print(
+                        "\nNothing was written. Enable with "
+                        "flor.set_capture(extract=True) in your script."
+                    )
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),

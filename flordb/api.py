@@ -13,6 +13,7 @@ from . import utils
 from . import versions
 from . import obj_store
 from . import database
+from . import capture
 
 from typing import Any, Iterable, Iterator, List, TypeVar, Optional
 from contextlib import contextmanager
@@ -64,6 +65,32 @@ def set_ckpt_interval(seconds: float) -> None:
     ckpt_interval_s = float(seconds)
 
 
+def set_capture(
+    enabled: Optional[bool] = None,
+    *,
+    max_line: Optional[int] = None,
+    max_records: Optional[int] = None,
+    extract: Optional[bool] = None,
+) -> None:
+    """Tune automatic capture of print / logging output.
+
+    enabled      -- record io at all (also settable with FLOR_CAPTURE=0)
+    max_line     -- longest line recorded verbatim
+    max_records  -- per-run ceiling on captured lines
+    extract      -- promote recognized `k: v` pairs to metric rows. Off by
+                    default; preview what it would do with `flor capture
+                    --preview` before turning it on.
+    """
+    if enabled is not None:
+        capture.config.enabled = bool(enabled)
+    if max_line is not None:
+        capture.config.max_line = int(max_line)
+    if max_records is not None:
+        capture.config.max_records = int(max_records)
+    if extract is not None:
+        capture.config.extract = bool(extract)
+
+
 def _emit_setup_once():
     global _setup_emitted
     if _setup_emitted:
@@ -76,7 +103,7 @@ def _emit_setup_once():
             _ctx_snapshot(),
             "time::setup",
             Clock().get_delta(),
-            3,
+            VALUE_TYPE_TIME,
         )
     )
     _setup_emitted = True
@@ -106,7 +133,7 @@ def _emit_iter_summary(deltas: List[float]) -> None:
         ("time::iter::n", n),
     ):
         output_buffer.append(
-            orm.Log(PROJID, ts, SCRIPTNAME, ctx, value_name, value, 3)
+            orm.Log(PROJID, ts, SCRIPTNAME, ctx, value_name, value, VALUE_TYPE_TIME)
         )
 
 
@@ -114,25 +141,39 @@ def _ctx_snapshot() -> Optional[List[orm.Segment]]:
     return list(context) if context else None
 
 
+def _recording(name: str, bypass_projection: bool = False) -> bool:
+    """Whether a record under `name` should be buffered right now.
+
+    Two gates, shared by flor.log and by captured io so both narrow the same
+    way:
+
+      * the --apply projection (replay only) -- only the named values are
+        emitted;
+      * _suppress_logs -- a logical-replay fast-forward iteration advances
+        state but records nothing.
+    """
+    if (
+        cli.in_replay_mode()
+        and cli.flags.apply_vars is not None
+        and name not in cli.flags.apply_vars
+        and not bypass_projection
+    ):
+        return False
+    return not _suppress_logs
+
+
 def log(name, value, _bypass_projection: bool = False):
     if skip_cleanup:
         _deferred_init()
 
     serializable_value = value if utils.is_jsonable(value) else str(value)
-    tqdm.write(utils.to_string(layers, name, serializable_value))
+    # Muted: this is flor echoing the value it is already recording. Letting
+    # capture see it would store every metric twice -- once structured here,
+    # once as a line of text.
+    with capture.muted():
+        tqdm.write(utils.to_string(layers, name, serializable_value))
 
-    if (
-        cli.in_replay_mode()
-        and cli.flags.apply_vars is not None
-        and name not in cli.flags.apply_vars
-        and not _bypass_projection
-    ):
-        # --apply was given; only the projected names are emitted.
-        return value
-
-    if _suppress_logs:
-        # Logical-replay fast-forward iter: training advances, but the
-        # user didn't ask for this iter's values, so don't emit them.
+    if not _recording(name, _bypass_projection):
         return value
 
     output_buffer.append(
@@ -143,11 +184,67 @@ def log(name, value, _bypass_projection: bool = False):
             _ctx_snapshot(),
             name,
             serializable_value,
-            1,
+            VALUE_TYPE_LOG,
         )
     )
 
     return value
+
+
+def _ctx_key(ctx):
+    if not ctx:
+        return None
+    return tuple((s.name, s.iteration, s.value) for s in ctx)
+
+
+# Last captured io record, as (channel, ctx, text). Consecutive repeats of the
+# same line within one loop iteration collapse to a single row; the same line
+# in the *next* iteration has a different ctx, so it survives.
+_last_io_record: Optional[tuple] = None
+
+
+def _emit_io(channel: str, text: str) -> None:
+    """Sink for flordb.capture -- one call per captured line.
+
+    Captured io is `VALUE_TYPE_IO`, which keeps it out of `flor.dataframe()`
+    unless asked for by name, and it rides the same output_buffer as everything
+    else, so JSONL writing and forward/replay source tagging come for free.
+    """
+    global _last_io_record
+    ctx = _ctx_snapshot()
+
+    if _recording(channel):
+        key = (channel, _ctx_key(ctx), text)
+        if key != _last_io_record:
+            _last_io_record = key
+            output_buffer.append(
+                orm.Log(
+                    PROJID,
+                    Clock.get_datetime(),
+                    SCRIPTNAME,
+                    ctx,
+                    channel,
+                    text,
+                    VALUE_TYPE_IO,
+                )
+            )
+
+    # Gated separately from the raw line: `--apply loss` on a print-only script
+    # means the user wants the extracted `loss`, not the text it came from.
+    if capture.config.extract:
+        for name, value in capture.extract_pairs(text):
+            if _recording(name):
+                output_buffer.append(
+                    orm.Log(
+                        PROJID,
+                        Clock.get_datetime(),
+                        SCRIPTNAME,
+                        ctx,
+                        name,
+                        value,
+                        VALUE_TYPE_LOG,
+                    )
+                )
 
 
 def arg(name: str, default: Optional[Any] = None) -> Any:
@@ -166,7 +263,7 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
                 )
             if name not in _replay_defaulted_args:
                 _replay_defaulted_args.add(name)
-                print(
+                capture.flor_print(
                     f"FLOR: flor.arg({name!r}) is absent from the replayed run; "
                     f"using default {default!r}. Pass --override {name}=<value> "
                     f"to replay it with a different value."
@@ -223,7 +320,7 @@ def checkpointing(**kwargs):
         checkpoints.extend(list(kwargs.items()))
         yield
     except Exception as e:
-        print(f"An error occurred: {e}")
+        capture.flor_print(f"An error occurred: {e}")
         raise
     finally:
         checkpoints.clear()
@@ -247,7 +344,7 @@ def _iteration_requested(name: str, idx: Optional[int]) -> bool:
     if spec.kind == "last":
         if name not in _unbounded_last_warned:
             _unbounded_last_warned.add(name)
-            print(
+            capture.flor_print(
                 f"FLOR: --iter {name}=last is not decidable for flor.iteration "
                 f"(flor can't know which iteration is the last one); logging every "
                 f"iteration instead. Use --iter {name}=<indices> to filter."
@@ -309,7 +406,7 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
             _ctx_snapshot(),
             "time::iter",
             clock.get_delta(),
-            3,
+            VALUE_TYPE_TIME,
         )
     )
 
@@ -352,6 +449,10 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         iter_source,
         position=pos,
         leave=(True if pos == 0 else False),
+        # flor's own progress bar, written past the tee. The user's tqdm bars
+        # are still captured (one row for the final rendering); ours would be
+        # pure redundancy.
+        file=capture.raw_stderr(),
     ):
         layers[name] = (
             int(each[0]),
@@ -397,7 +498,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
             _ctx_snapshot(),
             "time::loop",
             clock.get_delta(),
-            3,
+            VALUE_TYPE_TIME,
         )
     )
     if pos == 0:
@@ -408,7 +509,12 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
 
 
 def commit():
-    global skip_cleanup, _setup_emitted, _last_main_exit_time
+    global skip_cleanup, _setup_emitted, _last_main_exit_time, _last_io_record
+    # Record any trailing output that never got a newline. Done here rather
+    # than from its own atexit hook so it is guaranteed to land before the
+    # buffer is serialized -- cleanup() below is itself an atexit hook, and
+    # hook ordering between two of them is not something to rely on.
+    capture.flush()
     tstamp = Clock.get_datetime()
     # time::script is the total wall time of the run -- always emitted, so
     # flat scripts (featurization, mapping, anything that's just a sequence of
@@ -421,7 +527,7 @@ def commit():
             _ctx_snapshot(),
             "time::script",
             Clock().get_delta(),
-            3,
+            VALUE_TYPE_TIME,
         )
     )
     # time::teardown only makes sense if a loop/iteration boundary anchored
@@ -435,7 +541,7 @@ def commit():
                 _ctx_snapshot(),
                 "time::teardown",
                 time.perf_counter() - _last_main_exit_time,
-                3,
+                VALUE_TYPE_TIME,
             )
         )
     conn, cursor = database.conn_and_cursor()
@@ -458,6 +564,8 @@ def commit():
     Clock.set_new_datetime()
     _setup_emitted = False
     _last_main_exit_time = None
+    _last_io_record = None
+    capture.reset_run_state()
     skip_cleanup = True
 
 
@@ -838,4 +946,5 @@ __all__ = [
     "output_buffer",
     "set_ckpt_interval",
     "ckpt_interval_s",
+    "set_capture",
 ]

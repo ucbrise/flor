@@ -3,6 +3,10 @@ from git.exc import InvalidGitRepositoryError
 
 import os
 
+# capture imports nothing from flordb, so this is safe despite constants.py
+# depending on this module.
+from .capture import flor_print
+
 CURRDIR = os.getcwd()
 SHADOW_BRANCH_PREFIX = "flor."
 AUTO_COMMIT_SUBJECT_PREFIX = "FLOR::Auto-commit::"
@@ -13,9 +17,9 @@ def get_repo_dir():
         repo = Repo(CURRDIR, search_parent_directories=True)
         return repo.working_dir
     except InvalidGitRepositoryError:
-        print("Not a valid Git repository")
+        flor_print("Not a valid Git repository")
     except Exception as e:
-        print(f"An error occurred while getting the repository directory: {e}")
+        flor_print(f"An error occurred while getting the repository directory: {e}")
 
 
 def ensure_gitignored(entry: str):
@@ -51,13 +55,13 @@ def git_commit(message="FLOR::Auto-commit"):
 
             # Commit the changes
             repo.git.commit(m=message)
-            print("\nRun committed successfully.")
+            flor_print("\nRun committed successfully.")
         else:
-            print("\nNo changes to commit.")
+            flor_print("\nNo changes to commit.")
     except InvalidGitRepositoryError:
-        print("Not a valid Git repository")
+        flor_print("Not a valid Git repository")
     except Exception as e:
-        print(f"An error occurred while committing: {e}")
+        flor_print(f"An error occurred while committing: {e}")
 
 
 def current_branch():
@@ -90,18 +94,18 @@ def to_shadow():
             try:
                 # Try to create a new branch with the unique name
                 repo.git.checkout("-b", new_branch_name)
-                print(f"Created and switched to new branch: {new_branch_name}")
+                flor_print(f"Created and switched to new branch: {new_branch_name}")
             except Exception as e:
                 # Likely branch already exists due to race condition
                 # repo.git.checkout(new_branch_name)
                 branch = repo.active_branch.name
-                print(
+                flor_print(
                     f"Branch '{new_branch_name}' already exists. Switched to branch: {branch}"
                 )
     except InvalidGitRepositoryError:
-        print("Not a valid Git repository")
+        flor_print("Not a valid Git repository")
     except Exception as e:
-        print(f"An error occurred while processing the branch: {e}")
+        flor_print(f"An error occurred while processing the branch: {e}")
 
 
 def get_latest_autocommit():
@@ -121,9 +125,9 @@ def get_latest_autocommit():
                 v.authored_datetime.isoformat(timespec="seconds")[0 : len(ts)],
             )
     except InvalidGitRepositoryError:
-        print("Not a valid Git repository")
+        flor_print("Not a valid Git repository")
     except Exception as e:
-        print(f"An error occurred while processing the branch: {e}")
+        flor_print(f"An error occurred while processing the branch: {e}")
 
 
 def read_args(commit_message: str) -> dict:
@@ -142,7 +146,7 @@ def read_args(commit_message: str) -> dict:
 def checkout(commit_hash):
     repo = Repo(CURRDIR, search_parent_directories=True)
     # Checkout to the desired commit
-    print("Checking out ", commit_hash)
+    flor_print("Checking out ", commit_hash)
     repo.git.checkout(commit_hash)
 
 
