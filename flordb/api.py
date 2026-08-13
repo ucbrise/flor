@@ -579,21 +579,31 @@ def commit():
                 VALUE_TYPE_TIME,
             )
         )
+    # The sqlite transaction is opened, committed and closed before any git
+    # work happens. git_commit shells out to `git add -A`, which can be slow
+    # enough to Ctrl-C through; an interrupt raised while this connection sat
+    # open mid-write left its RESERVED lock held for the life of the process,
+    # so every later commit() died with "database is locked". try/finally so
+    # the handle is released no matter what -- including BaseException, which
+    # git_commit's own `except Exception` would not have caught anyway.
+    git_message = None
     conn, cursor = database.conn_and_cursor()
-    if not cli.in_replay_mode():
-        # RECORD
-        branch = versions.current_branch()
-        if branch is not None:
-            orm.to_jsonl(output_buffer, tstamp)
-            database.unpack(output_buffer, cursor, source="forward")
-            _write_cmd_file(tstamp)
-            versions.git_commit(_build_commit_message(tstamp, run_args))
-    else:
-        # Replay rows are scratch -- not written to JSONL or git, and wiped
-        # whenever `flor unpack` rebuilds the cache from JSONL truth.
-        database.unpack(output_buffer, cursor, source="replay")
-    conn.commit()
-    conn.close()
+    try:
+        if not cli.in_replay_mode():
+            # RECORD
+            branch = versions.current_branch()
+            if branch is not None:
+                orm.to_jsonl(output_buffer, tstamp)
+                database.unpack(output_buffer, cursor, source="forward")
+                _write_cmd_file(tstamp)
+                git_message = _build_commit_message(tstamp, run_args)
+        else:
+            # Replay rows are scratch -- not written to JSONL or git, and wiped
+            # whenever `flor unpack` rebuilds the cache from JSONL truth.
+            database.unpack(output_buffer, cursor, source="replay")
+        conn.commit()
+    finally:
+        conn.close()
     output_buffer.clear()
     run_args.clear()
     Clock.set_new_datetime()
@@ -603,6 +613,13 @@ def commit():
     _init_failed = False
     capture.reset_run_state()
     skip_cleanup = True
+    # Last, and outside the buffer reset above: by this point the run is
+    # durable in both JSONL and the sqlite cache, so an interrupt here costs
+    # the git commit and nothing else. Resetting first is what keeps the
+    # retry -- the next cell's callback, or the atexit hook -- from writing
+    # the same rows a second time.
+    if git_message is not None:
+        versions.git_commit(git_message)
 
 
 def _build_commit_message(tstamp: str, args: dict) -> str:
