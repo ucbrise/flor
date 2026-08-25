@@ -88,20 +88,18 @@ def is_integer(string):
 def cast_dtypes(df: pd.DataFrame, columns=None):
     target_columns = columns if columns is not None else df.columns
     for col in target_columns:
-        if df[col].dtype == "object":
-            # Attempt to convert to numeric first
+        # pandas 2.x exposes a real "str" dtype alongside the legacy "object"
+        # dtype, so test both.
+        if df[col].dtype == "object" or str(df[col].dtype) == "str":
             try:
                 df[col] = pd.to_numeric(df[col], errors="raise")
-            except ValueError:
-                # If it fails, try coerce (turns non-numeric into NaN)
+            except (ValueError, TypeError):
                 pass
 
-            # After numeric attempt, if still object, try datetime
-            if df[col].dtype == "object":
+            if df[col].dtype == "object" or str(df[col].dtype) == "str":
                 try:
                     df[col] = pd.to_datetime(df[col], errors="raise")
-                except ValueError:
-                    # If datetime also fails, revert to no conversion or coerce
+                except (ValueError, TypeError):
                     pass
     return df
 

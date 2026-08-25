@@ -1,20 +1,23 @@
 import ast
-import json
+import glob
 import re
 import shutil
 import numpy as np
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import subprocess
 import tempfile
 import os
 
 from . import utils
+from .cli import IterSpec
 from .hlast.visitors import LoggedExpVisitor, WithExpVisitor
 from .hlast import backprop
 
 from . import database
 from . import versions
+from . import orm
+from .constants import RUNS_DIR
 from .clock import Clock
 
 
@@ -30,6 +33,26 @@ def dataframe(*args):
         conn.close()
 
 
+def io(channel: Optional[str] = None):
+    """Captured print / logging output, as a dataframe.
+
+    Automatically captured io is kept out of `dataframe()` on purpose -- it is
+    text, not metrics -- so this is the way to read it back. Rows carry the
+    same loop columns as any other record, plus `channel` and `line`.
+
+        flor.io()                  # everything
+        flor.io("io::stdout")      # prints only
+        flor.io("io::log")         # every logging level
+        flor.io("io::log::error")  # one level
+
+    """
+    conn, _ = database.conn_and_cursor()
+    try:
+        return database.read_io(conn, channel).reset_index(drop=True)
+    finally:
+        conn.close()
+
+
 def query(user_query: str):
     conn, cursor = database.conn_and_cursor()
     try:
@@ -41,12 +64,70 @@ def query(user_query: str):
         conn.close()
 
 
-def replay(apply_vars: List[str], where_clause: Optional[str] = None):
-    versions.git_commit("Hindsight logging stmts added.")
-    schedule = Schedule(apply_vars, where_clause)
+def _apply_var_is_lineno(v: str) -> bool:
+    return v.startswith("@")
 
-    with open(".flor.json", "r") as f:
-        main_script = json.load(f)[0]["filename"]
+
+def _apply_var_to_lineno(v: str, lev: LoggedExpVisitor) -> int:
+    """`@42` -> 42; bare names look up via the AST visitor."""
+    if v.startswith("@"):
+        return int(v[1:])
+    if v not in lev.names:
+        raise RuntimeError(
+            f"FLOR: --apply {v!r} does not match any flor.log(...) in the current "
+            f"script. Known names: {sorted(lev.names)}"
+        )
+    return lev.names[v]
+
+
+def _apply_var_to_name(v: str, lev: LoggedExpVisitor) -> str:
+    """`@42` -> the log name at line 42; bare names pass through (validated).
+
+    Everything downstream of the AST -- the child's `--apply` projection, the
+    Schedule columns, the final dataframe -- is keyed by log *name*, so linenos
+    have to be resolved exactly once, here.
+    """
+    if not _apply_var_is_lineno(v):
+        _apply_var_to_lineno(v, lev)  # validate
+        return v
+    lineno = _apply_var_to_lineno(v, lev)
+    name = lev.linenos.get(lineno)
+    if name is None:
+        raise RuntimeError(
+            f"FLOR: --apply {v!r} points at line {lineno}, which is not a "
+            f"flor.log(...) call in the current script. Logged lines: "
+            f"{sorted(lev.linenos)}"
+        )
+    return name
+
+
+def replay(
+    apply_vars: List[str],
+    narrow_iters: Optional[List[Tuple[str, IterSpec]]] = None,
+    where_clause: Optional[str] = None,
+    overrides: Optional[List[Tuple[str, str]]] = None,
+):
+    """
+    Re-run historical runs to compute apply_vars that weren't logged originally.
+
+    apply_vars: log names (or `@LINENO`) introduced as hindsight statements in
+        the current script. Each historical run is re-executed with these vars
+        applied via backprop.
+    narrow_iters: optional list of (loop_name, IterSpec) overrides forwarded
+        to the inner script as `--iter NAME=SPEC` flags. If None, the
+        orchestrator picks defaults based on where the apply_vars sit in the
+        loop nesting.
+    where_clause: optional SQL-style filter on the schedule (legacy; only used
+        for column-name discovery today).
+    overrides: optional (key, value) pairs forwarded to the inner script as
+        `--override KEY=VALUE`. The child validates them against the historical
+        run's flor.arg records (see cli.ENV_OVERRIDE_ALLOWLIST).
+    """
+    versions.git_commit("Hindsight logging stmts added.")
+
+    jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
+    assert jsonl_paths, f"No runs found in {RUNS_DIR}; cannot replay."
+    main_script = orm.read_jsonl(jsonl_paths[-1])[0]["filename"]
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     shutil.copy2(main_script, temp_file.name)
     with open(main_script, "r") as f:
@@ -55,25 +136,30 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     wev.visit(tree)
     lev.visit(tree)
 
+    # Resolve `@LINENO` forms once, up front. `apply_linenos` drives backprop
+    # (which is line-oriented); `apply_names` drives everything else: schedule
+    # columns, the child's --apply projection, and the result dataframe.
+    apply_linenos = [_apply_var_to_lineno(v, lev) for v in apply_vars]
+    apply_names = [_apply_var_to_name(v, lev) for v in apply_vars]
+    schedule = Schedule(apply_names, where_clause)
+
     if not wev.found:
-        # "No `with flor.checkpointing(...):` statement found in main script."
-        loglvl, mark = 3, "suffix"
+        # No flor.loop and no `with flor.checkpointing(...):` in the script --
+        # no narrowable scope. Full re-run.
+        loglvl = 3
     else:
-        loglvl, mark = schedule.get_loglvl(lev)
+        loglvl = max(lev.line2level[ln] for ln in apply_linenos)
+        # Cap to the number of flor.loops actually present so we don't try to
+        # narrow a depth that doesn't exist.
+        loglvl = min(loglvl, len(lev.loop_names))
 
-    assert mark in ("prefix", "suffix")
-    level_mapper = {0: "prefix", 1: "outer loop", 2: "nested loop", 3: "full scan"}
+    level_mapper = {0: "run-level (no loop)", 1: "outer loop", 2: "nested loop", 3: "full scan"}
 
-    schedule.estimate_cost(loglvl, mark)
+    schedule.estimate_cost(loglvl, lev.loop_names)
 
-    if loglvl == 3:
-        print("log level full scan, replaying from flor.args.")
-    elif loglvl < 3:
-        print(
-            "log level",
-            level_mapper[loglvl],
-            "to suffix." if mark == "suffix" else "without suffix.",
-        )
+    print(f"log level: {level_mapper.get(loglvl, str(loglvl))}")
+    if narrow_iters:
+        print(f"narrow (user-supplied): {[(n, s) for n, s in narrow_iters]}")
     print()
     print(schedule.df)
     print()
@@ -88,71 +174,38 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     clock = Clock()
     clock.set_start_time()
 
-    # Pick up on versions
     active_branch = versions.current_branch()
     try:
         for projid, ts, hexsha, main_script in schedule.iter_dims():
             print("entering", str(ts), hexsha)
             versions.checkout(hexsha)
-            for v, lineno in zip(
-                apply_vars,
-                [int(v) if utils.is_integer(v) else lev.names[v] for v in apply_vars],
-            ):
+            for v, lineno in zip(apply_names, apply_linenos):
                 print("applying: ", v, lineno)
                 try:
                     backprop(lineno, temp_file.name, main_script, main_script)
                 except Exception as e:
                     print("Exception raised during `backprop`", e)
                     raise e
-            if loglvl == 0 or loglvl == 3:
-                print("loglvl", loglvl)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)]
-                print(*cmd)
-                subprocess.run(cmd)
-            elif loglvl == 1:
-                tup = (
-                    ",".join(
-                        [
-                            str(i)
-                            for i in range(
-                                schedule.df[schedule.df["tstamp"] == ts][
-                                    "num_epochs"
-                                ].values[0]
-                            )
-                        ]
-                    )
-                    + ","
-                )
-                print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
-                    "epoch=" + tup
-                ]
-                print(*cmd)
-                subprocess.run(cmd)
-            elif loglvl == 2:
-                tup = (
-                    ",".join(
-                        [
-                            str(i)
-                            for i in range(
-                                schedule.df[schedule.df["tstamp"] == ts][
-                                    "num_epochs"
-                                ].values[0]
-                            )
-                        ]
-                    )
-                    + ","
-                )
-                print("loglvl", loglvl, tup)
-                cmd = ["python", main_script, "--replay_flor", ",".join(apply_vars)] + [
-                    "epoch=" + tup,
-                    "step=1",
-                ]
-                print(*cmd)
-                subprocess.run(cmd)
-            else:
-                raise NotImplementedError(
-                    "Please open a Pull Request on GitHub and describe your use-case."
+
+            narrow_args = _narrow_args(loglvl, ts, schedule, lev, narrow_iters)
+            cmd = [
+                "python", main_script,
+                "--replay_flor",
+                "--apply", ",".join(apply_names),
+            ]
+            for name, spec in narrow_args:
+                cmd += ["--iter", f"{name}={_spec_to_cli(spec)}"]
+            for k, v in overrides or []:
+                cmd += ["--override", f"{k}={v}"]
+            print(*cmd)
+            proc = subprocess.run(cmd)
+            if proc.returncode != 0:
+                # The child validates --override and --iter against the
+                # historical run; a nonzero exit means it logged nothing, so
+                # say so rather than letting the result df come back empty.
+                print(
+                    f"FLOR: replay of {ts} exited with code {proc.returncode}; "
+                    f"no rows recorded for that run."
                 )
     except Exception as e:
         print("Exception raised during `schedule.iter_dims()`", e)
@@ -164,7 +217,9 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
 
     dt = clock.get_delta()
 
-    filtered_vs = [v for v in apply_vars if not utils.is_integer(v)]
+    # apply_names is already lineno-free, so `@N` replays land in the result
+    # dataframe under the name they were logged with.
+    filtered_vs = list(apply_names)
     if schedule.vars_in_where is not None:
         filtered_vs += schedule.vars_in_where
     schedule = dataframe(*filtered_vs)
@@ -177,11 +232,60 @@ def replay(apply_vars: List[str], where_clause: Optional[str] = None):
     return schedule
 
 
+def _spec_to_cli(spec: IterSpec) -> str:
+    if spec.kind in ("all", "last", "none"):
+        return spec.kind
+    return ",".join(str(i) for i in spec.indices)
+
+
+def _narrow_args(
+    loglvl: int,
+    ts,
+    schedule: "Schedule",
+    lev: LoggedExpVisitor,
+    user_narrow: Optional[List[Tuple[str, IterSpec]]],
+) -> List[Tuple[str, IterSpec]]:
+    """
+    Pick the per-loop IterSpecs forwarded to the inner script as --iter flags.
+
+    If the user passed `narrow_iters`, use it verbatim. Otherwise default by
+    loglvl:
+      loglvl 0 or 3 -> no narrowing (script-wide replay).
+      loglvl 1      -> outer loop: every index; inner loops default to `last`
+                       implicitly (cli.iter_spec_for falls back).
+      loglvl 2      -> outer + every inner index up to (loglvl - 1) depths;
+                       deepest loop (where the hindsight log sits) stays at
+                       the implicit `last` default.
+    """
+    if user_narrow:
+        return list(user_narrow)
+
+    if loglvl == 0 or loglvl == 3:
+        return []
+
+    args: List[Tuple[str, IterSpec]] = []
+    n_outer = int(
+        schedule.df[schedule.df["tstamp"] == ts]["num_outer"].values[0]
+    )
+    outer_name = lev.loop_names[0] if lev.loop_names else "epoch"
+    args.append((outer_name, IterSpec("indices", tuple(range(n_outer)))))
+
+    # For loglvl >= 2 we also iterate inner loops up to (loglvl - 1) depths.
+    # Deeper than that we leave at the implicit `last` default (one iter).
+    for depth in range(1, loglvl - 1):
+        if depth >= len(lev.loop_names):
+            break
+        # We don't know per-outer-iter how many inner iters there were; use a
+        # wide range and let slice() bound it at runtime via the index filter.
+        args.append((lev.loop_names[depth], IterSpec("indices", (0, 1))))
+    return args
+
+
 class Schedule:
     def __init__(self, apply_vars, where_clause) -> None:
-        # TODO:
-        # case when integer supplied through apply_vars,
-        #     you will need to infer var_name from ast
+        # apply_vars must be resolved log *names* -- `@LINENO` forms are
+        # translated by _apply_var_to_name before we get here, because these
+        # strings are used directly as dataframe column labels.
         self.apply_vars = apply_vars
         self.where_clause = where_clause
         self.vars_in_where = None
@@ -195,120 +299,97 @@ class Schedule:
             self.vars_in_where = columns_list
             print("columns in where_clause:", columns_list)
 
-    def estimate_cost(self, loglvl: int, mark: str):
-        assert mark in ("prefix", "suffix")
-        keys = ["projid", "tstamp", "filename"]
-        if loglvl == 3:
-            # Full scan, delta::suffix is the estimate per run
-            pvt = dataframe()
-            self.df = dataframe("delta::suffix")
-            self.df["composite"] = pd.to_numeric(self.df["delta::suffix"])
-            self.df = pd.merge(pvt, self.df, on=keys, how="inner")
-        else:
-            pvt = dataframe()
-            if loglvl == 0:
-                if mark == "prefix":
-                    self.df = dataframe("delta::prefix")
-                    self.df["composite"] = pd.to_numeric(self.df["delta::prefix"])
-                else:
-                    self.df = dataframe("delta::prefix", "delta::suffix")
-                    self.df["composite"] = (
-                        pd.to_numeric(self.df["delta::prefix"])
-                        + pd.to_numeric(self.df["delta::suffix"])
-                        + 1
-                    )
-                self.df = pd.merge(pvt, self.df, on=keys, how="inner")
-            elif loglvl == 1:
-                # i - delta::loop where i is the full duration for that iteration
-                df = dataframe("delta::loop")
-                df["delta::loop"] = pd.to_numeric(df["delta::loop"], errors="coerce")
-                df_grouped = (
-                    df.groupby(keys)
-                    .agg(
-                        num_epochs=("epoch", "max"),
-                        sum_nested_loops=("delta::loop", "sum"),
-                    )
-                    .reset_index()
-                )
-                temp_df = query(
-                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
-                )
-                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
-                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-                temp_df["coarse_loop"] = pd.to_numeric(
-                    temp_df["coarse_loop"], errors="coerce"
-                )
+    def estimate_cost(self, loglvl: int, loop_names: List[str]):
+        """
+        Build self.df: one row per historical tstamp with a `composite` column
+        giving a wall-time estimate for the narrowed re-run.
 
-                merged_df = pd.merge(temp_df, df_grouped, on=keys, how="inner")
-                merged_df["marginal"] = (
-                    merged_df["coarse_loop"] - merged_df["sum_nested_loops"]
-                )
-                merged_df.drop(
-                    columns=["coarse_loop", "sum_nested_loops"], inplace=True
-                )
-                df = dataframe("delta::prefix", "delta::suffix")
-                merged_df = pd.merge(merged_df, df, on=keys, how="inner")
-                merged_df["composite"] = (
-                    pd.to_numeric(merged_df["num_epochs"])
-                    + merged_df["marginal"]
-                    + pd.to_numeric(merged_df["delta::prefix"])
-                    + pd.to_numeric(merged_df["delta::suffix"])
-                )
-                self.df = pd.merge(pvt, merged_df, on=keys, how="inner")
-            elif loglvl == 2:
-                base_df = dataframe("delta::prefix", "delta::suffix")
-                loop_df = dataframe("delta::loop")
-                loop_df["delta::loop"] = pd.to_numeric(
-                    loop_df["delta::loop"], errors="coerce"
-                )
-                df_grouped = (
-                    loop_df.groupby(keys).agg(num_epochs=("epoch", "max")).reset_index()
-                )
-                temp_df = query(
-                    "SELECT * FROM logs WHERE ctx_id is null and value_name='delta::loop';"
-                )
-                temp_df.drop(columns=["ctx_id", "value_name", "value_type"], inplace=True)  # type: ignore
-                temp_df = temp_df.rename(columns={"value": "coarse_loop"})  # type: ignore
-                temp_df["coarse_loop"] = pd.to_numeric(
-                    temp_df["coarse_loop"], errors="coerce"
-                )
-                merged_df = pd.merge(temp_df, base_df, on=keys, how="inner")
-                merged_df["composite"] = (
-                    pd.to_numeric(merged_df["coarse_loop"])
-                    + pd.to_numeric(merged_df["delta::prefix"])
-                    + pd.to_numeric(merged_df["delta::suffix"])
-                )
-                merged_df = pd.merge(pvt, merged_df, on=keys, how="inner")
-                merged_df = pd.merge(merged_df, df_grouped, on=keys, how="inner")
-                self.df = merged_df
-            else:
-                raise
+        loop_names: outermost-to-innermost flor.loop names from the AST. Used
+            to generalize the schedule beyond the legacy "epoch"/"step" pair.
+        """
+        keys = ["projid", "tstamp", "filename"]
+        pvt = dataframe()
+
+        if loglvl == 3:
+            # Full scan -- whole-run wall time is the only useful estimate.
+            df = dataframe("time::script")
+            df["composite"] = pd.to_numeric(df["time::script"])
+            self.df = pd.merge(pvt, df, on=keys, how="inner")
+            return
+
+        if loglvl == 0:
+            # Apply var sits before any flor.loop -- setup time is what dominates.
+            df = dataframe("time::setup", "time::teardown")
+            df["composite"] = pd.to_numeric(df["time::setup"]) + pd.to_numeric(
+                df["time::teardown"]
+            )
+            self.df = pd.merge(pvt, df, on=keys, how="inner")
+            return
+
+        # loglvl in {1, 2}: narrowed loop replay. Estimate = setup + outer-loop
+        # wall time + teardown. Outer-loop wall time comes from the time::loop
+        # record at the run level (ctx is null). We MAX-aggregate because the
+        # DB may have multiple inserts per tstamp from prior replays; the
+        # original (slowest) run is the safe upper bound.
+        outer_name = loop_names[0] if loop_names else "epoch"
+        # Cost estimation is a baseline for "how long would re-running take?"
+        # Replay rows reflect a narrowed run (fewer iters, projected vars) and
+        # would make the baseline misleadingly fast; filter to forward only.
+        outer_loop_wall = query(
+            "SELECT projid, tstamp, filename, MAX(CAST(value AS REAL)) AS outer_loop_s "
+            "FROM logs WHERE ctx IS NULL AND value_name = 'time::loop' "
+            "AND source = 'forward' "
+            "GROUP BY projid, tstamp, filename;"
+        )
+
+        # num_outer: how many iterations the outermost loop ran. Prefer the
+        # inner-loop ctx records (each carries the outer iter index); fall
+        # back to the outermost-loop's `time::iter::n` summary when there's
+        # no nested loop (ctx IS NULL pinpoints the outermost aggregate).
+        loops_df = dataframe("time::loop")
+        if outer_name in loops_df.columns:
+            num_outer = (
+                loops_df.dropna(subset=[outer_name])
+                .drop_duplicates(subset=keys + [outer_name])
+                .groupby(keys)
+                .agg(num_outer=(outer_name, "max"))
+                .reset_index()
+            )
+            # `iteration` is 0-indexed (matches positional narrowing); count
+            # of outer iters is therefore max(iteration) + 1.
+            num_outer["num_outer"] = pd.to_numeric(num_outer["num_outer"]) + 1
+        else:
+            iters = query(
+                "SELECT projid, tstamp, filename, "
+                "MAX(CAST(value AS INTEGER)) AS num_outer "
+                "FROM logs WHERE ctx IS NULL AND value_name = 'time::iter::n' "
+                "AND source = 'forward' "
+                "GROUP BY projid, tstamp, filename;"
+            )
+            num_outer = iters
+
+        # Edge timings: also MAX-dedupe (one ctx-null time::setup record per
+        # tstamp originally, but replays may have added more).
+        edges = query(
+            "SELECT projid, tstamp, filename, "
+            "MAX(CASE WHEN value_name='time::setup'    THEN CAST(value AS REAL) END) AS setup_s, "
+            "MAX(CASE WHEN value_name='time::teardown' THEN CAST(value AS REAL) END) AS teardown_s "
+            "FROM logs WHERE ctx IS NULL AND value_name IN ('time::setup','time::teardown') "
+            "AND source = 'forward' "
+            "GROUP BY projid, tstamp, filename;"
+        )
+
+        merged = pd.merge(outer_loop_wall, num_outer, on=keys, how="inner")
+        merged = pd.merge(merged, edges, on=keys, how="inner")
+        merged["composite"] = (
+            merged["setup_s"].fillna(0)
+            + merged["outer_loop_s"]
+            + merged["teardown_s"].fillna(0)
+        )
+        self.df = pd.merge(pvt, merged, on=keys, how="inner")
 
     def is_empty(self):
         return self.df.empty
-
-    def get_loglvl(self, lev: LoggedExpVisitor):
-        # Get the largest lineno from self.apply_vars
-        max_lineno = max(lev.names[v] for v in self.apply_vars)
-        loglevels = [lev.line2level[lev.names[v]] for v in self.apply_vars]
-
-        # Check for monotonic growth
-        pairs = sorted(
-            [
-                (line, level)
-                for line, level in lev.line2level.items()
-                if line <= max_lineno
-            ],
-            key=lambda x: x[0],
-        )
-        is_monotonic = all(
-            pairs[i][1] <= pairs[i + 1][1] for i in range(len(pairs) - 1)
-        )
-
-        return (
-            max(loglevels),
-            "prefix" if is_monotonic else "suffix",
-        )
 
     def iter_dims(self):
         ts2vid = {

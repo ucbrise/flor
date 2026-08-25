@@ -1,9 +1,8 @@
+import json
+from dataclasses import asdict
 from functools import reduce
-from typing import Dict, Optional
 import pandas as pd
 import sqlite3
-import os
-from pathlib import Path
 
 from .constants import *
 from . import orm
@@ -13,98 +12,86 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def conn_and_cursor():
-    conn = sqlite3.connect(os.path.join(HOMEDIR, Path(PROJID).with_suffix(".db")))
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     return conn, cursor
 
 
-def insert_context(cursor, context):
-    # Recursive
-    if isinstance(context, dict):
-        parent_context_id = (
-            insert_context(cursor, context["p_ctx"])
-            if context["p_ctx"] is not None
-            else None
-        )
-    else:
-        parent_context_id = (
-            insert_context(cursor, context.p_ctx) if context.p_ctx is not None else None
-        )
-    if isinstance(context, orm.Loop):
-        cursor.execute(
-            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
-            (
-                int(context.ctx_id),
-                parent_context_id,
-                str(context.name),
-                int(context.iteration) if context.iteration is not None else None,
-                str(context.value) if context.value is not None else None,
-            ),
-        )
-        return int(context.ctx_id)
-    else:
-        cursor.execute(
-            """INSERT INTO loops (ctx_id, p_ctx_id, l_name, iteration, l_value) VALUES (?, ?, ?, ?, ?)""",
-            (
-                int(context["ctx_id"]),
-                parent_context_id,
-                str(context["name"]),
-                int(context["iteration"]) if context["iteration"] is not None else None,
-                str(context["value"]) if context["value"] is not None else None,
-            ),
-        )
-        return int(context["ctx_id"])
+def _ctx_to_json(ctx) -> Optional[str]:
+    if not ctx:
+        return None
+    if isinstance(ctx, list):
+        # list of orm.Segment dataclasses or already-dict segments
+        segs = [asdict(s) if hasattr(s, "__dataclass_fields__") else dict(s) for s in ctx]
+        return json.dumps(segs)
+    raise TypeError(f"ctx must be a list or None, got {type(ctx).__name__}")
 
 
-def unpack(output_buffer, cursor):
+def unpack(output_buffer, cursor, source: str = "forward"):
+    # `source` tags every row inserted by this call. Forward runs and the
+    # `flor unpack` CLI (which rebuilds the cache from JSONL) both insert
+    # 'forward'; replay inserts 'replay'. The cache mixes both, read paths
+    # default to forward, and `flor unpack` wipes replay state on rebuild.
     if not output_buffer:
         return
+    if source not in ("forward", "replay"):
+        raise ValueError(f"source must be 'forward' or 'replay', got {source!r}")
+    insert_sql = (
+        "INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, "
+        "value_type, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
     for each in output_buffer:
         if isinstance(each, orm.Log):
-            ctx_id = insert_context(cursor, each.ctx) if each.ctx is not None else None
+            ctx_json = _ctx_to_json(each.ctx)
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                insert_sql,
                 (
                     each.projid,
                     each.tstamp,
                     each.filename,
-                    ctx_id,
+                    ctx_json,
                     each.name,
                     str(each.value),
                     each.type,
+                    source,
                 ),
             )
         else:
-            # Parse JSON dict
-            ctx_id = (
-                insert_context(cursor, each["ctx"]) if each["ctx"] is not None else None
-            )
+            ctx_json = _ctx_to_json(each.get("ctx"))
             cursor.execute(
-                """INSERT INTO logs (projid, tstamp, filename, ctx_id, value_name, value, value_type) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                insert_sql,
                 (
                     each["projid"],
                     each["tstamp"],
                     each["filename"],
-                    ctx_id,
+                    ctx_json,
                     each["name"],
                     str(each["value"]),
                     each["type"],
+                    source,
                 ),
             )
 
 
 def create_tables(cursor):
+    # Migrate away from the old (ctx_id-based) schema if present.
+    cursor.execute("DROP TABLE IF EXISTS loops")
     cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS loops (
-            ctx_id INTEGER,
-            p_ctx_id INTEGER,
-            l_name TEXT,
-            iteration INTEGER,
-            l_value TEXT
-        )
-        """
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='logs'"
     )
+    existing = cursor.fetchone() is not None
+    if existing:
+        cursor.execute("PRAGMA table_info(logs)")
+        cols = {row[1] for row in cursor.fetchall()}
+        if "ctx" not in cols:
+            cursor.execute("DROP TABLE logs")
+            existing = False
+        elif "source" not in cols:
+            # Pre-tag rows existed only because JSONL was unpacked, which is
+            # always forward truth -- default backfill matches that history.
+            cursor.execute(
+                "ALTER TABLE logs ADD COLUMN source TEXT NOT NULL DEFAULT 'forward'"
+            )
 
     cursor.execute(
         """
@@ -112,27 +99,22 @@ def create_tables(cursor):
             projid TEXT,
             tstamp TEXT,
             filename TEXT,
-            ctx_id INTEGER,
+            ctx TEXT,
             value_name TEXT,
             value TEXT,
-            value_type INTEGER
+            value_type INTEGER,
+            source TEXT NOT NULL DEFAULT 'forward'
         )
         """
     )
 
 
 def deduplicate_table(cursor, table_name):
-    # Create a temporary table to store unique rows
     cursor.execute(
         f"""CREATE TEMPORARY TABLE temp_table AS SELECT DISTINCT * FROM {table_name}"""
     )
-
-    # Delete the original table's contents
     cursor.execute(f"""DELETE FROM {table_name}""")
-
-    # Insert the unique rows back into the original table
     cursor.execute(f"""INSERT INTO {table_name} SELECT * FROM temp_table""")
-
     cursor.execute("DROP TABLE temp_table")
 
 
@@ -163,10 +145,82 @@ def get_column_names(cursor):
     return column_names
 
 
+def _parse_ctx_cell(s):
+    if s is None:
+        return []
+    if isinstance(s, float) and pd.isna(s):
+        return []
+    return json.loads(s)
+
+
+def expand_ctx(logs):
+    """Turn the JSON `ctx` column into one column per loop, in place.
+
+    Each `flor.loop` / `flor.iteration` segment contributes `<name>` (the
+    iteration index) and, when the iterated value was jsonable,
+    `<name>_value`. Walks leaf to root so the column order matches the
+    JOIN-from-leaf-upward order the pre-v4 schema produced.
+    """
+    parsed = logs["ctx"].apply(_parse_ctx_cell)
+    logs = logs.drop(columns=["ctx"])
+
+    max_depth = int(parsed.map(len).max()) if len(parsed) else 0
+
+    for depth in range(max_depth - 1, -1, -1):
+        seg = parsed.apply(lambda lst, d=depth: lst[d] if d < len(lst) else None)
+        non_null = seg.dropna()
+        if non_null.empty:
+            continue
+        loop_name = non_null.iloc[0]["name"]
+
+        iter_col = seg.apply(
+            lambda s: s.get("iteration") if isinstance(s, dict) else None
+        )
+        val_col = seg.apply(lambda s: s.get("value") if isinstance(s, dict) else None)
+
+        # Surface the iteration column whenever any row carries it. Rows
+        # without that ctx depth get NaN. Use Int64 (nullable) so the
+        # column survives groupby/max without collapsing to float.
+        if iter_col.notna().any():
+            logs[loop_name] = iter_col.astype("Int64")
+
+        # Only surface _value column if at least one row carries it.
+        if val_col.notna().any():
+            logs[f"{loop_name}_value"] = val_col
+
+    return logs
+
+
+def read_io(conn, channel=None):
+    """Captured print / logging rows, with loop context expanded to columns."""
+    sql = f"SELECT * FROM logs WHERE value_type = {VALUE_TYPE_IO}"
+    params: Tuple[Any, ...] = ()
+    if channel is not None:
+        # LIKE so `io::log` selects every level at once.
+        sql += " AND (value_name = ? OR value_name LIKE ?)"
+        params = (channel, channel.rstrip(":") + "::%")
+    sql += " ORDER BY rowid"
+    logs = pd.read_sql(sql, conn, params=params, parse_dates=["tstamp"])
+    if logs.empty:
+        return logs
+    logs = logs[["projid", "tstamp", "filename", "ctx", "source", "value_name", "value"]]
+    logs = logs.rename(columns={"value_name": "channel", "value": "line"})
+    logs = expand_ctx(logs)
+    trailing = ["channel", "line"]
+    return logs[[c for c in logs.columns if c not in trailing] + trailing]
+
+
 def pivot(conn, *args):
+    # Pivot surfaces both forward and replay rows. Replay values are not
+    # noise -- the user opted in by running `flor replay --apply ...` to see
+    # them. The `source` column rides along on every row so they're
+    # distinguishable (and joins across variables stay within a source --
+    # forward joins to forward, replay to replay -- because `source` ends up
+    # in the common-columns set for the per-variable merge).
     def _pivot_star():
         df = pd.read_sql(
-            "SELECT DISTINCT value_name FROM logs WHERE value_type = 1 AND ctx_id IS NULL",
+            "SELECT DISTINCT value_name FROM logs "
+            f"WHERE value_type = {VALUE_TYPE_LOG} AND ctx IS NULL",
             conn,
         )
         value_names = df["value_name"].values
@@ -174,7 +228,6 @@ def pivot(conn, *args):
             print("No default values to pivot on")
             return pd.DataFrame()
 
-        # Build the dynamic part of the SQL query
         dynamic_sql = ", ".join(
             [
                 f"MAX(CASE WHEN value_name = '{value_name}' THEN value ELSE NULL END) AS '{value_name}'"
@@ -182,18 +235,17 @@ def pivot(conn, *args):
             ]
         )
 
-        # Construct the final SQL query
         final_sql = f"""
         SELECT projid,
             tstamp,
             filename,
+            source,
             {dynamic_sql}
         FROM logs
-        WHERE value_type = 1 AND ctx_id IS NULL
-        GROUP BY projid, tstamp, filename;
+        WHERE value_type = {VALUE_TYPE_LOG} AND ctx IS NULL
+        GROUP BY projid, tstamp, filename, source;
         """
 
-        # Execute the final SQL query
         return pd.read_sql(
             final_sql,
             conn,
@@ -207,7 +259,6 @@ def pivot(conn, *args):
         return _pivot_star()
 
     dataframes = []
-    loops = pd.read_sql("SELECT * FROM loops", conn, coerce_float=False)
     for value_name in args:
         logs = pd.read_sql(
             f'SELECT * FROM logs WHERE value_name = "{value_name}"',
@@ -215,37 +266,10 @@ def pivot(conn, *args):
             parse_dates=["tstamp"],
             coerce_float=True,
         )
-        logs = logs[["projid", "tstamp", "filename", "ctx_id", "value"]]
+        logs = logs[["projid", "tstamp", "filename", "ctx", "source", "value"]]
         logs = logs.rename(columns={"value": value_name})
-        while logs["ctx_id"].notna().any():
-            logs = pd.merge(
-                left=loops,
-                right=logs,
-                how="inner",
-                on=["ctx_id"],
-            )
-            loop_name = logs["l_name"].unique()[0]
-            logs = logs.drop(
-                columns=[
-                    "l_name",
-                ]
-            )
-            if logs["iteration"].notna().all():
-                logs["iteration"] = logs["iteration"].astype(int)
-            logs = logs.rename(
-                columns={"iteration": loop_name, "l_value": f"{loop_name}_value"}
-            )
-            if logs[loop_name].isna().any():
-                logs = logs.drop(columns=[loop_name])
-            if logs[f"{loop_name}_value"].isna().all():
-                logs = logs.drop(columns=[f"{loop_name}_value"])
+        logs = expand_ctx(logs)
 
-            assert loop_name in logs or f"{loop_name}_value" in logs
-
-            logs["ctx_id"] = logs["p_ctx_id"]
-            logs = logs.drop(columns=["p_ctx_id"])
-
-        logs = logs.drop(columns=["ctx_id"])
         dataframes.append(logs)
 
     def join_on_common_columns(df1, df2):

@@ -19,7 +19,9 @@ def serialize_torch(layers, name, obj):
         torch.save(obj.state_dict(), path)
         return path.name
     else:
-        raise
+        # `serialize` walks the backends in order and catches these to try the
+        # next one, so the exception is control flow, not a user-facing error.
+        raise TypeError(f"{name!r} is not a torch Module or Optimizer")
 
 
 def serialize_numpy(layers, name, obj):
@@ -30,7 +32,7 @@ def serialize_numpy(layers, name, obj):
         np.save(path, obj)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a numpy ndarray")
 
 
 def serialize_scikit(layers, name, obj):
@@ -50,7 +52,7 @@ def serialize_scikit(layers, name, obj):
             pickle.dump(obj, f)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a scikit-learn estimator")
 
 
 def serialize_pandas(layers, name, obj):
@@ -61,7 +63,7 @@ def serialize_pandas(layers, name, obj):
         obj.to_parquet(path)
         return path.name
     else:
-        raise
+        raise TypeError(f"{name!r} is not a pandas DataFrame")
 
 
 def serialize(layers, name, obj):
@@ -92,7 +94,7 @@ def serialize(layers, name, obj):
     return path.name
 
 
-def deserialize(layers, name, obj):
+def deserialize(layers, name, obj, missing_ok: bool = False):
     if (path := get_shelf() / utils.to_filename(layers, name, ".pth")).exists():
         import torch
 
@@ -111,7 +113,38 @@ def deserialize(layers, name, obj):
         obj.clear()
         obj.update(loaded_obj)
     else:
-        raise
+        # Reached during replay when the requested iteration has no checkpoint
+        # in the object store -- usually because the adaptive throttle skipped
+        # it. Failing loudly beats replaying from an uninitialized object and
+        # reporting the resulting numbers as historical fact.
+        #
+        # missing_ok is the fast-forward case, where the caller has already
+        # restored an earlier iteration and is recomputing its way forward: a
+        # gap in the shelf is the expected condition there, not a failure.
+        if missing_ok:
+            return False
+        stem = utils.to_filename(layers, name, "").stem
+        raise RuntimeError(
+            f"FLOR: no checkpoint for {name!r} at this iteration. Looked for "
+            f"{stem}.{{pth,npy,parquet,pkl}} in {get_shelf()}. The run being "
+            f"replayed likely throttled this iteration's checkpoint "
+            f"(flor.set_ckpt_interval); narrow to an iteration that has one, or "
+            f"re-run forward with a smaller interval."
+        )
+
+
+# The extension set `deserialize` searches, in the same order. Kept beside it so
+# `has_shelved` means exactly "deserialize would find something here".
+SHELF_EXTENSIONS = (".pth", ".npy", ".parquet", ".pkl")
+
+
+def has_shelved(layers, name) -> bool:
+    """True when some backend's mirror for (layers, name) is already shelved."""
+    shelf = get_shelf()
+    return any(
+        (shelf / utils.to_filename(layers, name, ext)).exists()
+        for ext in SHELF_EXTENSIONS
+    )
 
 
 def get_shelf():
@@ -121,7 +154,6 @@ def get_shelf():
         assert cli.flags.old_tstamp is not None
         tstamp = cli.flags.old_tstamp
 
-    OBJSTORE = Path(HOMEDIR) / "obj_store"
-    SHELF = OBJSTORE / PROJID / tstamp
+    SHELF = Path(OBJSTORE_DIR) / tstamp
     os.makedirs(SHELF, exist_ok=True)
     return SHELF
