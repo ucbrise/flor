@@ -9,7 +9,7 @@ setuptools.setup(
     version="4.0.0",
     author="Rolando Garcia",
     author_email="rolando.garcia@asu.edu",
-    description="A hindsight logging dataabase for MLOps",
+    description="A hindsight logging database for Python developers",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ucbrise/flor",
