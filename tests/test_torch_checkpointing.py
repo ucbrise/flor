@@ -349,20 +349,47 @@ class TestCheckpointWarming:
         # And it paid the recompute once: the mirrors are back on the shelf.
         assert "ckpt_epoch_2.pth" in mirrors(project)
 
-    def test_stale_user_checkpoint_blocks_replay_from_zero(self, project):
+    def test_stale_user_checkpoint_is_neutralized_not_loaded(self, project):
         project.write("train.py", TRAIN)
         project.run("train.py", "epochs=3")
+        forward = values(project, "forward")
         import shutil
 
         shutil.rmtree(shelf_dir(project))  # obj_store gone, ckpt.pth left behind
+        assert os.path.exists(os.path.join(project.root, "ckpt.pth"))
 
         proc = project.run(
             "train.py", "--replay_flor", "--apply", "weight_sum",
             "--iter", "epoch=2", "--iter", "step=none", check=False,
         )
 
-        # Iteration 0 is not reconstructible here: the module-scope resume block
-        # already loaded end-of-run weights. Better to refuse than to report
-        # fast-forwarded numbers that started from the wrong state.
-        assert proc.returncode != 0
-        assert "no longer reconstructible" in (proc.stderr + proc.stdout)
+        # The module-scope resume block would otherwise load end-of-run weights
+        # over the fresh init, and replaying from zero on top of that would
+        # report epoch 2 as something else entirely. Neutralized, it lands on
+        # the forward value.
+        assert proc.returncode == 0, proc.stderr
+        replayed = values(project, "replay")
+        assert replayed[2] == pytest.approx(forward[2], rel=1e-6)
+
+    def test_neutralizing_does_not_relocate_the_users_checkpoint(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "epochs=3")
+        import shutil
+
+        ckpt = os.path.join(project.root, "ckpt.pth")
+        shutil.rmtree(shelf_dir(project))
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=1", "--iter", "step=none",
+        )
+
+        # Neutralizing happens inside flor's torch.load hook, so the file stays
+        # where it is -- flor never moves it aside to make the resume block miss.
+        # Its *contents* do change, because the replayed body runs the user's own
+        # torch.save, exactly as any replay always has.
+        assert os.path.exists(ckpt)
+        assert os.listdir(project.root).count("ckpt.pth") == 1
+        assert not any(
+            f.startswith("ckpt.pth.") for f in os.listdir(project.root)
+        )

@@ -156,17 +156,32 @@ gates it, and two rules keep a reconstruction from being mistaken for truth:
 
 `_build_outer_replay_plan` no longer aborts when *no* mirror exists at or
 before the target. It replays from iteration 0 instead, which is sound because
-the seed is a `flor.arg` restored from the historical run — except in one case
-it now checks for explicitly: the user's resume block runs at module scope,
-where `layers` is empty and `_flor_torch_load` cannot redirect it, so if their
-checkpoint file is still on disk it has already loaded end-of-run weights over
-the fresh init. Fast-forwarding from there would report wrong numbers *and*
-warm them into the shelf, so that case raises and says which file to move.
+the seed is a `flor.arg` restored from the historical run.
 
-Still open: `flor.checkpointing`-enrolled (non-torch) objects have no
-equivalent of the AST resume block, so a fresh clone replaying that path skips
-the restore (`deserialize(..., missing_ok=True)` during fast-forward) rather
-than reconstructing initial state.
+That soundness has one prerequisite, and getting it right is the subtle part.
+The user's resume block runs at *module scope*, where `layers` is still empty —
+so `_flor_torch_load`'s per-iteration redirect cannot reach it, and it loads
+whatever `ckpt.pth` holds, which after a forward run is **end-of-run** weights.
+Replaying from zero on top of that would report wrong numbers and then warm
+them into the shelf as if they were truth.
+
+`_neutralized_resume_state` fixes it without touching the user's files: when
+the shelf has no mirror for the resume path, flor's `torch.load` hook returns
+each target's *own current* `state_dict()`, so `model.load_state_dict(...)`
+becomes a genuine no-op and the seed-initialized weights survive to the loop.
+When the shelf does have mirrors, the block is left alone — the per-iteration
+restore overwrites it anyway. If a resume shape can't be neutralized faithfully
+(a target flor can't snapshot), it returns None and the plan builder refuses
+rather than guessing, which is what `_resume_neutralized` gates.
+
+`flor.checkpointing`-enrolled (non-torch) objects reach the same place by a
+shorter road: they have no module-scope resume block to neutralize, so the
+script's own initialization *is* the correct starting state. What they were
+missing was the fallback itself — `_mirror_exists_at` only consulted the torch
+resume spec, so an enrollment-only script took the `resume is None` early-out,
+skipped the fresh-clone path entirely, and died inside `deserialize`. It now
+checks both restore paths (`obj_store.has_shelved` for every enrolled name), and
+`_restore_at` anchors both at a fast-forward's starting mirror.
 
 ## Replay is a query, not a run (implemented)
 

@@ -53,6 +53,12 @@ _last_main_exit_time: Optional[float] = None
 _logical_replay_active: bool = False
 _suppress_logs: bool = False
 
+# Set when _neutralized_resume_state has turned the user's module-scope resume
+# block into a no-op, so replaying from iteration 0 is starting from the same
+# initialization the forward run did. The plan builder refuses from-zero without
+# it whenever the user's checkpoint file is on disk.
+_resume_neutralized: bool = False
+
 # flor.arg names the replayed run never logged, which fell back to their
 # declared default. Tracked so the warning prints once per name per session.
 _replay_defaulted_args: set = set()
@@ -503,14 +509,12 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
                 if _logical_replay_active:
                     _suppress_logs = int(each[0]) in logical_silent
                     if first_outer_iter and logical_mirror_pos is not None:
-                        _restore_from_mirror(
-                            name, *_layer_for(materialized, logical_mirror_pos)
+                        _restore_at(
+                            name, materialized, logical_mirror_pos, enrolled=True
                         )
                 else:
                     _suppress_logs = False
-                    _restore_from_mirror(
-                        name, *_layer_for(materialized, int(each[0]))
-                    )
+                    _restore_at(name, materialized, int(each[0]))
             first_outer_iter = False
         iter_clock = Clock()
         iter_clock.set_start_time()
@@ -776,16 +780,84 @@ def _flor_torch_save(obj, path, *args, **kwargs):
     return result
 
 
+def _shelf_has_any_mirror_for(spec) -> bool:
+    """Whether the historical run left any mirror for the resume block's file."""
+    try:
+        stem, ext = _user_path_stem_ext(spec.path)
+        return any(obj_store.get_shelf().glob(f"{stem}*{ext}"))
+    except Exception:
+        return False
+
+
+def _neutralized_resume_state(path):
+    """The state dict that makes the user's module-scope resume block a no-op.
+
+    The resume block (`torch.load("ckpt.pth")` + `load_state_dict`) runs at
+    module scope, where `layers` is still empty -- so the per-iteration redirect
+    below cannot reach it, and it loads whatever is on disk. After a forward run
+    that file holds *end-of-run* weights, which would land on top of the fresh
+    initialization that replaying from iteration 0 depends on.
+
+    When the shelf still has mirrors this doesn't matter: the plan restores one
+    per iteration and overwrites the block's effect anyway. When the shelf is
+    empty (a fresh clone -- runs/*.jsonl is committed, obj_store is not) there is
+    nothing to overwrite it with, so the block has to be neutralized instead.
+
+    Returning each target's *own* current state does exactly that:
+    `model.load_state_dict(model.state_dict())` leaves the seed-initialized
+    weights in place, which is precisely the state the forward run's iteration 0
+    started from. Returns None when the block can't be neutralized faithfully,
+    which keeps the caller on the loud-refusal path rather than guessing.
+    """
+    global _resume_neutralized
+    spec = cli.flags.resume_spec
+    if spec is None:
+        return None
+    try:
+        if _coerce_to_path(path).name != _coerce_to_path(spec.path).name:
+            return None
+        if _shelf_has_any_mirror_for(spec):
+            return None
+        user_frame = _find_user_frame()
+        if user_frame is None:
+            return None
+        scope = dict(user_frame.f_globals)
+        scope.update(user_frame.f_locals)
+        state = {}
+        for target_name, key in spec.applies:
+            target = scope.get(target_name)
+            snapshot = getattr(target, "state_dict", None)
+            if snapshot is None:
+                # A target the resume block writes to but we can't snapshot --
+                # a partial no-op would silently half-apply end-of-run state.
+                return None
+            state[key] = snapshot()
+        if not state:
+            return None
+    except Exception:
+        return None
+    _resume_neutralized = True
+    return state
+
+
 def _flor_torch_load(path, *args, **kwargs):
     assert _orig_torch_load is not None
-    if cli.in_replay_mode() and layers:
-        try:
-            stem, ext = _user_path_stem_ext(path)
-            flor_path = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
-            if flor_path.exists():
-                return _orig_torch_load(str(flor_path), *args, **kwargs)
-        except Exception:
-            pass
+    if cli.in_replay_mode():
+        if layers:
+            try:
+                stem, ext = _user_path_stem_ext(path)
+                flor_path = obj_store.get_shelf() / utils.to_filename(
+                    layers, stem, ext
+                )
+                if flor_path.exists():
+                    return _orig_torch_load(str(flor_path), *args, **kwargs)
+            except Exception:
+                pass
+        else:
+            # Module scope: no loop context yet, so this is the resume block.
+            neutral = _neutralized_resume_state(path)
+            if neutral is not None:
+                return neutral
     return _orig_torch_load(path, *args, **kwargs)
 
 
@@ -875,10 +947,42 @@ def _mirror_path_for(name: str, k: int, materialized: list, spec) -> Path:
 
 
 def _mirror_exists_at(name: str, k: int, materialized: list, spec) -> bool:
+    """True when position k has everything a restore there would need.
+
+    Both restore paths have to be satisfied, because both feed the same
+    iteration: the AST-detected torch resume block (when `spec` is set) and
+    every object enrolled through `flor.checkpointing`. A script using only
+    enrollment has `spec is None` and is judged purely on the shelf; a script
+    using neither has nothing to restore, so every position trivially qualifies.
+    """
     try:
-        return _mirror_path_for(name, k, materialized, spec).exists()
+        if spec is not None and not _mirror_path_for(name, k, materialized, spec).exists():
+            return False
+        if not checkpoints:
+            return True
+        iteration, value = _layer_for(materialized, k)
+        with _layer_swapped(name, iteration, value):
+            return all(obj_store.has_shelved(layers, n) for n, _ in checkpoints)
     except Exception:
         return False
+
+
+def _restore_at(
+    name: str, materialized: list, pos: int, enrolled: bool = False
+) -> None:
+    """Restore historical position `pos` through whichever paths are in play.
+
+    `enrolled` also re-runs the flor.checkpointing restore. Callers set it only
+    when anchoring somewhere other than the iteration the loop is currently on
+    -- the per-iteration load_ckpt in the loop already covers that case, and
+    repeating it here would just deserialize the same shelf entry twice.
+    """
+    iteration, value = _layer_for(materialized, pos)
+    if enrolled and checkpoints:
+        with _layer_swapped(name, iteration, value):
+            load_ckpt(missing_ok=True)
+    if cli.flags.resume_spec is not None:
+        _restore_from_mirror(name, iteration, value)
 
 
 def _find_latest_mirror_at_or_before(
@@ -942,8 +1046,11 @@ def _build_outer_replay_plan(name: str, materialized: list):
     in full. Silent iters (those not in the user's request) have their logs
     suppressed; requested iters log normally.
 
-    Aborts loudly if no mirror exists at or before the earliest requested
-    iter -- there is no earlier state to start from.
+    Fresh clone: when no mirror exists at or before the earliest requested iter,
+    replay the loop from iteration 0. `.flor/runs/*.jsonl` is committed but
+    `obj_store/` is not, so a teammate's clone has the observations and none of
+    the checkpoints; iteration 0 is still reconstructible because the seed is a
+    flor.arg restored from the historical run.
     """
     if not cli.flags.wev_found:
         # No flor.loop / no `with flor.checkpointing(...)` in the script --
@@ -975,7 +1082,8 @@ def _build_outer_replay_plan(name: str, materialized: list):
         return [], None, set(), False
 
     resume = cli.flags.resume_spec
-    if resume is None:
+    if resume is None and not checkpoints:
+        # Nothing to restore through either path -- narrowing is the whole plan.
         return [(i, materialized[i]) for i in requested], None, set(), False
 
     if all(_mirror_exists_at(name, r, materialized, resume) for r in requested):
@@ -990,12 +1098,18 @@ def _build_outer_replay_plan(name: str, materialized: list):
         # which carries .flor/runs/*.jsonl (committed) but no obj_store (not).
         # Replaying from iteration 0 is sound only if the model at loop entry is
         # the seed-initialized one, and the seed is a flor.arg restored from the
-        # historical run. But the user's own resume block runs at module scope,
-        # where `layers` is still empty, so _flor_torch_load cannot redirect it:
-        # if their checkpoint file is on disk it has already loaded *final*-epoch
-        # weights over the fresh init. Fast-forwarding from there would report
-        # wrong numbers, and warming would shelve them as if they were truth.
-        if os.path.exists(resume.path):
+        # historical run -- provided the script's initialization actually
+        # survived to the loop. The user's own resume block runs at module scope,
+        # where `layers` is still empty, so if their checkpoint file is on disk
+        # it would have loaded *final*-epoch weights over the fresh init.
+        # _neutralized_resume_state turns that block into a no-op precisely when
+        # the shelf is empty; this checks that it did, rather than assuming, so
+        # a resume shape flor can't neutralize refuses instead of guessing.
+        if (
+            resume is not None
+            and os.path.exists(resume.path)
+            and not _resume_neutralized
+        ):
             raise RuntimeError(
                 f"FLOR: cannot replay {name}={list(requested)}: no checkpoint "
                 f"mirror at or before position {target_min}, and {resume.path!r} "

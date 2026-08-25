@@ -295,9 +295,9 @@ never overwrites one the forward run wrote, and warming is disabled under an
 `--override` that could move the numbers (`device=cpu`).
 
 Replaying from iteration 0 assumes the script seeds deterministically. If your
-script has a resume block (`torch.load("ckpt.pth")` at module scope) and that
-file is still on disk, flor refuses rather than fast-forwarding from
-end-of-run weights — move it aside and replay again.
+script has a resume block (`torch.load("ckpt.pth")` at module scope), flor
+neutralizes it for that first replay so it can't load end-of-run weights over
+the fresh initialization — your checkpoint file is left where it is, untouched.
 
 ## 🏗 Real ML Systems Built on FlorDB
 
