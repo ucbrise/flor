@@ -178,8 +178,20 @@ class TestReplayRestore:
         assert list(replayed) == [1]
         assert replayed[1] == pytest.approx(forward[1], rel=1e-6)
 
-    def test_replay_does_not_write_into_the_object_store(self, trained):
+    def test_replay_never_overwrites_an_existing_mirror(self, trained):
         before = mirrors(trained)
+        digests = {
+            name: os.path.getsize(
+                os.path.join(
+                    trained.root,
+                    ".flor",
+                    "obj_store",
+                    os.path.basename(trained.run_files()[0])[: -len(".jsonl")],
+                    name,
+                )
+            )
+            for name in before
+        }
         trained.run(
             "train.py",
             "--replay_flor",
@@ -191,6 +203,15 @@ class TestReplayRestore:
             "step=none",
         )
         assert mirrors(trained) == before
+        for name, size in digests.items():
+            shelf = os.path.join(
+                trained.root,
+                ".flor",
+                "obj_store",
+                os.path.basename(trained.run_files()[0])[: -len(".jsonl")],
+                name,
+            )
+            assert os.path.getsize(shelf) == size
 
     def test_user_driven_iteration_restores_its_own_mirror(self, project):
         # flor.iteration under --replay_flor used to abort outright. It now
@@ -242,3 +263,106 @@ class TestReplayRestore:
         replayed = values(project, "replay")
         assert list(replayed) == [1]
         assert replayed[1] == pytest.approx(forward[1], rel=1e-6)
+
+
+def shelf_dir(project):
+    tstamp = os.path.basename(project.run_files()[0])[: -len(".jsonl")]
+    return os.path.join(project.root, ".flor", "obj_store", tstamp)
+
+
+def simulate_fresh_clone(project):
+    """What a teammate gets from `git clone`: runs/*.jsonl but no obj_store.
+
+    The user's own ckpt.pth goes too -- a clone that still had it would be
+    carrying end-of-run weights that the script's module-scope resume block
+    would load over its initialization.
+    """
+    import shutil
+
+    shutil.rmtree(shelf_dir(project))
+    ckpt = os.path.join(project.root, "ckpt.pth")
+    if os.path.exists(ckpt):
+        os.remove(ckpt)
+
+
+class TestCheckpointWarming:
+    def test_fast_forward_shelves_the_mirrors_it_passes(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "--kwargs", "ckpt_interval_s=3600", "epochs=3")
+        assert len(mirrors(project)) == 1  # only epoch 0 survived the throttle
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=1", "--iter", "step=none",
+        )
+
+        # The replay recomputed epoch 1 to answer the query; warming keeps that
+        # state instead of throwing it away.
+        assert "ckpt_epoch_1.pth" in mirrors(project)
+
+    def test_warmed_mirror_makes_the_next_replay_a_direct_restore(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "--kwargs", "ckpt_interval_s=3600", "epochs=3")
+        forward = values(project, "forward")
+
+        for _ in range(2):
+            project.run(
+                "train.py", "--replay_flor", "--apply", "weight_sum",
+                "--iter", "epoch=1", "--iter", "step=none",
+            )
+
+        # Second replay restores epoch 1's warmed mirror directly rather than
+        # fast-forwarding from epoch 0, and must land on the same value.
+        replayed = values(project, "replay")
+        assert replayed[1] == pytest.approx(forward[1], rel=1e-6)
+
+    def test_warming_is_off_when_an_override_could_move_the_numbers(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "--kwargs", "ckpt_interval_s=3600", "epochs=3")
+        before = mirrors(project)
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=1", "--iter", "step=none",
+            "--override", "device=cpu",
+        )
+
+        # device=cpu is allowlisted for replay but cpu/cuda kernels don't agree
+        # bit-for-bit, so whatever this recomputed is not forward-run truth and
+        # must not be shelved as if it were.
+        assert mirrors(project) == before
+
+    def test_fresh_clone_replays_from_zero_and_matches_forward(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "epochs=3")
+        forward = values(project, "forward")
+        simulate_fresh_clone(project)
+
+        proc = project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=2", "--iter", "step=none", check=False,
+        )
+
+        assert proc.returncode == 0, proc.stderr
+        replayed = values(project, "replay")
+        assert replayed[2] == pytest.approx(forward[2], rel=1e-6)
+        # And it paid the recompute once: the mirrors are back on the shelf.
+        assert "ckpt_epoch_2.pth" in mirrors(project)
+
+    def test_stale_user_checkpoint_blocks_replay_from_zero(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py", "epochs=3")
+        import shutil
+
+        shutil.rmtree(shelf_dir(project))  # obj_store gone, ckpt.pth left behind
+
+        proc = project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=2", "--iter", "step=none", check=False,
+        )
+
+        # Iteration 0 is not reconstructible here: the module-scope resume block
+        # already loaded end-of-run weights. Better to refuse than to report
+        # fast-forwarded numbers that started from the wrong state.
+        assert proc.returncode != 0
+        assert "no longer reconstructible" in (proc.stderr + proc.stdout)

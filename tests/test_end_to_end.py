@@ -88,8 +88,19 @@ class TestForwardRun:
 
     def test_flor_dir_is_gitignored_and_cmd_file_tracked(self, trained):
         with open(os.path.join(trained.root, ".gitignore")) as f:
-            assert ".flor/" in f.read().split()
+            entries = f.read().split()
+        assert ".flor/*" in entries
+        assert "!.flor/runs/" in entries
+        # The legacy bare entry would keep git from descending into .flor/ at
+        # all, making the re-include below it dead.
+        assert ".flor/" not in entries
         assert os.path.exists(os.path.join(trained.root, ".flor.cmd"))
+
+    def test_run_jsonl_is_committed_but_cache_and_objstore_are_not(self, trained):
+        tracked = trained.git_tracked_files()
+        assert any(f.startswith(".flor/runs/") and f.endswith(".jsonl") for f in tracked)
+        assert not any(f.startswith(".flor/obj_store/") for f in tracked)
+        assert not any(f.endswith(".db") for f in tracked)
 
     def test_each_run_gets_a_commit_with_args_in_the_body(self, trained):
         trained.run("train.py", "--kwargs", "epochs=1")

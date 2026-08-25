@@ -419,11 +419,13 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
         )
     try:
         yield
-        if not replaying:
-            # Replay reads from the object store keyed on the *historical*
-            # tstamp (obj_store.get_shelf); writing there would overwrite the
-            # mirrors the replay is reading from.
-            ckpt()
+        # Replay reads from the object store keyed on the *historical* tstamp
+        # (obj_store.get_shelf), so an unconditional write here would overwrite
+        # the mirrors the replay is reading from. Warming is allowed to fill
+        # the gaps the forward run left, and only those.
+        warming = replaying and _ckpt_warming_enabled()
+        if not replaying or warming:
+            ckpt(only_if_absent=warming)
     finally:
         _suppress_logs = outer_suppress
         context.pop()
@@ -494,7 +496,9 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         )
         context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
         if pos == 0 and cli.in_replay_mode():
-            load_ckpt()
+            # Under fast-forward the state comes from the single restore below
+            # plus recomputation, so a gap in the shelf is expected, not fatal.
+            load_ckpt(missing_ok=_logical_replay_active)
             if materialized is not None:
                 if _logical_replay_active:
                     _suppress_logs = int(each[0]) in logical_silent
@@ -512,15 +516,18 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         iter_clock.set_start_time()
         yield each[1]  # type: ignore
         iter_deltas.append(iter_clock.get_delta())
-        if pos == 0 and not cli.in_replay_mode():
+        # On replay this shelves only what the forward run left missing, so a
+        # fast-forwarded iteration is paid for once rather than on every replay.
+        warming = _ckpt_warming_enabled()
+        if pos == 0 and (warming or not cli.in_replay_mode()):
             now = time.perf_counter()
             if _last_ckpt_time is None or (now - _last_ckpt_time) >= ckpt_interval_s:
-                ckpt()
+                ckpt(only_if_absent=warming)
                 _last_ckpt_time = now
-    if pos == 0 and not cli.in_replay_mode():
+    if pos == 0 and (_ckpt_warming_enabled() or not cli.in_replay_mode()):
         # Force a final checkpoint at outermost loop exit so end-of-run state
         # is always captured, regardless of the time guard.
-        ckpt()
+        ckpt(only_if_absent=_ckpt_warming_enabled())
         _last_ckpt_time = time.perf_counter()
     context.pop()
     _emit_iter_summary(iter_deltas)
@@ -651,19 +658,52 @@ def _deferred_init():
             assert (
                 versions.current_branch() is not None
             ), "Running from a detached HEAD?"
-            versions.ensure_gitignored(".flor/")
+            versions.ensure_gitignored()
             versions.to_shadow()
     _install_torch_hooks()
 
 
-def ckpt():
+# Overrides that cannot change what the recomputed state *is*. ckpt_interval_s
+# only sets how often a checkpoint is taken, so a replay carrying it still
+# reconstructs the forward run's state faithfully; `device` is on the CLI
+# allowlist but cpu/cuda kernels do not agree bit-for-bit, so it is not here.
+NUMERICS_NEUTRAL_OVERRIDES = frozenset({"ckpt_interval_s"})
+
+
+def _ckpt_warming_enabled() -> bool:
+    """May this replay shelve mirrors the forward run never left behind?
+
+    A replay recomputes state the forward run held but did not save -- because
+    ckpt_interval_s threw it away, or because the repo was cloned with
+    runs/*.jsonl and no obj_store at all. Shelving it turns the *next* replay
+    of that iteration into a fast-path restore instead of another fast-forward,
+    which is what makes a fresh clone slow only once.
+
+    Two rules keep this from corrupting history. Callers must honor the first;
+    this predicate is the second:
+
+      - Never overwrite. An existing mirror is forward-run truth and a warmed
+        one is a reconstruction, so truth wins every collision.
+      - Never warm under an override that could move the numbers. The
+        reconstruction is only sound because the replay re-ran the same code
+        over the same args; `--override device=cpu` breaks that premise, and
+        caching its output as a mirror would quietly poison later replays.
+    """
+    if not cli.in_replay_mode():
+        return False
+    return not (set(cli.flags.overrides) - NUMERICS_NEUTRAL_OVERRIDES)
+
+
+def ckpt(only_if_absent: bool = False):
     for name, obj in checkpoints:
+        if only_if_absent and obj_store.has_shelved(layers, name):
+            continue
         obj_store.serialize(layers, name, obj)
 
 
-def load_ckpt():
+def load_ckpt(missing_ok: bool = False):
     for name, obj in checkpoints:
-        obj_store.deserialize(layers, name, obj)
+        obj_store.deserialize(layers, name, obj, missing_ok=missing_ok)
 
 
 # ---------------------------------------------------------------------------
@@ -710,7 +750,10 @@ def _flor_torch_save(obj, path, *args, **kwargs):
     global _last_ckpt_time
     assert _orig_torch_save is not None
     result = _orig_torch_save(obj, path, *args, **kwargs)
-    if not layers or cli.in_replay_mode():
+    if not layers:
+        return result
+    warming = cli.in_replay_mode() and _ckpt_warming_enabled()
+    if cli.in_replay_mode() and not warming:
         return result
     # Don't mirror writes that already land in our own obj_store -- those are
     # ckpt() calls (or other flor-driven saves) and would just produce
@@ -723,6 +766,9 @@ def _flor_torch_save(obj, path, *args, **kwargs):
     try:
         stem, ext = _user_path_stem_ext(path)
         flor_path = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+        # Warming fills gaps; it never rewrites a mirror the forward run left.
+        if warming and flor_path.exists():
+            return result
         _orig_torch_save(obj, str(flor_path), *args, **kwargs)
         _last_ckpt_time = now
     except Exception:
@@ -940,13 +986,35 @@ def _build_outer_replay_plan(name: str, materialized: list):
         name, target_min, materialized, resume
     )
     if mirror_pos is None:
-        raise RuntimeError(
-            f"FLOR: cannot replay {name}={list(requested)}: no checkpoint mirror "
-            f"found at or before position {target_min}. The historical run "
-            f"(ckpt_interval_s={ckpt_interval_s}s) may have discarded every "
-            f"earlier mirror -- re-run forward with a lower interval to "
-            f"enable replay from this point."
+        # No mirror at or before the target -- the usual cause is a fresh clone,
+        # which carries .flor/runs/*.jsonl (committed) but no obj_store (not).
+        # Replaying from iteration 0 is sound only if the model at loop entry is
+        # the seed-initialized one, and the seed is a flor.arg restored from the
+        # historical run. But the user's own resume block runs at module scope,
+        # where `layers` is still empty, so _flor_torch_load cannot redirect it:
+        # if their checkpoint file is on disk it has already loaded *final*-epoch
+        # weights over the fresh init. Fast-forwarding from there would report
+        # wrong numbers, and warming would shelve them as if they were truth.
+        if os.path.exists(resume.path):
+            raise RuntimeError(
+                f"FLOR: cannot replay {name}={list(requested)}: no checkpoint "
+                f"mirror at or before position {target_min}, and {resume.path!r} "
+                f"is present, so this script's resume block has already loaded "
+                f"end-of-run state over its initialization -- iteration 0 is no "
+                f"longer reconstructible. Move or delete {resume.path!r} to "
+                f"replay from the top, or re-run forward to rebuild the mirrors."
+            )
+        capture.flor_print(
+            f"FLOR: no checkpoint for {name}={list(requested)} at or before "
+            f"position {target_min}; replaying from iteration 0. This recomputes "
+            f"the intervening iterations (accurate only if the script seeds "
+            f"deterministically) and shelves the checkpoints it passes, so "
+            f"subsequent replays start from the nearest one."
         )
+        requested_set = set(requested)
+        expanded = list(range(0, requested[-1] + 1))
+        silent = {i for i in expanded if i not in requested_set}
+        return [(i, materialized[i]) for i in expanded], None, silent, True
 
     requested_set = set(requested)
     expanded = list(range(mirror_pos + 1, requested[-1] + 1))

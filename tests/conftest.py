@@ -167,4 +167,8 @@ def project(tmp_path):
         def git_log(self):
             return git(self.root, "log", "--format=%B%x00").stdout.split("\0")
 
+        def git_tracked_files(self):
+            out = git(self.root, "ls-files").stdout
+            return [line for line in out.splitlines() if line.strip()]
+
     return Project(tmp_path / "project")

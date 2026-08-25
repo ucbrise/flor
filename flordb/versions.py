@@ -22,25 +22,40 @@ def get_repo_dir():
         flor_print(f"An error occurred while getting the repository directory: {e}")
 
 
-def ensure_gitignored(entry: str):
+# Everything under .flor/ is reconstructible except runs/. The sqlite cache is
+# rebuilt by `flor unpack` and checkpoints are recomputed by replay, but a run's
+# JSONL is the one irreplaceable observation, and it packs to ~69KB per run in
+# git -- cheap enough to commit beside the code and args that produced it, so a
+# clone or a `git fetch` carries the whole experiment history.
+FLOR_IGNORE_ENTRIES = (".flor/*", "!.flor/runs/")
+
+# Pre-v4 flor wrote a bare `.flor/`. Git does not descend into an excluded
+# directory, so a `!.flor/runs/` added underneath it would never re-include
+# anything -- the legacy line has to be removed, not just appended to.
+LEGACY_FLOR_IGNORE_ENTRIES = (".flor/", ".flor")
+
+
+def ensure_gitignored(entries=FLOR_IGNORE_ENTRIES, legacy=LEGACY_FLOR_IGNORE_ENTRIES):
     repo_dir = get_repo_dir()
     if repo_dir is None:
         return
     gitignore_path = os.path.join(str(repo_dir), ".gitignore")
-    entry = entry.strip()
+    lines = []
     if os.path.exists(gitignore_path):
         with open(gitignore_path, "r") as f:
-            lines = [line.strip() for line in f.readlines()]
-        if entry in lines:
-            return
-        needs_newline = bool(lines) and lines[-1] != ""
-        with open(gitignore_path, "a") as f:
-            if needs_newline:
-                f.write("\n")
-            f.write(entry + "\n")
-    else:
-        with open(gitignore_path, "w") as f:
-            f.write(entry + "\n")
+            lines = f.read().splitlines()
+
+    kept = [line for line in lines if line.strip() not in legacy]
+    present = {line.strip() for line in kept}
+    missing = [e for e in entries if e not in present]
+    if kept == lines and not missing:
+        return
+
+    # Appended at the end: gitignore is last-match-wins, so this keeps the
+    # re-include from being undone by a broader pattern further down the file.
+    out = kept + missing
+    with open(gitignore_path, "w") as f:
+        f.write("\n".join(out) + "\n")
 
 
 def git_commit(message="FLOR::Auto-commit"):

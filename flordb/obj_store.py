@@ -94,7 +94,7 @@ def serialize(layers, name, obj):
     return path.name
 
 
-def deserialize(layers, name, obj):
+def deserialize(layers, name, obj, missing_ok: bool = False):
     if (path := get_shelf() / utils.to_filename(layers, name, ".pth")).exists():
         import torch
 
@@ -117,6 +117,12 @@ def deserialize(layers, name, obj):
         # in the object store -- usually because the adaptive throttle skipped
         # it. Failing loudly beats replaying from an uninitialized object and
         # reporting the resulting numbers as historical fact.
+        #
+        # missing_ok is the fast-forward case, where the caller has already
+        # restored an earlier iteration and is recomputing its way forward: a
+        # gap in the shelf is the expected condition there, not a failure.
+        if missing_ok:
+            return False
         stem = utils.to_filename(layers, name, "").stem
         raise RuntimeError(
             f"FLOR: no checkpoint for {name!r} at this iteration. Looked for "
@@ -125,6 +131,20 @@ def deserialize(layers, name, obj):
             f"(flor.set_ckpt_interval); narrow to an iteration that has one, or "
             f"re-run forward with a smaller interval."
         )
+
+
+# The extension set `deserialize` searches, in the same order. Kept beside it so
+# `has_shelved` means exactly "deserialize would find something here".
+SHELF_EXTENSIONS = (".pth", ".npy", ".parquet", ".pkl")
+
+
+def has_shelved(layers, name) -> bool:
+    """True when some backend's mirror for (layers, name) is already shelved."""
+    shelf = get_shelf()
+    return any(
+        (shelf / utils.to_filename(layers, name, ext)).exists()
+        for ext in SHELF_EXTENSIONS
+    )
 
 
 def get_shelf():

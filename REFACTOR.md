@@ -97,16 +97,76 @@ Implemented (v4):
 
 The legacy layout — a single `.flor.json` overwritten per run plus a sqlite DB at `~/.flor/<projid>.db` — was thin enough for `flor.log` / `flor.dataframe` but too thin for the LLM Access Path. New layout (implemented):
 
-1. **Per-run logs** at `.flor/runs/<tstamp>.jsonl` (microsecond tstamps, one JSON record per line). The whole `.flor/` directory is auto-added to `.gitignore` on first run; data sync is a separate concern.
+1. **Per-run logs** at `.flor/runs/<tstamp>.jsonl` (microsecond tstamps, one JSON record per line), committed alongside the run that produced them. The rest of `.flor/` is auto-added to `.gitignore` on first run — see "Data sync-ing" below.
 2. **Reproducibility metadata** (`flor.arg` values, including seeds) lives in the shadow-branch auto-commit message body as `k=v` lines under the `FLOR::Auto-commit::<tstamp>` subject — survives even when log files are gone.
 3. **No `~/.flor` state.** Everything is project-local under `.flor/`: query-cache DB at `.flor/<projid>.db`, object store at `.flor/obj_store/<tstamp>/`.
 4. **One commit per run is guaranteed** even when source and args are unchanged: each run rewrites `.flor.cmd` (tracked at repo root) with the run tstamp and CLI invocation, which dirties the tree.
 5. **`flor unpack` rebuilds the cache** by walking `.flor/runs/*.jsonl` directly — no historical git checkouts.
 6. **Self-describing loop context.** Each record's `ctx` is either `null` (run-level) or a flat list of `{name, iteration, value}` segments from outermost to innermost loop. No opaque IDs, no recursive `p_ctx` — nesting depth is `len(ctx)`, and the JSONL is readable end-to-end without a join table. Internally the cache stores `ctx` as JSON-encoded text on `logs`; the old `loops` table and `ctx_id` FK are gone.
 
-## Data sync-ing
+## Data sync-ing (implemented)
 
-We can't really have the logs living in git, but we want some measure of reproducibility. That's a balancing act.
+The balancing act resolved once the three things under `.flor/` were measured
+separately — they differ by three orders of magnitude, and only one of them is
+irreplaceable:
+
+| Tier | Per run | Recomputable? | Decision |
+|---|---|---|---|
+| `runs/*.jsonl` | 12KB–2.4MB raw, **~69KB packed in git** | No | **Commit it** |
+| `obj_store/` | ~19MB | Yes, by replaying | Ignore |
+| `<projid>.db` | ~760KB | Yes, `flor unpack` | Ignore |
+
+Two measurements drove this:
+
+1. **Git packs run JSONL at 15.4×** (5 runs, 5.35MB → 347KB after `gc`),
+   including delta compression across structurally-identical runs. Ten students
+   × 100 runs/semester ≈ 70MB. That tier is free, so it goes in git and syncs
+   by `git fetch` — no server, no bucket, no egress bill for a team spread
+   across the country.
+2. **Reshaping the record to fight redundancy isn't worth it.** Hoisting the
+   per-line `projid`/`tstamp`/`filename` into a header cuts uncompressed size
+   39% but compressed size only 3.5%. Compression already eats that redundancy,
+   so the self-describing record shape stays as it is.
+
+A third measurement closed off the obvious alternative for the heavy tier:
+**checkpoints don't dedup** (21 mirror files, 21 distinct hashes), so
+content-addressed storage — git-annex, DVC, restic-style chunking — buys
+nothing here. Object storage stays a future optimization; if it ever lands,
+the lever that matters for this topology is *egress* pricing, not storage rate.
+
+`versions.ensure_gitignored()` writes `.flor/*` + `!.flor/runs/` rather than a
+bare `.flor/`: git does not descend into an excluded directory, so a re-include
+underneath one is dead. Repos carrying the pre-v4 `.flor/` line are migrated in
+place — the legacy line is removed, not appended to.
+
+### Replay warms the object store
+
+Not syncing checkpoints means a fresh clone has nothing to restore from, so
+replay recomputes — and now keeps what it recomputed. `_ckpt_warming_enabled()`
+gates it, and two rules keep a reconstruction from being mistaken for truth:
+
+- **Never overwrite.** An existing mirror is forward-run truth; a warmed one is
+  a reconstruction, and truth wins every collision (`ckpt(only_if_absent=)`,
+  `obj_store.has_shelved`).
+- **Never warm under an override that could move the numbers.** The
+  reconstruction is only sound because the replay re-ran the same code over the
+  same args. `ckpt_interval_s` is numerics-neutral and stays allowed;
+  `device=cpu` is not (cpu/cuda kernels don't agree bit-for-bit) and disables
+  warming.
+
+`_build_outer_replay_plan` no longer aborts when *no* mirror exists at or
+before the target. It replays from iteration 0 instead, which is sound because
+the seed is a `flor.arg` restored from the historical run — except in one case
+it now checks for explicitly: the user's resume block runs at module scope,
+where `layers` is empty and `_flor_torch_load` cannot redirect it, so if their
+checkpoint file is still on disk it has already loaded end-of-run weights over
+the fresh init. Fast-forwarding from there would report wrong numbers *and*
+warm them into the shelf, so that case raises and says which file to move.
+
+Still open: `flor.checkpointing`-enrolled (non-torch) objects have no
+equivalent of the AST resume block, so a fresh clone replaying that path skips
+the restore (`deserialize(..., missing_ok=True)` during fast-forward) rather
+than reconstructing initial state.
 
 ## Replay is a query, not a run (implemented)
 
@@ -217,9 +277,10 @@ outermost `flor.loop`:
 
 - restores that iteration's state on entry — enrolled `flor.checkpointing`
   objects first, then the AST-detected torch resume block;
-- never writes to the object store (`obj_store.get_shelf()` is keyed on the
-  *historical* tstamp during replay, so a checkpoint write would overwrite the
-  mirror it is reading from);
+- never *overwrites* the object store (`obj_store.get_shelf()` is keyed on the
+  *historical* tstamp during replay, so an unconditional write would clobber
+  the mirror it is reading from). It does warm the gaps — see "Replay warms the
+  object store" above;
 - narrows by suppressing logs rather than skipping work. Flor doesn't own the
   iteration space here — it can't enumerate the iterations ahead of time, and
   can't skip the body of a `with` block — so `--iter name=0,2` decides which

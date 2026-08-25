@@ -258,20 +258,46 @@ Everything is project-local; nothing lands in your home directory.
 
 ```
 .flor/
-  runs/<tstamp>.jsonl     one immutable record per forward run
-  obj_store/<tstamp>/     checkpoints, addressable by loop iteration
-  <projid>.db             sqlite query cache, rebuildable at any time
+  runs/<tstamp>.jsonl     tracked: one immutable record per forward run
+  obj_store/<tstamp>/     ignored: checkpoints, addressable by loop iteration
+  <projid>.db             ignored: sqlite query cache, rebuildable at any time
 .flor.cmd                 tracked: the run's tstamp and command line
 ```
 
-`.flor/` is added to `.gitignore` on first run, and each run makes one
-`FLOR::Auto-commit::<tstamp>` commit on a shadow branch whose message body
-carries the run's hyperparameters — so a run stays reproducible even if the
-logs are gone. Lost or moved the cache? Rebuild it from the JSONL:
+Each run makes one `FLOR::Auto-commit::<tstamp>` commit on a shadow branch whose
+message body carries the run's hyperparameters — so a run stays reproducible
+even if the logs are gone. Lost or moved the cache? Rebuild it from the JSONL:
 
 ```bash
 python -m flordb unpack
 ```
+
+### What syncs, and what doesn't
+
+The three things under `.flor/` have very different economics, so flor treats
+them differently in `.gitignore` (written on first run):
+
+| | Recomputable? | In git? |
+|---|---|---|
+| `runs/*.jsonl` | No — the one irreplaceable observation | **Yes**, ~69KB packed per run |
+| `obj_store/` | Yes, by replaying | No — ~19MB per run, and checkpoints don't dedup |
+| `<projid>.db` | Yes, `flor unpack` in seconds | No |
+
+So run history travels with the code that produced it. A teammate runs
+`git fetch && python -m flordb unpack` and has everyone's metrics — no server,
+no bucket, no bill.
+
+Checkpoints don't travel, which means the first replay in a fresh clone has to
+recompute from iteration 0. It does that automatically, and **shelves the
+checkpoints it passes on the way**, so only the first replay of a given run pays
+the cost. Two rules keep that from corrupting history: a recomputed checkpoint
+never overwrites one the forward run wrote, and warming is disabled under an
+`--override` that could move the numbers (`device=cpu`).
+
+Replaying from iteration 0 assumes the script seeds deterministically. If your
+script has a resume block (`torch.load("ckpt.pth")` at module scope) and that
+file is still on disk, flor refuses rather than fast-forwarding from
+end-of-run weights — move it aside and replay again.
 
 ## 🏗 Real ML Systems Built on FlorDB
 
