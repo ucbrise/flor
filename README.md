@@ -123,8 +123,12 @@ flor.dataframe("lr", "batch_size", "val_acc")
 2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2           2  0.0005         64      92
 ```
 
-Every `flor.loop` you name becomes a column, so nested metrics land at the right
-grain without a join table. Raw SQL is available too, via `flor.query(...)`.
+Each named `flor.loop` becomes its own column, and a row carries the loops that
+enclosed the `flor.log` that produced it. `val_acc` is logged once per epoch, so
+you get one row per epoch above. `loss` is logged inside `step`, so
+`flor.dataframe("loss")` returns one row per step, with `step` and `epoch` both
+attached — no join, no manual step counter. Raw SQL is available too, via
+`flor.query(...)`.
 
 → [Checkpoints](docs/checkpoints.md): what gets mirrored, enrolling objects
 explicitly, and bounding disk use.

@@ -41,8 +41,8 @@ Capture is not installed in IPython (where explicit `flor.log` is the path), for
 
 ## Name the loop
 
-Naming a loop tells FlorDB what an iteration is, so captured output lands at the
-right grain:
+Naming a loop tells FlorDB what an iteration is, so each captured line is tagged
+with the iteration it came from:
 
 ```python
 for epoch in flor.loop("epoch", range(3)):   # was: for epoch in range(3):
