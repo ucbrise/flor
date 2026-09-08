@@ -153,20 +153,36 @@ def _parse_ctx_cell(s):
     return json.loads(s)
 
 
+def _value_matches_iteration(iter_col, val_col):
+    """Whether `<name>_value` says nothing `<name>` doesn't.
+
+    Looping over `range(n)` makes the iterated value equal to the iteration
+    index on every row, so the pair is a duplicate; looping over anything
+    else (a list of paths, a dataloader) keeps both. Values arrive as
+    strings (`str(value)` at capture time), so compare on the string form.
+    """
+    def as_text(x):
+        return None if x is None or (isinstance(x, float) and pd.isna(x)) else str(x)
+
+    left = iter_col.map(as_text)
+    right = val_col.map(as_text)
+    return bool(((left == right) | (left.isna() & right.isna())).all())
+
+
 def expand_ctx(logs):
     """Turn the JSON `ctx` column into one column per loop, in place.
 
     Each `flor.loop` / `flor.iteration` segment contributes `<name>` (the
-    iteration index) and, when the iterated value was jsonable,
-    `<name>_value`. Walks leaf to root so the column order matches the
-    JOIN-from-leaf-upward order the pre-v4 schema produced.
+    iteration index) and, when the iterated value was jsonable and differs
+    from that index, `<name>_value`. Walks root to leaf, so outer loops sit
+    to the left of the inner loops they enclose.
     """
     parsed = logs["ctx"].apply(_parse_ctx_cell)
     logs = logs.drop(columns=["ctx"])
 
     max_depth = int(parsed.map(len).max()) if len(parsed) else 0
 
-    for depth in range(max_depth - 1, -1, -1):
+    for depth in range(max_depth):
         seg = parsed.apply(lambda lst, d=depth: lst[d] if d < len(lst) else None)
         non_null = seg.dropna()
         if non_null.empty:
@@ -184,8 +200,9 @@ def expand_ctx(logs):
         if iter_col.notna().any():
             logs[loop_name] = iter_col.astype("Int64")
 
-        # Only surface _value column if at least one row carries it.
-        if val_col.notna().any():
+        # Only surface _value column if at least one row carries it, and
+        # only when it carries something the iteration index doesn't.
+        if val_col.notna().any() and not _value_matches_iteration(iter_col, val_col):
             logs[f"{loop_name}_value"] = val_col
 
     return logs
