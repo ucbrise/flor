@@ -130,6 +130,100 @@ def _argv_mentions(argv: List[str], commands: List[str]) -> bool:
     return False
 
 
+def _render_ctx(ctx) -> str:
+    """`epoch=0`, or `epoch=0/batch=7` for a nested loop. Empty when unindexed."""
+    if not ctx:
+        return ""
+    return "/".join(
+        f"{seg['name']}={seg['iteration']}"
+        for seg in ctx
+        if isinstance(seg, dict) and seg.get("iteration") is not None
+    )
+
+
+def report_extractions(
+    derived, io_count: int, limit: int, wrote: bool, shared: Optional[str] = None
+) -> None:
+    """Print what extraction found, in the same shape whether or not it wrote.
+
+    Preview and `--extract` differ in one word and one closing line; keeping
+    them in one function is what stops the dry run from drifting away from the
+    thing it is supposed to be predicting.
+    """
+    if not derived:
+        print(
+            f"Nothing extractable from {io_count} captured line(s). "
+            f"No metrics {'were added' if wrote else 'would be added'}."
+        )
+        return
+
+    names = sorted({log.name for log, _ in derived})
+    indexes = sorted(
+        {
+            seg["name"]
+            for log, _ in derived
+            for seg in (log.ctx or [])
+            if isinstance(seg, dict)
+        }
+    )
+    verb = "Extracted" if wrote else "Would extract"
+    print(
+        f"{verb} {len(derived)} value(s) across {len(names)} metric(s) from "
+        f"{io_count} captured line(s): {', '.join(names)}"
+    )
+    if indexes:
+        print(f"Indexed by: {', '.join(indexes)}")
+    print()
+
+    shown = derived[:limit]
+    ctx_width = max((len(_render_ctx(log.ctx)) for log, _ in shown), default=0)
+    name_width = max(len(log.name) for log, _ in shown)
+    for log, line in shown:
+        ctx = _render_ctx(log.ctx)
+        print(
+            f"  {ctx:<{ctx_width}}  {log.name:<{name_width}}  "
+            f"{log.value:<12} <- {line}"
+        )
+    if len(derived) > limit:
+        print(f"  ... {len(derived) - limit} more")
+
+    if not wrote:
+        print("\nNothing was written. Run again with --extract to write them.")
+        return
+
+    print(
+        f"\nThey are columns now: "
+        f"flor.dataframe({', '.join(repr(n) for n in names)}). "
+        f"Re-run --extract any time to refresh the reading."
+    )
+    print(_sharing_note(shared))
+
+
+def _sharing_note(shared: Optional[str]) -> str:
+    """What became of the tracked half, in the user's terms.
+
+    Extraction is only shared once `.flor/extracted/` is committed, so saying
+    "written" and stopping would leave a teammate's `flor unpack` quietly
+    short of the columns the author is looking at.
+    """
+    if shared == "committed":
+        branch = current_branch()
+        return (
+            f"Saved to .flor/extracted/ and committed to {branch}. Push it and "
+            f"a teammate's `flor unpack` has the same columns."
+        )
+    if shared == "nothing-to-commit":
+        return "Saved to .flor/extracted/, unchanged since the last commit."
+    if shared == "not-shadow":
+        return (
+            f"Saved to .flor/extracted/, not committed: you are on "
+            f"{current_branch()}, and FlorDB keeps its auto-commits off the "
+            f"branch you review. Commit it yourself to share it, or let it "
+            f"ride your next run's auto-commit."
+        )
+    return "Saved to .flor/extracted/."
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="FlorDB CLI")
 
@@ -250,15 +344,18 @@ def parse_args():
         "--preview",
         action="store_true",
         help=(
-            "Show which metrics flor.set_capture(extract=True) would pull out "
-            "of the io already captured. Writes nothing."
+            "Show the metrics --extract would pull out of the io already "
+            "captured, and the line each came from. Writes nothing."
         ),
     )
     capture_parser.add_argument(
-        "--channel",
-        type=str,
-        default=None,
-        help="Restrict to one channel (io::stdout, io::stderr, io::log[::level]).",
+        "--extract",
+        action="store_true",
+        help=(
+            "Read metrics out of captured text and add them to the metric "
+            "table, so they appear in flor.dataframe(). Re-runs cleanly: each "
+            "invocation replaces the previous extraction."
+        ),
     )
     capture_parser.add_argument(
         "--limit",

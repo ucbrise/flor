@@ -30,7 +30,11 @@ def repo(tmp_path, monkeypatch):
 class TestEnsureGitignored:
     def test_creates_the_file_when_absent(self, repo):
         versions.ensure_gitignored()
-        assert read_gitignore(repo).split() == [".flor/*", "!.flor/runs/"]
+        assert read_gitignore(repo).split() == [
+            ".flor/*",
+            "!.flor/runs/",
+            "!.flor/extracted/",
+        ]
 
     def test_is_idempotent(self, repo):
         versions.ensure_gitignored()
@@ -46,7 +50,13 @@ class TestEnsureGitignored:
         # into an excluded directory, so leaving it would make the re-include
         # below it dead.
         assert ".flor/" not in entries
-        assert entries == ["*.pyc", "build/", ".flor/*", "!.flor/runs/"]
+        assert entries == [
+            "*.pyc",
+            "build/",
+            ".flor/*",
+            "!.flor/runs/",
+            "!.flor/extracted/",
+        ]
 
     def test_preserves_unrelated_entries(self, repo):
         write_gitignore(repo, "# comment\n\n.venv/\n")

@@ -27,7 +27,13 @@ def get_repo_dir():
 # JSONL is the one irreplaceable observation, and it packs to ~69KB per run in
 # git -- cheap enough to commit beside the code and args that produced it, so a
 # clone or a `git fetch` carries the whole experiment history.
-FLOR_IGNORE_ENTRIES = (".flor/*", "!.flor/runs/")
+#
+# extracted/ is tracked for a different reason. It is derived, not observed, so
+# it could be rebuilt -- but only by whoever thought to ask. Committing it is
+# what makes `flor capture --extract` a decision the team inherits rather than
+# one each clone has to rediscover, and it pins the reading: a teammate sees the
+# values you saw, not what a later extraction rule would have guessed.
+FLOR_IGNORE_ENTRIES = (".flor/*", "!.flor/runs/", "!.flor/extracted/")
 
 # Pre-v4 flor wrote a bare `.flor/`. Git does not descend into an excluded
 # directory, so a `!.flor/runs/` added underneath it would never re-include
@@ -77,6 +83,38 @@ def git_commit(message="FLOR::Auto-commit"):
         flor_print("Not a valid Git repository")
     except Exception as e:
         flor_print(f"An error occurred while committing: {e}")
+
+
+def commit_paths(paths, message):
+    """Commit specific paths, leaving the rest of the working tree alone.
+
+    The per-run auto-commit is a `git add -A` because its job is to record the
+    exact code that produced a run. This one has a much smaller job -- saving a
+    derived artifact -- so it stages only what it was handed, and never sweeps
+    up an edit the user was in the middle of.
+
+    Refuses on a non-shadow branch. `flor capture --extract` can be run from
+    anywhere, and the one thing FlorDB promises about auto-commits is that they
+    stay off the branch you review and merge.
+
+    Returns 'committed', 'nothing-to-commit', 'not-shadow', or 'error'.
+    """
+    try:
+        repo = Repo(CURRDIR, search_parent_directories=True)
+        branch = repo.active_branch.name
+        if not branch.startswith(SHADOW_BRANCH_PREFIX):
+            return "not-shadow"
+        repo.git.add("--", *paths)
+        if not repo.index.diff("HEAD"):
+            return "nothing-to-commit"
+        repo.git.commit(m=message)
+        return "committed"
+    except InvalidGitRepositoryError:
+        flor_print("Not a valid Git repository")
+        return "error"
+    except Exception as e:
+        flor_print(f"An error occurred while committing extractions: {e}")
+        return "error"
 
 
 def current_branch():

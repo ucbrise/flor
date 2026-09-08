@@ -30,7 +30,7 @@ import re
 import sys
 import threading
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 
 STDOUT = "io::stdout"
@@ -50,10 +50,6 @@ class Config:
     # Ceiling on records per run. A per-step print in a long training loop
     # would otherwise produce millions of rows.
     max_records: int = 10000
-    # Promote recognized `k: v` pairs to real metric rows. Off by default:
-    # a false positive silently invents a column in flor.dataframe, so this
-    # stays opt-in and `flor capture --preview` exists to show what it'd do.
-    extract: bool = False
 
 
 config = Config()
@@ -236,8 +232,26 @@ def _flor_handle(logger, record):
 
 
 # ---------------------------------------------------------------------------
-# opt-in structuring
+# structuring
 # ---------------------------------------------------------------------------
+
+# Names recognized as a loop index rather than a metric. The vocabulary is
+# fixed on purpose: an open-ended rule would read `Loading 5 files` as an index
+# named `Loading` and invent a loop the user never wrote. These five cover the
+# step-prefix convention as ML logs actually write it.
+STEP_NAMES = ("epoch", "step", "iteration", "iter", "batch")
+
+# `epoch 0 | ...`, `Epoch 1/10`, `step: 1200 ...`. Anchored at the start of the
+# line, because that position is what makes the number an index and not a
+# measurement -- `loss 3` mid-line is a value, `epoch 3 |` leading is a key.
+_STEP_RE = re.compile(
+    r"^\s*(" + "|".join(STEP_NAMES) + r")"
+    r"(?:\s*[:=]\s*|\s+)"
+    r"(\d+)"
+    r"(?:\s*/\s*\d+)?"   # `1/10` -- the total is context, not data
+    r"(?![\w.])",
+    re.IGNORECASE,
+)
 
 # A key, then `:` or `=`, then a number. The lookarounds are what keep this
 # conservative: the left one rejects `http://host:80` (preceded by `/`) and
@@ -276,6 +290,57 @@ def extract_pairs(line: str) -> List[Tuple[str, float]]:
         if len(out) >= MAX_PAIRS_PER_LINE:
             break
     return out
+
+
+@dataclass
+class Extracted:
+    """What one line of text yields: at most one index, any number of measures.
+
+    The split is the whole point. An index addresses a row (`epoch`), a measure
+    fills a cell (`loss`). Recording an index as a measure makes it a peer of
+    `loss` in `database.pivot`, which joins per-variable frames on their common
+    columns -- with nothing to join on, three epochs and three losses come back
+    as nine rows instead of three.
+    """
+
+    index: Optional[Tuple[str, int]] = None
+    measures: List[Tuple[str, float]] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return self.index is not None or bool(self.measures)
+
+
+def extract_fields(line: str) -> Extracted:
+    """Split a line of free text into a loop index and metric values.
+
+    `epoch 0 | loss: 0.5000` -> index ("epoch", 0), measures [("loss", 0.5)].
+
+    An index is found two ways: the leading step prefix `_STEP_RE` recognizes,
+    and a `k: v` pair whose key is a step name carrying a whole number. Both
+    resolve to the same slot, so `epoch 3 | ...` and `epoch: 3 | ...` classify
+    alike, and a line offering two indexes keeps the leading one.
+    """
+    index: Optional[Tuple[str, int]] = None
+
+    match = _STEP_RE.match(line)
+    if match is not None:
+        index = (match.group(1).lower(), int(match.group(2)))
+
+    measures: List[Tuple[str, float]] = []
+    for key, value in extract_pairs(line):
+        if key.lower() in STEP_NAMES and float(value).is_integer() and value >= 0:
+            if index is None:
+                index = (key.lower(), int(value))
+            elif index[0] == key.lower():
+                # `epoch 3` matched the prefix and `epoch: 3` matched the pair
+                # rule on the same line; one index, not an index and a metric.
+                pass
+            else:
+                measures.append((key, value))
+            continue
+        measures.append((key, value))
+
+    return Extracted(index=index, measures=measures)
 
 
 # ---------------------------------------------------------------------------

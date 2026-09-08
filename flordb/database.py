@@ -5,10 +5,16 @@ import pandas as pd
 import sqlite3
 
 from .constants import *
+from . import capture
 from . import orm
 
 from . import utils
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+
+# Every value `logs.source` may hold. 'forward' is observation; the other two
+# are derived from it and are rebuilt rather than preserved.
+SOURCES = ("forward", "replay", "extract")
 
 
 def conn_and_cursor():
@@ -30,12 +36,13 @@ def _ctx_to_json(ctx) -> Optional[str]:
 def unpack(output_buffer, cursor, source: str = "forward"):
     # `source` tags every row inserted by this call. Forward runs and the
     # `flor unpack` CLI (which rebuilds the cache from JSONL) both insert
-    # 'forward'; replay inserts 'replay'. The cache mixes both, read paths
-    # default to forward, and `flor unpack` wipes replay state on rebuild.
+    # 'forward'; replay inserts 'replay'; `flor capture --extract` inserts
+    # 'extract'. The cache mixes them, read paths default to forward, and
+    # `flor unpack` wipes the two derived sources on rebuild.
     if not output_buffer:
         return
-    if source not in ("forward", "replay"):
-        raise ValueError(f"source must be 'forward' or 'replay', got {source!r}")
+    if source not in SOURCES:
+        raise ValueError(f"source must be one of {SOURCES}, got {source!r}")
     insert_sql = (
         "INSERT INTO logs (projid, tstamp, filename, ctx, value_name, value, "
         "value_type, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -234,6 +241,103 @@ def read_io(conn, channel=None):
     logs = expand_ctx(logs)
     trailing = ["channel", "line"]
     return logs[[c for c in logs.columns if c not in trailing] + trailing]
+
+
+# ---------------------------------------------------------------------------
+# deriving metrics from captured text
+# ---------------------------------------------------------------------------
+
+
+def _index_segment(ctx_segments, index):
+    """The ctx an extracted row gets: the line's own, plus the read index.
+
+    A synthesized segment goes on the end, where the innermost loop lives, so
+    an extracted `epoch` nests under whatever named loops already enclose the
+    line. When a loop of that name is already in ctx the text is restating what
+    `flor.loop` recorded, and the recorded one wins -- promoting it again would
+    put `epoch` at two depths and split the column.
+    """
+    if index is None:
+        return list(ctx_segments)
+    name, iteration = index
+    if any(seg.get("name") == name for seg in ctx_segments):
+        return list(ctx_segments)
+    return list(ctx_segments) + [
+        {"name": name, "iteration": iteration, "value": None}
+    ]
+
+
+def derive_extractions(cursor):
+    """Metric rows that `flor capture --extract` would write.
+
+    Returns `(log, line)` pairs -- the row, and the captured text it was read
+    out of -- so the preview and the write share one implementation and cannot
+    disagree about what extraction does.
+
+    Two lines landing on the same name at the same ctx collapse to the last
+    one. A training loop that prints a running metric and then a summary for
+    the same epoch means the summary, and keeping both would multiply rows in
+    `pivot`, which is the failure extraction exists to avoid.
+    """
+    cursor.execute(
+        "SELECT projid, tstamp, filename, ctx, value FROM logs "
+        f"WHERE value_type = {VALUE_TYPE_IO} ORDER BY rowid"
+    )
+
+    derived: Dict[Tuple, Tuple[orm.Log, str]] = {}
+    for projid, tstamp, filename, ctx_json, line in cursor.fetchall():
+        fields = capture.extract_fields(str(line))
+        if not fields:
+            continue
+        ctx_segments = _parse_ctx_cell(ctx_json)
+        loop_names = {seg.get("name") for seg in ctx_segments}
+        ctx = _index_segment(ctx_segments, fields.index)
+        for name, value in fields.measures:
+            if name in loop_names:
+                # The measure names a loop already in ctx, so writing it would
+                # collide with that index column in pivot.
+                continue
+            log = orm.Log(projid, tstamp, filename, ctx, name, value, VALUE_TYPE_LOG)
+            derived[(projid, tstamp, filename, _ctx_to_json(ctx), name)] = (log, line)
+    return list(derived.values())
+
+
+def extract_metrics(cursor):
+    """Replace the derived metrics with a fresh reading of captured text.
+
+    Writes both halves: `.flor/extracted/<tstamp>.jsonl`, which is tracked and
+    travels with the run, and the cache rows the dataframe reads. Doing both
+    here is what keeps them from drifting -- a file the cache disagrees with
+    would surface as a column that changes on the next `flor unpack`.
+
+    Idempotent: the previous derivation is dropped first, so running this twice
+    leaves what running it once does, and a changed extraction rule replaces
+    the old reading instead of layering onto it.
+    """
+    cursor.execute("DELETE FROM logs WHERE source = 'extract'")
+    derived = derive_extractions(cursor)
+    orm.write_extractions([log for log, _ in derived], scope=io_tstamps(cursor))
+    unpack([log for log, _ in derived], cursor, source="extract")
+    return derived
+
+
+def io_tstamps(cursor) -> Set[str]:
+    """Runs whose captured text is in the cache, and so was read this pass."""
+    cursor.execute(
+        f"SELECT DISTINCT tstamp FROM logs WHERE value_type = {VALUE_TYPE_IO}"
+    )
+    return {tstamp for (tstamp,) in cursor.fetchall()}
+
+
+def load_extractions(cursor):
+    """Read `.flor/extracted/` into the cache. The rebuild half of the above."""
+    cursor.execute("DELETE FROM logs WHERE source = 'extract'")
+    count = 0
+    for path in orm.extract_jsonl_paths():
+        records = orm.read_jsonl(path)
+        unpack(records, cursor, source="extract")
+        count += len(records)
+    return count
 
 
 def pivot(conn, *args):

@@ -11,6 +11,8 @@ import dataclasses
 import io as _io
 import json
 import logging
+import os
+import subprocess
 
 import pytest
 
@@ -236,6 +238,58 @@ class TestExtractPairs:
         assert len(capture.extract_pairs(line)) == capture.MAX_PAIRS_PER_LINE
 
 
+class TestExtractFields:
+    """The index/measure split. `epoch` addresses a row; `loss` fills a cell."""
+
+    @pytest.mark.parametrize(
+        "line,index",
+        [
+            ("epoch 0 | loss: 0.5", ("epoch", 0)),
+            ("Epoch 1/10 loss: 0.4", ("epoch", 1)),
+            ("step: 1200 | lr: 1e-3", ("step", 1200)),
+            ("step=7 loss: 0.1", ("step", 7)),
+            ("iteration 7 | val_loss=0.22", ("iteration", 7)),
+            ("batch 32 | loss: 0.1", ("batch", 32)),
+            # Not leading, but the key still names a step carrying a whole
+            # number, so it classifies the same way.
+            ("loss: 0.4, epoch: 3", ("epoch", 3)),
+        ],
+    )
+    def test_step_prefixes_become_the_index(self, line, index):
+        assert capture.extract_fields(line).index == index
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "Loading 5 files",      # not a step name -- would invent a loop
+            "epoch 1.5 | loss: 0.2",  # an index is a whole number
+            "loss: 0.42",             # no index at all
+            "trained for 3 epochs",   # the step name does not lead
+            "elapsed 11:27:06",
+        ],
+    )
+    def test_no_index_is_invented(self, line):
+        assert capture.extract_fields(line).index is None
+
+    def test_the_index_is_not_also_a_measure(self):
+        fields = capture.extract_fields("epoch: 2 | loss: 0.3")
+        assert fields.index == ("epoch", 2)
+        assert fields.measures == [("loss", 0.3)]
+
+    def test_measures_survive_beside_the_index(self):
+        fields = capture.extract_fields("epoch 1/10 loss: 0.4 acc: 0.9")
+        assert fields.measures == [("loss", 0.4), ("acc", 0.9)]
+
+    def test_a_second_step_name_stays_a_measure(self):
+        fields = capture.extract_fields("epoch 1 | step: 40 | loss: 0.2")
+        assert fields.index == ("epoch", 1)
+        assert ("step", 40.0) in fields.measures
+
+    def test_falsy_when_nothing_was_found(self):
+        assert not capture.extract_fields("no pairs here at all")
+        assert capture.extract_fields("loss: 1")
+
+
 class TestHelpers:
     def test_is_io_channel(self):
         assert capture.is_io_channel("io::stdout")
@@ -279,6 +333,12 @@ for epoch in flor.loop("epoch", range(3)):
     logging.info("validated epoch %d", epoch)
     flor.log("val_acc", 90 + epoch)
 '''
+
+
+def _git(cwd, *args):
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True
+    ).stdout.strip()
 
 
 def rows(project, *, source="forward", path=None):
@@ -520,48 +580,155 @@ class TestProgressBars:
         assert len(channels(rows(project))) <= 4
 
 
+UNNAMED = '''
+import flordb as flor
+
+for epoch in range(3):
+    print(f"epoch {epoch} | loss: {1.0 / (epoch + 1):.4f}")
+'''
+
+
 @pytest.mark.slow
 class TestExtraction:
-    EXTRACTING = TRAIN.replace(
-        "import flordb as flor\n",
-        "import flordb as flor\nflor.set_capture(extract=True)\n",
-    )
+    """Extraction is a read-time derivation, driven from the CLI.
 
-    def test_recognized_pairs_become_metric_rows(self, project):
-        project.write("train.py", self.EXTRACTING)
-        project.run("train.py")
-        loss = [(v, c) for n, v, c in rows(project) if n == "loss"]
-        assert [v for v, _ in loss] == [1.0, 0.5, 0.3333]
-        assert [c[0]["iteration"] for _, c in loss] == [0, 1, 2]
+    Nothing here re-runs a script to change what was extracted: the point of
+    moving it off the write path is that the text is already on disk.
+    """
 
-    def test_the_raw_line_survives_alongside_the_extraction(self, project):
-        project.write("train.py", self.EXTRACTING)
-        project.run("train.py")
-        stdout = [v for n, v, _ in rows(project) if n == "io::stdout"]
-        assert "epoch 0 loss: 1.0000" in stdout
-
-    def test_extracted_metrics_reach_the_dataframe(self, project):
-        project.write("train.py", self.EXTRACTING)
-        project.run("train.py")
-        out = project.run(
-            "-c", "import flordb as flor; print(flor.dataframe('loss').to_csv(index=False))"
-        ).stdout
-        assert "loss" in out.splitlines()[0]
-        assert "1.0" in out
-
-    def test_extraction_is_off_by_default(self, project):
+    def test_a_run_writes_no_extractions_on_its_own(self, project):
         project.write("train.py", TRAIN)
         project.run("train.py")
         assert [n for n, _, _ in rows(project) if n == "loss"] == []
+        assert rows(project, source="extract") == []
 
     def test_preview_writes_nothing(self, project):
         project.write("train.py", TRAIN)
         project.run("train.py")
-        before = len(rows(project))
         proc = project.run("-m", "flordb", "capture", "--preview")
         assert "loss" in proc.stdout
         assert "Nothing was written" in proc.stdout
-        assert len(rows(project)) == before
+        assert rows(project, source="extract") == []
+
+    def test_extract_writes_the_metrics_preview_promised(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        preview = project.run("-m", "flordb", "capture", "--preview").stdout
+        project.run("-m", "flordb", "capture", "--extract")
+        loss = [(v, c) for n, v, c in rows(project, source="extract") if n == "loss"]
+        assert [float(v) for v, _ in loss] == [1.0, 0.5, 0.3333]
+        assert [c[0]["iteration"] for _, c in loss] == [0, 1, 2]
+        assert preview.count("<-") == len(loss)
+
+    def test_the_raw_line_survives_alongside_the_extraction(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        stdout = [v for n, v, _ in rows(project) if n == "io::stdout"]
+        assert "epoch 0 loss: 1.0000" in stdout
+
+    def test_extracted_metrics_reach_the_dataframe(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        out = project.run(
+            "-c",
+            "import flordb as flor; print(flor.dataframe('loss').to_csv(index=False))",
+        ).stdout
+        assert "loss" in out.splitlines()[0]
+        assert "1.0" in out
+
+    def test_an_unnamed_loop_gets_its_index_back_from_the_text(self, project):
+        """The reason extraction splits index from measure.
+
+        This script never calls `flor.loop`, so every line shares one ctx.
+        Reading `epoch` as a metric would make it a peer of `loss` and pivot
+        would return the 3x3 join; reading it as an index gives three rows.
+        """
+        project.write("train.py", UNNAMED)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        loss = [(v, c) for n, v, c in rows(project, source="extract") if n == "loss"]
+        assert [c[0]["name"] for _, c in loss] == ["epoch"] * 3
+        assert [c[0]["iteration"] for _, c in loss] == [0, 1, 2]
+        assert [n for n, _, _ in rows(project, source="extract")] == ["loss"] * 3
+
+        out = project.run(
+            "-c",
+            "import flordb as flor; print(flor.dataframe('loss').to_csv(index=False))",
+        ).stdout
+        assert len(out.strip().splitlines()) == 4  # header plus one row per epoch
+
+    def test_extracting_twice_leaves_what_extracting_once_leaves(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        once = rows(project, source="extract")
+        project.run("-m", "flordb", "capture", "--extract")
+        assert rows(project, source="extract") == once
+
+    def test_unpack_keeps_extractions_in_step(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        before = rows(project, source="extract")
+        project.run("-m", "flordb", "unpack")
+        assert rows(project, source="extract") == before
+
+    def test_unpack_does_not_invent_extractions(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "unpack")
+        assert rows(project, source="extract") == []
+
+    def test_the_reading_is_tracked_and_committed(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+
+        tracked = project.git_tracked_files()
+        assert any(f.startswith(".flor/extracted/") for f in tracked)
+        assert any(f.startswith(".flor/runs/") for f in tracked)
+
+    def test_a_rebuilt_cache_still_has_the_columns(self, project):
+        """What `source='extract'` in the cache alone could not survive.
+
+        Deleting the db is what a teammate's fresh clone looks like: the
+        derived rows are gone and nothing in the cache remembers they were
+        wanted. The tracked file is what brings them back.
+        """
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        project.run("-m", "flordb", "capture", "--extract")
+        before = rows(project, source="extract")
+        assert before
+
+        projid = os.path.basename(project.root)
+        os.remove(os.path.join(project.root, ".flor", f"{projid}.db"))
+        project.run("-m", "flordb", "unpack")
+
+        assert rows(project, source="extract") == before
+
+    def test_extraction_is_not_committed_off_a_shadow_branch(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        _git(project.root, "checkout", "-q", "main")
+        head = _git(project.root, "rev-parse", "HEAD")
+
+        proc = project.run("-m", "flordb", "capture", "--extract")
+
+        assert "not committed" in proc.stdout
+        assert _git(project.root, "rev-parse", "HEAD") == head
+
+    def test_set_capture_extract_says_where_extraction_went(self, project):
+        project.write(
+            "train.py",
+            "import flordb as flor\nflor.set_capture(extract=True)\nprint('loss: 0.5')\n",
+        )
+        proc = project.run("train.py")
+        assert "no longer has an effect" in proc.stdout
+        assert "capture --extract" in proc.stdout
+        assert rows(project, source="extract") == []
 
 
 @pytest.mark.slow

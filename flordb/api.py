@@ -83,9 +83,6 @@ def set_capture(
     enabled      -- record io at all (also settable with FLOR_CAPTURE=0)
     max_line     -- longest line recorded verbatim
     max_records  -- per-run ceiling on captured lines
-    extract      -- promote recognized `k: v` pairs to metric rows. Off by
-                    default; preview what it would do with `flor capture
-                    --preview` before turning it on.
     """
     if enabled is not None:
         capture.config.enabled = bool(enabled)
@@ -94,7 +91,16 @@ def set_capture(
     if max_records is not None:
         capture.config.max_records = int(max_records)
     if extract is not None:
-        capture.config.extract = bool(extract)
+        # Kept as an accepted keyword so scripts carrying it still run. It no
+        # longer does anything: extraction moved off the write path, where it
+        # cost a re-run, to `python -m flordb capture --extract`, which derives
+        # the same metrics from io already on disk.
+        capture.flor_print(
+            "FLOR: flor.set_capture(extract=...) no longer has an effect. "
+            "Extract metrics from captured text with "
+            "`python -m flordb capture --extract` (preview first with "
+            "`--preview`); it reads runs you have already recorded."
+        )
 
 
 def _emit_setup_once():
@@ -265,23 +271,10 @@ def _emit_io(channel: str, text: str) -> None:
             )
             buffered = True
 
-    # Gated separately from the raw line: `--apply loss` on a print-only script
-    # means the user wants the extracted `loss`, not the text it came from.
-    if capture.config.extract:
-        for name, value in capture.extract_pairs(text):
-            if _recording(name):
-                output_buffer.append(
-                    orm.Log(
-                        PROJID,
-                        Clock.get_datetime(),
-                        SCRIPTNAME,
-                        ctx,
-                        name,
-                        value,
-                        VALUE_TYPE_LOG,
-                    )
-                )
-                buffered = True
+    # Extraction is deliberately absent here. It is a guess about text, and a
+    # guess does not belong in the run's JSONL, which is the immutable record
+    # of what happened. It runs instead over rows already stored, on demand:
+    # `python -m flordb capture --extract`.
 
     if buffered:
         _register_run()

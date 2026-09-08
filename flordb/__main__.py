@@ -35,6 +35,11 @@ def main():
                 records = orm.read_jsonl(path)
                 database.unpack(records, cursor, source="forward")
 
+            # Extracted metrics are tracked beside the runs they were read
+            # from, so a rebuild restores them from those files rather than
+            # re-deriving. A clone gets the reading its author saw.
+            database.load_extractions(cursor)
+
             conn.commit()
             conn.close()
         elif flags.args.flor_command == "query":
@@ -55,42 +60,43 @@ def main():
                 overrides=flags.args.replay_overrides or None,
             )
         elif flags.args.flor_command == "capture":
-            df = repl.io(flags.args.channel)
-            if df.empty:
-                print(
-                    "No captured io yet. Run a script that prints or logs, or "
-                    "check that capture is on (FLOR_CAPTURE / flor.set_capture)."
+            conn, cursor = database.conn_and_cursor()
+            try:
+                cursor.execute(
+                    f"SELECT COUNT(*) FROM logs WHERE value_type = {VALUE_TYPE_IO}"
                 )
-            elif not flags.args.preview:
-                print(df.head(flags.args.limit))
-            else:
-                # Dry run of the opt-in structurer: show what turning
-                # flor.set_capture(extract=True) on would add to the metric
-                # table, without writing a single row.
-                hits = []
-                for line in df["line"]:
-                    for name, value in capture.extract_pairs(str(line)):
-                        hits.append((name, value, line))
-                if not hits:
+                (io_count,) = cursor.fetchone()
+                if not io_count:
                     print(
-                        f"Nothing extractable from {len(df)} captured line(s). "
-                        f"flor.set_capture(extract=True) would add no metrics."
+                        "No captured io yet. Run a script that prints or logs, "
+                        "or check that capture is on (FLOR_CAPTURE / "
+                        "flor.set_capture)."
+                    )
+                elif flags.args.preview or flags.args.extract:
+                    # Preview and extract read the same derivation, so what the
+                    # dry run shows is exactly what the write puts in the table.
+                    shared = None
+                    if flags.args.extract:
+                        derived = database.extract_metrics(cursor)
+                        conn.commit()
+                        # Tracked, so it only travels once it is committed.
+                        shared = versions.commit_paths(
+                            [EXTRACT_DIR],
+                            "FLOR::Auto-commit::extract",
+                        )
+                    else:
+                        derived = database.derive_extractions(cursor)
+                    cli.report_extractions(
+                        derived,
+                        io_count,
+                        limit=flags.args.limit,
+                        wrote=flags.args.extract,
+                        shared=shared,
                     )
                 else:
-                    names = sorted({n for n, _, _ in hits})
-                    print(
-                        f"Would extract {len(hits)} value(s) across "
-                        f"{len(names)} metric(s) from {len(df)} captured "
-                        f"line(s): {', '.join(names)}\n"
-                    )
-                    for name, value, line in hits[: flags.args.limit]:
-                        print(f"  {name:<20} {value:<14} <- {line}")
-                    if len(hits) > flags.args.limit:
-                        print(f"  ... {len(hits) - flags.args.limit} more")
-                    print(
-                        "\nNothing was written. Enable with "
-                        "flor.set_capture(extract=True) in your script."
-                    )
+                    print(repl.io().head(flags.args.limit))
+            finally:
+                conn.close()
         elif flags.args.flor_command == "stat":
             build_context = {
                 "architecture": platform.machine(),
