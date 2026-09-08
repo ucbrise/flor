@@ -1,21 +1,19 @@
-# FlorDB: Log-First Context Management for ML Practitioners
+# FlorDB: Log-First Context Management for ML Devs
 
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB brings experiment tracking, provenance, and reproducibility to your ML workflow—using the one thing every engineer already writes: **logs**.
-
-Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, schema, or service. Just import it, log as you normally would, and gain full history, lineage, and replay capabilities across your training runs.
+FlorDB brings experiment tracking, provenance, and reproducibility to your ML workflow using the one thing every engineer already writes: **logs**. FlorDB doesn’t ask you to adopt a new UI, schema, or service. Just import it, log as you normally would, and gain full history, lineage, and replay capabilities across your training runs.
 
 ## 🌻 Why FlorDB?
 
 - **Zero Code Changes to Start**  
-  Already using `print` or `logging`? Import FlorDB and your existing output is captured, versioned, and queryable—no rewrite required.
+  Already using `print` or `logging` inside a git repo? Import FlorDB and your `.py` output is captured, versioned, and queryable—no rewrite required.
 
 - **Log-Driven Experiment Tracking**  
   No dashboards to configure or schemas to design. `flor.log(...)` writes structured metadata; `flor.arg(...)` turns a constant into a CLI-settable hyperparameter that is recorded with the run.
 
 - **Hindsight Logging & Replay**  
-  Missed a metric? Add a log *after the fact* and replay past runs to capture it—no rerunning from scratch.
+  Missed a metric? Add a log *after the fact* and replay past runs to capture it.
 
 - **Reproducibility Without Friction**  
   Every run is versioned via Git, every hyperparameter is recorded, and PyTorch checkpoints are captured and addressable by loop iteration—automatically.
