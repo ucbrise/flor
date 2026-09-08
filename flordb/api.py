@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from tqdm import tqdm
 import atexit
 
-CMD_FILE = os.path.join(CURRDIR, ".flor.cmd")
+CMD_FILE = os.path.join(CURRDIR, ".flor.cmd") # type: ignore
 
 T = TypeVar("T")
 
@@ -58,6 +58,13 @@ _suppress_logs: bool = False
 # initialization the forward run did. The plan builder refuses from-zero without
 # it whenever the user's checkpoint file is on disk.
 _resume_neutralized: bool = False
+
+# The mirror _restore_from_mirror is currently reaching for, set only for the
+# duration of its torch.load. While it is set, the load hook must produce that
+# file or raise: flor asked for one specific iteration, so quietly substituting
+# the user's on-disk checkpoint would answer a different question than the one
+# asked.
+_restoring_mirror: Optional[Path] = None
 
 # flor.arg names the replayed run never logged, which fell back to their
 # declared default. Tracked so the warning prints once per name per session.
@@ -357,6 +364,107 @@ def checkpointing(**kwargs):
         raise
     finally:
         checkpoints.clear()
+
+
+def restore(path, *target, **keyed) -> bool:
+    """Declare how a torch checkpoint maps back onto live objects.
+
+    The `torch.save` piggy-back path needs no instrumentation on the way out --
+    flor mirrors whatever the script saves. Coming back in is the half that
+    needs semantics, and flor can only guess at those by pattern-matching the
+    script's own resume block. This is how you say it outright when the guess
+    is wrong or impossible:
+
+        flor.restore("ckpt.pth", model=model, optimizer=optimizer)
+        # -> loaded["model"] into model, loaded["optimizer"] into optimizer
+
+        flor.restore("ckpt.pth", model)
+        # -> the whole file into model, for torch.save(model.state_dict(), ...)
+
+    Call it at module scope, right after the objects are built, in place of the
+    `torch.load(...)` + `load_state_dict(...)` block it replaces. It does that
+    block's job on a forward run: if `path` exists, it loads and applies it, so
+    an interrupted run still resumes.
+
+    On replay it applies nothing here and returns False. The per-iteration
+    restore inside flor.loop owns the objects then, and loading at module scope
+    would put end-of-run state on top of the initialization that replaying from
+    iteration 0 depends on -- the same trap `_neutralized_resume_state` exists
+    to defuse for inferred blocks, avoided by construction here.
+
+    Returns whether state was applied.
+    """
+    # Argument validation before any side effect, so a malformed call is a
+    # plain TypeError and not a half-initialized run.
+    if target and keyed:
+        raise TypeError(
+            "FLOR: flor.restore takes either one positional target (the whole "
+            "file is that object's state) or keyword targets (each keyword is "
+            "a key in the saved dict), not both."
+        )
+    if len(target) > 1:
+        raise TypeError(
+            f"FLOR: flor.restore takes at most one positional target, got "
+            f"{len(target)}. Name them -- flor.restore({path!r}, "
+            f"model=model, optimizer=optimizer) -- so each one can be matched "
+            f"to its key in the saved dict."
+        )
+    if not target and not keyed:
+        raise TypeError(
+            f"FLOR: flor.restore({path!r}) needs at least one target to "
+            f"restore into, e.g. flor.restore({path!r}, model=model)."
+        )
+
+    if target:
+        # No key: the file holds exactly this object's state_dict.
+        applies = [("<positional>", None)]
+        targets = {"<positional>": target[0]}
+    else:
+        applies = [(name, name) for name in keyed]
+        targets = dict(keyed)
+
+    for name, obj in targets.items():
+        if not hasattr(obj, "load_state_dict"):
+            raise TypeError(
+                f"FLOR: flor.restore target {name!r} is a "
+                f"{type(obj).__name__}, which has no load_state_dict. Pass the "
+                f"module or optimizer itself, or enroll it with "
+                f"flor.checkpointing({name}=...) instead."
+            )
+
+    _deferred_init()
+    cli.flags.resume_spec = cli.ResumeSpec(
+        path=str(path),
+        lhs_name=None,
+        applies=applies,
+        source="explicit",
+        targets=targets,
+    )
+    _install_torch_hooks()
+
+    if cli.in_replay_mode():
+        return False
+    if not os.path.exists(str(path)):
+        return False
+    if _orig_torch_load is None:
+        raise RuntimeError(
+            "FLOR: flor.restore needs torch, which is not importable here."
+        )
+    # The original, not the hook: this is a forward run reading the user's own
+    # file, and there is no loop context to redirect it into anyway.
+    loaded = _orig_torch_load(str(path))
+    for target_name, key in applies:
+        try:
+            state = _select_state(loaded, key)
+        except (KeyError, IndexError, TypeError) as e:
+            raise RuntimeError(
+                f"FLOR: flor.restore({str(path)!r}) found no {key!r} in the "
+                f"saved checkpoint (it holds "
+                f"{sorted(loaded) if isinstance(loaded, dict) else type(loaded).__name__}). "
+                f"Name the targets after the keys they were saved under."
+            ) from e
+        targets[target_name].load_state_dict(state)
+    return True
 
 
 def _iteration_requested(name: str, idx: Optional[int]) -> bool:
@@ -773,13 +881,27 @@ def _flor_torch_save(obj, path, *args, **kwargs):
     return result
 
 
+def _shelf_has_mirrors_for(stem: str, ext: str) -> bool:
+    """Whether the shelf holds a mirror for *any* iteration of this file.
+
+    This is how a checkpoint flor is managing gets told apart from an ordinary
+    torch.load of, say, a cached tensor: the former has siblings on the shelf,
+    the latter has none. Only the former may be treated as an error when the
+    iteration being replayed has no mirror of its own.
+    """
+    try:
+        return any(obj_store.get_shelf().glob(f"{stem}*{ext}"))
+    except Exception:
+        return False
+
+
 def _shelf_has_any_mirror_for(spec) -> bool:
     """Whether the historical run left any mirror for the resume block's file."""
     try:
         stem, ext = _user_path_stem_ext(spec.path)
-        return any(obj_store.get_shelf().glob(f"{stem}*{ext}"))
     except Exception:
         return False
+    return _shelf_has_mirrors_for(stem, ext)
 
 
 def _neutralized_resume_state(path):
@@ -811,20 +933,28 @@ def _neutralized_resume_state(path):
             return None
         if _shelf_has_any_mirror_for(spec):
             return None
-        user_frame = _find_user_frame()
-        if user_frame is None:
+        targets = _resolve_targets(spec)
+        if targets is None:
             return None
-        scope = dict(user_frame.f_globals)
-        scope.update(user_frame.f_locals)
         state = {}
+        flat = None
         for target_name, key in spec.applies:
-            target = scope.get(target_name)
-            snapshot = getattr(target, "state_dict", None)
+            snapshot = getattr(targets.get(target_name), "state_dict", None)
             if snapshot is None:
                 # A target the resume block writes to but we can't snapshot --
                 # a partial no-op would silently half-apply end-of-run state.
                 return None
-            state[key] = snapshot()
+            if key is None:
+                # Flat idiom: the file *is* one object's state_dict, so the
+                # no-op value is that object's own state, unwrapped.
+                if len(spec.applies) != 1:
+                    return None
+                flat = snapshot()
+            else:
+                state[key] = snapshot()
+        if flat is not None:
+            _resume_neutralized = True
+            return flat
         if not state:
             return None
     except Exception:
@@ -842,10 +972,32 @@ def _flor_torch_load(path, *args, **kwargs):
                 flor_path = obj_store.get_shelf() / utils.to_filename(
                     layers, stem, ext
                 )
-                if flor_path.exists():
-                    return _orig_torch_load(str(flor_path), *args, **kwargs)
             except Exception:
-                pass
+                if _restoring_mirror is not None:
+                    # flor asked for a specific mirror and cannot even name it.
+                    raise
+                # Some exotic path/file object flor can't address. It is not a
+                # checkpoint flor wrote, so the user's own load stands.
+                return _orig_torch_load(path, *args, **kwargs)
+            if flor_path.exists():
+                return _orig_torch_load(str(flor_path), *args, **kwargs)
+            if _restoring_mirror is not None or _shelf_has_mirrors_for(stem, ext):
+                # Falling through here would load the file at the user's own
+                # path, which after a forward run holds *end-of-run* state --
+                # silently answering "what did iteration k look like?" with the
+                # last iteration's weights, and logging the result as history.
+                # The shelf has siblings, so this really is a flor-managed
+                # checkpoint with a gap, not an unrelated load.
+                raise RuntimeError(
+                    f"FLOR: no checkpoint mirror for {_ctx_description()} at "
+                    f"{flor_path.name!r} in {obj_store.get_shelf()}, but other "
+                    f"iterations of {stem}{ext} are shelved. The forward run "
+                    f"most likely throttled this iteration "
+                    f"(flor.set_ckpt_interval). Narrow to an iteration that has "
+                    f"a mirror, or re-run forward with a smaller interval. "
+                    f"Refusing to fall back to {_coerce_to_path(path)!s}, which "
+                    f"holds end-of-run state."
+                )
         else:
             # Module scope: no loop context yet, so this is the resume block.
             neutral = _neutralized_resume_state(path)
@@ -881,6 +1033,14 @@ def _install_torch_hooks():
 # v4/train.py) is left intact -- it still runs once before the loop -- but
 # its result is overwritten per-iter.
 # ---------------------------------------------------------------------------
+
+
+def _ctx_description() -> str:
+    """The loop context as `epoch=2, step=7`, for error messages."""
+    parts = []
+    for k, (i, v) in layers.items():
+        parts.append(f"{k}={v if v is not None else i}")
+    return ", ".join(parts) if parts else "<module scope>"
 
 
 def _find_user_frame():
@@ -987,40 +1147,104 @@ def _find_latest_mirror_at_or_before(
     return None
 
 
+def _resolve_targets(spec) -> Optional[dict]:
+    """The live objects spec.applies names, or None if they can't be reached.
+
+    An explicit spec carries the objects themselves -- flor.restore was handed
+    references, so there is nothing to look up and nothing to get wrong. An
+    inferred spec has only names harvested from the source, which have to be
+    resolved against the user's frame; that is the step that can silently come
+    up empty when a name was rebound, shadowed, or moved into a function.
+    """
+    if spec.source == "explicit":
+        return dict(spec.targets or {})
+    user_frame = _find_user_frame()
+    if user_frame is None:
+        return None
+    scope = dict(user_frame.f_globals)
+    scope.update(user_frame.f_locals)
+    return {name: scope.get(name) for name, _ in spec.applies}
+
+
+def _select_state(loaded, key):
+    """The slice of a checkpoint that belongs to one target.
+
+    `key is None` is the flat idiom -- `torch.save(model.state_dict(), path)` --
+    where the whole file is one object's state.
+    """
+    return loaded if key is None else loaded[key]
+
+
 def _restore_from_mirror(
     name: str, iteration: Optional[int], value: Optional[str]
 ) -> bool:
     """Splice the obj_store mirror for one historical iteration into the user's
-    frame: swap `layers` so _flor_torch_load redirects torch.load(spec.path) to
-    the mirror file, then re-run the user's load_state_dict calls.
+    objects: swap `layers` so _flor_torch_load redirects torch.load(spec.path)
+    to the mirror file, then re-run the spec's load_state_dict calls.
+
+    Raises rather than reporting a success it did not achieve. Every skip this
+    used to swallow -- a name that no longer resolves, a target with no
+    load_state_dict, a key the checkpoint doesn't carry -- leaves the object
+    holding state from some other iteration, and the run goes on to log metrics
+    off it as though they were historical.
     """
+    global _restoring_mirror
     spec = cli.flags.resume_spec
     if spec is None or iteration is None or iteration < 0:
-        return False
-    user_frame = _find_user_frame()
-    if user_frame is None:
         return False
     try:
         import torch  # type: ignore
     except ImportError:
         return False
+    targets = _resolve_targets(spec)
+    if targets is None:
+        raise RuntimeError(
+            f"FLOR: cannot restore {_ctx_description()}: no frame for "
+            f"{SCRIPTNAME} on the stack, so the resume block's targets "
+            f"({', '.join(n for n, _ in spec.applies)}) can't be reached. "
+            f"Declare them with flor.restore({spec.path!r}, <name>=<obj>, ...)."
+        )
 
     with _layer_swapped(name, iteration, value):
-        loaded = torch.load(spec.path)
-        scope = dict(user_frame.f_globals)
-        scope.update(user_frame.f_locals)
+        stem, ext = _user_path_stem_ext(spec.path)
+        mirror = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
+        _restoring_mirror = mirror
+        try:
+            loaded = torch.load(spec.path)
+        finally:
+            _restoring_mirror = None
+        applied, failures = [], []
         for target_name, key in spec.applies:
-            target = scope.get(target_name)
+            target = targets.get(target_name)
             if target is None:
+                failures.append(f"{target_name}: not found in {spec.source} scope")
                 continue
             apply = getattr(target, "load_state_dict", None)
             if apply is None:
+                failures.append(
+                    f"{target_name}: {type(target).__name__} has no load_state_dict"
+                )
                 continue
             try:
-                apply(loaded[key])
-            except Exception:
-                pass
-        return True
+                apply(_select_state(loaded, key))
+            except Exception as e:
+                failures.append(f"{target_name}: {type(e).__name__}: {e}")
+                continue
+            applied.append(target_name)
+        if failures:
+            hint = (
+                ""
+                if spec.source == "explicit"
+                else f" flor inferred this mapping from {SCRIPTNAME}; if it is "
+                f"wrong, declare it instead with "
+                f"flor.restore({spec.path!r}, <name>=<obj>, ...)."
+            )
+            raise RuntimeError(
+                f"FLOR: restoring {_ctx_description()} from {mirror.name} "
+                f"failed for {len(failures)} of {len(spec.applies)} target(s): "
+                f"{'; '.join(failures)}.{hint}"
+            )
+        return bool(applied)
 
 
 def _build_outer_replay_plan(name: str, materialized: list):
@@ -1100,6 +1324,7 @@ def _build_outer_replay_plan(name: str, materialized: list):
         # a resume shape flor can't neutralize refuses instead of guessing.
         if (
             resume is not None
+            and resume.source != "explicit"
             and os.path.exists(resume.path)
             and not _resume_neutralized
         ):
@@ -1168,6 +1393,7 @@ __all__ = [
     "log",
     "arg",
     "checkpointing",
+    "restore",
     "loop",
     "iteration",
     "commit",

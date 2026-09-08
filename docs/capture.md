@@ -54,10 +54,10 @@ can jump to one (see [Replay](replay.md)).
 
 ## Extracting metrics from captured text
 
-Captured text stays out of `flor.dataframe()` — it isn't a metric — but FlorDB
-can read metrics out of it on demand. This runs over runs you have already
-recorded, so there is nothing to turn on and no reason to train again. See what
-it would do to *your* logs first:
+Captured text is not included in `flor.dataframe()` because it is not a metric.
+FlorDB can extract metrics from captured text after a run has finished, so you
+do not need to enable anything or train again. Preview the results against your
+own logs first:
 
 ```bash
 python -m flordb capture --preview
@@ -89,45 +89,7 @@ python -m flordb capture --extract
 ```
 
 `loss` is a real column in `flor.dataframe("loss")` now, and the raw line stays
-on record. Extraction always reads every channel and every run in your cache. 
-
-### Where the extracted rows live
-
-In the sqlite cache, and nowhere else. Nothing is written beside the run and
-nothing is committed:
-
-```
-.flor/
-  runs/<tstamp>.jsonl  tracked: the captured text, and everything else observed
-  <projid>.db          ignored: the reading, alongside the rest of the cache
-```
-
-The rows carry `source='extract'` — the same column that separates a forward
-run from a [replay](replay.md), so a derived guess never passes for a value
-your script logged.
-
-Keeping the reading out of git is deliberate. The text it was read from is
-already committed and the rule that reads it is in FlorDB, so a stored copy
-would be a second version of something git already carries — one that can
-drift from the text it claims to summarize. What you give up is that
-extraction does not travel. A teammate clones, unpacks, and has every captured
-line but no `loss` column until they run the command themselves:
-
-```bash
-git clone … && git checkout flor.branch && python -m flordb unpack
-python -m flordb capture --extract
-```
-
-```
-   projid                     tstamp  filename   source  epoch    loss
-0  origin 2026-08-13 12:35:02.118307  train.py  extract      0     0.5
-1  origin 2026-08-13 12:35:02.118307  train.py  extract      1  0.3333
-2  origin 2026-08-13 12:35:02.118307  train.py  extract      2    0.25
-```
-
-Same command, same rule, same io — so the same table. For the same reason,
-deleting the `.db` drops the extracted columns until you re-run `--extract`;
-the runs themselves come back from `flor unpack` untouched.
+on record.
 
 ## Tuning and switching off
 

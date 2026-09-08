@@ -107,16 +107,32 @@ class LoggedExpVisitor(ast.NodeVisitor):
 
 class ResumeBlockVisitor(ast.NodeVisitor):
     """
-    Locate the PyTorch resume-from-checkpoint pattern at module scope:
+    Locate a PyTorch resume-from-checkpoint block at module scope.
+
+    Two shapes. The keyed one, where a saved dict is unpacked by key:
 
         <lhs> = torch.load(<literal-path>)
         <target>.load_state_dict(<lhs>[<key>])
         ...
 
-    Captures path, lhs name, and the (target, key) pairs so flor.loop can
-    auto-restore historical state on replay without `flor.checkpointing(...)`
-    enrollment. Only module-scope matches are emitted; function/class-nested
-    patterns are recorded in `unscoped_match` so the caller can warn.
+    and the flat one, where the file holds a single object's state outright:
+
+        <target>.load_state_dict(torch.load(<literal-path>))
+
+    The flat form pairs with `torch.save(model.state_dict(), path)` and is the
+    more common of the two, so not matching it meant the most ordinary script
+    in PyTorch was the one flor could say least about. It carries no key, which
+    `applies` records as a key of None -- the whole file goes into that target.
+
+    Captures path, lhs name (keyed form only), and the (target, key) pairs so
+    flor.loop can auto-restore historical state on replay without
+    `flor.checkpointing(...)` enrollment. Only module-scope matches are
+    emitted; function/class-nested patterns are recorded in `unscoped_match` so
+    the caller can warn.
+
+    Inference stops at one checkpoint file. A block loading two different paths
+    is recorded in `multi_path` and emits nothing: ResumeSpec addresses a single
+    file, so picking one of them would silently restore half the state.
     """
 
     def __init__(self):
@@ -126,14 +142,25 @@ class ResumeBlockVisitor(ast.NodeVisitor):
         self.lhs_name: Optional[str] = None
         self.applies: list = []
         self.unscoped_match: bool = False
+        self.multi_path: bool = False
 
     @property
     def found(self) -> bool:
         return (
             self.path is not None
-            and self.lhs_name is not None
             and bool(self.applies)
+            and not self.multi_path
         )
+
+    def _claim_path(self, path: str) -> bool:
+        """Record the file this block resumes from; False if it's a second one."""
+        if self.path is None:
+            self.path = path
+            return True
+        if self.path != path:
+            self.multi_path = True
+            return False
+        return True
 
     def visit_FunctionDef(self, node):
         self._depth += 1
@@ -170,8 +197,9 @@ class ResumeBlockVisitor(ast.NodeVisitor):
         ):
             if self._depth != 0:
                 self.unscoped_match = True
-            else:
-                self._capture_apply(node.value)
+            elif not self._capture_apply(node.value):
+                # Not `<lhs>[<key>]`; try the flat `torch.load(...)` form.
+                self._capture_flat_apply(node.value)
         self.generic_visit(node)
 
     @staticmethod
@@ -195,36 +223,112 @@ class ResumeBlockVisitor(ast.NodeVisitor):
             and isinstance(call.func.value, ast.Name)
         )
 
-    def _capture_load(self, node: ast.Assign):
-        call = node.value
-        if not isinstance(call, ast.Call) or not call.args:
-            return
+    @staticmethod
+    def _literal_load_path(call: ast.Call) -> Optional[str]:
+        """The literal path a `torch.load(...)` call reads, if it is literal.
+
+        Dynamic paths fall back to `flor.restore(...)`: flor has to name the
+        mirror file before the script runs, and only a literal lets it.
+        """
+        if not call.args:
+            return None
         arg = call.args[0]
         if not (isinstance(arg, ast.Constant) and isinstance(arg.value, (str, bytes))):
-            # Dynamic paths fall back to `flor.checkpointing(...)`.
+            return None
+        return str(arg.value) if isinstance(arg.value, str) else arg.value.decode()
+
+    def _capture_load(self, node: ast.Assign):
+        call = node.value
+        if not isinstance(call, ast.Call):
             return
-        self.path = str(arg.value) if isinstance(arg.value, str) else arg.value.decode()
+        path = self._literal_load_path(call)
+        if path is None:
+            return
+        if not self._claim_path(path):
+            return
         target0 = node.targets[0]
         assert isinstance(target0, ast.Name)
         self.lhs_name = target0.id
 
-    def _capture_apply(self, call: ast.Call):
+    def _capture_flat_apply(self, call: ast.Call) -> bool:
+        """`<target>.load_state_dict(torch.load(<literal-path>))`.
+
+        Recorded with a key of None: there is no dict to index into, the file
+        *is* the target's state_dict.
+        """
+        if not call.args:
+            return False
+        arg = call.args[0]
+        if not (
+            isinstance(arg, ast.Call)
+            and isinstance(arg.func, ast.Attribute)
+            and arg.func.attr == "load"
+            and isinstance(arg.func.value, ast.Name)
+            and arg.func.value.id == "torch"
+        ):
+            return False
+        path = self._literal_load_path(arg)
+        if path is None or not self._claim_path(path):
+            return False
+        assert isinstance(call.func, ast.Attribute) and isinstance(
+            call.func.value, ast.Name
+        )
+        self.applies.append((call.func.value.id, None))
+        return True
+
+    def _capture_apply(self, call: ast.Call) -> bool:
         if self.lhs_name is None or not call.args:
-            return
+            return False
         arg = call.args[0]
         if not isinstance(arg, ast.Subscript):
-            return
+            return False
         if not (isinstance(arg.value, ast.Name) and arg.value.id == self.lhs_name):
-            return
+            return False
         slice_node = arg.slice
         if isinstance(slice_node, ast.Constant):
             key = slice_node.value
         else:
-            return
+            return False
         assert isinstance(call.func, ast.Attribute) and isinstance(
             call.func.value, ast.Name
         )
         self.applies.append((call.func.value.id, key))
+        return True
+
+
+class RestoreSignalVisitor(ast.NodeVisitor):
+    """Whether the script says anything at all about how to restore state.
+
+    ResumeBlockVisitor matches one narrow shape. A script that checkpoints with
+    `torch.save` but declares its restore semantics some other way -- the flat
+    `model.load_state_dict(torch.load(p))` one-liner, a computed path, a resume
+    block inside a function -- leaves that visitor with nothing, and replay then
+    quietly restores nothing at all. This collects the coarse signals needed to
+    tell that silence apart from a script that simply has no checkpoints.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.torch_save = False
+        self.enrolled = False  # `with flor.checkpointing(...)`
+        self.declared = False  # `flor.restore(...)`
+
+    def visit_Call(self, node: ast.Call):
+        func = node.func
+        if isinstance(func, ast.Attribute):
+            if func.attr == "save" and isinstance(func.value, ast.Name):
+                if func.value.id == "torch":
+                    self.torch_save = True
+            elif func.attr == "restore" and isinstance(func.value, ast.Name):
+                self.declared = True
+            elif func.attr == "checkpointing":
+                # Matched as a call rather than off the `with` statement: the
+                # context manager is the documented idiom, but entering it by
+                # hand is still enrollment, and a false warning about a script
+                # that *does* declare its restore semantics is worse than
+                # missing an exotic one.
+                self.enrolled = True
+        self.generic_visit(node)
 
 
 class NoGradVisitor(ast.NodeVisitor):

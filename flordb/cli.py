@@ -10,7 +10,11 @@ from .constants import RUNS_DIR
 from . import orm
 import sys
 
-from .hlast.visitors import WithExpVisitor, ResumeBlockVisitor
+from .hlast.visitors import (
+    WithExpVisitor,
+    ResumeBlockVisitor,
+    RestoreSignalVisitor,
+)
 from .capture import flor_print
 import ast
 
@@ -104,8 +108,18 @@ class Flags:
 @dataclass
 class ResumeSpec:
     path: str
-    lhs_name: str
-    applies: list  # list[tuple[str, str]] — (target_name, key)
+    lhs_name: Optional[str]
+    applies: list  # list[tuple[str, Optional[str]]] — (target_name, key)
+    # "ast" when ResumeBlockVisitor inferred this from the script's source,
+    # "explicit" when the user declared it with flor.restore(...). Inference is
+    # a guess about what the user's resume block means; a declaration is not.
+    # Only the guess needs the neutralization dance and the frame lookup, and
+    # only the guess can be wrong in a way worth warning about.
+    source: str = "ast"
+    # Live objects keyed by target name, set only for explicit specs. Their
+    # presence is what lets flor.restore skip resolving names out of the user's
+    # stack frame -- the failure mode that silently skipped renamed targets.
+    targets: Optional[dict] = None
 
 
 flags = Flags()
@@ -464,6 +478,37 @@ _defaulted_loops: set = set()
 ENV_OVERRIDE_ALLOWLIST: set = {"device", "ckpt_interval_s"}
 
 
+def _warn_if_nothing_restores(tree: ast.AST, filename: str) -> None:
+    """Say so when a script checkpoints but tells replay nothing about loading.
+
+    The forward run happily mirrors every torch.save; it is only replay that
+    needs to know which object each mirror belongs in. When neither inference
+    nor a declaration supplies that, replay used to proceed in silence and
+    reconstruct nothing -- reporting recomputed-from-the-wrong-state numbers as
+    historical fact. The whole failure is invisible from the outside, so the
+    warning is the only thing standing between the user and bad results.
+    """
+    rsv = RestoreSignalVisitor()
+    rsv.visit(tree)
+    if not rsv.torch_save:
+        # Nothing was checkpointed through the piggy-back path, so there is
+        # nothing for a resume block to restore. Enrollment-only scripts and
+        # scripts with no checkpoints at all land here.
+        return
+    if rsv.enrolled or rsv.declared:
+        return
+    flor_print(
+        f"FLOR: {filename} calls torch.save but declares no way to load it "
+        f"back: no flor.checkpointing(...), no flor.restore(...), and no "
+        f"module-scope `obj.load_state_dict(torch.load(<literal path>))` (or "
+        f"its keyed form) for flor to infer from. Replay will "
+        f"recompute from whatever state the script happens to build, which is "
+        f"not the state the forward run had. Add "
+        f"flor.restore(<path>, <name>=<obj>, ...) after you construct the "
+        f"model to make replay faithful."
+    )
+
+
 def replay_initialize():
     if flags.args is not None and flags.args.kwargs:
         raise RuntimeError(
@@ -487,14 +532,26 @@ def replay_initialize():
     if rbv.found:
         flags.resume_spec = ResumeSpec(
             path=rbv.path,  # type: ignore[arg-type]
-            lhs_name=rbv.lhs_name,  # type: ignore[arg-type]
+            lhs_name=rbv.lhs_name,
             applies=list(rbv.applies),
+        )
+    elif rbv.multi_path:
+        flor_print(
+            "FLOR: this script's resume block loads more than one checkpoint "
+            "file; auto-restore disabled, because replay addresses one file per "
+            "run. Save the pieces into a single checkpoint and declare it with "
+            "flor.restore(<path>, <name>=<obj>, ...), or enroll the objects "
+            "with flor.checkpointing(...)."
         )
     elif rbv.unscoped_match:
         flor_print(
             "FLOR: torch.load resume pattern found outside module scope; "
-            "auto-restore disabled. Use flor.checkpointing(...) for replay."
+            "auto-restore disabled. Declare it with flor.restore(<path>, "
+            "<name>=<obj>, ...) so replay can address it."
         )
+
+    if flags.resume_spec is None:
+        _warn_if_nothing_restores(tree, filename)
 
     historical_hps: Dict[str, str] = {}
     for obj in data:
