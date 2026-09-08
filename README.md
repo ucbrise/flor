@@ -113,21 +113,24 @@ python train.py --kwargs lr=5e-4 batch_size=64
 View metrics across runs:
 
 ```python
-flor.dataframe("lr", "batch_size", "val_acc")
+flor.dataframe("lr", "batch_size", "loss")
 ```
 
 ```
-        projid                     tstamp  filename   source  epoch epoch_value      lr batch_size val_acc
-0  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      0           0  0.0005         64      90
-1  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      1           1  0.0005         64      91
-2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2           2  0.0005         64      92
+        projid                     tstamp  filename   source  step step_value  epoch epoch_value      lr batch_size    loss
+0  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      0           0  0.0005         64     0.5
+1  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      0           0  0.0005         64  0.3333
+2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      1           1  0.0005         64  0.3333
+3  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      1           1  0.0005         64    0.25
+4  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      2           2  0.0005         64    0.25
+5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      2           2  0.0005         64     0.2
 ```
 
 Each named `flor.loop` becomes its own column, and a row carries the loops that
-enclosed the `flor.log` that produced it. `val_acc` is logged once per epoch, so
-you get one row per epoch above. `loss` is logged inside `step`, so
-`flor.dataframe("loss")` returns one row per step, with `step` and `epoch` both
-attached — no join, no manual step counter. Raw SQL is available too, via
+enclosed the `flor.log` that produced it. `loss` is logged inside `step`, so you
+get one row per step, with its epoch and the run's hyperparameters attached — no
+join, no manual step counter. Ask for `val_acc` instead and you get one row per
+epoch, because that is where it was logged. Raw SQL is available too, via
 `flor.query(...)`.
 
 → [Checkpoints](docs/checkpoints.md): what gets mirrored, enrolling objects
