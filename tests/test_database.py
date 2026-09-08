@@ -1,22 +1,8 @@
-import os
 import sqlite3
 
 import pytest
 
 from flordb import database, orm
-
-
-@pytest.fixture(autouse=True)
-def extract_dir(tmp_path, monkeypatch):
-    """Point `.flor/extracted/` at a scratch directory.
-
-    write_extractions deletes the files it did not write this pass, so
-    tests sharing one directory would delete each other's fixtures.
-    """
-    path = tmp_path / "extracted"
-    path.mkdir()
-    monkeypatch.setattr(orm, "EXTRACT_DIR", str(path))
-    return str(path)
 
 
 def log(name, value, ctx=None, tstamp="2026-05-22T10:00:00.000000", type=1):
@@ -357,74 +343,25 @@ class TestExtractMetrics:
         cursor.execute("SELECT value_name FROM logs WHERE source = 'extract'")
         assert cursor.fetchall() == [("acc",)]
 
-    def test_the_reading_is_saved_beside_the_run(self, logs_db, extract_dir):
-        conn, cursor = logs_db
-        database.unpack([io("epoch 0 | loss: 0.5")], cursor)
-        database.extract_metrics(cursor)
+    def test_the_reading_is_not_stored_outside_the_cache(self, logs_db, tmp_path):
+        """Extraction is a view, so a cleared cache keeps nothing.
 
-        (path,) = orm.extract_jsonl_paths()
-        assert os.path.basename(path) == "2026-05-22T10:00:00.000000.jsonl"
-        (record,) = orm.read_jsonl(path)
-        assert record["name"] == "loss"
-        assert record["ctx"] == [{"name": "epoch", "iteration": 0, "value": None}]
-
-    def test_a_run_outside_this_pass_keeps_its_file(self, logs_db, extract_dir):
-        """The files are committed, so absence must not mean deletion.
-
-        A teammate's run can be in git -- its extraction file cloned along with
-        it -- while this cache has never unpacked its io. Extraction must not
-        read that silence as "no longer yields" and delete their reading.
+        The io it was read from lives in runs/ and is committed; the reading
+        is not, and re-deriving is what brings it back.
         """
         conn, cursor = logs_db
-        database.unpack([io("epoch 0 | loss: 0.5", tstamp="theirs")], cursor)
-        database.extract_metrics(cursor)
-        assert os.path.exists(orm.extract_jsonl_path("theirs"))
-
-        # Their io leaves this cache; their committed file must not follow.
-        cursor.execute("DELETE FROM logs")
-        database.unpack([io("epoch 0 | acc: 0.9", tstamp="mine")], cursor)
-        database.extract_metrics(cursor)
-
-        assert os.path.exists(orm.extract_jsonl_path("theirs"))
-        assert os.path.exists(orm.extract_jsonl_path("mine"))
-
-    def test_a_run_that_stops_yielding_loses_its_file(self, logs_db, extract_dir):
-        conn, cursor = logs_db
-        database.unpack([io("epoch 0 | loss: 0.5")], cursor)
-        database.extract_metrics(cursor)
-        assert orm.extract_jsonl_paths()
-
-        cursor.execute("DELETE FROM logs WHERE value_type = 2")
-        database.unpack([io("nothing numeric here")], cursor)
-        database.extract_metrics(cursor)
-
-        assert orm.extract_jsonl_paths() == []
-
-    def test_load_extractions_rebuilds_the_cache_from_the_files(
-        self, logs_db, extract_dir
-    ):
-        conn, cursor = logs_db
         database.unpack([io("epoch 0 | loss: 0.5")], cursor)
         database.extract_metrics(cursor)
 
-        # A fresh cache: the io is gone too, so nothing could be re-derived.
-        cursor.execute("DELETE FROM logs")
-        assert database.load_extractions(cursor) == 1
+        assert list(tmp_path.iterdir()) == []
 
-        cursor.execute("SELECT value_name, value, source FROM logs")
-        assert cursor.fetchall() == [("loss", "0.5", "extract")]
-
-    def test_load_extractions_replaces_rather_than_appends(
-        self, logs_db, extract_dir
-    ):
-        conn, cursor = logs_db
-        database.unpack([io("epoch 0 | loss: 0.5")], cursor)
-        database.extract_metrics(cursor)
-        database.load_extractions(cursor)
-        database.load_extractions(cursor)
-
+        cursor.execute("DELETE FROM logs WHERE source = 'extract'")
         cursor.execute("SELECT COUNT(*) FROM logs WHERE source = 'extract'")
-        assert cursor.fetchone() == (1,)
+        assert cursor.fetchone() == (0,)
+
+        database.extract_metrics(cursor)
+        cursor.execute("SELECT value_name, value, source FROM logs WHERE source = 'extract'")
+        assert cursor.fetchall() == [("loss", "0.5", "extract")]
 
     def test_derived_rows_stay_apart_from_forward_ones(self, logs_db):
         conn, cursor = logs_db

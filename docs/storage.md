@@ -5,7 +5,6 @@ Everything is project-local; nothing lands in your home directory.
 ```
 .flor/
   runs/<tstamp>.jsonl      tracked: one immutable record per forward run
-  extracted/<tstamp>.jsonl tracked: metrics read out of that run's captured text
   obj_store/<tstamp>/      ignored: checkpoints, addressable by loop iteration
   <projid>.db              ignored: sqlite query cache, rebuildable at any time
 .flor.cmd                  tracked: the run's tstamp and command line
@@ -21,15 +20,19 @@ python -m flordb unpack
 
 ## What syncs, and what doesn't
 
-The four things under `.flor/` have very different economics, so FlorDB treats
+The three things under `.flor/` have very different economics, so FlorDB treats
 them differently in `.gitignore` (written on first run):
 
 | | Recomputable? | In git? |
 |---|---|---|
 | `runs/*.jsonl` | No — the one irreplaceable observation | **Yes**, ~69KB packed per run |
-| `extracted/*.jsonl` | Yes, but only by whoever thought to ask | **Yes** — see [capture](capture.md) |
 | `obj_store/` | Yes, by replaying | No — ~19MB per run, and checkpoints don't dedup |
 | `<projid>.db` | Yes, `flor unpack` in seconds | No |
+
+Only the first row is an observation. Everything else is a function of it, and
+a derived thing FlorDB can recompute is one it declines to commit — including
+metrics read out of captured text, which live in the cache alone (see
+[capture](capture.md)).
 
 So run history travels with the code that produced it. A teammate runs
 `git fetch && git checkout flor.branch && python -m flordb unpack` and has

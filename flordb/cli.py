@@ -5,7 +5,7 @@ from argparse import Namespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from .versions import current_branch, to_shadow
+from .versions import to_shadow
 from .constants import RUNS_DIR
 from . import orm
 import sys
@@ -141,9 +141,7 @@ def _render_ctx(ctx) -> str:
     )
 
 
-def report_extractions(
-    derived, io_count: int, limit: int, wrote: bool, shared: Optional[str] = None
-) -> None:
+def report_extractions(derived, io_count: int, limit: int, wrote: bool) -> None:
     """Print what extraction found, in the same shape whether or not it wrote.
 
     Preview and `--extract` differ in one word and one closing line; keeping
@@ -196,32 +194,13 @@ def report_extractions(
         f"flor.dataframe({', '.join(repr(n) for n in names)}). "
         f"Re-run --extract any time to refresh the reading."
     )
-    print(_sharing_note(shared))
-
-
-def _sharing_note(shared: Optional[str]) -> str:
-    """What became of the tracked half, in the user's terms.
-
-    Extraction is only shared once `.flor/extracted/` is committed, so saying
-    "written" and stopping would leave a teammate's `flor unpack` quietly
-    short of the columns the author is looking at.
-    """
-    if shared == "committed":
-        branch = current_branch()
-        return (
-            f"Saved to .flor/extracted/ and committed to {branch}. Push it and "
-            f"a teammate's `flor unpack` has the same columns."
-        )
-    if shared == "nothing-to-commit":
-        return "Saved to .flor/extracted/, unchanged since the last commit."
-    if shared == "not-shadow":
-        return (
-            f"Saved to .flor/extracted/, not committed: you are on "
-            f"{current_branch()}, and FlorDB keeps its auto-commits off the "
-            f"branch you review. Commit it yourself to share it, or let it "
-            f"ride your next run's auto-commit."
-        )
-    return "Saved to .flor/extracted/."
+    # The derivation lives in the local cache only, so a teammate reads the
+    # same io and gets no columns until they run this themselves.
+    print(
+        "Written to the local cache. It is not committed: the captured text it "
+        "was read from is, so a clone re-derives it with `flor capture "
+        "--extract` rather than inheriting it."
+    )
 
 
 def parse_args():

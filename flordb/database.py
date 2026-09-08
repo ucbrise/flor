@@ -9,7 +9,7 @@ from . import capture
 from . import orm
 
 from . import utils
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # Every value `logs.source` may hold. 'forward' is observation; the other two
@@ -305,10 +305,12 @@ def derive_extractions(cursor):
 def extract_metrics(cursor):
     """Replace the derived metrics with a fresh reading of captured text.
 
-    Writes both halves: `.flor/extracted/<tstamp>.jsonl`, which is tracked and
-    travels with the run, and the cache rows the dataframe reads. Doing both
-    here is what keeps them from drifting -- a file the cache disagrees with
-    would surface as a column that changes on the next `flor unpack`.
+    The rows land in the sqlite cache and nowhere else. Nothing here is stored
+    beside the run: the text is already in `.flor/runs/`, the rule that reads
+    it is in this module, so the values are a view over committed data rather
+    than data of their own. The cost of that is that the view is local --
+    a clone, or a deleted `.db`, has the text but not the reading until
+    someone runs `flor capture --extract` again.
 
     Idempotent: the previous derivation is dropped first, so running this twice
     leaves what running it once does, and a changed extraction rule replaces
@@ -316,28 +318,8 @@ def extract_metrics(cursor):
     """
     cursor.execute("DELETE FROM logs WHERE source = 'extract'")
     derived = derive_extractions(cursor)
-    orm.write_extractions([log for log, _ in derived], scope=io_tstamps(cursor))
     unpack([log for log, _ in derived], cursor, source="extract")
     return derived
-
-
-def io_tstamps(cursor) -> Set[str]:
-    """Runs whose captured text is in the cache, and so was read this pass."""
-    cursor.execute(
-        f"SELECT DISTINCT tstamp FROM logs WHERE value_type = {VALUE_TYPE_IO}"
-    )
-    return {tstamp for (tstamp,) in cursor.fetchall()}
-
-
-def load_extractions(cursor):
-    """Read `.flor/extracted/` into the cache. The rebuild half of the above."""
-    cursor.execute("DELETE FROM logs WHERE source = 'extract'")
-    count = 0
-    for path in orm.extract_jsonl_paths():
-        records = orm.read_jsonl(path)
-        unpack(records, cursor, source="extract")
-        count += len(records)
-    return count
 
 
 def pivot(conn, *args):

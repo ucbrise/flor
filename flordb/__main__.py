@@ -3,7 +3,6 @@ from . import capture
 from . import cli
 from .cli import flags
 from . import database
-from . import versions
 from . import orm
 from . import repl
 
@@ -35,10 +34,10 @@ def main():
                 records = orm.read_jsonl(path)
                 database.unpack(records, cursor, source="forward")
 
-            # Extracted metrics are tracked beside the runs they were read
-            # from, so a rebuild restores them from those files rather than
-            # re-deriving. A clone gets the reading its author saw.
-            database.load_extractions(cursor)
+            # Extracted metrics are not restored here. They are a local view
+            # over the io in runs/, so a rebuild leaves whatever derivation
+            # this cache already had and adds none for the runs it just read;
+            # `flor capture --extract` is what refreshes them.
 
             conn.commit()
             conn.close()
@@ -75,15 +74,9 @@ def main():
                 elif flags.args.preview or flags.args.extract:
                     # Preview and extract read the same derivation, so what the
                     # dry run shows is exactly what the write puts in the table.
-                    shared = None
                     if flags.args.extract:
                         derived = database.extract_metrics(cursor)
                         conn.commit()
-                        # Tracked, so it only travels once it is committed.
-                        shared = versions.commit_paths(
-                            [EXTRACT_DIR],
-                            "FLOR::Auto-commit::extract",
-                        )
                     else:
                         derived = database.derive_extractions(cursor)
                     cli.report_extractions(
@@ -91,7 +84,6 @@ def main():
                         io_count,
                         limit=flags.args.limit,
                         wrote=flags.args.extract,
-                        shared=shared,
                     )
                 else:
                     print(repl.io().head(flags.args.limit))

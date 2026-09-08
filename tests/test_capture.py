@@ -667,7 +667,7 @@ class TestExtraction:
         project.run("-m", "flordb", "capture", "--extract")
         assert rows(project, source="extract") == once
 
-    def test_unpack_keeps_extractions_in_step(self, project):
+    def test_unpack_leaves_the_derivation_alone(self, project):
         project.write("train.py", TRAIN)
         project.run("train.py")
         project.run("-m", "flordb", "capture", "--extract")
@@ -681,21 +681,22 @@ class TestExtraction:
         project.run("-m", "flordb", "unpack")
         assert rows(project, source="extract") == []
 
-    def test_the_reading_is_tracked_and_committed(self, project):
+    def test_the_text_is_tracked_and_the_reading_is_not(self, project):
+        """The reading is a view over committed data, not data of its own."""
         project.write("train.py", TRAIN)
         project.run("train.py")
         project.run("-m", "flordb", "capture", "--extract")
 
         tracked = project.git_tracked_files()
-        assert any(f.startswith(".flor/extracted/") for f in tracked)
         assert any(f.startswith(".flor/runs/") for f in tracked)
+        assert not any(f.startswith(".flor/extracted/") for f in tracked)
+        assert not os.path.exists(os.path.join(project.root, ".flor", "extracted"))
 
-    def test_a_rebuilt_cache_still_has_the_columns(self, project):
-        """What `source='extract'` in the cache alone could not survive.
+    def test_a_rebuilt_cache_loses_the_columns_until_re_extracted(self, project):
+        """Deleting the db is what a teammate's fresh clone looks like.
 
-        Deleting the db is what a teammate's fresh clone looks like: the
-        derived rows are gone and nothing in the cache remembers they were
-        wanted. The tracked file is what brings them back.
+        The io survives -- it is committed in runs/ -- but the derivation does
+        not, and `--extract` is what brings the columns back.
         """
         project.write("train.py", TRAIN)
         project.run("train.py")
@@ -706,10 +707,13 @@ class TestExtraction:
         projid = os.path.basename(project.root)
         os.remove(os.path.join(project.root, ".flor", f"{projid}.db"))
         project.run("-m", "flordb", "unpack")
+        assert rows(project, source="extract") == []
 
+        project.run("-m", "flordb", "capture", "--extract")
         assert rows(project, source="extract") == before
 
-    def test_extraction_is_not_committed_off_a_shadow_branch(self, project):
+    def test_extraction_commits_nothing(self, project):
+        """No auto-commit, on any branch: there is no artifact to save."""
         project.write("train.py", TRAIN)
         project.run("train.py")
         _git(project.root, "checkout", "-q", "main")

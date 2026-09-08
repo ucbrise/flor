@@ -33,7 +33,6 @@ class TestEnsureGitignored:
         assert read_gitignore(repo).split() == [
             ".flor/*",
             "!.flor/runs/",
-            "!.flor/extracted/",
         ]
 
     def test_is_idempotent(self, repo):
@@ -55,7 +54,6 @@ class TestEnsureGitignored:
             "build/",
             ".flor/*",
             "!.flor/runs/",
-            "!.flor/extracted/",
         ]
 
     def test_preserves_unrelated_entries(self, repo):
