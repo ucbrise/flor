@@ -74,6 +74,53 @@ CKPT = "ckpt" + ".pth"
 flor.restore(CKPT, model)
 '''
 
+# Out of reach from both sides. flor names the mirror file before the script
+# runs, so a computed path defeats the load *and* the save: with neither stating
+# a literal, there is nothing left to infer from.
+COMPUTED_SAVE = '''    torch.save(model.state_dict(), CKPT)
+'''
+
+# Saves through a helper, so the only name the save site offers is `m`, a local
+# of a function replay has no frame for.
+HELPER_SAVE_TRAIN = HEAD + '''
+def save_ckpt(m):
+    torch.save(m.state_dict(), "ckpt.pth")
+
+x = torch.ones(4, 2)
+y = torch.zeros(4, 1)
+
+for epoch in flor.loop("epoch", range(epochs)):
+    for step in flor.loop("step", range(2)):
+        loss = ((model(x) - y) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    flor.log("weight_sum", float(sum(p.sum() for p in model.parameters())))
+    save_ckpt(model)
+'''
+
+# The hazard the save-site announcement exists for: the run saves a *copy* and
+# trains `model`. Every name resolves, the state applies cleanly, and the object
+# the loop logs from is left untouched.
+BEST_MODEL_TRAIN = HEAD + '''
+import copy
+
+best_model = copy.deepcopy(model)
+
+x = torch.ones(4, 2)
+y = torch.zeros(4, 1)
+
+for epoch in flor.loop("epoch", range(epochs)):
+    for step in flor.loop("step", range(2)):
+        loss = ((model(x) - y) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    best_model = copy.deepcopy(model)
+    flor.log("weight_sum", float(sum(p.sum() for p in model.parameters())))
+    torch.save(best_model.state_dict(), "ckpt.pth")
+'''
+
 # Two checkpoint files: inferable individually, refused together, because a
 # ResumeSpec addresses one file per run.
 SPLIT_BLOCK = '''
@@ -220,8 +267,12 @@ def replay(project, *extra, check=True):
 class TestUndeclaredRestoreIsAnnounced:
     def test_unmatched_resume_idiom_warns_on_replay(self, project):
         # Neither inference nor declaration covers this script, so replay can
-        # restore nothing. The run still happens -- it just has to say so.
-        project.write("train.py", script(resume=COMPUTED_PATH_BLOCK))
+        # restore nothing. The run still happens -- it just has to say so. The
+        # save is computed too, or the save site would supply the mapping the
+        # resume block withheld.
+        project.write(
+            "train.py", script(resume=COMPUTED_PATH_BLOCK, save=COMPUTED_SAVE)
+        )
         project.run("train.py")
 
         proc = replay(project, "--iter", "epoch=1", check=False)
@@ -316,6 +367,138 @@ class TestInferredFlatIdiom:
         combined = proc.stdout + proc.stderr
         assert "more than one checkpoint file" in combined
         assert "flor.restore" in combined
+
+
+class TestInferredFromTheSaveSite:
+    """`torch.save(model.state_dict(), p)` and no resume block anywhere.
+
+    A script that checkpoints but never resumes tells the load side nothing,
+    and its save call says the same thing one step less directly: this file is
+    that object's state. Weaker evidence, because saving and restoring are not
+    the same statement -- the name it yields is the object the run *saved*,
+    which need not be the one replay should load into. So it is consulted last,
+    and what it concluded is announced rather than applied in silence.
+    """
+
+    def test_replays_faithfully_with_no_resume_block(self, project):
+        project.write("train.py", script())
+        project.run("train.py")
+        forward = values(project, "forward")
+
+        proc = replay(project, "--iter", "epoch=all", check=False)
+
+        assert proc.returncode == 0, proc.stderr
+        assert "declares no way to load it back" not in proc.stdout + proc.stderr
+        replayed = values(project, "replay")
+        assert set(replayed) == set(forward)
+        # step=none means no training runs, so each epoch's number can only be
+        # right if that epoch's mirror was found and applied.
+        for epoch, value in forward.items():
+            assert replayed[epoch] == pytest.approx(value, rel=1e-6)
+
+    def test_announces_the_mapping_it_read(self, project):
+        project.write("train.py", script())
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        combined = proc.stdout + proc.stderr
+        assert "read the layout off the torch.save" in combined
+        assert "'ckpt.pth' holds model's state" in combined
+        assert "flor.restore" in combined
+
+    def test_keyed_save_maps_each_key_to_its_object(self, project):
+        project.write("train.py", script(save=DICT_SAVE))
+        project.run("train.py")
+        forward = values(project, "forward")
+
+        proc = replay(project, "--iter", "epoch=all", check=False)
+
+        assert proc.returncode == 0, proc.stderr
+        combined = proc.stdout + proc.stderr
+        assert "'model' -> model" in combined
+        assert "'optimizer' -> optimizer" in combined
+        replayed = values(project, "replay")
+        for epoch, value in forward.items():
+            assert replayed[epoch] == pytest.approx(value, rel=1e-6)
+
+    def test_a_resume_block_takes_precedence(self, project):
+        # Direct evidence wins: the load side says which object takes the file,
+        # the save side only says what went into it.
+        project.write("train.py", script(resume=FLAT_RESUME_BLOCK))
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        assert proc.returncode == 0, proc.stderr
+        assert "read the layout off the torch.save" not in proc.stdout + proc.stderr
+
+    def test_a_declaration_takes_precedence(self, project):
+        project.write("train.py", script(resume=FLAT_RESTORE_CALL))
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        assert proc.returncode == 0, proc.stderr
+        assert "read the layout off the torch.save" not in proc.stdout + proc.stderr
+
+    def test_saving_a_copy_is_announced_by_name(self, project):
+        # `best_model` resolves, has load_state_dict, and its shapes fit, so the
+        # restore succeeds -- into the object the loop does not log from. No
+        # exception is coming; the announcement is the whole warning.
+        project.write("train.py", BEST_MODEL_TRAIN)
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        combined = proc.stdout + proc.stderr
+        assert "'ckpt.pth' holds best_model's state" in combined
+        assert "saves a copy" in combined
+
+    def test_a_save_through_a_helper_is_not_inferred(self, project):
+        # `m` is a local of save_ckpt. Replay resolves names against the frame
+        # the loop runs in, where there is no such name.
+        project.write("train.py", HELPER_SAVE_TRAIN)
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        combined = proc.stdout + proc.stderr
+        assert "declares no way to load it back" in combined
+        assert "helper function" in combined
+
+    def test_two_saved_files_are_not_inferred(self, project):
+        project.write("train.py", script(save=SPLIT_SAVE))
+        project.run("train.py")
+
+        proc = replay(project, "--iter", "epoch=1", check=False)
+
+        combined = proc.stdout + proc.stderr
+        assert "declares no way to load it back" in combined
+        assert "more than one file" in combined
+
+    def test_fresh_clone_replays_from_zero(self, project):
+        # ckpt.pth is on disk from the forward run, but this script never reads
+        # it: there is no resume block to have loaded end-of-run weights over
+        # the initialization, so rebuilding from iteration 0 is sound. Refusing
+        # here on the file's mere presence would block the very scripts this
+        # inference exists to serve.
+        import shutil
+
+        project.write("train.py", script())
+        project.run("train.py")
+        forward = values(project, "forward")
+
+        tstamp = os.path.basename(project.run_files()[0])[: -len(".jsonl")]
+        shutil.rmtree(os.path.join(project.root, ".flor", "obj_store", tstamp))
+        assert os.path.exists(os.path.join(project.root, "ckpt.pth"))
+
+        proc = replay(project, "--iter", "epoch=2", check=False)
+
+        assert proc.returncode == 0, proc.stderr
+        assert "no longer reconstructible" not in proc.stdout + proc.stderr
+        replayed = values(project, "replay")
+        assert replayed[2] == pytest.approx(forward[2], rel=1e-6)
 
 
 class TestExplicitRestore:

@@ -22,13 +22,18 @@ Mirroring is rate-limited: at most one snapshot every `ckpt_interval_s`
 (default 60 seconds), so a fast loop produces a mirror every *minute*, not
 every epoch. Replay restarts from the nearest one it finds.
 
-## Saving is inferred; loading has to be declared
+## Putting a mirror back
 
 Mirroring needs nothing from you — FlorDB copies whatever you saved. Putting a
 mirror *back* is the half that needs semantics: which object does this file
-belong in? FlorDB guesses by reading your script's own resume block, at module
-scope, in either of the two shapes people write. Keyed, when the checkpoint is
-a dict:
+belong in? FlorDB works that out from your script's source, preferring the most
+direct evidence it can find.
+
+### From your resume block
+
+The best evidence, because it names the object each slice goes into outright.
+Module scope, in either of the two shapes people write. Keyed, when the
+checkpoint is a dict:
 
 ```python
 _resume = torch.load("ckpt.pth")          # literal path, plain assignment
@@ -49,12 +54,47 @@ replay re-runs those same calls per iteration with `torch.load` redirected to
 that iteration's mirror. Your own resume block is left intact — it still runs
 once before the loop.
 
-What inference can't reach: a path that isn't a literal (FlorDB has to name the
-mirror file before your script runs), a resume block inside a function, and
-state split across two checkpoint files (replay addresses one file per run, and
-restoring half of your state is worse than refusing). Replay says so on startup
-in each case. Answer it with `flor.restore(...)`, placed where the resume block
-would go:
+### No resume block at all
+
+Plenty of scripts checkpoint and never resume. There's still nothing to declare:
+your `torch.save` says what the file holds, one step less directly than a load
+would, and FlorDB reads the mapping off it instead.
+
+```python
+torch.save(net.state_dict(), "ckpt.pth")                    # -> the file is net's state
+torch.save({"model": net.state_dict(),                      # -> "model" is net's,
+            "optimizer": opt.state_dict()}, "ckpt.pth")     #    "optimizer" is opt's
+```
+
+Entries that aren't a `state_dict()` — the `"epoch"` and `"loss"` most
+checkpoints carry — are skipped; they aren't things to restore into.
+
+This is the weakest of the three signals, and replay says out loud what it
+concluded, because saving and restoring aren't the same statement:
+
+```python
+best = copy.deepcopy(net)          # the loop trains net
+torch.save(best.state_dict(), "ckpt.pth")
+```
+
+Here the mapping FlorDB reads is *`ckpt.pth` holds `best`'s state*, which is
+true — and useless, because `net` is the object your metrics come from. Nothing
+fails: `best` exists, takes the state, and the shapes fit. So this is the one
+inference that can be wrong without raising, and the startup line naming the
+target it picked is the only warning you get. If it named the wrong one, say so
+with `flor.restore(...)`.
+
+A resume block wins over this whenever you have one, and `flor.restore` wins
+over both.
+
+### What inference can't reach
+
+A path that isn't a literal (FlorDB has to name the mirror file before your
+script runs), a resume block inside a function, a `torch.save` inside a helper
+(its locals name objects replay has no frame to reach), and state split across
+two checkpoint files (replay addresses one file per run, and restoring half of
+your state is worse than refusing). Replay says so on startup in each case.
+Answer it with `flor.restore(...)`, placed where the resume block would go:
 
 ```python
 flor.restore(path, net)                        # whole file into net

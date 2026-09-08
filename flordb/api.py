@@ -56,8 +56,16 @@ _suppress_logs: bool = False
 # Set when _neutralized_resume_state has turned the user's module-scope resume
 # block into a no-op, so replaying from iteration 0 is starting from the same
 # initialization the forward run did. The plan builder refuses from-zero without
-# it whenever the user's checkpoint file is on disk.
+# it whenever the script actually read its checkpoint before the loop.
 _resume_neutralized: bool = False
+
+# Set when the script itself read the resume spec's file at module scope --
+# i.e. it really does have a resume block, wherever that block lives. Only such
+# a script can have end-of-run state sitting on top of its initialization, and
+# that is the condition the from-zero refusal is about. A spec inferred from the
+# *save* site (source == "save") names a path the script may well never load,
+# so the file's presence on disk is not on its own evidence of the trap.
+_resume_load_seen: bool = False
 
 # The mirror _restore_from_mirror is currently reaching for, set only for the
 # duration of its torch.load. While it is set, the load hook must produce that
@@ -963,6 +971,25 @@ def _neutralized_resume_state(path):
     return state
 
 
+def _note_module_scope_load(path) -> None:
+    """Record that the script read the spec's checkpoint before entering a loop.
+
+    This is what separates a script with a resume block from one whose mapping
+    flor inferred from its torch.save: the first has already loaded end-of-run
+    weights over its initialization by the time the loop starts, the second has
+    loaded nothing at all.
+    """
+    global _resume_load_seen
+    spec = cli.flags.resume_spec
+    if spec is None:
+        return
+    try:
+        if _coerce_to_path(path).name == _coerce_to_path(spec.path).name:
+            _resume_load_seen = True
+    except Exception:
+        pass
+
+
 def _flor_torch_load(path, *args, **kwargs):
     assert _orig_torch_load is not None
     if cli.in_replay_mode():
@@ -1000,6 +1027,7 @@ def _flor_torch_load(path, *args, **kwargs):
                 )
         else:
             # Module scope: no loop context yet, so this is the resume block.
+            _note_module_scope_load(path)
             neutral = _neutralized_resume_state(path)
             if neutral is not None:
                 return neutral
@@ -1166,6 +1194,16 @@ def _resolve_targets(spec) -> Optional[dict]:
     return {name: scope.get(name) for name, _ in spec.applies}
 
 
+def _spec_origin(spec) -> str:
+    """Where a spec's mapping came from, as it reads in an error message."""
+    if spec.source == "explicit":
+        return "flor.restore"
+    if spec.source == "save":
+        at = f":{spec.lineno}" if spec.lineno else ""
+        return f"the torch.save in {SCRIPTNAME}{at}"
+    return f"the resume block in {SCRIPTNAME}"
+
+
 def _select_state(loaded, key):
     """The slice of a checkpoint that belongs to one target.
 
@@ -1200,7 +1238,8 @@ def _restore_from_mirror(
     if targets is None:
         raise RuntimeError(
             f"FLOR: cannot restore {_ctx_description()}: no frame for "
-            f"{SCRIPTNAME} on the stack, so the resume block's targets "
+            f"{SCRIPTNAME} on the stack, so the targets named by "
+            f"{_spec_origin(spec)} "
             f"({', '.join(n for n, _ in spec.applies)}) can't be reached. "
             f"Declare them with flor.restore({spec.path!r}, <name>=<obj>, ...)."
         )
@@ -1217,7 +1256,10 @@ def _restore_from_mirror(
         for target_name, key in spec.applies:
             target = targets.get(target_name)
             if target is None:
-                failures.append(f"{target_name}: not found in {spec.source} scope")
+                failures.append(
+                    f"{target_name}: named by {_spec_origin(spec)}, but no such "
+                    f"name where the loop runs"
+                )
                 continue
             apply = getattr(target, "load_state_dict", None)
             if apply is None:
@@ -1235,8 +1277,8 @@ def _restore_from_mirror(
             hint = (
                 ""
                 if spec.source == "explicit"
-                else f" flor inferred this mapping from {SCRIPTNAME}; if it is "
-                f"wrong, declare it instead with "
+                else f" flor inferred this mapping from {_spec_origin(spec)}; "
+                f"if it is wrong, declare it instead with "
                 f"flor.restore({spec.path!r}, <name>=<obj>, ...)."
             )
             raise RuntimeError(
@@ -1324,9 +1366,17 @@ def _build_outer_replay_plan(name: str, materialized: list):
         # a resume shape flor can't neutralize refuses instead of guessing.
         if (
             resume is not None
-            and resume.source != "explicit"
-            and os.path.exists(resume.path)
             and not _resume_neutralized
+            and (
+                # A parsed resume block runs unconditionally at module scope, so
+                # the file being on disk is enough to know it loaded.
+                (resume.source == "ast" and os.path.exists(resume.path))
+                # A spec read off the save site names a path the script may
+                # never load. Only an observed module-scope read of it -- an
+                # in-function resume block, say -- puts end-of-run state over
+                # the initialization.
+                or (resume.source == "save" and _resume_load_seen)
+            )
         ):
             raise RuntimeError(
                 f"FLOR: cannot replay {name}={list(requested)}: no checkpoint "
