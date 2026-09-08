@@ -2,18 +2,17 @@
 
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-
 FlorDB brings experiment tracking, provenance, and reproducibility to your ML workflow—using the one thing every engineer already writes: **logs**.
 
 Unlike heavyweight MLOps platforms, FlorDB doesn’t ask you to adopt a new UI, schema, or service. Just import it, log as you normally would, and gain full history, lineage, and replay capabilities across your training runs.
 
 ## 🌻 Why FlorDB?
 
-- **Log-Driven Experiment Tracking**  
-  No dashboards to configure or schemas to design. `flor.log(...)` writes structured, queryable metadata; `flor.arg(...)` turns a constant into a CLI-settable hyperparameter that is recorded with the run.
-
 - **Zero Code Changes to Start**  
-  Already using `print` or `logging`? Import FlorDB and your existing output is captured, versioned, and indexed by loop iteration — no rewrite required.
+  Already using `print` or `logging`? Import FlorDB and your existing output is captured, versioned, and queryable—no rewrite required.
+
+- **Log-Driven Experiment Tracking**  
+  No dashboards to configure or schemas to design. `flor.log(...)` writes structured metadata; `flor.arg(...)` turns a constant into a CLI-settable hyperparameter that is recorded with the run.
 
 - **Hindsight Logging & Replay**  
   Missed a metric? Add a log *after the fact* and replay past runs to capture it—no rerunning from scratch.
@@ -37,8 +36,6 @@ git clone https://github.com/ucbrise/flor.git
 cd flor
 pip install -e .
 ```
-
----
 
 ## 📝 First Log in 30 Seconds
 
@@ -69,7 +66,6 @@ flor.dataframe("message")
 ```
          projid              tstamp filename   source          message
 0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
-
 ```
 
 ## 🪵 Already Using `print` and `logging`? Just Import
@@ -77,94 +73,26 @@ flor.dataframe("message")
 Add one import to a script you already have. Nothing else changes:
 
 ```python
-import logging
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-
 import flordb as flor          # <-- the only new line
 
 for epoch in range(3):
     print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
-    logging.info("checkpoint saved")
 ```
 
 Your terminal looks exactly the same. But the run is now versioned, committed,
-and queryable:
+and queryable with `flor.io()`.
 
-```python
-flor.io()
-```
-
-```
-  projid                     tstamp  filename   source        channel                    line
-0  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 0 | loss: 0.5000
-1  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
-2  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 1 | loss: 0.3333
-3  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
-4  zero2 2026-08-13 12:34:47.951515  train.py  forward     io::stdout  epoch 2 | loss: 0.2500
-5  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
-```
-
-Filter by channel with `flor.io("io::stdout")` or `flor.io("io::log::error")`.
-
-**Then adopt as much as you want.** Every further step buys a specific thing.
-Naming the loop is the first one — it tells FlorDB what an iteration is, so
-your output lands at the right grain:
-
-```python
-for epoch in flor.loop("epoch", range(3)):   # was: for epoch in range(3):
-```
-
-```
-  projid                     tstamp  filename   source  epoch epoch_value        channel                    line
-0  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0     io::stdout  epoch 0 | loss: 0.5000
-1  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0  io::log::info        checkpoint saved
-2  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1     io::stdout  epoch 1 | loss: 0.3333
-3  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1  io::log::info        checkpoint saved
-4  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2     io::stdout  epoch 2 | loss: 0.2500
-5  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2  io::log::info        checkpoint saved
-```
-
-That `epoch` column is what the rest of FlorDB is built on: checkpoints
-addressable by iteration, and replay that can jump to one.
-
-Captured text stays out of `flor.dataframe()` — it isn't a metric — but FlorDB
-can pull metrics out of it if you ask. See what that would do to *your* logs
-before turning it on:
-
-```bash
-python -m flordb capture --preview
-```
-
-```
-Would extract 3 value(s) across 1 metric(s) from 6 captured line(s): loss
-
-  loss                 0.5            <- epoch 0 | loss: 0.5000
-  loss                 0.3333         <- epoch 1 | loss: 0.3333
-  loss                 0.25           <- epoch 2 | loss: 0.2500
-
-Nothing was written. Enable with flor.set_capture(extract=True) in your script.
-```
-
-With `flor.set_capture(extract=True)`, `loss` becomes a real column in
-`flor.dataframe("loss")` while the raw line stays on record. It is off by
-default because a bad guess would invent a column you didn't ask for.
-
-Capture is tunable and easy to switch off:
-
-```python
-flor.set_capture(max_records=50_000)   # per-run ceiling (default 10,000)
-flor.set_capture(False)                # or FLOR_CAPTURE=0 in the environment
-```
+→ [Automatic log capture](docs/capture.md): channels, naming your loops, and
+turning captured text into real metric columns.
 
 ## 🧪 Track Experiments with Zero Overhead
 
-Drop FlorDB into your existing training script:
+Adopt as much as you want. Every step buys a specific thing:
 
 ```python
 import flordb as flor
 
-# Hyperparameters
-lr = flor.arg("lr", 1e-3)
+lr = flor.arg("lr", 1e-3)                     # CLI-settable, recorded with the run
 batch_size = flor.arg("batch_size", 32)
 
 for epoch in flor.loop("epoch", range(epochs)):
@@ -173,18 +101,10 @@ for epoch in flor.loop("epoch", range(epochs)):
         flor.log("loss", loss.item())
     flor.log("val_acc", validate(net))
 
-    # Already in your script? Then you're done: flor mirrors this save into
-    # its object store, one snapshot per epoch, and replays from it later.
-    torch.save({"model": net.state_dict()}, "ckpt.pth")
+    torch.save({"model": net.state_dict()}, "ckpt.pth")   # mirrored, one per epoch
 ```
 
-No `with flor.checkpointing(...):` block is required — an existing `torch.save`
-inside a `flor.loop` is enough. Use `flor.checkpointing(model=..., optimizer=...)`
-to enroll non-torch objects (scikit-learn estimators, plain dicts), and
-`flor.set_ckpt_interval(seconds)` to bound how much disk the snapshots take
-(default: at most one every 60s).
-
-**Change hyperparameters from the CLI:**
+Change hyperparameters from the CLI:
 
 ```bash
 python train.py --kwargs lr=5e-4 batch_size=64
@@ -204,111 +124,46 @@ flor.dataframe("lr", "batch_size", "val_acc")
 ```
 
 Every `flor.loop` you name becomes a column, so nested metrics land at the right
-grain without a join table. `source` distinguishes values observed on the
-original run (`forward`) from ones recovered later by replay (`replay`).
-Raw SQL is available too:
+grain without a join table. Raw SQL is available too, via `flor.query(...)`.
 
-```python
-flor.query("SELECT * FROM logs WHERE value_name = 'val_acc' AND source = 'forward'")
-```
+→ [Checkpoints](docs/checkpoints.md): what gets mirrored, non-torch objects, and
+bounding disk use.
 
 ## 🔍 Hindsight Logging: Fix It After You See It
 
-Forgot to log gradient norms?
+Forgot to log gradient norms? Add the statement to the script now:
 
 ```python
 flor.log("grad_norm", ...)
 ```
 
-Add the logging statement to the script and run:
-
 ```bash
 python -m flordb replay --apply grad_norm
 ```
 
-FlorDB estimates the cost, asks for confirmation, then walks the historical
-versions: it checks each run's commit out, splices your new statement into that
-version of the script, restarts from the nearest checkpoint, and records the
-recovered values. Narrow the work when you don't need every iteration:
+FlorDB walks the historical versions, splices your new statement into each one,
+restarts from the nearest checkpoint, and records the recovered values.
 
-```bash
-python -m flordb replay --apply grad_norm --iter epoch=0,2 --iter step=all
-```
-
-Loops you don't mention default to their last iteration. To replay one run
-directly (no orchestration, no git checkout), the same verbs are flags on the
-script itself:
-
-```bash
-python train.py --replay_flor \
-    --apply loss,val_acc \
-    --iter epoch=0,2 \
-    --iter step=all \
-    --override device=cpu
-```
-
-`--override` exists for environment-shaped settings such as `device` — replaying
-on a different machine is fine, but hyperparameters that defined the original
-run are rejected, since changing those makes it a new experiment rather than a
-replay.
+→ [Replay](docs/replay.md): narrowing the work by iteration, replaying a single
+run, and `--override`.
 
 ## 📁 What FlorDB Writes
 
-Everything is project-local; nothing lands in your home directory.
+Everything is project-local; nothing lands in your home directory. Run history
+is tracked in git alongside the code that produced it, so a teammate runs
+`git fetch && python -m flordb unpack` and has everyone's metrics—no server, no
+bucket, no bill.
 
-```
-.flor/
-  runs/<tstamp>.jsonl     tracked: one immutable record per forward run
-  obj_store/<tstamp>/     ignored: checkpoints, addressable by loop iteration
-  <projid>.db             ignored: sqlite query cache, rebuildable at any time
-.flor.cmd                 tracked: the run's tstamp and command line
-```
-
-Each run makes one `FLOR::Auto-commit::<tstamp>` commit on a shadow branch whose
-message body carries the run's hyperparameters — so a run stays reproducible
-even if the logs are gone. Lost or moved the cache? Rebuild it from the JSONL:
-
-```bash
-python -m flordb unpack
-```
-
-### What syncs, and what doesn't
-
-The three things under `.flor/` have very different economics, so flor treats
-them differently in `.gitignore` (written on first run):
-
-| | Recomputable? | In git? |
-|---|---|---|
-| `runs/*.jsonl` | No — the one irreplaceable observation | **Yes**, ~69KB packed per run |
-| `obj_store/` | Yes, by replaying | No — ~19MB per run, and checkpoints don't dedup |
-| `<projid>.db` | Yes, `flor unpack` in seconds | No |
-
-So run history travels with the code that produced it. A teammate runs
-`git fetch && python -m flordb unpack` and has everyone's metrics — no server,
-no bucket, no bill.
-
-Checkpoints don't travel, which means the first replay in a fresh clone has to
-recompute from iteration 0. It does that automatically, and **shelves the
-checkpoints it passes on the way**, so only the first replay of a given run pays
-the cost. Two rules keep that from corrupting history: a recomputed checkpoint
-never overwrites one the forward run wrote, and warming is disabled under an
-`--override` that could move the numbers (`device=cpu`).
-
-Replaying from iteration 0 assumes the script seeds deterministically. If your
-script has a resume block (`torch.load("ckpt.pth")` at module scope), flor
-neutralizes it for that first replay so it can't load end-of-run weights over
-the fresh initialization — your checkpoint file is left where it is, untouched.
+→ [Storage](docs/storage.md): the `.flor/` layout, and what syncs vs. what's
+rebuilt on demand.
 
 ## 🏗 Real ML Systems Built on FlorDB
 
-FlorDB powers full AI/ML lifecycle tooling:
-
-- **Feature Stores & Model Registries**
-- **Document Parsing & Feedback Loops**
-- **Continuous Training Pipelines**
-
-See our [Scan Studio](https://github.com/bwerick/scan_studio) and [Document Parser](https://github.com/rlnsanz/document_parser) examples for real-world integration.
-
+FlorDB powers full AI/ML lifecycle tooling—feature stores, model registries,
+document parsing with feedback loops, and continuous training pipelines. See
+[Scan Studio](https://github.com/bwerick/scan_studio) and
+[Document Parser](https://github.com/rlnsanz/document_parser) for real-world
+integrations.
 
 ## 📚 Publications
 
@@ -317,7 +172,6 @@ FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State Univ
 - *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf))  
 - *The Management of Context in the ML Lifecycle* ([UCB Tech Report 2024](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html))  
 - *Hindsight Logging for Model Training* ([PVLDB 2021](http://www.vldb.org/pvldb/vol14/p682-garcia.pdf))  
-
 
 ## 🛠 License
 
