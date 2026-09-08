@@ -366,10 +366,10 @@ class TestCapturedRun:
         ).stdout
         lines = [line for line in out.splitlines() if line.strip()]
 
-        assert lines[0] == "projid,tstamp,filename,source,epoch,epoch_value,val_acc"
+        assert lines[0] == "projid,tstamp,filename,source,epoch,val_acc"
         captured = sorted(l.split(",", 4)[4] for l in lines[1:] if ",train.py," in l)
         uncaptured = sorted(l.split(",", 4)[4] for l in lines[1:] if ",train2.py," in l)
-        assert captured == uncaptured == ["0,0,90", "1,1,91", "2,2,92"]
+        assert captured == uncaptured == ["0,90", "1,91", "2,92"]
 
     def test_stdout_still_reaches_the_terminal(self, trained):
         proc = trained.run("train.py")

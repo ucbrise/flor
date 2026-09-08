@@ -162,7 +162,13 @@ def _value_matches_iteration(iter_col, val_col):
     strings (`str(value)` at capture time), so compare on the string form.
     """
     def as_text(x):
-        return None if x is None or (isinstance(x, float) and pd.isna(x)) else str(x)
+        # `map` over a nullable Int64 column hands out numpy floats once any
+        # row is NA, so 1 would stringify to "1.0" against a value of "1".
+        if pd.isna(x):
+            return None
+        if isinstance(x, float) and x.is_integer():
+            x = int(x)
+        return str(x)
 
     left = iter_col.map(as_text)
     right = val_col.map(as_text)
@@ -198,7 +204,10 @@ def expand_ctx(logs):
         # without that ctx depth get NaN. Use Int64 (nullable) so the
         # column survives groupby/max without collapsing to float.
         if iter_col.notna().any():
-            logs[loop_name] = iter_col.astype("Int64")
+            # Int64 before the comparison below, so a column pandas read as
+            # float doesn't stringify to "1.0" against a value of "1".
+            iter_col = iter_col.astype("Int64")
+            logs[loop_name] = iter_col
 
         # Only surface _value column if at least one row carries it, and
         # only when it carries something the iteration index doesn't.

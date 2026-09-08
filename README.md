@@ -117,19 +117,20 @@ flor.dataframe("lr", "batch_size", "loss")
 ```
 
 ```
-        projid                     tstamp  filename   source  step step_value  epoch epoch_value      lr batch_size    loss
-0  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      0           0  0.0005         64     0.5
-1  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      0           0  0.0005         64  0.3333
-2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      1           1  0.0005         64  0.3333
-3  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      1           1  0.0005         64    0.25
-4  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     0          0      2           2  0.0005         64    0.25
-5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward     1          1      2           2  0.0005         64     0.2
+        projid                     tstamp  filename   source  epoch  step      lr batch_size    loss
+0  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      0     0  0.0005         64     0.5
+1  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      0     1  0.0005         64  0.3333
+2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      1     0  0.0005         64  0.3333
+3  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      1     1  0.0005         64    0.25
+4  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     0  0.0005         64    0.25
+5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     1  0.0005         64     0.2
 ```
 
-Each named `flor.loop` becomes its own column, and a row carries the loops that
-enclosed the `flor.log` that produced it. `loss` is logged inside `step`, so you
-get one row per step, with its epoch and the run's hyperparameters attached — no
-join, no manual step counter. Ask for `val_acc` instead and you get one row per
+Each named `flor.loop` becomes its own column, outer loops to the left of the
+inner ones they enclose, and a row carries the loops that enclosed the
+`flor.log` that produced it. `loss` is logged inside `step`, so you get one row
+per step, with its epoch and the run's hyperparameters attached — no join, no
+manual step counter. Ask for `val_acc` instead and you get one row per
 epoch, because that is where it was logged. Raw SQL is available too, via
 `flor.query(...)`.
 

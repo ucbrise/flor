@@ -170,3 +170,46 @@ class TestPivot:
 
         assert df["epoch"].tolist() == [1]
         assert df["step"].tolist() == [7]
+
+    def test_outer_loops_come_before_inner_ones(self, logs_db):
+        conn, cursor = logs_db
+        database.unpack(
+            [log("loss", 0.5, ctx=[seg("epoch", 1), seg("step", 7)])], cursor
+        )
+        conn.commit()
+
+        cols = list(database.pivot(conn, "loss").columns)
+
+        # Nesting order, left to right: the loop that encloses reads first.
+        assert cols.index("epoch") < cols.index("step")
+
+    def test_value_column_is_dropped_when_it_repeats_the_index(self, logs_db):
+        conn, cursor = logs_db
+        database.unpack(
+            [log("loss", 0.5, ctx=[seg("epoch", 0, "0"), seg("step", 7, "7")])], cursor
+        )
+        conn.commit()
+
+        df = database.pivot(conn, "loss")
+
+        # Looping over a range makes value and index the same column twice.
+        assert "epoch_value" not in df.columns
+        assert "step_value" not in df.columns
+        assert df["epoch"].tolist() == [0]
+        assert df["step"].tolist() == [7]
+
+    def test_value_column_survives_when_it_differs_from_the_index(self, logs_db):
+        conn, cursor = logs_db
+        database.unpack(
+            [
+                log("loss", 0.5, ctx=[seg("epoch", 0, "0"), seg("step", 0, "a")]),
+                log("loss", 0.4, ctx=[seg("epoch", 0, "0"), seg("step", 1, "b")]),
+            ],
+            cursor,
+        )
+        conn.commit()
+
+        df = database.pivot(conn, "loss")
+
+        assert "epoch_value" not in df.columns
+        assert df["step_value"].tolist() == ["a", "b"]

@@ -49,13 +49,13 @@ for epoch in flor.loop("epoch", range(3)):   # was: for epoch in range(3):
 ```
 
 ```
-  projid                     tstamp  filename   source  epoch epoch_value        channel                    line
-0  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0     io::stdout  epoch 0 | loss: 0.5000
-1  zero2 2026-08-13 12:34:49.944234  train.py  forward      0           0  io::log::info        checkpoint saved
-2  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1     io::stdout  epoch 1 | loss: 0.3333
-3  zero2 2026-08-13 12:34:49.944234  train.py  forward      1           1  io::log::info        checkpoint saved
-4  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2     io::stdout  epoch 2 | loss: 0.2500
-5  zero2 2026-08-13 12:34:49.944234  train.py  forward      2           2  io::log::info        checkpoint saved
+  projid                     tstamp  filename   source  epoch        channel                    line
+0  zero2 2026-08-13 12:34:49.944234  train.py  forward      0     io::stdout  epoch 0 | loss: 0.5000
+1  zero2 2026-08-13 12:34:49.944234  train.py  forward      0  io::log::info        checkpoint saved
+2  zero2 2026-08-13 12:34:49.944234  train.py  forward      1     io::stdout  epoch 1 | loss: 0.3333
+3  zero2 2026-08-13 12:34:49.944234  train.py  forward      1  io::log::info        checkpoint saved
+4  zero2 2026-08-13 12:34:49.944234  train.py  forward      2     io::stdout  epoch 2 | loss: 0.2500
+5  zero2 2026-08-13 12:34:49.944234  train.py  forward      2  io::log::info        checkpoint saved
 ```
 
 That `epoch` column is what the rest of FlorDB is built on: checkpoints
