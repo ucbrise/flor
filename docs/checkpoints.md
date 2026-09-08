@@ -14,8 +14,13 @@ for epoch in flor.loop("epoch", range(epochs)):
     torch.save({"model": net.state_dict()}, "ckpt.pth")
 ```
 
-FlorDB mirrors that save into `.flor/obj_store/<tstamp>/`, one snapshot per
-epoch. Your own `ckpt.pth` is written exactly as before.
+FlorDB writes a second, independent copy into `.flor/obj_store/<tstamp>/`,
+named by the iteration it was taken at. Your own `ckpt.pth` is written exactly
+as before.
+
+Mirroring is rate-limited: at most one snapshot every `ckpt_interval_s`
+(default 60 seconds), so a fast loop produces a mirror every *minute*, not
+every epoch. Replay restarts from the nearest one it finds.
 
 ## Non-torch objects
 

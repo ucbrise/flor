@@ -101,7 +101,7 @@ for epoch in flor.loop("epoch", range(epochs)):
         flor.log("loss", loss.item())
     flor.log("val_acc", validate(net))
 
-    torch.save({"model": net.state_dict()}, "ckpt.pth")   # mirrored, one per epoch
+    torch.save({"model": net.state_dict()}, "ckpt.pth")   # mirrored to flor (rate-limited)
 ```
 
 Change hyperparameters from the CLI:
