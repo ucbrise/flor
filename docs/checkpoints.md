@@ -22,16 +22,27 @@ Mirroring is rate-limited: at most one snapshot every `ckpt_interval_s`
 (default 60 seconds), so a fast loop produces a mirror every *minute*, not
 every epoch. Replay restarts from the nearest one it finds.
 
-## Non-torch objects
+## Enrolling objects explicitly
 
-Use `flor.checkpointing(...)` to enroll objects `torch.save` won't see —
-scikit-learn estimators, plain dicts:
+The `torch.save` hook is a piggy-back: it only fires if your script already
+saves inside a loop. When it doesn't — you save once at the end, or not at all —
+enroll the objects yourself with `flor.checkpointing(...)`, and they're
+serialized at every checkpoint trigger:
 
 ```python
-with flor.checkpointing(model=clf, optimizer=opt):
+with flor.checkpointing(model=net, optimizer=optimizer):
     for epoch in flor.loop("epoch", range(epochs)):
         ...
 ```
+
+This accepts anything, torch included — `torch.nn.Module` and
+`torch.optim.Optimizer` are the serializer's first case, stored via their
+`state_dict()`. It's also the only path for objects `torch.save` would never
+see: scikit-learn estimators, numpy arrays, pandas DataFrames, and plain
+Python objects (via cloudpickle).
+
+The same interval throttles this path — enrolling objects doesn't add a
+second stream of snapshots on top of the hook's.
 
 ## Bounding disk use
 

@@ -126,8 +126,8 @@ flor.dataframe("lr", "batch_size", "val_acc")
 Every `flor.loop` you name becomes a column, so nested metrics land at the right
 grain without a join table. Raw SQL is available too, via `flor.query(...)`.
 
-→ [Checkpoints](docs/checkpoints.md): what gets mirrored, non-torch objects, and
-bounding disk use.
+→ [Checkpoints](docs/checkpoints.md): what gets mirrored, enrolling objects
+explicitly, and bounding disk use.
 
 ## 🔍 Hindsight Logging: Fix It After You See It
 
