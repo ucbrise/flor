@@ -126,18 +126,14 @@ flor.dataframe("lr", "batch_size", "loss")
 5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     1  0.0005         64     0.2
 ```
 
-Each named `flor.loop` becomes its own column, outer loops to the left of the
-inner ones they enclose, and a row carries the loops that enclosed the
+Each named `flor.loop` becomes its own column, and a row carries the loops that enclosed the
 `flor.log` that produced it. `loss` is logged inside `step`, so you get one row
-per step, with its epoch and the run's hyperparameters attached — no join, no
-manual step counter. Ask for `val_acc` instead and you get one row per
-epoch, because that is where it was logged. Raw SQL is available too, via
-`flor.query(...)`.
+per step, with its epoch and the run's hyperparameters attached—no JOIN needed. 
 
 → [Checkpoints](docs/checkpoints.md): what gets mirrored, enrolling objects
 explicitly, and bounding disk use.
 
-## 🔍 Hindsight Logging: Fix It After You See It
+## 🔍 Hindsight Logging, or Logging After the Fact
 
 Forgot to log gradient norms? Add the statement to the script now:
 
@@ -157,25 +153,27 @@ run, and `--override`.
 
 ## 📁 What FlorDB Writes
 
-Everything is project-local; nothing lands in your home directory. Run history
-is tracked in git alongside the code that produced it, so a teammate runs
-`git fetch && python -m flordb unpack` and has everyone's metrics—no server, no
-bucket, no bill.
+Everything is project-local; nothing lands in your home directory. Your first
+run moves you off `main` onto a shadow branch named `flor.branch`, and every
+auto-commit lands there—run history is versioned alongside the code that
+produced it (without ever touching the branch you review and merge). A teammate
+runs `git fetch && git checkout flor.branch && python -m flordb unpack` and has
+everyone's metrics. 
 
-→ [Storage](docs/storage.md): the `.flor/` layout, and what syncs vs. what's
-rebuilt on demand.
+→ [Storage](docs/storage.md): the `.flor/` layout, the shadow branch, and what
+syncs vs. what's rebuilt on demand.
 
-## 🏗 Real ML Systems Built on FlorDB
+<!-- ## 🏗 Real ML Systems Built on FlorDB
 
 FlorDB powers full AI/ML lifecycle tooling—feature stores, model registries,
 document parsing with feedback loops, and continuous training pipelines. See
 [Scan Studio](https://github.com/bwerick/scan_studio) and
 [Document Parser](https://github.com/rlnsanz/document_parser) for real-world
-integrations.
+integrations. -->
 
 ## 📚 Publications
 
-FlorDB is based on research from UC Berkeley’s RISE Lab and Arizona State University.
+FlorDB is based on research from UC Berkeley’s RISE Lab continued at Arizona State University.
 
 - *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf))  
 - *The Management of Context in the ML Lifecycle* ([UCB Tech Report 2024](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html))  
@@ -194,5 +192,5 @@ make test        # full suite, including real forward runs and replays
 make test-fast   # unit tests only (~1s)
 ```
 
-**GitHub:** https://github.com/ucbrise/flor  
+**Email:** rolando.garcia@asu.edu  
 **Tutorial Video:** https://youtu.be/mKENSkk3S4Y
