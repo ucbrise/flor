@@ -6,7 +6,6 @@ bidict==0.21.3
 pandas
 numpy
 matplotlib
-scikit-learn
 tqdm
 ipython
 ipykernel

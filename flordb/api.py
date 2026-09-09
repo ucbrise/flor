@@ -33,10 +33,19 @@ context: List[orm.Segment] = []
 
 checkpoints = []
 
-# Adaptive-checkpoint trigger: at the end of each outermost flor.loop iteration
-# (and on any user torch.save call), checkpoint at most once per ckpt_interval_s.
+# Adaptive-checkpoint trigger: at most one checkpoint per ckpt_interval_s.
+# The decision is taken once, at the top of each outermost flor.loop iteration,
+# and both mirror streams read it -- enrolled objects through the ckpt() at the
+# end of that iteration, the user's own torch.save through the mirror hook
+# during it. Sharing one decision is what makes the two land on the *same*
+# iterations, which is exactly the pairing _mirror_exists_at requires before it
+# will restore a position instead of recomputing its way there. Deciding per
+# event instead let whichever fired first spend the interval, and the hook,
+# running inside the body, always beat the enrolled stream to it.
 ckpt_interval_s: float = 60.0
 _last_ckpt_time: Optional[float] = None
+_ckpt_armed: bool = False
+_save_mirrored: bool = False
 
 # Setup/teardown profiling anchors. `_setup_emitted` flips on first outermost
 # flor.loop / flor.iteration entry (emitting time::setup once, measured from
@@ -360,10 +369,26 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 @contextmanager
 def checkpointing(**kwargs):
     # Optional explicit-enrollment helper. The torch.save hook is the default
-    # piggy-back path; use this for non-torch objects (sklearn estimators, dicts,
-    # etc.) that you want serialized at every adaptive ckpt() trigger.
+    # piggy-back path; use this to name the objects outright -- anything holding
+    # state_dict()/load_state_dict() (a module, an optimizer, an LR scheduler, a
+    # GradScaler), plus dicts, ndarrays, DataFrames and plain objects -- and they
+    # are serialized at every adaptive ckpt() trigger.
     # Profiling records (time::setup / time::teardown) are now anchored on
     # outermost flor.loop boundaries, not on this block.
+    for name, obj in kwargs.items():
+        reason = obj_store.unrestorable_reason(obj)
+        if reason is not None:
+            raise TypeError(
+                f"FLOR: flor.checkpointing({name}=...) cannot round-trip that "
+                f"object: {reason}. Enrolling it would shelve a snapshot at "
+                f"every checkpoint and only fail on the replay that needed one, "
+                f"so it is refused here instead."
+            )
+    # Restore the enrollment list to its prior length rather than clearing it:
+    # a nested `with flor.checkpointing(...)` block would otherwise drop the
+    # outer block's objects on the way out, and the rest of the run would
+    # checkpoint less than the script asked for, silently.
+    mark = len(checkpoints)
     try:
         checkpoints.extend(list(kwargs.items()))
         yield
@@ -371,7 +396,7 @@ def checkpointing(**kwargs):
         capture.flor_print(f"An error occurred: {e}")
         raise
     finally:
-        checkpoints.clear()
+        del checkpoints[mark:]
 
 
 def restore(path, *target, **keyed) -> bool:
@@ -507,11 +532,19 @@ _unbounded_last_warned: set = set()
 
 @contextmanager
 def iteration(name: str, idx: Optional[int], value: Optional[str]):
-    global _suppress_logs
+    global _suppress_logs, _ckpt_armed, _save_mirrored
     _deferred_init()
     pos = len(layers)
     if pos == 0:
         _emit_setup_once()
+        # flor.iteration owns no iterator, so there is no cadence to throttle:
+        # its ckpt() below fires every iteration, and the usual shape is one
+        # process per iteration anyway. Arming unconditionally keeps the hook
+        # on the same footing, so the mirror the script's own torch.save leaves
+        # pairs with the enrolled snapshot rather than being throttled out by a
+        # clock left over from an earlier block in the same process.
+        _ckpt_armed = True
+        _save_mirrored = False
     clock = Clock()
     clock.set_start_time()
     layers[name] = (
@@ -564,6 +597,7 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     global _last_ckpt_time, _logical_replay_active, _suppress_logs
+    global _ckpt_armed, _save_mirrored
     _deferred_init()
     pos = len(layers)
     if pos == 0:
@@ -571,6 +605,8 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         # Reset so the first iter's ckpt always fires; later iters get
         # throttled by the time guard.
         _last_ckpt_time = None
+        _ckpt_armed = False
+        _save_mirrored = False
         _logical_replay_active = False
         _suppress_logs = False
     clock = Clock()
@@ -625,6 +661,19 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
                     _suppress_logs = False
                     _restore_at(name, materialized, int(each[0]))
             first_outer_iter = False
+        if pos == 0:
+            # One decision for this whole iteration, read by the hook during
+            # the body and by the ckpt() below. The clock is anchored here
+            # rather than after that ckpt: reset at the end, an iteration
+            # longer than the interval would arm only every other time.
+            now = time.perf_counter()
+            _ckpt_armed = (
+                _last_ckpt_time is None
+                or (now - _last_ckpt_time) >= ckpt_interval_s
+            )
+            _save_mirrored = False
+            if _ckpt_armed:
+                _last_ckpt_time = now
         iter_clock = Clock()
         iter_clock.set_start_time()
         yield each[1]  # type: ignore
@@ -632,14 +681,13 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         # On replay this shelves only what the forward run left missing, so a
         # fast-forwarded iteration is paid for once rather than on every replay.
         warming = _ckpt_warming_enabled()
-        if pos == 0 and (warming or not cli.in_replay_mode()):
-            now = time.perf_counter()
-            if _last_ckpt_time is None or (now - _last_ckpt_time) >= ckpt_interval_s:
-                ckpt(only_if_absent=warming)
-                _last_ckpt_time = now
+        if pos == 0 and _ckpt_armed and (warming or not cli.in_replay_mode()):
+            ckpt(only_if_absent=warming)
     if pos == 0 and (_ckpt_warming_enabled() or not cli.in_replay_mode()):
         # Force a final checkpoint at outermost loop exit so end-of-run state
-        # is always captured, regardless of the time guard.
+        # is always captured, regardless of the time guard. The hook has no
+        # equivalent -- it can only mirror a torch.save the script actually
+        # makes -- so this is the one snapshot the two streams need not share.
         ckpt(only_if_absent=_ckpt_warming_enabled())
         _last_ckpt_time = time.perf_counter()
     context.pop()
@@ -659,6 +707,7 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         _mark_main_segment_end()
         _logical_replay_active = False
         _suppress_logs = False
+        _ckpt_armed = False
     del layers[name]
 
 
@@ -860,7 +909,7 @@ def _path_in_obj_store(path) -> bool:
 
 
 def _flor_torch_save(obj, path, *args, **kwargs):
-    global _last_ckpt_time
+    global _save_mirrored
     assert _orig_torch_save is not None
     result = _orig_torch_save(obj, path, *args, **kwargs)
     if not layers:
@@ -873,8 +922,12 @@ def _flor_torch_save(obj, path, *args, **kwargs):
     # duplicates with deeper-nested filenames.
     if _path_in_obj_store(path):
         return result
-    now = time.perf_counter()
-    if _last_ckpt_time is not None and (now - _last_ckpt_time) < ckpt_interval_s:
+    # The decision was taken at the top of this outermost iteration and is
+    # shared with the ckpt() that shelves enrolled objects at the end of it, so
+    # both streams snapshot the same iterations. Once mirrored, this iteration
+    # is done: a torch.save inside an inner loop would otherwise mirror on
+    # every step of it.
+    if not _ckpt_armed or _save_mirrored:
         return result
     try:
         stem, ext = _user_path_stem_ext(path)
@@ -883,7 +936,7 @@ def _flor_torch_save(obj, path, *args, **kwargs):
         if warming and flor_path.exists():
             return result
         _orig_torch_save(obj, str(flor_path), *args, **kwargs)
-        _last_ckpt_time = now
+        _save_mirrored = True
     except Exception:
         pass
     return result
@@ -992,7 +1045,13 @@ def _note_module_scope_load(path) -> None:
 
 def _flor_torch_load(path, *args, **kwargs):
     assert _orig_torch_load is not None
-    if cli.in_replay_mode():
+    # A read out of our own obj_store is flor's own restore (load_ckpt ->
+    # obj_store.deserialize), already addressed at the iteration it wants.
+    # Redirecting it would re-encode the ctx into a name that already carries
+    # one -- model_epoch_1.pth becoming model_epoch_1_epoch_1.pth -- and the
+    # sibling glob below would then read that miss as a throttled mirror and
+    # raise. Same exemption _flor_torch_save makes on the way out.
+    if cli.in_replay_mode() and not _path_in_obj_store(path):
         if layers:
             try:
                 stem, ext = _user_path_stem_ext(path)
@@ -1039,7 +1098,7 @@ def _install_torch_hooks():
     if _orig_torch_save is not None:
         return
     try:
-        import torch
+        import torch # type: ignore
     except ImportError:
         return
     _orig_torch_save = torch.save

@@ -22,7 +22,6 @@ setuptools.setup(
         "bidict==0.21.3",
         "apted",
         "matplotlib",
-        "scikit-learn",
         "numpy",
         "tqdm",
         "sh",

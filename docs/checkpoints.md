@@ -114,12 +114,37 @@ with flor.checkpointing(model=net, optimizer=optimizer):
         ...
 ```
 
-This accepts anything: `torch.nn.Module` and `torch.optim.Optimizer` are the
-serializer's first case, stored via their `state_dict()`, and it's the only path
-for objects `torch.save` would never see — scikit-learn estimators, numpy
-arrays, pandas DataFrames, and plain Python objects (via cloudpickle). The same
-interval throttles it, so enrolling doesn't add a second stream of snapshots on
-top of the hook's.
+What it accepts is decided by shape, not by class. Anything carrying
+`state_dict()` / `load_state_dict()` is the serializer's first case — your model
+and optimizer, but equally the LR scheduler and the `GradScaler` beside them,
+which are neither a `Module` nor an `Optimizer` and are just as much part of the
+state a run resumes from:
+
+```python
+with flor.checkpointing(model=net, optimizer=opt, sched=sched, scaler=scaler):
+```
+
+Objects `torch.save` would never see go through the same block — numpy arrays,
+pandas DataFrames, dicts, and plain Python objects (via cloudpickle, restored
+through their instance dict). An object flor can serialize but could never put
+back — no `state_dict`, no mapping, no `__dict__` — is refused by
+`flor.checkpointing` itself, on the forward run, rather than shelving snapshots
+for a replay that would fail on them.
+
+Enrollment restores across machines: mirrors are read back with
+`map_location="cpu"` and copied into whatever device your live objects are on,
+so a checkpoint written on a GPU box replays on one without.
+
+Enrolling is a second stream of snapshots, not a replacement for the hook's: if
+your script also calls `torch.save`, both are written. They are taken at the
+same iterations, though — one trigger decision per iteration, honored by both —
+which is what lets replay restore an iteration outright instead of recomputing
+its way there.
+
+One thing enrollment does not do is resume a forward run. `flor.checkpointing`
+only restores under replay; if you want an interrupted run to pick up where it
+left off, that is still your own `torch.save`/`torch.load` (or
+[`flor.restore`](#what-inference-cant-reach), which does it for you).
 
 ## Bounding disk use
 
