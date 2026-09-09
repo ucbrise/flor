@@ -17,6 +17,8 @@ class WithExpVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
         self.found = False
+        self.loop_children = {}
+        self._loops = []
 
     def visit_With(self, node: ast.With):
         pred = (
@@ -28,14 +30,37 @@ class WithExpVisitor(ast.NodeVisitor):
         )
         if pred:
             self.found = True
-        else:
-            self.generic_visit(node)
+        self.generic_visit(node)
 
     def visit_For(self, node: ast.For):
         iter_s = ast.unparse(node.iter).strip()
         if iter_s.startswith("flor.loop"):
             self.found = True
-        self.generic_visit(node)
+            call = node.iter
+            name = None
+            if call.args and isinstance(call.args[0], ast.Constant):
+                if isinstance(call.args[0].value, str):
+                    name = call.args[0].value
+            if self._loops and self._loops[-1] is not None:
+                self.loop_children.setdefault(self._loops[-1], []).append(name)
+            self._loops.append(name)
+            try:
+                self.generic_visit(node)
+            finally:
+                self._loops.pop()
+        else:
+            self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        outer = self._loops
+        self._loops = []
+        try:
+            self.generic_visit(node)
+        finally:
+            self._loops = outer
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+    visit_ClassDef = visit_FunctionDef
 
 
 class LoggedExpVisitor(ast.NodeVisitor):
@@ -107,7 +132,7 @@ class LoggedExpVisitor(ast.NodeVisitor):
 
 class ResumeBlockVisitor(ast.NodeVisitor):
     """
-    Locate a PyTorch resume-from-checkpoint block at module scope.
+    Locate a PyTorch resume-from-checkpoint block within one lexical scope.
 
     Two shapes. The keyed one, where a saved dict is unpacked by key:
 
@@ -126,9 +151,10 @@ class ResumeBlockVisitor(ast.NodeVisitor):
 
     Captures path, lhs name (keyed form only), and the (target, key) pairs so
     flor.loop can auto-restore historical state on replay without
-    `flor.checkpointing(...)` enrollment. Only module-scope matches are
-    emitted; function/class-nested patterns are recorded in `unscoped_match` so
-    the caller can warn.
+    `flor.checkpointing(...)` enrollment. Each function/class is scanned
+    separately: a load in one scope must never match an apply in another.
+    A nested match records its scope so replay can bind the live objects there,
+    before that frame returns to a caller with different variable names.
 
     Inference stops at one checkpoint file. A block loading two different paths
     is recorded in `multi_path` and emits nothing: ResumeSpec addresses a single
@@ -137,11 +163,14 @@ class ResumeBlockVisitor(ast.NodeVisitor):
 
     def __init__(self):
         super().__init__()
-        self._depth = 0
+        self.scope_name: Optional[str] = None
+        self.scope_lineno: Optional[int] = None
+        self.lineno: Optional[int] = None
+        self._nested = []
+        self.ambiguous_scope = False
         self.path: Optional[str] = None
         self.lhs_name: Optional[str] = None
         self.applies: list = []
-        self.unscoped_match: bool = False
         self.multi_path: bool = False
 
     @property
@@ -150,7 +179,24 @@ class ResumeBlockVisitor(ast.NodeVisitor):
             self.path is not None
             and bool(self.applies)
             and not self.multi_path
+            and not self.ambiguous_scope
         )
+
+    def visit_Module(self, node):
+        self.generic_visit(node)
+        candidates = ([self] if self.applies else []) + self._nested
+        if any(c.multi_path for c in candidates):
+            self.multi_path = True
+        if len({c.path for c in candidates}) > 1:
+            self.multi_path = True
+        if len(candidates) > 1:
+            self.ambiguous_scope = True
+        elif candidates and candidates[0] is not self:
+            match = candidates[0]
+            for name in (
+                "path", "lhs_name", "applies", "scope_name", "scope_lineno", "lineno"
+            ):
+                setattr(self, name, getattr(match, name))
 
     def _claim_path(self, path: str) -> bool:
         """Record the file this block resumes from; False if it's a second one."""
@@ -162,43 +208,33 @@ class ResumeBlockVisitor(ast.NodeVisitor):
             return False
         return True
 
-    def visit_FunctionDef(self, node):
-        self._depth += 1
-        try:
-            self.generic_visit(node)
-        finally:
-            self._depth -= 1
+    def _visit_scope(self, node):
+        child = ResumeBlockVisitor()
+        child.scope_name = node.name
+        # Decorated functions' code objects start at the first decorator.
+        child.scope_lineno = node.lineno
+        if not isinstance(node, ast.ClassDef) and node.decorator_list:
+            child.scope_lineno = node.decorator_list[0].lineno
+        for stmt in node.body:
+            child.visit(stmt)
+        if child.applies or child.multi_path:
+            self._nested.append(child)
+        self._nested.extend(child._nested)
 
-    def visit_AsyncFunctionDef(self, node):
-        self._depth += 1
-        try:
-            self.generic_visit(node)
-        finally:
-            self._depth -= 1
-
-    def visit_ClassDef(self, node):
-        self._depth += 1
-        try:
-            self.generic_visit(node)
-        finally:
-            self._depth -= 1
+    visit_FunctionDef = _visit_scope
+    visit_AsyncFunctionDef = _visit_scope
+    visit_ClassDef = _visit_scope
 
     def visit_Assign(self, node: ast.Assign):
         if self._is_torch_load_assign(node):
-            if self._depth != 0:
-                self.unscoped_match = True
-            elif self.path is None:
-                self._capture_load(node)
+            self._capture_load(node)
         self.generic_visit(node)
 
     def visit_Expr(self, node: ast.Expr):
         if isinstance(node.value, ast.Call) and self._is_load_state_dict_call(
             node.value
         ):
-            if self._depth != 0:
-                self.unscoped_match = True
-            elif not self._capture_apply(node.value):
-                # Not `<lhs>[<key>]`; try the flat `torch.load(...)` form.
+            if not self._capture_apply(node.value):
                 self._capture_flat_apply(node.value)
         self.generic_visit(node)
 
@@ -249,6 +285,8 @@ class ResumeBlockVisitor(ast.NodeVisitor):
         target0 = node.targets[0]
         assert isinstance(target0, ast.Name)
         self.lhs_name = target0.id
+        if self.lineno is None:
+            self.lineno = node.lineno
 
     def _capture_flat_apply(self, call: ast.Call) -> bool:
         """`<target>.load_state_dict(torch.load(<literal-path>))`.
@@ -274,6 +312,8 @@ class ResumeBlockVisitor(ast.NodeVisitor):
             call.func.value, ast.Name
         )
         self.applies.append((call.func.value.id, None))
+        if self.lineno is None:
+            self.lineno = call.lineno
         return True
 
     def _capture_apply(self, call: ast.Call) -> bool:

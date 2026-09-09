@@ -12,7 +12,9 @@ import os
 
 import pytest
 
-pytest.importorskip("torch")
+torch = pytest.importorskip("torch")
+
+_CUDA = torch.cuda.is_available()
 
 pytestmark = pytest.mark.slow
 
@@ -181,7 +183,8 @@ DICT_SAVE = '''    torch.save(
 # tell the declaration from the inference that would otherwise look identical.
 RESTORE_AND_REPORT = '''
 flor.restore("ckpt.pth", model=model, optimizer=optimizer)
-print("spec-source:", flor.cli.flags.resume_spec.source)
+if flor.cli.in_replay_mode():
+    print("spec-source:", flor.cli.flags.resume_spec.source)
 '''
 
 ENROLLED = HEAD + '''
@@ -251,7 +254,7 @@ def values(project, source):
     return {json.loads(ctx)[0]["iteration"]: float(v) for ctx, v in rows}
 
 
-def replay(project, *extra, check=True):
+def replay(project, *extra, check=True, env=None):
     return project.run(
         "train.py",
         "--replay_flor",
@@ -261,7 +264,67 @@ def replay(project, *extra, check=True):
         "step=none",
         *extra,
         check=check,
+        env=env,
     )
+
+
+# Puts the model wherever the run has hardware for, so the same source is a
+# GPU script on the forward run and a CPU script on the replay -- which is the
+# whole point: the mirror is written by one and read by the other.
+DEVICE_HEAD = '''
+import torch
+import torch.nn as nn
+
+import flordb as flor
+
+flor.set_ckpt_interval(flor.arg("ckpt_interval_s", 0.0))
+epochs = flor.arg("epochs", 3)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(flor.arg("seed", 42))
+model = nn.Linear(2, 1).to(device)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+
+flor.restore("ckpt.pth", model)
+
+x = torch.ones(4, 2, device=device)
+y = torch.zeros(4, 1, device=device)
+
+for epoch in flor.loop("epoch", range(epochs)):
+    for step in flor.loop("step", range(2)):
+        loss = ((model(x) - y) ** 2).mean()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    flor.log("weight_sum", float(sum(p.sum() for p in model.parameters())))
+    torch.save(model.state_dict(), "ckpt.pth")
+'''
+
+
+@pytest.mark.skipif(
+    not _CUDA, reason="needs a GPU to write a checkpoint a CPU box has to read"
+)
+class TestMirrorsCrossDevices:
+    def test_a_gpu_mirror_restores_on_a_cpu_only_machine(self, project):
+        # torch.load puts each storage back on the device recorded in the file
+        # unless told otherwise, so a mirror written on a GPU box used to be
+        # unreadable on one without -- the restore died inside torch, before
+        # load_state_dict ever got the chance to copy onto the live CPU
+        # parameters. CUDA_VISIBLE_DEVICES="" is that second machine.
+        project.write("train.py", DEVICE_HEAD)
+        project.run("train.py")
+
+        proc = replay(
+            project, "--iter", "epoch=1", check=False, env={"CUDA_VISIBLE_DEVICES": ""}
+        )
+
+        combined = proc.stdout + proc.stderr
+        assert proc.returncode == 0, combined
+        assert "Attempting to deserialize object on a CUDA device" not in combined
+        # Restoring is the claim under test, not numeric agreement: cuda and
+        # cpu kernels do not match bit-for-bit, so the replayed value is close
+        # to the forward one, not equal to it.
+        assert values(project, "replay")
 
 
 class TestUndeclaredRestoreIsAnnounced:
@@ -550,10 +613,12 @@ class TestExplicitRestore:
         for epoch, value in forward.items():
             assert replayed[epoch] == pytest.approx(value, rel=1e-6)
 
-    def test_forward_run_resumes_from_the_users_file(self, project):
-        # flor.restore stands in for the resume block it replaces, so an
-        # interrupted forward run still picks up where it left off.
-        project.write("train.py", script(resume=FLAT_RESTORE_CALL))
+    def test_forward_run_ignores_the_users_checkpoint(self, project):
+        # Repeated recording starts from the script's initialization even when
+        # the preceding run left a checkpoint with trained weights and momentum.
+        source = script(resume=KEYED_RESTORE_CALL, save=KEYED_SAVE)
+        source = source.replace("lr=0.1)", "lr=0.1, momentum=0.9)")
+        project.write("train.py", source)
         project.run("train.py", "--kwargs", "epochs=2")
         first = values(project, "forward")
 
@@ -567,9 +632,20 @@ class TestExplicitRestore:
             ).fetchall()
         finally:
             conn.close()
-        # A second run that resumed continues descending rather than retracing
-        # the first run's numbers.
-        assert len(rows) > len(first)
+        assert len(rows) == len(first)
+        assert values(project, "forward") == pytest.approx(first)
+
+
+class TestRecordingDeclaration:
+    @pytest.mark.parametrize("checkpoint", ["missing", "invalid"])
+    def test_recording_does_not_read_the_declared_file(self, project, checkpoint):
+        if checkpoint == "invalid":
+            project.write("ckpt.pth", "not a checkpoint")
+        project.write("train.py", script(resume=KEYED_RESTORE_CALL, save=KEYED_SAVE))
+
+        project.run("train.py")
+
+        assert len(values(project, "forward")) == 3
 
 
 class TestRestoreArgumentValidation:
@@ -690,8 +766,8 @@ class TestUnmatchedIdiomIsReplayableOnceDeclared:
         forward = values(project, "forward")
 
         # The developer reads the warning and declares the mapping. The
-        # checkpoint file on disk is now flor.restore's business, so the
-        # unmatched block goes with it.
+        # declaration now supplies the replay mapping, so remove the
+        # unmatched load block before replay.
         project.write("train.py", script(resume=COMPUTED_PATH_RESTORE))
 
         proc = replay(project, "--iter", "epoch=all", check=False)
@@ -701,3 +777,102 @@ class TestUnmatchedIdiomIsReplayableOnceDeclared:
         assert set(replayed) == set(forward)
         for epoch, value in forward.items():
             assert replayed[epoch] == pytest.approx(value, rel=1e-6)
+
+
+def function_resume_script(*, flat=False, guarded=True, method=False):
+    from textwrap import indent
+
+    split = HEAD.index("torch.manual_seed")
+    setup = HEAD[split:]
+    resume = (
+        'model.load_state_dict(torch.load("ckpt.pth"))\n'
+        if flat else
+        '_resume = torch.load("ckpt.pth")\n'
+        'model.load_state_dict(_resume["model"])\n'
+        'optimizer.load_state_dict(_resume["optimizer"])\n'
+    )
+    if guarded:
+        resume = 'if os.path.exists("ckpt.pth"):\n' + indent(resume, "    ")
+    setup += resume + "return model, optimizer\n"
+    training = TAIL + (FLAT_SAVE if flat else DICT_SAVE)
+    if not flat:
+        # Momentum has independent history; checking it catches restoration
+        # that binds the model but loses the optimizer when prep() returns.
+        setup = setup.replace("lr=0.1)", "lr=0.1, momentum=0.9)")
+        training = training.replace(
+            'flor.log("weight_sum", float(sum(p.sum() for p in model.parameters())))',
+            'flor.log("weight_sum", float(sum(p.sum() for p in model.parameters()))'
+            ' + sum(float(s["momentum_buffer"].sum()) for s in optimizer.state.values()))',
+        )
+    # The loop has different parameter names from the resume block, and no
+    # global model/optimizer exists for a name-based fallback to find.
+    training = training.replace("model.", "trained.").replace("model(", "trained(")
+    training = training.replace("optimizer.", "optim.")
+    prep = "def prep():\n" + indent(setup, "    ")
+    if method:
+        prep = "class Setup:\n" + indent("@staticmethod\n" + prep, "    ")
+    return (
+        HEAD[:split] + prep
+        + "\ndef train(trained, optim):\n" + indent(training, "    ")
+        + "\ndef main():\n"
+        + ("    net, opt = Setup.prep()\n" if method else "    net, opt = prep()\n")
+        + "    train(net, opt)\n\nmain()\n"
+    )
+
+
+class TestFunctionResume:
+    @pytest.mark.parametrize("flat", [False, True])
+    @pytest.mark.parametrize("available", ["all", "missing_file", "no_mirrors", "fresh_clone"])
+    def test_prep_objects_restore_in_a_separate_train(self, project, flat, available):
+        import shutil
+
+        project.write("train.py", function_resume_script(flat=flat))
+        project.run("train.py")
+        forward = values(project, "forward")
+        if available in ("missing_file", "fresh_clone"):
+            os.unlink(os.path.join(project.root, "ckpt.pth"))
+        if available in ("no_mirrors", "fresh_clone"):
+            shutil.rmtree(os.path.join(project.root, ".flor", "obj_store"))
+
+        proc = replay(project, "--iter", "epoch=0,1,2")
+
+        assert "read the layout off the torch.save" not in proc.stdout
+        assert values(project, "replay") == pytest.approx(forward, rel=1e-6)
+
+    def test_forward_prep_still_loads_the_users_checkpoint(self, project):
+        project.write("train.py", function_resume_script())
+        project.run("train.py")
+        first = values(project, "forward")
+
+        project.run("train.py")
+
+        assert values(project, "forward")[0] != pytest.approx(first[0])
+
+    def test_unguarded_prep_replays_without_the_original_file(self, project):
+        project.write("train.py", function_resume_script())
+        project.run("train.py")
+        forward = values(project, "forward")
+        os.unlink(os.path.join(project.root, "ckpt.pth"))
+        project.write("train.py", function_resume_script(guarded=False))
+
+        replay(project, "--iter", "epoch=all")
+
+        assert values(project, "replay") == pytest.approx(forward, rel=1e-6)
+
+    def test_throttled_checkpoint_restores_optimizer_before_recomputation(self, project):
+        project.write("train.py", function_resume_script())
+        project.run("train.py", "--kwargs", "ckpt_interval_s=3600")
+        forward = values(project, "forward")
+
+        replay(project, "--iter", "epoch=2")
+
+        assert values(project, "replay")[2] == pytest.approx(forward[2], rel=1e-6)
+
+    def test_resume_in_a_method_binds_its_local_objects(self, project):
+        project.write("train.py", function_resume_script(method=True))
+        project.run("train.py")
+        forward = values(project, "forward")
+
+        replay(project, "--iter", "epoch=all")
+
+        assert values(project, "replay") == pytest.approx(forward, rel=1e-6)

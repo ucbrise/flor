@@ -399,7 +399,7 @@ def checkpointing(**kwargs):
         del checkpoints[mark:]
 
 
-def restore(path, *target, **keyed) -> bool:
+def restore(path, *target, **keyed) -> None:
     """Declare how a torch checkpoint maps back onto live objects.
 
     The `torch.save` piggy-back path needs no instrumentation on the way out --
@@ -414,18 +414,12 @@ def restore(path, *target, **keyed) -> bool:
         flor.restore("ckpt.pth", model)
         # -> the whole file into model, for torch.save(model.state_dict(), ...)
 
-    Call it at module scope, right after the objects are built, in place of the
-    `torch.load(...)` + `load_state_dict(...)` block it replaces. It does that
-    block's job on a forward run: if `path` exists, it loads and applies it, so
-    an interrupted run still resumes.
+    Call it after constructing the objects and before the loop. During a
+    forward/record run it validates the declaration without loading a file or
+    changing the objects. On replay it registers the destinations; flor.loop
+    restores the selected historical checkpoint when entering an iteration.
 
-    On replay it applies nothing here and returns False. The per-iteration
-    restore inside flor.loop owns the objects then, and loading at module scope
-    would put end-of-run state on top of the initialization that replaying from
-    iteration 0 depends on -- the same trap `_neutralized_resume_state` exists
-    to defuse for inferred blocks, avoided by construction here.
-
-    Returns whether state was applied.
+    Returns None. The path need not exist at the declaration site.
     """
     # Argument validation before any side effect, so a malformed call is a
     # plain TypeError and not a half-initialized run.
@@ -465,6 +459,9 @@ def restore(path, *target, **keyed) -> bool:
                 f"flor.checkpointing({name}=...) instead."
             )
 
+    if not cli.in_replay_mode():
+        return
+
     _deferred_init()
     cli.flags.resume_spec = cli.ResumeSpec(
         path=str(path),
@@ -474,30 +471,6 @@ def restore(path, *target, **keyed) -> bool:
         targets=targets,
     )
     _install_torch_hooks()
-
-    if cli.in_replay_mode():
-        return False
-    if not os.path.exists(str(path)):
-        return False
-    if _orig_torch_load is None:
-        raise RuntimeError(
-            "FLOR: flor.restore needs torch, which is not importable here."
-        )
-    # The original, not the hook: this is a forward run reading the user's own
-    # file, and there is no loop context to redirect it into anyway.
-    loaded = _orig_torch_load(str(path))
-    for target_name, key in applies:
-        try:
-            state = _select_state(loaded, key)
-        except (KeyError, IndexError, TypeError) as e:
-            raise RuntimeError(
-                f"FLOR: flor.restore({str(path)!r}) found no {key!r} in the "
-                f"saved checkpoint (it holds "
-                f"{sorted(loaded) if isinstance(loaded, dict) else type(loaded).__name__}). "
-                f"Name the targets after the keys they were saved under."
-            ) from e
-        targets[target_name].load_state_dict(state)
-    return True
 
 
 def _iteration_requested(name: str, idx: Optional[int]) -> bool:
@@ -649,7 +622,8 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
         if pos == 0 and cli.in_replay_mode():
             # Under fast-forward the state comes from the single restore below
             # plus recomputation, so a gap in the shelf is expected, not fatal.
-            load_ckpt(missing_ok=_logical_replay_active)
+            if not _logical_replay_active:
+                load_ckpt()
             if materialized is not None:
                 if _logical_replay_active:
                     _suppress_logs = int(each[0]) in logical_silent
@@ -911,16 +885,18 @@ def _path_in_obj_store(path) -> bool:
 def _flor_torch_save(obj, path, *args, **kwargs):
     global _save_mirrored
     assert _orig_torch_save is not None
-    result = _orig_torch_save(obj, path, *args, **kwargs)
+    # Flor's own serialization already addresses the object store. Its caller
+    # controls replay warming, and mirroring it again would duplicate snapshots.
+    if _path_in_obj_store(path):
+        return _orig_torch_save(obj, path, *args, **kwargs)
+    replaying = cli.in_replay_mode()
+    # A replay may reach the user's save statement, but must leave their file
+    # untouched. Missing mirrors can be serialized directly to the store below.
+    result = None if replaying else _orig_torch_save(obj, path, *args, **kwargs)
     if not layers:
         return result
-    warming = cli.in_replay_mode() and _ckpt_warming_enabled()
-    if cli.in_replay_mode() and not warming:
-        return result
-    # Don't mirror writes that already land in our own obj_store -- those are
-    # ckpt() calls (or other flor-driven saves) and would just produce
-    # duplicates with deeper-nested filenames.
-    if _path_in_obj_store(path):
+    warming = replaying and _ckpt_warming_enabled()
+    if replaying and not warming:
         return result
     # The decision was taken at the top of this outermost iteration and is
     # shared with the ckpt() that shelves enrolled objects at the end of it, so
@@ -966,18 +942,19 @@ def _shelf_has_any_mirror_for(spec) -> bool:
 
 
 def _neutralized_resume_state(path):
-    """The state dict that makes the user's module-scope resume block a no-op.
+    """The state dict that makes the user's setup resume block a no-op.
 
-    The resume block (`torch.load("ckpt.pth")` + `load_state_dict`) runs at
-    module scope, where `layers` is still empty -- so the per-iteration redirect
+    The resume block (`torch.load("ckpt.pth")` + `load_state_dict`) runs before
+    the loop, where `layers` is still empty -- so the per-iteration redirect
     below cannot reach it, and it loads whatever is on disk. After a forward run
     that file holds *end-of-run* weights, which would land on top of the fresh
     initialization that replaying from iteration 0 depends on.
 
-    When the shelf still has mirrors this doesn't matter: the plan restores one
-    per iteration and overwrites the block's effect anyway. When the shelf is
-    empty (a fresh clone -- runs/*.jsonl is committed, obj_store is not) there is
-    nothing to overwrite it with, so the block has to be neutralized instead.
+    Inspecting saved end states overwrites the block's effect per iteration.
+    Re-executing training may instead need initialization, even when end-state
+    mirrors exist, so the setup load must leave that initialization intact.
+    Recognized resume blocks are neutralized even when mirrors are available:
+    a later missing mirror can still require replay from initialization.
 
     Returning each target's *own* current state does exactly that:
     `model.load_state_dict(model.state_dict())` leaves the seed-initialized
@@ -992,7 +969,15 @@ def _neutralized_resume_state(path):
     try:
         if _coerce_to_path(path).name != _coerce_to_path(spec.path).name:
             return None
-        if _shelf_has_any_mirror_for(spec):
+        enters_training = any(
+            _replay_enters_nested_loop(name) for name in cli.flags.loop_children
+        )
+        if (
+            spec.scope_name is None
+            and spec.source != "ast"
+            and not enters_training
+            and _shelf_has_any_mirror_for(spec)
+        ):
             return None
         targets = _resolve_targets(spec)
         if targets is None:
@@ -1085,7 +1070,7 @@ def _flor_torch_load(path, *args, **kwargs):
                     f"holds end-of-run state."
                 )
         else:
-            # Module scope: no loop context yet, so this is the resume block.
+            # Setup: no loop context yet, including a resume inside prep().
             _note_module_scope_load(path)
             neutral = _neutralized_resume_state(path)
             if neutral is not None:
@@ -1110,7 +1095,7 @@ def _install_torch_hooks():
 # ---------------------------------------------------------------------------
 # AST-driven auto-restore (no flor.checkpointing(...) required)
 #
-# When cli.replay_initialize() finds a module-scope `torch.load(...)` +
+# When cli.replay_initialize() finds a `torch.load(...)` +
 # `X.load_state_dict(loaded[key])` pattern in the user's script, flor.loop's
 # outer replay plan picks which obj_store mirror to splice into the user's
 # module/function frame: the iter's own mirror in the fast path, or the most
@@ -1145,6 +1130,64 @@ def _find_user_frame():
             return f
         f = f.f_back
     return None
+
+
+def _install_resume_binding(spec, filename):
+    """Bind a recognized setup block's locals before its frame disappears.
+
+    The script is already executing when it imports flor, so its functions
+    cannot be AST-rewritten in place. Trace only the recognized scope until
+    its targets exist at the resume block (or the next line after a skipped
+    existence guard), then retain the objects and remove our trace. No frames
+    are retained and training runs without this tracing overhead.
+    """
+    _install_torch_hooks()
+    filename = os.path.abspath(filename)
+    previous = sys.gettrace()
+    active = True
+
+    def stop():
+        nonlocal active
+        active = False
+        if sys.gettrace() is trace:
+            sys.settrace(previous)
+
+    def trace(frame, event, arg):
+        prior_local = previous(frame, event, arg) if previous else None
+        if cli.flags.resume_spec is not spec:
+            stop()
+        if not active:
+            return prior_local
+        if (
+            os.path.abspath(frame.f_code.co_filename) != filename
+            or frame.f_code.co_name != spec.scope_name
+            or frame.f_code.co_firstlineno != spec.scope_lineno
+        ):
+            return prior_local
+
+        def bind(frame, event, arg):
+            nonlocal prior_local
+            if prior_local is not None:
+                prior_local = prior_local(frame, event, arg)
+            if cli.flags.resume_spec is not spec:
+                stop()
+            at_block = event == "line" and frame.f_lineno >= spec.lineno
+            if active and (at_block or event == "return"):
+                scope = dict(frame.f_globals)
+                scope.update(frame.f_locals)
+                targets = {name: scope.get(name) for name, _ in spec.applies}
+                if all(
+                    callable(getattr(obj, "load_state_dict", None))
+                    for obj in targets.values()
+                ):
+                    spec.targets = targets
+                    stop()
+            return bind if active else prior_local
+
+        return bind
+
+    sys.settrace(trace)
+    return stop
 
 
 def _layer_for(materialized: list, k: int):
@@ -1237,14 +1280,19 @@ def _find_latest_mirror_at_or_before(
 def _resolve_targets(spec) -> Optional[dict]:
     """The live objects spec.applies names, or None if they can't be reached.
 
-    An explicit spec carries the objects themselves -- flor.restore was handed
-    references, so there is nothing to look up and nothing to get wrong. An
-    inferred spec has only names harvested from the source, which have to be
-    resolved against the user's frame; that is the step that can silently come
-    up empty when a name was rebound, shadowed, or moved into a function.
+    Explicit declarations and function-scoped resume blocks retain object
+    references. Module-scope and save-site inference resolve names against the
+    user's frame.
     """
-    if spec.source == "explicit":
+    if spec.targets is not None or spec.source == "explicit":
         return dict(spec.targets or {})
+    if spec.scope_name is not None:
+        # Never resolve prep()'s names against unrelated locals in train().
+        raise RuntimeError(
+            f"FLOR: resume targets in {spec.scope_name}() were not bound before "
+            "the replay loop. Run setup before the loop, or declare the live "
+            "objects with flor.restore(<path>, <name>=<obj>, ...)."
+        )
     user_frame = _find_user_frame()
     if user_frame is None:
         return None
@@ -1308,7 +1356,13 @@ def _restore_from_mirror(
         mirror = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
         _restoring_mirror = mirror
         try:
-            loaded = torch.load(spec.path)
+            # Redirected to `mirror` by _flor_torch_load. map_location="cpu"
+            # for the same reason enrollment uses it (obj_store.deserialize):
+            # the spec's targets are already on this run's device and
+            # load_state_dict copies into them. Without it a mirror written on
+            # a GPU box is deserialized onto the device recorded in the file --
+            # which may not exist on the machine replaying it.
+            loaded = torch.load(spec.path, map_location="cpu")
         finally:
             _restoring_mirror = None
         applied, failures = [], []
@@ -1348,17 +1402,24 @@ def _restore_from_mirror(
         return bool(applied)
 
 
+def _replay_enters_nested_loop(name: str) -> bool:
+    return any(
+        child is None
+        or cli.flags.iter_specs.get(child, cli.DEFAULT_ITER_SPEC).kind != "none"
+        for child in cli.flags.loop_children.get(name, [])
+    )
+
+
 def _build_outer_replay_plan(name: str, materialized: list):
     """Decide which outer-loop iters to run on replay.
 
     Returns (iter_source, logical_mirror_pos, silent_set, logical_active).
 
-    Fast path: when every requested iter has its own obj_store mirror, return
-    the narrowed slice as-is -- each iter restores from its own mirror.
+    Fast path: when nested loops are skipped and every requested iter has its
+    own obj_store mirror, each iter restores its own end state.
 
-    Logical replay: when at least one requested iter is missing its mirror
-    (typically because ckpt_interval_s throttled the save), expand to a
-    contiguous range starting just after the most-recent earlier mirror and
+    Logical replay: when nested loops execute, or a requested mirror is missing,
+    expand to a contiguous range starting just after the earlier mirror and
     ending at max(requested). Caller restores from that mirror at the first
     expanded iter, then fast-forwards through the body with inner loops run
     in full. Silent iters (those not in the user's request) have their logs
@@ -1370,6 +1431,10 @@ def _build_outer_replay_plan(name: str, materialized: list):
     the checkpoints; iteration 0 is still reconstructible because the seed is a
     flor.arg restored from the historical run.
     """
+    resume = cli.flags.resume_spec
+    if resume is not None and resume.scope_name is not None:
+        _resolve_targets(resume)
+
     if not cli.flags.wev_found:
         # No flor.loop / no `with flor.checkpointing(...)` in the script --
         # nothing to narrow, run the loop end-to-end.
@@ -1377,15 +1442,8 @@ def _build_outer_replay_plan(name: str, materialized: list):
 
     spec = cli.iter_spec_for(name)
 
-    if spec.kind == "all":
-        return list(enumerate(materialized)), None, set(), False
     if spec.kind == "none":
         return [], None, set(), False
-    if spec.kind == "last":
-        last_idx = len(materialized) - 1
-        return [(last_idx, materialized[last_idx])], None, set(), False
-
-    # spec.kind == "indices"
     n = len(materialized)
     out_of_range = [i for i in spec.indices if not (0 <= i < n)]
     if out_of_range:
@@ -1395,7 +1453,12 @@ def _build_outer_replay_plan(name: str, materialized: list):
             f"(valid range: 0..{n - 1}). Re-run forward with more iterations "
             f"or narrow to an in-range index."
         )
-    requested = list(spec.indices)
+    if spec.kind == "all":
+        requested = list(range(n))
+    elif spec.kind == "last":
+        requested = [n - 1] if n else []
+    else:
+        requested = list(spec.indices)
     if not requested:
         return [], None, set(), False
 
@@ -1404,12 +1467,21 @@ def _build_outer_replay_plan(name: str, materialized: list):
         # Nothing to restore through either path -- narrowing is the whole plan.
         return [(i, materialized[i]) for i in requested], None, set(), False
 
-    if all(_mirror_exists_at(name, r, materialized, resume) for r in requested):
+    enters_training = _replay_enters_nested_loop(name)
+    if not enters_training and all(
+        _mirror_exists_at(name, r, materialized, resume) for r in requested
+    ):
         return [(i, materialized[i]) for i in requested], None, set(), False
 
     target_min = requested[0]
+    # End-of-epoch state is usable only when its training steps are skipped.
+    # Re-execution must start strictly before the first requested epoch.
+    # The fast path has already handled inspection with complete snapshots.
+    # If a later requested snapshot is missing, recompute the first requested
+    # epoch too, so its metric is not lost by starting after its end snapshot.
+    latest_usable = target_min - 1
     mirror_pos = _find_latest_mirror_at_or_before(
-        name, target_min, materialized, resume
+        name, latest_usable, materialized, resume
     )
     if mirror_pos is None:
         # No mirror at or before the target -- the usual cause is a fresh clone,
@@ -1446,8 +1518,8 @@ def _build_outer_replay_plan(name: str, materialized: list):
                 f"replay from the top, or re-run forward to rebuild the mirrors."
             )
         capture.flor_print(
-            f"FLOR: no checkpoint for {name}={list(requested)} at or before "
-            f"position {target_min}; replaying from iteration 0. This recomputes "
+            f"FLOR: no usable starting checkpoint for {name}={list(requested)}; "
+            f"replaying from iteration 0. This recomputes "
             f"the intervening iterations (accurate only if the script seeds "
             f"deterministically) and shelves the checkpoints it passes, so "
             f"subsequent replays start from the nearest one."

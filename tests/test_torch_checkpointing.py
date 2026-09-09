@@ -9,6 +9,7 @@ to agree on the addressing exactly -- that agreement is what these check.
 
 import glob
 import os
+from pathlib import Path
 
 import pytest
 
@@ -139,6 +140,28 @@ class TestForwardMirroring:
 
 
 class TestReplayRestore:
+    @pytest.mark.parametrize("checkpoint_exists", [True, False])
+    @pytest.mark.parametrize("overrides", [(), ("--override", "device=cpu")])
+    def test_replay_does_not_write_users_checkpoint(
+        self, trained, checkpoint_exists, overrides
+    ):
+        ckpt = Path(trained.root) / "ckpt.pth"
+        before = ckpt.read_bytes()
+        mtime = ckpt.stat().st_mtime_ns
+        if not checkpoint_exists:
+            ckpt.unlink()
+
+        trained.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=1", "--iter", "step=none", *overrides,
+        )
+
+        if checkpoint_exists:
+            assert ckpt.read_bytes() == before
+            assert ckpt.stat().st_mtime_ns == mtime
+        else:
+            assert not ckpt.exists()
+
     def test_replayed_values_match_the_forward_run(self, trained):
         forward = values(trained, "forward")
 
@@ -348,6 +371,7 @@ class TestCheckpointWarming:
         assert replayed[2] == pytest.approx(forward[2], rel=1e-6)
         # And it paid the recompute once: the mirrors are back on the shelf.
         assert "ckpt_epoch_2.pth" in mirrors(project)
+        assert not (Path(project.root) / "ckpt.pth").exists()
 
     def test_stale_user_checkpoint_is_neutralized_not_loaded(self, project):
         project.write("train.py", TRAIN)
@@ -371,12 +395,14 @@ class TestCheckpointWarming:
         replayed = values(project, "replay")
         assert replayed[2] == pytest.approx(forward[2], rel=1e-6)
 
-    def test_neutralizing_does_not_relocate_the_users_checkpoint(self, project):
+    def test_recomputation_preserves_the_users_checkpoint(self, project):
         project.write("train.py", TRAIN)
         project.run("train.py", "epochs=3")
         import shutil
 
-        ckpt = os.path.join(project.root, "ckpt.pth")
+        ckpt = Path(project.root) / "ckpt.pth"
+        before = ckpt.read_bytes()
+        mtime = ckpt.stat().st_mtime_ns
         shutil.rmtree(shelf_dir(project))
 
         project.run(
@@ -384,12 +410,62 @@ class TestCheckpointWarming:
             "--iter", "epoch=1", "--iter", "step=none",
         )
 
-        # Neutralizing happens inside flor's torch.load hook, so the file stays
-        # where it is -- flor never moves it aside to make the resume block miss.
-        # Its *contents* do change, because the replayed body runs the user's own
-        # torch.save, exactly as any replay always has.
-        assert os.path.exists(ckpt)
+        # Replay neutralizes the setup load and caches recomputed state only in
+        # the object store; the user's checkpoint stays in place and unchanged.
+        assert ckpt.read_bytes() == before
+        assert ckpt.stat().st_mtime_ns == mtime
         assert os.listdir(project.root).count("ckpt.pth") == 1
         assert not any(
             f.startswith("ckpt.pth.") for f in os.listdir(project.root)
+        )
+
+
+class TestReplayTrainingFromPredecessor:
+    @pytest.mark.parametrize("selection, expected", [
+        ("0", [0]), ("1", [1]), ("0,2", [0, 2]),
+        ("all", [0, 1, 2]), ("last", [2]),
+    ])
+    def test_training_steps_do_not_run_on_top_of_end_state(self, project, selection, expected):
+        source = TRAIN.replace("lr=0.1)", "lr=0.1, momentum=0.9)")
+        project.write("train.py", source)
+        project.run("train.py")
+        forward = values(project, "forward")
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=" + selection, "--iter", "step=all",
+        )
+
+        assert values(project, "replay") == pytest.approx(
+            {i: forward[i] for i in expected}, rel=1e-6,
+        )
+
+    @pytest.mark.parametrize("remove", [(1,), (0, 1)])
+    def test_existing_end_state_cannot_replace_a_missing_predecessor(self, project, remove):
+        project.write("train.py", TRAIN.replace("lr=0.1)", "lr=0.1, momentum=0.9)"))
+        project.run("train.py")
+        forward = values(project, "forward")
+        for epoch in remove:
+            os.unlink(os.path.join(shelf_dir(project), f"ckpt_epoch_{epoch}.pth"))
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=2", "--iter", "step=all",
+        )
+
+        assert values(project, "replay") == pytest.approx({2: forward[2]}, rel=1e-6)
+
+    def test_inspecting_multiple_epochs_with_a_missing_later_snapshot(self, project):
+        project.write("train.py", TRAIN)
+        project.run("train.py")
+        forward = values(project, "forward")
+        os.unlink(os.path.join(shelf_dir(project), "ckpt_epoch_2.pth"))
+
+        project.run(
+            "train.py", "--replay_flor", "--apply", "weight_sum",
+            "--iter", "epoch=0,2", "--iter", "step=none",
+        )
+
+        assert values(project, "replay") == pytest.approx(
+            {0: forward[0], 2: forward[2]}, rel=1e-6,
         )

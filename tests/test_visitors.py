@@ -87,7 +87,7 @@ class TestResumeBlockVisitor:
         assert rbv.lhs_name == "_resume"
         assert rbv.applies == [("model", "model"), ("optimizer", "optimizer")]
 
-    def test_function_scoped_pattern_is_flagged_not_used(self):
+    def test_function_scoped_pattern_records_its_scope(self):
         source = (
             "import torch\n"
             "\n"
@@ -96,13 +96,13 @@ class TestResumeBlockVisitor:
             '    model.load_state_dict(state["model"])\n'
         )
         rbv = visit(source, ResumeBlockVisitor())
-        assert not rbv.found
-        assert rbv.unscoped_match
+        assert rbv.found
+        assert rbv.scope_name == "resume"
+        assert rbv.scope_lineno == 3
 
     def test_no_pattern(self):
         rbv = visit("x = 1\n", ResumeBlockVisitor())
         assert not rbv.found
-        assert not rbv.unscoped_match
 
     def test_flat_one_liner(self):
         # Pairs with torch.save(model.state_dict(), path): no dict, no key, so
@@ -140,7 +140,7 @@ class TestResumeBlockVisitor:
         rbv = visit(source, ResumeBlockVisitor())
         assert not rbv.found
 
-    def test_flat_one_liner_in_a_function_is_flagged_not_used(self):
+    def test_flat_one_liner_in_a_function_records_its_scope(self):
         source = (
             "import torch\n"
             "\n"
@@ -148,8 +148,10 @@ class TestResumeBlockVisitor:
             '    model.load_state_dict(torch.load("ckpt.pth"))\n'
         )
         rbv = visit(source, ResumeBlockVisitor())
-        assert not rbv.found
-        assert rbv.unscoped_match
+        assert rbv.found
+        assert rbv.scope_name == "resume"
+        assert rbv.scope_lineno == 3
+        assert rbv.applies == [("model", None)]
 
     def test_two_flat_targets_from_one_file(self):
         source = (
@@ -179,6 +181,49 @@ class TestResumeBlockVisitor:
             '_resume = torch.load("ckpt.pth")\n'
             'model.load_state_dict(_resume["model"])\n'
             'optimizer.load_state_dict(torch.load("opt.pth"))\n'
+        )
+        rbv = visit(source, ResumeBlockVisitor())
+        assert not rbv.found
+        assert rbv.multi_path
+
+    def test_load_and_apply_in_different_scopes_do_not_match(self):
+        source = (
+            'state = torch.load("ckpt.pth")\n'
+            'def prep(state, model):\n'
+            '    model.load_state_dict(state["model"])\n'
+        )
+        assert not visit(source, ResumeBlockVisitor()).found
+
+    def test_two_resume_scopes_are_ambiguous_even_with_the_same_path(self):
+        source = (
+            'def prep(model):\n'
+            '    model.load_state_dict(torch.load("ckpt.pth"))\n'
+            'def other(model):\n'
+            '    model.load_state_dict(torch.load("ckpt.pth"))\n'
+        )
+        rbv = visit(source, ResumeBlockVisitor())
+        assert not rbv.found
+        assert rbv.ambiguous_scope
+
+    def test_nested_method_records_the_method_scope(self):
+        source = (
+            'class Setup:\n'
+            '    @staticmethod\n'
+            '    def prep(model):\n'
+            '        model.load_state_dict(torch.load("ckpt.pth"))\n'
+        )
+        rbv = visit(source, ResumeBlockVisitor())
+        assert rbv.found
+        assert rbv.scope_name == "prep"
+        assert rbv.scope_lineno == 2
+
+    def test_two_keyed_files_in_one_scope_are_refused(self):
+        source = (
+            'def prep(model, optimizer):\n'
+            '    state = torch.load("model.pth")\n'
+            '    model.load_state_dict(state["model"])\n'
+            '    state = torch.load("optimizer.pth")\n'
+            '    optimizer.load_state_dict(state["optimizer"])\n'
         )
         rbv = visit(source, ResumeBlockVisitor())
         assert not rbv.found

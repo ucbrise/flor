@@ -211,3 +211,29 @@ class TestArgErrors:
     def test_replay_missing_arg_without_default(self, replaying):
         with pytest.raises(RuntimeError, match="--override"):
             api.arg("undeclared")
+
+
+class TestPredecessorPlan:
+    @pytest.mark.parametrize("inner, mirror, logical", [
+        ("none", None, False), ("all", 0, True), ("last", 0, True),
+    ])
+    def test_nested_selection_controls_checkpoint_boundary(self, replaying, monkeypatch, inner, mirror, logical):
+        replaying.resume_spec = cli.ResumeSpec("ckpt.pth", None, [], source="explicit")
+        replaying.loop_children = {"epoch": ["step"]}
+        replaying.iter_specs = {
+            "epoch": cli.IterSpec("indices", (1,)), "step": cli.IterSpec(inner),
+        }
+        monkeypatch.setattr(api, "_mirror_exists_at", lambda *args: True)
+        plan, actual_mirror, silent, actual_logical = api._build_outer_replay_plan("epoch", [0, 1, 2])
+        assert plan == [(1, 1)]
+        assert (actual_mirror, silent, actual_logical) == (mirror, set(), logical)
+
+    def test_skipped_parent_hides_its_descendants(self, replaying):
+        replaying.loop_children = {"epoch": ["step"], "step": ["microbatch"]}
+        replaying.iter_specs = {"step": cli.IterSpec("none"), "microbatch": cli.IterSpec("all")}
+        assert not api._replay_enters_nested_loop("epoch")
+
+    @pytest.mark.parametrize("kind", ["all", "last"])
+    def test_empty_loop_has_no_checkpoint_to_restore(self, replaying, kind):
+        replaying.iter_specs = {"epoch": cli.IterSpec(kind)}
+        assert api._build_outer_replay_plan("epoch", []) == ([], None, set(), False)

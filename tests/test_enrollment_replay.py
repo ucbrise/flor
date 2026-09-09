@@ -383,3 +383,16 @@ class TestStreamsAgreeOnTheSameIterations:
         # Armed is a per-iteration decision, so without a one-shot guard the
         # hook would mirror on every step of the inner loop.
         assert len([m for m in mirrors(project) if m.startswith("ckpt_")]) == 1
+
+
+class TestEnrolledTrainingFromPredecessor:
+    @pytest.mark.parametrize("selection, expected", [
+        ("0", {0: 2.0}), ("1,2", {1: 4.0, 2: 6.0}),
+        ("all", {0: 2.0, 1: 4.0, 2: 6.0}), ("last", {2: 6.0}),
+    ])
+    def test_end_snapshots_do_not_overwrite_recomputed_state(self, trained, selection, expected):
+        trained.run(
+            "train.py", "--replay_flor", "--apply", "w",
+            "--iter", "epoch=" + selection, "--iter", "step=all",
+        )
+        assert values(trained, "replay") == expected

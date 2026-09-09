@@ -1,157 +1,204 @@
 # Checkpoints
 
-FlorDB mirrors model snapshots into its own object store, addressable by loop
-iteration, so replay can restart from a nearby iteration instead of from scratch.
+FlorDB checkpoints PyTorch models, optimizers, and other training objects so
+replay can restore them without repeating expensive GPU training. Checkpoints
+are stored under `.flor/obj_store/<tstamp>/`, indexed by loop iteration. When
+your script calls `torch.save`, FlorDB's own copy of that file is called a
+**mirror**.
 
-## An existing `torch.save` is enough
+## How do I save checkpoints?
 
-If your script already saves inside a named loop, you're done — no
-`with flor.checkpointing(...)` required:
+Choose based on how your training script saves checkpoints today:
+
+| Your script | What to use | When state is captured |
+|---|---|---|
+| Calls `torch.save` inside `flor.loop` | Keep the existing save | At the first save in an eligible outer iteration |
+| Does not save inside the loop | Wrap the loop in `flor.checkpointing(...)` | At the end of eligible outer iterations, plus a final snapshot at loop exit |
+
+### Keep an existing save
 
 ```python
 for epoch in flor.loop("epoch", range(epochs)):
     ...
-    torch.save({"model": net.state_dict()}, "ckpt.pth")
+    torch.save({"model": net.state_dict(), "optimizer": opt.state_dict()}, "ckpt.pth")
 ```
 
-FlorDB writes a second, independent copy into `.flor/obj_store/<tstamp>/`, named
-by the iteration it was taken at; your own `ckpt.pth` is written exactly as
-before. Mirroring is rate-limited to one snapshot every `ckpt_interval_s`
-(default 60 seconds), so a fast loop produces a mirror every *minute*, not every
-epoch. Replay restarts from the nearest one it finds.
+During a forward run, your `ckpt.pth` is written as usual. FlorDB mirrors it into
+its object store (`.flor/obj_store/<tstamp>/`), once per eligible iteration.
+During replay, FlorDB suppresses writes to your checkpoint file. Recomputation
+may still fill missing snapshots directly in the object store, as described
+below.
 
-## Putting a mirror back
-
-Mirroring needs nothing from you — FlorDB copies whatever you saved. Putting a
-mirror *back* is the half that needs semantics: which object does this file
-belong in? FlorDB reads that from your script's source, preferring the most
-direct evidence it can find — `flor.restore` over a resume block, a resume block
-over an inferred `torch.save`.
-
-### From your resume block
-
-The best evidence, because it names the object each slice goes into outright.
-Module scope, in either of the two shapes people write. Keyed, when the
-checkpoint is a dict:
+### Name the objects to save
 
 ```python
-_resume = torch.load("ckpt.pth")          # literal path, plain assignment
-net.load_state_dict(_resume["model"])     # subscript with a literal key
-optimizer.load_state_dict(_resume["optimizer"])
-```
-
-or flat, when the file holds one object outright:
-
-```python
-net.load_state_dict(torch.load("ckpt.pth"))    # no key: the file *is* net's state
-```
-
-On replay FlorDB re-runs those same calls per iteration with `torch.load`
-redirected to that iteration's mirror. Your own resume block is left intact — it
-still runs once before the loop.
-
-### No resume block at all
-
-Plenty of scripts checkpoint and never resume. There's still nothing to declare:
-your `torch.save` says what the file holds, and FlorDB reads the mapping off it
-instead.
-
-```python
-torch.save(net.state_dict(), "ckpt.pth")                    # -> the file is net's state
-torch.save({"model": net.state_dict(),                      # -> "model" is net's,
-            "optimizer": opt.state_dict()}, "ckpt.pth")     #    "optimizer" is opt's
-```
-
-Entries that aren't a `state_dict()` — the `"epoch"` and `"loss"` most
-checkpoints carry — are skipped; they aren't things to restore into.
-
-Saving and restoring aren't the same statement, though, so this is the one
-inference that can be wrong without raising:
-
-```python
-best = copy.deepcopy(net)          # the loop trains net
-torch.save(best.state_dict(), "ckpt.pth")
-```
-
-The mapping FlorDB reads here — *`ckpt.pth` holds `best`'s state* — is true and
-useless: `net` is the object your metrics come from, but `best` exists, takes
-the state, and the shapes fit, so nothing fails. Replay names the target it
-picked on startup, and that line is your only warning. If it named the wrong
-one, say so with `flor.restore(...)`.
-
-### What inference can't reach
-
-A path that isn't a literal (FlorDB has to name the mirror file before your
-script runs), a resume block inside a function, a `torch.save` inside a helper
-(its locals name objects replay has no frame to reach), and state split across
-two checkpoint files (replay addresses one file per run, and restoring half of
-your state is worse than refusing). Replay says so on startup in each case.
-Answer it with `flor.restore(...)`, placed where the resume block would go:
-
-```python
-flor.restore(path, net)                        # whole file into net
-flor.restore(path, model=net, optimizer=opt)   # keyword = key in the saved dict
-```
-
-The path is an ordinary argument here, so a computed one is fine.
-
-On a forward run this *is* your resume block: if the file exists it loads and
-applies it, so an interrupted run picks up where it left off. On replay it
-applies nothing at module scope — the per-iteration restore owns those objects
-then. Because replay re-reads your script from disk, you can add the declaration
-to a run that already happened; there's no need to train again.
-
-
-## Enrolling objects explicitly
-
-The `torch.save` hook is a piggy-back: it only fires if your script already
-saves inside a loop. When it doesn't — you save once at the end, or not at all —
-enroll the objects yourself, and they're serialized at every checkpoint trigger:
-
-```python
-with flor.checkpointing(model=net, optimizer=optimizer):
+with flor.checkpointing(model=net, optimizer=opt):
     for epoch in flor.loop("epoch", range(epochs)):
         ...
 ```
 
-What it accepts is decided by shape, not by class. Anything carrying
-`state_dict()` / `load_state_dict()` is the serializer's first case — your model
-and optimizer, but equally the LR scheduler and the `GradScaler` beside them,
-which are neither a `Module` nor an `Optimizer` and are just as much part of the
-state a run resumes from:
+The objects named here are **enrolled**: FlorDB saves them at every eligible
+iteration and restores them during replay. The block declares what to
+checkpoint; it does not load anything during a normal run.
+
+Enroll the model, optimizer, and any schedulers or gradient scalers your loop
+uses. FlorDB saves and restores them through `state_dict()` and
+`load_state_dict()`, updating the existing objects in place.
+
+### Control how often state is saved
 
 ```python
-with flor.checkpointing(model=net, optimizer=opt, sched=sched, scaler=scaler):
+flor.set_ckpt_interval(60)  # default, in seconds; use 0 for every iteration
 ```
 
-Objects `torch.save` would never see go through the same block — numpy arrays,
-pandas DataFrames, dicts, and plain Python objects (via cloudpickle, restored
-through their instance dict). An object flor can serialize but could never put
-back — no `state_dict`, no mapping, no `__dict__` — is refused by
-`flor.checkpointing` itself, on the forward run, rather than shelving snapshots
-for a replay that would fail on them.
+The first outer iteration is always eligible. At the start of each later outer
+iteration, FlorDB checks whether the interval has elapsed since the last
+eligible one; it does not save on a background timer.
 
-Enrollment restores across machines: mirrors are read back with
-`map_location="cpu"` and copied into whatever device your live objects are on,
-so a checkpoint written on a GPU box replays on one without.
+The interval reduces how often snapshots are taken, but it does not cap disk
+usage — total size depends on the objects and the number of snapshots.
+Checkpoints stay out of git; see [Storage](storage.md).
 
-Enrolling is a second stream of snapshots, not a replacement for the hook's: if
-your script also calls `torch.save`, both are written. They are taken at the
-same iterations, though — one trigger decision per iteration, honored by both —
-which is what lets replay restore an iteration outright instead of recomputing
-its way there.
+## How does replay know what to restore?
 
-One thing enrollment does not do is resume a forward run. `flor.checkpointing`
-only restores under replay; if you want an interrupted run to pick up where it
-left off, that is still your own `torch.save`/`torch.load` (or
-[`flor.restore`](#what-inference-cant-reach), which does it for you).
+Enrolled objects are restored using the references passed to
+`flor.checkpointing`. For a mirrored `torch.save` file, FlorDB uses these rules:
 
-## Bounding disk use
+| Priority | Source | Meaning |
+|---|---|---|
+| 1 | `flor.restore(path, ...)` | You explicitly name the destination objects. |
+| 2 | A recognized resume block | FlorDB reads the file-to-object mapping from your load calls. |
+| 3 | A recognized `torch.save` | FlorDB infers the destinations from the objects being saved and announces the mapping. This fallback is skipped when objects are explicitly enrolled. |
+
+### Declare the mapping explicitly
+
+After constructing your objects, before the loop, use one of these forms:
 
 ```python
-flor.set_ckpt_interval(seconds)   # default: at most one snapshot every 60s
+flor.restore(path, net)                       # whole file is net's state_dict
+flor.restore(path, model=net, optimizer=opt)  # dict keys -> destination objects
 ```
 
-Checkpoints are the expensive artifact — roughly 19MB per run, and they don't
-dedup — so they stay out of git. See [Storage](storage.md) for what that means
-for teammates, and how the first replay in a fresh clone warms the store.
+These are alternatives, depending on the file format. The path may be computed.
+Targets must support `load_state_dict()`.
+
+`flor.restore` is a declaration for replay: it registers the objects, and the
+loop restores their historical checkpoints. You can add the declaration to an
+existing script and replay without training again.
+
+### Let FlorDB read your resume block
+
+FlorDB recognizes these resume patterns at module scope or inside functions
+and methods, using literal paths and simple variable names:
+
+```python
+_resume = torch.load("ckpt.pth")
+net.load_state_dict(_resume["model"])
+opt.load_state_dict(_resume["optimizer"])
+```
+
+The load and apply calls must be in the same scope. Replay keeps references to
+those objects.
+
+Or, for a file containing a single state dictionary:
+
+```python
+net.load_state_dict(torch.load("ckpt.pth"))
+```
+
+### Let FlorDB infer from your `torch.save`
+
+With no recognized resume block, FlorDB reads the mapping off the save itself:
+
+```python
+torch.save(net.state_dict(), "ckpt.pth")
+# Or:
+torch.save({"model": net.state_dict(), "optimizer": opt.state_dict()}, "ckpt.pth")
+```
+
+Inference names the object that was saved, which is not always the object you
+want restored. If your loop trains `net` but saves a copy —
+`torch.save(best.state_dict(), "ckpt.pth")` — inference selects `best`, and
+nothing fails, because the shapes fit. Check the mapping FlorDB prints at
+replay startup, and use `flor.restore` if it names the wrong destination.
+
+Computed paths and unrecognized helper functions may also need an explicit
+`flor.restore`. State spread over multiple files needs consolidating into one
+file, or explicit enrollment of the objects: multiple `flor.restore` calls do
+not combine files — each replaces the previous mapping.
+
+### Moving between GPU and CPU
+
+GPU-written checkpoints restore on a CPU-only machine, and vice versa. Construct
+the live objects on whatever device the current run has; FlorDB reads every
+checkpoint through the CPU and lets `load_state_dict()` copy the state onto the
+device those objects already sit on. This holds for both enrolled objects and
+mirrored `torch.save` files.
+
+Reading through the CPU is also the cheaper route on a GPU box: the state
+crosses the bus exactly once either way, and staging it in host memory keeps a
+second full copy of it off the GPU.
+
+Your own `torch.load` calls are untouched — FlorDB forwards their arguments as
+written, including `map_location`.
+
+## What happens when a checkpoint is missing?
+
+For an explicit request such as `--iter epoch=1`, with a restore mapping or
+enrolled objects:
+
+| Situation | Replay behavior |
+|---|---|
+| Every requested iteration has a checkpoint, and its nested loops are skipped | Restore each requested iteration's end state before entering its body. |
+| A requested checkpoint is missing, or a nested loop will execute | Restore the latest checkpoint strictly before the first requested iteration, then recompute forward through the last requested one, running nested loops in full. |
+| No checkpoint exists at or before the first requested iteration | Execute from iteration 0. Reproducing the original state requires deterministic initialization and computation. |
+
+During recomputation, FlorDB suppresses logs from the outer iterations you did
+not request; nested loops log every iteration they run. Eligible missing
+snapshots are shelved for later replays, without overwriting existing ones. This
+caching is disabled under overrides that could change the numbers, such as
+`device=cpu`.
+
+When replay must retrain from iteration 0, FlorDB skips loading the final
+trained weights through recognized resume code. The model and optimizer keep
+their initial values so replay can reproduce the training run. See
+[Replay](replay.md) for selection options and replay in a fresh clone.
+
+### Worked example: inspecting the state after epoch 1
+
+This is the structure used by the checkpoint replay tests. Epochs are numbered
+from zero; training happens inside the nested `step` loop.
+
+```python
+flor.set_ckpt_interval(0)
+for epoch in flor.loop("epoch", range(3)):
+    for step in flor.loop("step", range(2)):
+        ...  # compute loss, backpropagate, and update model and optimizer
+    flor.log("weight_sum", float(sum(p.sum() for p in model.parameters())))
+    torch.save({"model": model.state_dict(),
+                "optimizer": optimizer.state_dict()}, "ckpt.pth")
+```
+
+To inspect epoch 1:
+
+```bash
+python train.py --replay_flor --apply weight_sum \
+    --iter epoch=1 --iter step=none
+```
+
+| Checkpoints available | What executes |
+|---|---|
+| Epoch 1 exists | Load epoch 1's saved state, skip the training steps, evaluate `weight_sum`. |
+| Only epoch 0 exists | Load epoch 0's saved state, recompute epoch 1 — both training steps run despite `step=none` — and evaluate `weight_sum`. |
+| None exist | Run epochs 0 and 1, including their training steps; emit the requested metric only for epoch 1. |
+
+`step=none` skips the training steps only in the first row, where epoch 1's
+checkpoint makes them unnecessary; use `--iter step=all` to rerun them there.
+
+Recomputation ignores nested selections entirely: `step=last` and specific step
+indices behave like `step=all`, and every step logs.
+
+Skipping a nested loop skips only that loop, not the rest of the iteration
+body. In the example above, replay still reaches `flor.log` and `torch.save`,
+but the save hook checks the replay flag and leaves your `ckpt.pth` untouched.
+Eligible missing snapshots may be cached directly in FlorDB's object store.

@@ -99,6 +99,7 @@ class Flags:
     # into) so api.arg can cast an override to the type it is replacing.
     historical_args: Dict[str, Any] = field(default_factory=dict)
     wev_found: bool = False                    # WithExpVisitor result from the script
+    loop_children: Dict[str, List[Optional[str]]] = field(default_factory=dict)
     old_tstamp: Optional[str] = None
     resume_spec: Optional["ResumeSpec"] = None
     # CLI plumbing.
@@ -118,15 +119,18 @@ class ResumeSpec:
     # a declaration is not. Only a guess needs the frame lookup, and only a
     # guess can be wrong in a way worth warning about. "ast" additionally needs
     # the neutralization dance -- it is the only source that implies the script
-    # loads the file at module scope.
+    # loads the file during setup.
     source: str = "ast"
     # Source line the inference came from, for error messages. Set for "save",
     # where the mapping is a step removed from what the script actually says.
     lineno: Optional[int] = None
-    # Live objects keyed by target name, set only for explicit specs. Their
+    # Live objects keyed by target name, explicit or bound during setup. Their
     # presence is what lets flor.restore skip resolving names out of the user's
     # stack frame -- the failure mode that silently skipped renamed targets.
     targets: Optional[dict] = None
+    # Scope of an inferred resume block; None denotes module scope.
+    scope_name: Optional[str] = None
+    scope_lineno: Optional[int] = None
 
 
 flags = Flags()
@@ -582,7 +586,7 @@ def _warn_if_nothing_restores(
     flor_print(
         f"FLOR: {filename} calls torch.save but declares no way to load it "
         f"back: no flor.checkpointing(...), no flor.restore(...), no "
-        f"module-scope `obj.load_state_dict(torch.load(<literal path>))` (or "
+        f"recognized `obj.load_state_dict(torch.load(<literal path>))` (or "
         f"its keyed form), and nothing flor could read off the save itself."
         f"{_why_the_save_site_was_no_help(ssv)} Replay will "
         f"recompute from whatever state the script happens to build, which is "
@@ -607,7 +611,15 @@ def _infer_resume_spec(tree: ast.AST, filename: str) -> None:
             path=rbv.path,  # type: ignore[arg-type]
             lhs_name=rbv.lhs_name,
             applies=list(rbv.applies),
+            lineno=rbv.lineno,
+            scope_name=rbv.scope_name,
+            scope_lineno=rbv.scope_lineno,
         )
+        from . import api
+
+        api._install_torch_hooks()
+        if rbv.scope_name is not None:
+            api._install_resume_binding(flags.resume_spec, filename)
         return
     if rbv.multi_path:
         # The script's own resume block reads two files, so its state really is
@@ -621,18 +633,17 @@ def _infer_resume_spec(tree: ast.AST, filename: str) -> None:
             "with flor.checkpointing(...)."
         )
         return
+    if rbv.ambiguous_scope:
+        flor_print(
+            "FLOR: resume blocks found in multiple scopes; declare the intended "
+            "objects with flor.restore(<path>, <name>=<obj>, ...)."
+        )
+        return
     rsv = RestoreSignalVisitor()
     rsv.visit(tree)
     ssv = _infer_from_save_site(tree, filename, rsv)
     if flags.resume_spec is not None:
         return
-    if rbv.unscoped_match:
-        flor_print(
-            "FLOR: torch.load resume pattern found outside module scope, and "
-            "the torch.save that writes the file was no clearer; auto-restore "
-            "disabled. Declare it with flor.restore(<path>, <name>=<obj>, ...) "
-            "so replay can address it."
-        )
     _warn_if_nothing_restores(filename, rsv, ssv)
 
 
@@ -653,6 +664,7 @@ def replay_initialize():
     wev = WithExpVisitor()
     wev.visit(tree)
     flags.wev_found = bool(wev.found)
+    flags.loop_children = wev.loop_children
 
     _infer_resume_spec(tree, filename)
 
