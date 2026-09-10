@@ -6,6 +6,7 @@ from . import capture
 from . import api
 from .api import *
 from .repl import query, dataframe, io, replay
+from .checkpoint_io import checkpoints
 from . import utils
 from . import database
 
@@ -28,10 +29,11 @@ except ImportError:
     cli.parse_args()
 
 
-def _should_capture() -> bool:
-    """Automatic io capture starts at import, not at first flor call.
+def _is_script_run() -> bool:
+    """Whether this process is a training script flor records as a run.
 
-    The whole point is the script that only does `import flordb` -- waiting for
+    Automatic io capture starts at import, not at first flor call: the whole
+    point is the script that only does `import flordb` -- waiting for
     _deferred_init() would mean capturing nothing at all in that case.
     """
     if _interactive:
@@ -52,7 +54,12 @@ def _should_capture() -> bool:
     return True
 
 
-if _should_capture():
+api._script_run = _is_script_run()
+if api._script_run:
+    # Setup can load a checkpoint before any flor call, including when the
+    # script imports torch after flor. Torch remains an optional dependency.
+    # Install before capture so torch's import output doesn't register a run.
+    api._install_torch_hooks()
     capture.install(api._emit_io)
 
 

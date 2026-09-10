@@ -1,6 +1,8 @@
 import inspect
+import json
 import os
 import shlex
+import shutil
 import statistics
 import sys
 import time
@@ -11,11 +13,11 @@ from . import orm
 from . import cli
 from . import utils
 from . import versions
-from . import obj_store
 from . import database
 from . import capture
+from . import checkpoint_io
 
-from typing import Any, Iterable, Iterator, List, TypeVar, Optional
+from typing import Any, Iterable, Iterator, List, TypeVar, Optional, NoReturn
 from contextlib import contextmanager
 
 from tqdm import tqdm
@@ -31,22 +33,6 @@ run_args: dict = {}
 layers = {}
 context: List[orm.Segment] = []
 
-checkpoints = []
-
-# Adaptive-checkpoint trigger: at most one checkpoint per ckpt_interval_s.
-# The decision is taken once, at the top of each outermost flor.loop iteration,
-# and both mirror streams read it -- enrolled objects through the ckpt() at the
-# end of that iteration, the user's own torch.save through the mirror hook
-# during it. Sharing one decision is what makes the two land on the *same*
-# iterations, which is exactly the pairing _mirror_exists_at requires before it
-# will restore a position instead of recomputing its way there. Deciding per
-# event instead let whichever fired first spend the interval, and the hook,
-# running inside the body, always beat the enrolled stream to it.
-ckpt_interval_s: float = 60.0
-_last_ckpt_time: Optional[float] = None
-_ckpt_armed: bool = False
-_save_mirrored: bool = False
-
 # Setup/teardown profiling anchors. `_setup_emitted` flips on first outermost
 # flor.loop / flor.iteration entry (emitting time::setup once, measured from
 # script start). `_last_main_exit_time` is updated at each outermost loop /
@@ -54,45 +40,59 @@ _save_mirrored: bool = False
 _setup_emitted: bool = False
 _last_main_exit_time: Optional[float] = None
 
-# Logical-replay state. When the user requests an iter whose mirror was thrown
-# away by ckpt_interval_s throttling, the outer flor.loop falls back to the
-# most-recent earlier mirror and fast-forwards through intermediate iters with
-# full inner-loop execution and suppressed logs. These flags coordinate that
-# across the outer loop, inner slice(), and log().
-_logical_replay_active: bool = False
+# Set while replay runs an iteration the user didn't select. The body still
+# runs -- later iterations depend on the state it leaves -- but records nothing.
 _suppress_logs: bool = False
 
-# Set when _neutralized_resume_state has turned the user's module-scope resume
-# block into a no-op, so replaying from iteration 0 is starting from the same
-# initialization the forward run did. The plan builder refuses from-zero without
-# it whenever the script actually read its checkpoint before the loop.
+# Set when _neutralized_resume_state has turned the script's resume block into
+# a no-op, so replay starts from the same initialization the forward run did.
 _resume_neutralized: bool = False
 
-# Set when the script itself read the resume spec's file at module scope --
-# i.e. it really does have a resume block, wherever that block lives. Only such
-# a script can have end-of-run state sitting on top of its initialization, and
-# that is the condition the from-zero refusal is about. A spec inferred from the
-# *save* site (source == "save") names a path the script may well never load,
-# so the file's presence on disk is not on its own evidence of the trap.
+# Set when the script read its resume block's file during setup, before any
+# loop. Only then can end-of-run state be sitting on top of its initialization,
+# which is what _refuse_unneutralized_resume checks for.
 _resume_load_seen: bool = False
-
-# The mirror _restore_from_mirror is currently reaching for, set only for the
-# duration of its torch.load. While it is set, the load hook must produce that
-# file or raise: flor asked for one specific iteration, so quietly substituting
-# the user's on-disk checkpoint would answer a different question than the one
-# asked.
-_restoring_mirror: Optional[Path] = None
 
 # flor.arg names the replayed run never logged, which fell back to their
 # declared default. Tracked so the warning prints once per name per session.
 _replay_defaulted_args: set = set()
 
+# Retired calls already reported as no-ops this session.
+_retired_warned: set = set()
+
+# True in a training script; False in a notebook, `python -c`, or flor's own
+# CLI (set by flordb/__init__). Only a script's run records where its training
+# started -- a notebook reading checkpoints is not starting a run.
+_script_run: bool = False
+
+# (via, key, call) of each start this run has recorded. Explicit checkpoint
+# loads carry an occurrence number; repeated torch loads share a file's start.
+_starts_recorded: set = set()
+
+# (recorded, current) tstamp pairs already reported as drifted this session.
+_start_notes: set = set()
+
 skip_cleanup = True
 
 
+def _retired(name: str, message: str) -> None:
+    """Say, once per session, that a retired call no longer does anything.
+
+    The calls still have to run: replay checks out and executes historical
+    versions of the script, which were written against the old API.
+    """
+    if name in _retired_warned:
+        return
+    _retired_warned.add(name)
+    capture.flor_print(f"FLOR: {name}(...) no longer has an effect. {message}")
+
+
 def set_ckpt_interval(seconds: float) -> None:
-    global ckpt_interval_s
-    ckpt_interval_s = float(seconds)
+    _retired(
+        "flor.set_ckpt_interval",
+        "FlorDB keeps one copy of each file the script saves per run, not one "
+        "per iteration, so there is no interval to set. You can remove the call.",
+    )
 
 
 def set_capture(
@@ -185,9 +185,11 @@ def _recording(name: str, bypass_projection: bool = False) -> bool:
 
       * the --apply projection (replay only) -- only the named values are
         emitted;
-      * _suppress_logs -- a logical-replay fast-forward iteration advances
-        state but records nothing.
+      * _suppress_logs -- replay runs an iteration the user didn't select:
+        it advances state but records nothing.
     """
+    if cli.flags.replay_start_failed:
+        return False
     if (
         cli.in_replay_mode()
         and cli.flags.apply_vars is not None
@@ -368,109 +370,28 @@ def arg(name: str, default: Optional[Any] = None) -> Any:
 
 @contextmanager
 def checkpointing(**kwargs):
-    # Optional explicit-enrollment helper. The torch.save hook is the default
-    # piggy-back path; use this to name the objects outright -- anything holding
-    # state_dict()/load_state_dict() (a module, an optimizer, an LR scheduler, a
-    # GradScaler), plus dicts, ndarrays, DataFrames and plain objects -- and they
-    # are serialized at every adaptive ckpt() trigger.
-    # Profiling records (time::setup / time::teardown) are now anchored on
-    # outermost flor.loop boundaries, not on this block.
-    for name, obj in kwargs.items():
-        reason = obj_store.unrestorable_reason(obj)
-        if reason is not None:
-            raise TypeError(
-                f"FLOR: flor.checkpointing({name}=...) cannot round-trip that "
-                f"object: {reason}. Enrolling it would shelve a snapshot at "
-                f"every checkpoint and only fail on the replay that needed one, "
-                f"so it is refused here instead."
-            )
-    # Restore the enrollment list to its prior length rather than clearing it:
-    # a nested `with flor.checkpointing(...)` block would otherwise drop the
-    # outer block's objects on the way out, and the rest of the run would
-    # checkpoint less than the script asked for, silently.
-    mark = len(checkpoints)
-    try:
-        checkpoints.extend(list(kwargs.items()))
-        yield
-    except Exception as e:
-        capture.flor_print(f"An error occurred: {e}")
-        raise
-    finally:
-        del checkpoints[mark:]
+    """Retired: FlorDB keeps a copy of each file the script torch.saves.
+
+    Still a working context manager, so scripts written against it -- among
+    them the historical versions replay executes -- run unchanged.
+    """
+    _deferred_init()
+    _retired(
+        "flor.checkpointing",
+        "FlorDB keeps one copy per run of each file the script saves with "
+        "torch.save; save these objects that way instead. The block still runs "
+        "as a plain `with`.",
+    )
+    yield
 
 
 def restore(path, *target, **keyed) -> None:
-    """Declare how a torch checkpoint maps back onto live objects.
-
-    The `torch.save` piggy-back path needs no instrumentation on the way out --
-    flor mirrors whatever the script saves. Coming back in is the half that
-    needs semantics, and flor can only guess at those by pattern-matching the
-    script's own resume block. This is how you say it outright when the guess
-    is wrong or impossible:
-
-        flor.restore("ckpt.pth", model=model, optimizer=optimizer)
-        # -> loaded["model"] into model, loaded["optimizer"] into optimizer
-
-        flor.restore("ckpt.pth", model)
-        # -> the whole file into model, for torch.save(model.state_dict(), ...)
-
-    Call it after constructing the objects and before the loop. During a
-    forward/record run it validates the declaration without loading a file or
-    changing the objects. On replay it registers the destinations; flor.loop
-    restores the selected historical checkpoint when entering an iteration.
-
-    Returns None. The path need not exist at the declaration site.
-    """
-    # Argument validation before any side effect, so a malformed call is a
-    # plain TypeError and not a half-initialized run.
-    if target and keyed:
-        raise TypeError(
-            "FLOR: flor.restore takes either one positional target (the whole "
-            "file is that object's state) or keyword targets (each keyword is "
-            "a key in the saved dict), not both."
-        )
-    if len(target) > 1:
-        raise TypeError(
-            f"FLOR: flor.restore takes at most one positional target, got "
-            f"{len(target)}. Name them -- flor.restore({path!r}, "
-            f"model=model, optimizer=optimizer) -- so each one can be matched "
-            f"to its key in the saved dict."
-        )
-    if not target and not keyed:
-        raise TypeError(
-            f"FLOR: flor.restore({path!r}) needs at least one target to "
-            f"restore into, e.g. flor.restore({path!r}, model=model)."
-        )
-
-    if target:
-        # No key: the file holds exactly this object's state_dict.
-        applies = [("<positional>", None)]
-        targets = {"<positional>": target[0]}
-    else:
-        applies = [(name, name) for name in keyed]
-        targets = dict(keyed)
-
-    for name, obj in targets.items():
-        if not hasattr(obj, "load_state_dict"):
-            raise TypeError(
-                f"FLOR: flor.restore target {name!r} is a "
-                f"{type(obj).__name__}, which has no load_state_dict. Pass the "
-                f"module or optimizer itself, or enroll it with "
-                f"flor.checkpointing({name}=...) instead."
-            )
-
-    if not cli.in_replay_mode():
-        return
-
-    _deferred_init()
-    cli.flags.resume_spec = cli.ResumeSpec(
-        path=str(path),
-        lhs_name=None,
-        applies=applies,
-        source="explicit",
-        targets=targets,
+    """Retired: replay recomputes from iteration 0 and restores nothing."""
+    _retired(
+        "flor.restore",
+        "Replay always recomputes from iteration 0, so there is no checkpoint "
+        "to restore into. You can remove the call.",
     )
-    _install_torch_hooks()
 
 
 def _iteration_requested(name: str, idx: Optional[int]) -> bool:
@@ -480,8 +401,8 @@ def _iteration_requested(name: str, idx: Optional[int]) -> bool:
     one process per iteration) supplies `idx` -- so flor can neither enumerate
     the iterations up front nor skip the body of a `with` block. Narrowing is
     therefore expressed as log suppression, the same mechanism flor.loop uses
-    for fast-forward iters under logical replay: the body runs (state has to
-    advance), but nothing is recorded for iterations the user didn't ask for.
+    for the iterations replay runs without being asked about them: the body
+    runs (state has to advance), but nothing is recorded.
     """
     spec = cli.flags.iter_specs.get(name)
     if spec is None or spec.kind == "all":
@@ -505,19 +426,14 @@ _unbounded_last_warned: set = set()
 
 @contextmanager
 def iteration(name: str, idx: Optional[int], value: Optional[str]):
-    global _suppress_logs, _ckpt_armed, _save_mirrored
+    global _suppress_logs
     _deferred_init()
     pos = len(layers)
+    replaying = cli.in_replay_mode()
     if pos == 0:
+        if replaying:
+            _refuse_unneutralized_resume()
         _emit_setup_once()
-        # flor.iteration owns no iterator, so there is no cadence to throttle:
-        # its ckpt() below fires every iteration, and the usual shape is one
-        # process per iteration anyway. Arming unconditionally keeps the hook
-        # on the same footing, so the mirror the script's own torch.save leaves
-        # pairs with the enrolled snapshot rather than being throttled out by a
-        # clock left over from an earlier block in the same process.
-        _ckpt_armed = True
-        _save_mirrored = False
     clock = Clock()
     clock.set_start_time()
     layers[name] = (
@@ -525,28 +441,13 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
         str(value) if value is not None else None,
     )
     context.append(orm.Segment(name, layers[name][0], layers[name][1]))
-    replaying = cli.in_replay_mode()
     outer_suppress = _suppress_logs
     if replaying:
-        # Restore this iteration's historical state the same way the outermost
-        # flor.loop does: explicitly enrolled objects first, then the
-        # AST-detected torch resume block (outermost scope only -- a nested
-        # iteration shares the outer scope's restored state).
-        load_ckpt()
-        if pos == 0 and cli.flags.resume_spec is not None:
-            _restore_from_mirror(name, layers[name][0], layers[name][1])
         _suppress_logs = outer_suppress or not _iteration_requested(
             name, layers[name][0]
         )
     try:
         yield
-        # Replay reads from the object store keyed on the *historical* tstamp
-        # (obj_store.get_shelf), so an unconditional write here would overwrite
-        # the mirrors the replay is reading from. Warming is allowed to fill
-        # the gaps the forward run left, and only those.
-        warming = replaying and _ckpt_warming_enabled()
-        if not replaying or warming:
-            ckpt(only_if_absent=warming)
     finally:
         _suppress_logs = outer_suppress
         context.pop()
@@ -569,101 +470,58 @@ def iteration(name: str, idx: Optional[int], value: Optional[str]):
 
 
 def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
-    global _last_ckpt_time, _logical_replay_active, _suppress_logs
-    global _ckpt_armed, _save_mirrored
+    global _suppress_logs
     _deferred_init()
     pos = len(layers)
+    replaying = cli.in_replay_mode()
     if pos == 0:
+        if replaying:
+            _refuse_unneutralized_resume()
         _emit_setup_once()
-        # Reset so the first iter's ckpt always fires; later iters get
-        # throttled by the time guard.
-        _last_ckpt_time = None
-        _ckpt_armed = False
-        _save_mirrored = False
-        _logical_replay_active = False
         _suppress_logs = False
     clock = Clock()
     clock.set_start_time()
     layers[name] = (0, None)
     context.append(orm.Segment(name, 0, None))
-    # On replay we materialize so the planner / restore code can index into a
-    # specific iter's value to build the matching obj_store filename. On
-    # forward we keep the original lazy iterator semantics.
-    logical_silent: set = set()
-    logical_mirror_pos: Optional[int] = None
-    if cli.in_replay_mode():
-        materialized: Optional[list] = list(iterator)
+    outer_suppress = _suppress_logs
+    # Replay materializes the iterator: which iterations run, and which of
+    # them log, both depend on how many there are. Forward keeps the original
+    # lazy iterator semantics.
+    iter_source: Any
+    silent: set = set()
+    if replaying:
+        materialized = list(iterator)
         if pos == 0:
-            iter_source: Any
-            iter_source, logical_mirror_pos, logical_silent, _logical_replay_active = (
-                _build_outer_replay_plan(name, materialized)
-            )
+            iter_source, silent = _build_outer_replay_plan(name, materialized)
         else:
-            iter_source = slice(name, materialized)
+            iter_source = list(enumerate(materialized))
+            silent = _inner_silent(name, len(materialized))
     else:
-        materialized = None
         iter_source = enumerate(iterator)
-    first_outer_iter = True
     iter_deltas: List[float] = []
-    for each in tqdm(
-        iter_source,
-        position=pos,
-        leave=(True if pos == 0 else False),
-        # flor's own progress bar, written past the tee. The user's tqdm bars
-        # are still captured (one row for the final rendering); ours would be
-        # pure redundancy.
-        file=capture.raw_stderr(),
-    ):
-        layers[name] = (
-            int(each[0]),
-            str(each[1]) if utils.is_jsonable(each[1]) else None,
-        )
-        context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
-        if pos == 0 and cli.in_replay_mode():
-            # Under fast-forward the state comes from the single restore below
-            # plus recomputation, so a gap in the shelf is expected, not fatal.
-            if not _logical_replay_active:
-                load_ckpt()
-            if materialized is not None:
-                if _logical_replay_active:
-                    _suppress_logs = int(each[0]) in logical_silent
-                    if first_outer_iter and logical_mirror_pos is not None:
-                        _restore_at(
-                            name, materialized, logical_mirror_pos, enrolled=True
-                        )
-                else:
-                    _suppress_logs = False
-                    _restore_at(name, materialized, int(each[0]))
-            first_outer_iter = False
-        if pos == 0:
-            # One decision for this whole iteration, read by the hook during
-            # the body and by the ckpt() below. The clock is anchored here
-            # rather than after that ckpt: reset at the end, an iteration
-            # longer than the interval would arm only every other time.
-            now = time.perf_counter()
-            _ckpt_armed = (
-                _last_ckpt_time is None
-                or (now - _last_ckpt_time) >= ckpt_interval_s
+    try:
+        for each in tqdm(
+            iter_source,
+            position=pos,
+            leave=(True if pos == 0 else False),
+            # flor's own progress bar, written past the tee. The user's tqdm
+            # bars are still captured (one row for the final rendering); ours
+            # would be pure redundancy.
+            file=capture.raw_stderr(),
+        ):
+            layers[name] = (
+                int(each[0]),
+                str(each[1]) if utils.is_jsonable(each[1]) else None,
             )
-            _save_mirrored = False
-            if _ckpt_armed:
-                _last_ckpt_time = now
-        iter_clock = Clock()
-        iter_clock.set_start_time()
-        yield each[1]  # type: ignore
-        iter_deltas.append(iter_clock.get_delta())
-        # On replay this shelves only what the forward run left missing, so a
-        # fast-forwarded iteration is paid for once rather than on every replay.
-        warming = _ckpt_warming_enabled()
-        if pos == 0 and _ckpt_armed and (warming or not cli.in_replay_mode()):
-            ckpt(only_if_absent=warming)
-    if pos == 0 and (_ckpt_warming_enabled() or not cli.in_replay_mode()):
-        # Force a final checkpoint at outermost loop exit so end-of-run state
-        # is always captured, regardless of the time guard. The hook has no
-        # equivalent -- it can only mirror a torch.save the script actually
-        # makes -- so this is the one snapshot the two streams need not share.
-        ckpt(only_if_absent=_ckpt_warming_enabled())
-        _last_ckpt_time = time.perf_counter()
+            context[-1] = orm.Segment(name, layers[name][0], layers[name][1])
+            if replaying:
+                _suppress_logs = outer_suppress or int(each[0]) in silent
+            iter_clock = Clock()
+            iter_clock.set_start_time()
+            yield each[1]  # type: ignore
+            iter_deltas.append(iter_clock.get_delta())
+    finally:
+        _suppress_logs = outer_suppress
     context.pop()
     _emit_iter_summary(iter_deltas)
     output_buffer.append(
@@ -679,15 +537,18 @@ def loop(name: str, iterator: Iterable[T]) -> Iterator[T]:
     )
     if pos == 0:
         _mark_main_segment_end()
-        _logical_replay_active = False
-        _suppress_logs = False
-        _ckpt_armed = False
     del layers[name]
 
 
 def commit():
     global skip_cleanup, _setup_emitted, _last_main_exit_time, _last_io_record
     global _init_failed
+    if cli.in_replay_mode():
+        if cli.flags.replay_start_failed:
+            output_buffer.clear()
+            skip_cleanup = True
+            return
+        _require_recorded_starts()
     # Record any trailing output that never got a newline. Done here rather
     # than from its own atexit hook so it is guaranteed to land before the
     # buffer is serialized -- cleanup() below is itself an atexit hook, and
@@ -755,6 +616,9 @@ def commit():
     _last_io_record = None
     _init_failed = False
     capture.reset_run_state()
+    _starts_recorded.clear()
+    cli.flags.checkpoint_calls.clear()
+    cli.flags.consumed_starts.clear()
     skip_cleanup = True
     # Last, and outside the buffer reset above: by this point the run is
     # durable in both JSONL and the sqlite cache, so an interrupt here costs
@@ -799,59 +663,265 @@ def _deferred_init():
     _install_torch_hooks()
 
 
-# Overrides that cannot change what the recomputed state *is*. ckpt_interval_s
-# only sets how often a checkpoint is taken, so a replay carrying it still
-# reconstructs the forward run's state faithfully; `device` is on the CLI
-# allowlist but cpu/cuda kernels do not agree bit-for-bit, so it is not here.
-NUMERICS_NEUTRAL_OVERRIDES = frozenset({"ckpt_interval_s"})
+# ---------------------------------------------------------------------------
+# Where training starts
+#
+# A run may resume from an earlier run's checkpoint, either by loading the file
+# that run saved or by asking flor for it. The forward run records which run
+# and checkpoint it started from, identified by tstamp and commit, and replay
+# loads that same checkpoint instead of starting from initialization.
+# ---------------------------------------------------------------------------
 
 
-def _ckpt_warming_enabled() -> bool:
-    """May this replay shelve mirrors the forward run never left behind?
+def load_checkpoint(tstamp, name=None, *, map_location="cpu", weights_only=True):
+    """Return saved state for a run, without executing its training script.
 
-    A replay recomputes state the forward run held but did not save -- because
-    ckpt_interval_s threw it away, or because the repo was cloned with
-    runs/*.jsonl and no obj_store at all. Shelving it turns the *next* replay
-    of that iteration into a fast-path restore instead of another fast-forward,
-    which is what makes a fresh clone slow only once.
+    With no name, require exactly one run checkpoint. Use flor.checkpoints(tstamp)
+    to choose among several, or to select an older run's iteration snapshot.
+    PyTorch checkpoints return the saved dictionary, not a constructed model;
+    instantiate the matching architecture and call model.load_state_dict().
+    Older runs' snapshots of other objects return their numpy, pandas, or
+    cloudpickle values. Only load checkpoints you trust, especially
+    pickle-backed objects or torch checkpoints loaded with weights_only=False.
 
-    Two rules keep this from corrupting history. Callers must honor the first;
-    this predicate is the second:
-
-      - Never overwrite. An existing mirror is forward-run truth and a warmed
-        one is a reconstruction, so truth wins every collision.
-      - Never warm under an override that could move the numbers. The
-        reconstruction is only sound because the replay re-ran the same code
-        over the same args; `--override device=cpu` breaks that premise, and
-        caching its output as a mirror would quietly poison later replays.
+    Called from a training script, this also records the run the script is
+    starting from. Replaying the script's run loads that same checkpoint,
+    whatever `tstamp` evaluates to by then. Repeated loads of one name are
+    matched in call order. A replay load with no historical match is refused.
     """
-    if not cli.in_replay_mode():
-        return False
-    return not (set(cli.flags.overrides) - NUMERICS_NEUTRAL_OVERRIDES)
+    tracking = cli.in_replay_mode() or _script_run
+    call = cli.flags.checkpoint_calls.get(name, 0)
+    if tracking:
+        cli.flags.checkpoint_calls[name] = call + 1
+    if cli.in_replay_mode():
+        start = _recorded_start("load_checkpoint", name, call)
+        if start is None:
+            _fail_replay_start(
+                f"FLOR: cannot replay flor.load_checkpoint({name!r}), call "
+                f"{call + 1}: the historical run recorded no matching load. "
+                "The query or resume guard may now select a checkpoint the "
+                "original run never loaded. Restore the original control flow "
+                "before replaying; refusing to change the run's starting state."
+            )
+        _note_drift(tstamp, start)
+        entry = _start_entry(start)
+        state = checkpoint_io._read(entry, map_location, weights_only)
+        cli.flags.consumed_starts.add(cli.flags.starts.index(start))
+    else:
+        entry = checkpoint_io._select(tstamp, name)
+        state = checkpoint_io._read(entry, map_location, weights_only)
+        if _script_run:
+            _record_start("load_checkpoint", name, tstamp, entry["name"], call)
+    return state
 
 
-def ckpt(only_if_absent: bool = False):
-    for name, obj in checkpoints:
-        if only_if_absent and obj_store.has_shelved(layers, name):
+def _record_start(via: str, key, tstamp, name: str, call=None) -> None:
+    """Record that this run's training starts from run `tstamp`'s `name`.
+
+    `via` and `key` say which call loaded it -- a setup torch.load of a
+    project-relative path, or flor.load_checkpoint with a name -- so replay can
+    answer the same call with the same checkpoint. Explicit loads also record
+    their occurrence among calls with that name, including an omitted name.
+    """
+    if (via, key, call) in _starts_recorded:
+        return
+    _deferred_init()
+    _starts_recorded.add((via, key, call))
+    tstamp = checkpoint_io._stamp(tstamp)
+    start = {
+        "via": via,
+        "key": key,
+        "tstamp": tstamp,
+        "name": name,
+        "commit": _commit_of(tstamp),
+        "setup": not _setup_emitted,
+    }
+    if call is not None:
+        start["call"] = call
+    output_buffer.append(
+        orm.Log(
+            PROJID,
+            Clock.get_datetime(),
+            SCRIPTNAME,
+            None,
+            "flor::start",
+            json.dumps(start),
+            VALUE_TYPE_START,
+        )
+    )
+
+
+def _commit_of(tstamp: str) -> Optional[str]:
+    """The auto-commit that recorded run `tstamp`, or None if there is none."""
+    for ts, hexsha, _ in versions.get_latest_autocommit():
+        try:
+            if checkpoint_io._stamp(ts) == tstamp:
+                return hexsha
+        except ValueError:
             continue
-        obj_store.serialize(layers, name, obj)
+    return None
 
 
-def load_ckpt(missing_ok: bool = False):
-    for name, obj in checkpoints:
-        obj_store.deserialize(layers, name, obj, missing_ok=missing_ok)
+def _recorded_start(via: str, key, call=None) -> Optional[dict]:
+    """The start the replayed run recorded for this call, if it recorded one."""
+    for start in cli.flags.starts:
+        if (
+            start.get("via") == via and start.get("key") == key
+            # Older records can identify only the first explicit load.
+            and (call is None or start.get("call", 0) == call)
+        ):
+            return start
+    return None
+
+
+def _start_entry(start: dict) -> dict:
+    """The checkpoints() row for a recorded start, or a refusal naming the run."""
+    try:
+        entry = checkpoint_io._select(start["tstamp"], start["name"])
+        if not Path(entry["path"]).is_file():
+            raise FileNotFoundError(entry["path"])
+        return entry
+    except FileNotFoundError:
+        commit = start.get("commit")
+        at = f" (commit {commit[:10]})" if commit else ""
+        _fail_replay_start(
+            f"FLOR: the run being replayed started from {start['name']!r} of run "
+            f"{start['tstamp']}{at}, and that run's copy isn't in .flor/obj_store/ "
+            f"here. Copy .flor/obj_store/{start['tstamp']}/ from the machine "
+            f"that trained it, then replay again."
+        )
+
+
+def _fail_replay_start(message: str) -> NoReturn:
+    """A refused replay must not commit partially recomputed observations."""
+    cli.flags.replay_start_failed = True
+    output_buffer.clear()
+    raise RuntimeError(message) from None
+
+
+def _require_recorded_starts() -> None:
+    """Refuse training if a guard skipped a historical setup load.
+
+    Loading into the targets here would be too late: setup may already have
+    computed other values from their state. The original load must execute.
+    Older lineage records predate the setup flag and describe setup loads.
+    """
+    for index, start in enumerate(cli.flags.starts):
+        if not start.get("setup", True) or index in cli.flags.consumed_starts:
+            continue
+        entry = _start_entry(start)
+        _fail_replay_start(
+            f"FLOR: the historical run loaded {start['name']!r} from run "
+            f"{start['tstamp']}, but replay skipped that setup load. "
+            "Check the script's resume guard or checkpoint query. "
+            f"The recorded copy is at {entry['path']}; make the original "
+            "load execute before replaying. Refusing to train from initialization."
+        )
+
+
+def _note_drift(tstamp, start: dict) -> None:
+    """Say when the script's query no longer picks the run it started from."""
+    try:
+        now = checkpoint_io._stamp(tstamp)
+    except (TypeError, ValueError):
+        now = None
+    if now == start["tstamp"] or (start["tstamp"], now) in _start_notes:
+        return
+    _start_notes.add((start["tstamp"], now))
+    capture.flor_print(
+        f"FLOR: flor.load_checkpoint now selects run {now}, but the run being "
+        f"replayed started from run {start['tstamp']}; replaying from that one."
+    )
 
 
 # ---------------------------------------------------------------------------
-# torch.save / torch.load piggy-back hooks
+# Replay planning
 #
-# Lets cloned scripts that already call torch.save be checkpointed by flor
-# without an explicit `with flor.checkpointing(...):` block. On forward runs,
-# any torch.save called inside a flor.loop is mirrored into the project-local
-# object store at .flor/obj_store/<run-tstamp>/, using a ctx-aware filename so
-# each iteration produces its own snapshot. On replay, torch.load is redirected
-# to the matching mirror so the user's own resume-from-checkpoint code restores
-# the historical state.
+# Replay keeps no checkpoints from inside a run, so the state at iteration k
+# exists only by computing iterations 0..k. --iter therefore chooses which
+# iterations *log*; what runs is whatever those iterations depend on.
+# ---------------------------------------------------------------------------
+
+
+def _requested(name: str, n: int) -> List[int]:
+    """Positions among a loop's n iterations that --iter asks replay to log."""
+    spec = cli.iter_spec_for(name)
+    if spec.kind == "all":
+        return list(range(n))
+    if spec.kind == "none":
+        return []
+    if spec.kind == "last":
+        return [n - 1] if n else []
+    out_of_range = [i for i in spec.indices if not (0 <= i < n)]
+    if out_of_range:
+        raise RuntimeError(
+            f"FLOR: --iter {name}={list(spec.indices)} requests index "
+            f"{out_of_range} but the loop only has {n} iteration(s) "
+            f"(valid range: 0..{n - 1})."
+        )
+    return list(spec.indices)
+
+
+def _build_outer_replay_plan(name: str, materialized: list):
+    """Which outermost-loop iterations replay runs, and which of those are silent.
+
+    Returns (iter_source, silent). The plan starts at iteration 0 and stops
+    after the last requested one; the iterations it passes through on the way
+    run with their logs suppressed.
+    """
+    if not cli.flags.wev_found:
+        # No flor.loop in the script's source -- nothing to narrow.
+        return list(enumerate(materialized)), set()
+    requested = _requested(name, len(materialized))
+    if not requested:
+        return [], set()
+    through = requested[-1] + 1
+    return (
+        list(enumerate(materialized[:through])),
+        set(range(through)) - set(requested),
+    )
+
+
+def _inner_silent(name: str, n: int) -> set:
+    """Iterations of a nested loop that replay runs but records nothing for.
+
+    A nested loop always runs in full: whatever follows it in the enclosing
+    iteration depends on the state every one of its steps leaves behind.
+    """
+    if not cli.flags.wev_found:
+        return set()
+    return set(range(n)) - set(_requested(name, n))
+
+
+def _refuse_unneutralized_resume() -> None:
+    """Stop a replay whose setup loaded a checkpoint over its initialization.
+
+    Replay recomputes from iteration 0, so the objects entering the loop have
+    to be the ones the script's initialization built. A recognized resume
+    block's load is answered with the targets' own state; when that couldn't be
+    done, the load went through and the objects hold whatever the file held.
+    """
+    if not _setup_emitted:
+        _require_recorded_starts()
+    spec = cli.flags.resume_spec
+    if spec is None or not _resume_load_seen or _resume_neutralized:
+        return
+    raise RuntimeError(
+        f"FLOR: cannot replay from iteration 0: the resume block in "
+        f"{SCRIPTNAME} loaded {spec.path!r} before the loop, and flor could not "
+        f"keep it from replacing the script's initialization. Move or delete "
+        f"{spec.path!r} and replay again."
+    )
+
+
+# ---------------------------------------------------------------------------
+# torch.save / torch.load hooks
+#
+# Forward: every torch.save to a file path also replaces this run's copy of
+# that file under .flor/obj_store/<tstamp>/, so a script needs no flor code to
+# have each run's checkpoint kept. Replay: torch.save is skipped, and the
+# script's resume block has its torch.load answered with its targets' own
+# state, so the recomputation starts from the script's initialization.
 # ---------------------------------------------------------------------------
 
 _orig_torch_save = None
@@ -869,116 +939,49 @@ def _coerce_to_path(path) -> Path:
     return Path(str(name)) if name else Path("ckpt.pth")
 
 
-def _user_path_stem_ext(path):
-    p = _coerce_to_path(path)
-    return p.stem or "ckpt", (p.suffix or ".pth")
-
-
-def _path_in_obj_store(path) -> bool:
-    try:
-        p = _coerce_to_path(path).resolve()
-        return str(p).startswith(str(Path(OBJSTORE_DIR).resolve()))
-    except Exception:
-        return False
-
-
 def _flor_torch_save(obj, path, *args, **kwargs):
-    global _save_mirrored
     assert _orig_torch_save is not None
-    # Flor's own serialization already addresses the object store. Its caller
-    # controls replay warming, and mirroring it again would duplicate snapshots.
-    if _path_in_obj_store(path):
-        return _orig_torch_save(obj, path, *args, **kwargs)
-    replaying = cli.in_replay_mode()
-    # A replay may reach the user's save statement, but must leave their file
-    # untouched. Missing mirrors can be serialized directly to the store below.
-    result = None if replaying else _orig_torch_save(obj, path, *args, **kwargs)
-    if not layers:
-        return result
-    warming = replaying and _ckpt_warming_enabled()
-    if replaying and not warming:
-        return result
-    # The decision was taken at the top of this outermost iteration and is
-    # shared with the ckpt() that shelves enrolled objects at the end of it, so
-    # both streams snapshot the same iterations. Once mirrored, this iteration
-    # is done: a torch.save inside an inner loop would otherwise mirror on
-    # every step of it.
-    if not _ckpt_armed or _save_mirrored:
-        return result
-    try:
-        stem, ext = _user_path_stem_ext(path)
-        flor_path = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
-        # Warming fills gaps; it never rewrites a mirror the forward run left.
-        if warming and flor_path.exists():
-            return result
-        _orig_torch_save(obj, str(flor_path), *args, **kwargs)
-        _save_mirrored = True
-    except Exception:
-        pass
+    if cli.in_replay_mode():
+        # The script's file belongs to the latest forward run, and replay is
+        # recomputing some other one: leave the file alone and keep no copy.
+        return None
+    result = _orig_torch_save(obj, path, *args, **kwargs)
+    if isinstance(path, (str, bytes, os.PathLike)):
+        # Every successful save replaces the copy, so it ends up holding
+        # whatever the run saved last, inside the loop or after it.
+        _deferred_init()
+        saved_path = _coerce_to_path(path)
+        checkpoint_io._save(
+            os.fsdecode(path),
+            lambda destination: shutil.copyfile(saved_path, destination),
+            source=saved_path,
+        )
     return result
 
 
-def _shelf_has_mirrors_for(stem: str, ext: str) -> bool:
-    """Whether the shelf holds a mirror for *any* iteration of this file.
-
-    This is how a checkpoint flor is managing gets told apart from an ordinary
-    torch.load of, say, a cached tensor: the former has siblings on the shelf,
-    the latter has none. Only the former may be treated as an error when the
-    iteration being replayed has no mirror of its own.
-    """
-    try:
-        return any(obj_store.get_shelf().glob(f"{stem}*{ext}"))
-    except Exception:
-        return False
-
-
-def _shelf_has_any_mirror_for(spec) -> bool:
-    """Whether the historical run left any mirror for the resume block's file."""
-    try:
-        stem, ext = _user_path_stem_ext(spec.path)
-    except Exception:
-        return False
-    return _shelf_has_mirrors_for(stem, ext)
-
-
 def _neutralized_resume_state(path):
-    """The state dict that makes the user's setup resume block a no-op.
+    """The state dict that makes the script's resume block a no-op on replay.
 
-    The resume block (`torch.load("ckpt.pth")` + `load_state_dict`) runs before
-    the loop, where `layers` is still empty -- so the per-iteration redirect
-    below cannot reach it, and it loads whatever is on disk. After a forward run
-    that file holds *end-of-run* weights, which would land on top of the fresh
-    initialization that replaying from iteration 0 depends on.
+    The resume block (`torch.load("ckpt.pth")` + `load_state_dict`) runs during
+    setup and loads whatever is on disk. After a forward run that file holds
+    *end-of-run* weights, which would land on top of the fresh initialization
+    replay recomputes from.
 
-    Inspecting saved end states overwrites the block's effect per iteration.
-    Re-executing training may instead need initialization, even when end-state
-    mirrors exist, so the setup load must leave that initialization intact.
-    Recognized resume blocks are neutralized even when mirrors are available:
-    a later missing mirror can still require replay from initialization.
-
-    Returning each target's *own* current state does exactly that:
+    Returning each target's *own* current state avoids that:
     `model.load_state_dict(model.state_dict())` leaves the seed-initialized
     weights in place, which is precisely the state the forward run's iteration 0
-    started from. Returns None when the block can't be neutralized faithfully,
-    which keeps the caller on the loud-refusal path rather than guessing.
+    started from. Returns None when the block can't be neutralized faithfully;
+    the load then goes through, and _refuse_unneutralized_resume stops the
+    replay at the loop rather than let it recompute from the wrong state.
     """
-    global _resume_neutralized
+    global _resume_neutralized, _resume_load_seen
     spec = cli.flags.resume_spec
     if spec is None:
         return None
     try:
         if _coerce_to_path(path).name != _coerce_to_path(spec.path).name:
             return None
-        enters_training = any(
-            _replay_enters_nested_loop(name) for name in cli.flags.loop_children
-        )
-        if (
-            spec.scope_name is None
-            and spec.source != "ast"
-            and not enters_training
-            and _shelf_has_any_mirror_for(spec)
-        ):
-            return None
+        _resume_load_seen = True
         targets = _resolve_targets(spec)
         if targets is None:
             return None
@@ -1009,72 +1012,34 @@ def _neutralized_resume_state(path):
     return state
 
 
-def _note_module_scope_load(path) -> None:
-    """Record that the script read the spec's checkpoint before entering a loop.
-
-    This is what separates a script with a resume block from one whose mapping
-    flor inferred from its torch.save: the first has already loaded end-of-run
-    weights over its initialization by the time the loop starts, the second has
-    loaded nothing at all.
-    """
-    global _resume_load_seen
-    spec = cli.flags.resume_spec
-    if spec is None:
-        return
-    try:
-        if _coerce_to_path(path).name == _coerce_to_path(spec.path).name:
-            _resume_load_seen = True
-    except Exception:
-        pass
-
-
 def _flor_torch_load(path, *args, **kwargs):
     assert _orig_torch_load is not None
-    # A read out of our own obj_store is flor's own restore (load_ckpt ->
-    # obj_store.deserialize), already addressed at the iteration it wants.
-    # Redirecting it would re-encode the ctx into a name that already carries
-    # one -- model_epoch_1.pth becoming model_epoch_1_epoch_1.pth -- and the
-    # sibling glob below would then read that miss as a throttled mirror and
-    # raise. Same exemption _flor_torch_save makes on the way out.
-    if cli.in_replay_mode() and not _path_in_obj_store(path):
-        if layers:
-            try:
-                stem, ext = _user_path_stem_ext(path)
-                flor_path = obj_store.get_shelf() / utils.to_filename(
-                    layers, stem, ext
-                )
-            except Exception:
-                if _restoring_mirror is not None:
-                    # flor asked for a specific mirror and cannot even name it.
-                    raise
-                # Some exotic path/file object flor can't address. It is not a
-                # checkpoint flor wrote, so the user's own load stands.
-                return _orig_torch_load(path, *args, **kwargs)
-            if flor_path.exists():
-                return _orig_torch_load(str(flor_path), *args, **kwargs)
-            if _restoring_mirror is not None or _shelf_has_mirrors_for(stem, ext):
-                # Falling through here would load the file at the user's own
-                # path, which after a forward run holds *end-of-run* state --
-                # silently answering "what did iteration k look like?" with the
-                # last iteration's weights, and logging the result as history.
-                # The shelf has siblings, so this really is a flor-managed
-                # checkpoint with a gap, not an unrelated load.
-                raise RuntimeError(
-                    f"FLOR: no checkpoint mirror for {_ctx_description()} at "
-                    f"{flor_path.name!r} in {obj_store.get_shelf()}, but other "
-                    f"iterations of {stem}{ext} are shelved. The forward run "
-                    f"most likely throttled this iteration "
-                    f"(flor.set_ckpt_interval). Narrow to an iteration that has "
-                    f"a mirror, or re-run forward with a smaller interval. "
-                    f"Refusing to fall back to {_coerce_to_path(path)!s}, which "
-                    f"holds end-of-run state."
-                )
-        else:
-            # Setup: no loop context yet, including a resume inside prep().
-            _note_module_scope_load(path)
+    # Only setup loads concern flor -- the ones before any loop, which is where
+    # a script resumes. Once a loop is running, a load is the script's own
+    # business, and it gets the file it names.
+    if not layers:
+        key = (
+            checkpoint_io._project_relative(path)
+            if isinstance(path, (str, bytes, os.PathLike))
+            else None
+        )
+        if cli.in_replay_mode():
+            start = _recorded_start("torch.load", key) if key else None
+            if start is not None:
+                # The forward run resumed from an earlier run's copy of this
+                # file; start the recomputation from that same copy.
+                state = _orig_torch_load(_start_entry(start)["path"], *args, **kwargs)
+                cli.flags.consumed_starts.add(cli.flags.starts.index(start))
+                return state
             neutral = _neutralized_resume_state(path)
             if neutral is not None:
                 return neutral
+        elif _script_run and key is not None:
+            writer = checkpoint_io._writer_of(path, exclude=Clock.get_datetime())
+            if writer is not None:
+                state = _orig_torch_load(path, *args, **kwargs)
+                _record_start("torch.load", key, *writer)
+                return state
     return _orig_torch_load(path, *args, **kwargs)
 
 
@@ -1093,26 +1058,14 @@ def _install_torch_hooks():
 
 
 # ---------------------------------------------------------------------------
-# AST-driven auto-restore (no flor.checkpointing(...) required)
+# Resume-block targets
 #
-# When cli.replay_initialize() finds a `torch.load(...)` +
-# `X.load_state_dict(loaded[key])` pattern in the user's script, flor.loop's
-# outer replay plan picks which obj_store mirror to splice into the user's
-# module/function frame: the iter's own mirror in the fast path, or the most
-# recent earlier one when ckpt_interval_s threw the matching mirror away
-# (logical replay -- intermediate iters then fast-forward through the body
-# with logs suppressed). The user's own resume code (e.g. line 84 of
-# v4/train.py) is left intact -- it still runs once before the loop -- but
-# its result is overwritten per-iter.
+# cli.replay_initialize() finds the script's `torch.load(...)` +
+# `X.load_state_dict(loaded[key])` block. Neutralizing it needs the live
+# objects the block names: module-scope names are read off the script's frame,
+# and a block inside a function has its locals bound while it runs, because it
+# may return them to a caller that names them differently.
 # ---------------------------------------------------------------------------
-
-
-def _ctx_description() -> str:
-    """The loop context as `epoch=2, step=7`, for error messages."""
-    parts = []
-    for k, (i, v) in layers.items():
-        parts.append(f"{k}={v if v is not None else i}")
-    return ", ".join(parts) if parts else "<module scope>"
 
 
 def _find_user_frame():
@@ -1190,108 +1143,19 @@ def _install_resume_binding(spec, filename):
     return stop
 
 
-def _layer_for(materialized: list, k: int):
-    """The `layers` entry the forward run held while executing iter position k.
-
-    Mirror filenames are derived from `layers`, so this has to match what
-    flor.loop writes on the forward pass exactly (index k, value stringified
-    only when it's jsonable) or the replay looks for a file that isn't there.
-    """
-    v = materialized[k]
-    return k, (str(v) if utils.is_jsonable(v) else None)
-
-
-@contextmanager
-def _layer_swapped(name: str, iteration: Optional[int], value: Optional[str]):
-    """Temporarily present `layers` as it looked at a historical iteration.
-
-    Both the mirror-path computation and _flor_torch_load read `layers`, so
-    swapping it is how we address a specific iteration's checkpoint without
-    changing any user-visible path.
-    """
-    had = name in layers
-    saved = layers.get(name)
-    layers[name] = (iteration, value)
-    try:
-        yield
-    finally:
-        if had:
-            layers[name] = saved  # type: ignore[assignment]
-        else:
-            layers.pop(name, None)
-
-
-def _mirror_path_for(name: str, k: int, materialized: list, spec) -> Path:
-    """Build the obj_store mirror path for iter position k of `name`."""
-    iteration, value = _layer_for(materialized, k)
-    with _layer_swapped(name, iteration, value):
-        stem, ext = _user_path_stem_ext(spec.path)
-        return obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
-
-
-def _mirror_exists_at(name: str, k: int, materialized: list, spec) -> bool:
-    """True when position k has everything a restore there would need.
-
-    Both restore paths have to be satisfied, because both feed the same
-    iteration: the AST-detected torch resume block (when `spec` is set) and
-    every object enrolled through `flor.checkpointing`. A script using only
-    enrollment has `spec is None` and is judged purely on the shelf; a script
-    using neither has nothing to restore, so every position trivially qualifies.
-    """
-    try:
-        if spec is not None and not _mirror_path_for(name, k, materialized, spec).exists():
-            return False
-        if not checkpoints:
-            return True
-        iteration, value = _layer_for(materialized, k)
-        with _layer_swapped(name, iteration, value):
-            return all(obj_store.has_shelved(layers, n) for n, _ in checkpoints)
-    except Exception:
-        return False
-
-
-def _restore_at(
-    name: str, materialized: list, pos: int, enrolled: bool = False
-) -> None:
-    """Restore historical position `pos` through whichever paths are in play.
-
-    `enrolled` also re-runs the flor.checkpointing restore. Callers set it only
-    when anchoring somewhere other than the iteration the loop is currently on
-    -- the per-iteration load_ckpt in the loop already covers that case, and
-    repeating it here would just deserialize the same shelf entry twice.
-    """
-    iteration, value = _layer_for(materialized, pos)
-    if enrolled and checkpoints:
-        with _layer_swapped(name, iteration, value):
-            load_ckpt(missing_ok=True)
-    if cli.flags.resume_spec is not None:
-        _restore_from_mirror(name, iteration, value)
-
-
-def _find_latest_mirror_at_or_before(
-    name: str, position: int, materialized: list, spec
-) -> Optional[int]:
-    for k in range(position, -1, -1):
-        if _mirror_exists_at(name, k, materialized, spec):
-            return k
-    return None
-
-
 def _resolve_targets(spec) -> Optional[dict]:
     """The live objects spec.applies names, or None if they can't be reached.
 
-    Explicit declarations and function-scoped resume blocks retain object
-    references. Module-scope and save-site inference resolve names against the
-    user's frame.
+    Function-scoped resume blocks bind their objects while they run. A
+    module-scope block's names are resolved against the user's frame.
     """
-    if spec.targets is not None or spec.source == "explicit":
-        return dict(spec.targets or {})
+    if spec.targets is not None:
+        return dict(spec.targets)
     if spec.scope_name is not None:
         # Never resolve prep()'s names against unrelated locals in train().
         raise RuntimeError(
             f"FLOR: resume targets in {spec.scope_name}() were not bound before "
-            "the replay loop. Run setup before the loop, or declare the live "
-            "objects with flor.restore(<path>, <name>=<obj>, ...)."
+            "the replay loop."
         )
     user_frame = _find_user_frame()
     if user_frame is None:
@@ -1299,275 +1163,6 @@ def _resolve_targets(spec) -> Optional[dict]:
     scope = dict(user_frame.f_globals)
     scope.update(user_frame.f_locals)
     return {name: scope.get(name) for name, _ in spec.applies}
-
-
-def _spec_origin(spec) -> str:
-    """Where a spec's mapping came from, as it reads in an error message."""
-    if spec.source == "explicit":
-        return "flor.restore"
-    if spec.source == "save":
-        at = f":{spec.lineno}" if spec.lineno else ""
-        return f"the torch.save in {SCRIPTNAME}{at}"
-    return f"the resume block in {SCRIPTNAME}"
-
-
-def _select_state(loaded, key):
-    """The slice of a checkpoint that belongs to one target.
-
-    `key is None` is the flat idiom -- `torch.save(model.state_dict(), path)` --
-    where the whole file is one object's state.
-    """
-    return loaded if key is None else loaded[key]
-
-
-def _restore_from_mirror(
-    name: str, iteration: Optional[int], value: Optional[str]
-) -> bool:
-    """Splice the obj_store mirror for one historical iteration into the user's
-    objects: swap `layers` so _flor_torch_load redirects torch.load(spec.path)
-    to the mirror file, then re-run the spec's load_state_dict calls.
-
-    Raises rather than reporting a success it did not achieve. Every skip this
-    used to swallow -- a name that no longer resolves, a target with no
-    load_state_dict, a key the checkpoint doesn't carry -- leaves the object
-    holding state from some other iteration, and the run goes on to log metrics
-    off it as though they were historical.
-    """
-    global _restoring_mirror
-    spec = cli.flags.resume_spec
-    if spec is None or iteration is None or iteration < 0:
-        return False
-    try:
-        import torch  # type: ignore
-    except ImportError:
-        return False
-    targets = _resolve_targets(spec)
-    if targets is None:
-        raise RuntimeError(
-            f"FLOR: cannot restore {_ctx_description()}: no frame for "
-            f"{SCRIPTNAME} on the stack, so the targets named by "
-            f"{_spec_origin(spec)} "
-            f"({', '.join(n for n, _ in spec.applies)}) can't be reached. "
-            f"Declare them with flor.restore({spec.path!r}, <name>=<obj>, ...)."
-        )
-
-    with _layer_swapped(name, iteration, value):
-        stem, ext = _user_path_stem_ext(spec.path)
-        mirror = obj_store.get_shelf() / utils.to_filename(layers, stem, ext)
-        _restoring_mirror = mirror
-        try:
-            # Redirected to `mirror` by _flor_torch_load. map_location="cpu"
-            # for the same reason enrollment uses it (obj_store.deserialize):
-            # the spec's targets are already on this run's device and
-            # load_state_dict copies into them. Without it a mirror written on
-            # a GPU box is deserialized onto the device recorded in the file --
-            # which may not exist on the machine replaying it.
-            loaded = torch.load(spec.path, map_location="cpu")
-        finally:
-            _restoring_mirror = None
-        applied, failures = [], []
-        for target_name, key in spec.applies:
-            target = targets.get(target_name)
-            if target is None:
-                failures.append(
-                    f"{target_name}: named by {_spec_origin(spec)}, but no such "
-                    f"name where the loop runs"
-                )
-                continue
-            apply = getattr(target, "load_state_dict", None)
-            if apply is None:
-                failures.append(
-                    f"{target_name}: {type(target).__name__} has no load_state_dict"
-                )
-                continue
-            try:
-                apply(_select_state(loaded, key))
-            except Exception as e:
-                failures.append(f"{target_name}: {type(e).__name__}: {e}")
-                continue
-            applied.append(target_name)
-        if failures:
-            hint = (
-                ""
-                if spec.source == "explicit"
-                else f" flor inferred this mapping from {_spec_origin(spec)}; "
-                f"if it is wrong, declare it instead with "
-                f"flor.restore({spec.path!r}, <name>=<obj>, ...)."
-            )
-            raise RuntimeError(
-                f"FLOR: restoring {_ctx_description()} from {mirror.name} "
-                f"failed for {len(failures)} of {len(spec.applies)} target(s): "
-                f"{'; '.join(failures)}.{hint}"
-            )
-        return bool(applied)
-
-
-def _replay_enters_nested_loop(name: str) -> bool:
-    return any(
-        child is None
-        or cli.flags.iter_specs.get(child, cli.DEFAULT_ITER_SPEC).kind != "none"
-        for child in cli.flags.loop_children.get(name, [])
-    )
-
-
-def _build_outer_replay_plan(name: str, materialized: list):
-    """Decide which outer-loop iters to run on replay.
-
-    Returns (iter_source, logical_mirror_pos, silent_set, logical_active).
-
-    Fast path: when nested loops are skipped and every requested iter has its
-    own obj_store mirror, each iter restores its own end state.
-
-    Logical replay: when nested loops execute, or a requested mirror is missing,
-    expand to a contiguous range starting just after the earlier mirror and
-    ending at max(requested). Caller restores from that mirror at the first
-    expanded iter, then fast-forwards through the body with inner loops run
-    in full. Silent iters (those not in the user's request) have their logs
-    suppressed; requested iters log normally.
-
-    Fresh clone: when no mirror exists at or before the earliest requested iter,
-    replay the loop from iteration 0. `.flor/runs/*.jsonl` is committed but
-    `obj_store/` is not, so a teammate's clone has the observations and none of
-    the checkpoints; iteration 0 is still reconstructible because the seed is a
-    flor.arg restored from the historical run.
-    """
-    resume = cli.flags.resume_spec
-    if resume is not None and resume.scope_name is not None:
-        _resolve_targets(resume)
-
-    if not cli.flags.wev_found:
-        # No flor.loop / no `with flor.checkpointing(...)` in the script --
-        # nothing to narrow, run the loop end-to-end.
-        return list(enumerate(materialized)), None, set(), False
-
-    spec = cli.iter_spec_for(name)
-
-    if spec.kind == "none":
-        return [], None, set(), False
-    n = len(materialized)
-    out_of_range = [i for i in spec.indices if not (0 <= i < n)]
-    if out_of_range:
-        raise RuntimeError(
-            f"FLOR: --iter {name}={list(spec.indices)} requests index "
-            f"{out_of_range} but the loop only has {n} iteration(s) "
-            f"(valid range: 0..{n - 1}). Re-run forward with more iterations "
-            f"or narrow to an in-range index."
-        )
-    if spec.kind == "all":
-        requested = list(range(n))
-    elif spec.kind == "last":
-        requested = [n - 1] if n else []
-    else:
-        requested = list(spec.indices)
-    if not requested:
-        return [], None, set(), False
-
-    resume = cli.flags.resume_spec
-    if resume is None and not checkpoints:
-        # Nothing to restore through either path -- narrowing is the whole plan.
-        return [(i, materialized[i]) for i in requested], None, set(), False
-
-    enters_training = _replay_enters_nested_loop(name)
-    if not enters_training and all(
-        _mirror_exists_at(name, r, materialized, resume) for r in requested
-    ):
-        return [(i, materialized[i]) for i in requested], None, set(), False
-
-    target_min = requested[0]
-    # End-of-epoch state is usable only when its training steps are skipped.
-    # Re-execution must start strictly before the first requested epoch.
-    # The fast path has already handled inspection with complete snapshots.
-    # If a later requested snapshot is missing, recompute the first requested
-    # epoch too, so its metric is not lost by starting after its end snapshot.
-    latest_usable = target_min - 1
-    mirror_pos = _find_latest_mirror_at_or_before(
-        name, latest_usable, materialized, resume
-    )
-    if mirror_pos is None:
-        # No mirror at or before the target -- the usual cause is a fresh clone,
-        # which carries .flor/runs/*.jsonl (committed) but no obj_store (not).
-        # Replaying from iteration 0 is sound only if the model at loop entry is
-        # the seed-initialized one, and the seed is a flor.arg restored from the
-        # historical run -- provided the script's initialization actually
-        # survived to the loop. The user's own resume block runs at module scope,
-        # where `layers` is still empty, so if their checkpoint file is on disk
-        # it would have loaded *final*-epoch weights over the fresh init.
-        # _neutralized_resume_state turns that block into a no-op precisely when
-        # the shelf is empty; this checks that it did, rather than assuming, so
-        # a resume shape flor can't neutralize refuses instead of guessing.
-        if (
-            resume is not None
-            and not _resume_neutralized
-            and (
-                # A parsed resume block runs unconditionally at module scope, so
-                # the file being on disk is enough to know it loaded.
-                (resume.source == "ast" and os.path.exists(resume.path))
-                # A spec read off the save site names a path the script may
-                # never load. Only an observed module-scope read of it -- an
-                # in-function resume block, say -- puts end-of-run state over
-                # the initialization.
-                or (resume.source == "save" and _resume_load_seen)
-            )
-        ):
-            raise RuntimeError(
-                f"FLOR: cannot replay {name}={list(requested)}: no checkpoint "
-                f"mirror at or before position {target_min}, and {resume.path!r} "
-                f"is present, so this script's resume block has already loaded "
-                f"end-of-run state over its initialization -- iteration 0 is no "
-                f"longer reconstructible. Move or delete {resume.path!r} to "
-                f"replay from the top, or re-run forward to rebuild the mirrors."
-            )
-        capture.flor_print(
-            f"FLOR: no usable starting checkpoint for {name}={list(requested)}; "
-            f"replaying from iteration 0. This recomputes "
-            f"the intervening iterations (accurate only if the script seeds "
-            f"deterministically) and shelves the checkpoints it passes, so "
-            f"subsequent replays start from the nearest one."
-        )
-        requested_set = set(requested)
-        expanded = list(range(0, requested[-1] + 1))
-        silent = {i for i in expanded if i not in requested_set}
-        return [(i, materialized[i]) for i in expanded], None, silent, True
-
-    requested_set = set(requested)
-    expanded = list(range(mirror_pos + 1, requested[-1] + 1))
-    silent = {i for i in expanded if i not in requested_set}
-    plan = [(i, materialized[i]) for i in expanded]
-    return plan, mirror_pos, silent, True
-
-
-def slice(name, iterator):
-    if not cli.in_replay_mode():
-        return iterator
-    original = list(iterator)
-
-    # During logical replay, every nested loop must run end-to-end so that
-    # training (or whatever the iter body does) actually advances the state
-    # the outer fast-forward depends on. User-supplied narrowing for inner
-    # loops is intentionally overridden in this mode.
-    if _logical_replay_active:
-        return list(enumerate(original))
-
-    if not cli.flags.wev_found:
-        return list(enumerate(original))
-
-    spec = cli.iter_spec_for(name)
-    if spec.kind == "all":
-        return list(enumerate(original))
-    if spec.kind == "none":
-        return []
-    if spec.kind == "last":
-        return [(len(original) - 1, original[-1])]
-    # spec.kind == "indices"
-    n = len(original)
-    out_of_range = [i for i in spec.indices if not (0 <= i < n)]
-    if out_of_range:
-        raise RuntimeError(
-            f"FLOR: --iter {name}={list(spec.indices)} requests index "
-            f"{out_of_range} but the loop only has {n} iteration(s) "
-            f"(valid range: 0..{n - 1})."
-        )
-    return [(i, original[i]) for i in spec.indices]
 
 
 __all__ = [
@@ -1580,6 +1175,6 @@ __all__ = [
     "commit",
     "output_buffer",
     "set_ckpt_interval",
-    "ckpt_interval_s",
     "set_capture",
+    "load_checkpoint",
 ]

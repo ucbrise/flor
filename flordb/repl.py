@@ -144,8 +144,7 @@ def replay(
     schedule = Schedule(apply_names, where_clause)
 
     if not wev.found:
-        # No flor.loop and no `with flor.checkpointing(...):` in the script --
-        # no narrowable scope. Full re-run.
+        # No flor.loop in the script -- no narrowable scope. Full re-run.
         loglvl = 3
     else:
         loglvl = max(lev.line2level[ln] for ln in apply_linenos)

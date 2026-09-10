@@ -24,11 +24,6 @@ device = torch.device(
 seed = flor.arg("seed", default=randint(1, 10000))
 torch.manual_seed(seed)
 
-# Adaptive-checkpoint throttle. Lower it (e.g. 0) for short runs / demos where
-# you want every epoch's torch.save mirrored to .flor/obj_store/; keep the
-# default (60s) for long training runs to bound disk usage.
-flor.set_ckpt_interval(flor.arg("ckpt_interval_s", 0.0))
-
 # Hyper-parameters
 input_size = 784
 hidden_size = flor.arg("hidden", default=500)
@@ -75,9 +70,9 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # Resume from a checkpoint if one exists. On a forward run this lets the user
-# continue an interrupted training; on a replay run flor redirects torch.load
-# to the matching .flor/obj_store/<ts>/ mirror, so the model jumps to the
-# correct historical state instead of starting from random init.
+# continue an interrupted training. On replay, flor turns this block into a
+# no-op, so the recomputation starts from the seeded initialization instead of
+# the weights the latest run left in ckpt.pth.
 import os as _os
 
 if _os.path.exists("ckpt.pth"):
@@ -111,13 +106,12 @@ def validate(val_loader: torchdata.DataLoader):
 
 print_every = flor.arg("print_every", 500)
 
-# v4: gradual typing. Both loops are flor.loop -- inner "step" can be
-# skipped/narrowed by flor during replay (`--replay_flor step=...`). Per-iter
-# wall times are summarized at loop exit (one time::iter mean + std + n per
-# loop scope) rather than logged per step. Plain `for` still works (see the
-# inner loop in v3) -- you just lose the replay-narrowing hint for that scope.
-# No `with flor.checkpointing(...):` block: per-epoch torch.save below is
-# piggy-backed into .flor/obj_store/ automatically.
+# v4: gradual typing. Both loops are flor.loop, so replay can choose which of
+# their iterations log (`--iter step=...`). Per-iter wall times are summarized
+# at loop exit (one time::iter mean + std + n per loop scope) rather than
+# logged per step. Plain `for` still works -- you just lose per-iteration log
+# selection for that scope. No flor checkpointing code: flor keeps a copy of
+# the ckpt.pth each run saves below.
 for epoch in flor.loop("epoch", range(num_epochs)):
     for i, (images, labels) in flor.loop("step", enumerate(train_loader)):
         images = images.reshape(-1, 28 * 28).to(device)

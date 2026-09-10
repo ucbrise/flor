@@ -26,6 +26,7 @@ SCRIPTNAME = os.path.basename(sys.argv[0])
 VALUE_TYPE_LOG = 1  # flor.log / flor.arg
 VALUE_TYPE_IO = 2  # captured print / logging
 VALUE_TYPE_TIME = 3  # time::* profiling
+VALUE_TYPE_START = 4  # flor::start -- the earlier run a run's training resumed from
 
 __all__ = [
     "CURRDIR",
@@ -38,4 +39,5 @@ __all__ = [
     "VALUE_TYPE_LOG",
     "VALUE_TYPE_IO",
     "VALUE_TYPE_TIME",
+    "VALUE_TYPE_START",
 ]

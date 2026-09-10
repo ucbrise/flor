@@ -98,27 +98,32 @@ def validate(val_loader: torchdata.DataLoader):
 
 print_every = flor.arg("print_every", 500)
 
-with flor.checkpointing(model=model, optimizer=optimizer):
-    for epoch in flor.loop("epoch", range(num_epochs)):
-        for i, (images, labels) in flor.loop("step", enumerate(train_loader)):
-            # Move tensors to the configured device
-            images = images.reshape(-1, 28 * 28).to(device)
-            labels = labels.to(device)
+for epoch in flor.loop("epoch", range(num_epochs)):
+    for i, (images, labels) in flor.loop("step", enumerate(train_loader)):
+        # Move tensors to the configured device
+        images = images.reshape(-1, 28 * 28).to(device)
+        labels = labels.to(device)
 
-            # Forward pass
-            outputs = model(images)
-            loss = criterion(outputs, labels)
+        # Forward pass
+        outputs = model(images)
+        loss = criterion(outputs, labels)
 
-            # Backward and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        # Backward and optimize
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            if (i + 1) % print_every == 0:
-                flor.log("loss", loss.item())
+        if (i + 1) % print_every == 0:
+            flor.log("loss", loss.item())
 
-        correct, total = validate(get_val_loader())
-        flor.log("val_acc", 100 * correct / total)
+    correct, total = validate(get_val_loader())
+    flor.log("val_acc", 100 * correct / total)
+
+    # flor keeps this run's copy of the file.
+    torch.save(
+        {"model": model.state_dict(), "optimizer": optimizer.state_dict()},
+        "ckpt.pth",
+    )
 
 
 correct, total = validate(test_loader)

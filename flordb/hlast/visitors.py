@@ -6,61 +6,16 @@ from .. import utils
 
 
 class WithExpVisitor(ast.NodeVisitor):
-    """
-    Signals to the replay planner that the script has a checkpointable scope.
-
-    Pre-v4: the only signal was `with flor.checkpointing(...):`.
-    v4: any `flor.loop` is also a checkpointable scope (piggy-backed via
-    torch.save / torch.load hooks), so its presence is sufficient.
-    """
+    """Whether the script has a flor.loop, the scope replay can narrow."""
 
     def __init__(self):
         super().__init__()
         self.found = False
-        self.loop_children = {}
-        self._loops = []
-
-    def visit_With(self, node: ast.With):
-        pred = (
-            isinstance(node.items[0].context_expr, ast.Call)
-            and isinstance(node.items[0].context_expr.func, ast.Attribute)
-            and isinstance(node.items[0].context_expr.func.value, ast.Name)
-            and node.items[0].context_expr.func.value.id == "flor"
-            and node.items[0].context_expr.func.attr == "checkpointing"
-        )
-        if pred:
-            self.found = True
-        self.generic_visit(node)
 
     def visit_For(self, node: ast.For):
-        iter_s = ast.unparse(node.iter).strip()
-        if iter_s.startswith("flor.loop"):
+        if ast.unparse(node.iter).strip().startswith("flor.loop"):
             self.found = True
-            call = node.iter
-            name = None
-            if call.args and isinstance(call.args[0], ast.Constant):
-                if isinstance(call.args[0].value, str):
-                    name = call.args[0].value
-            if self._loops and self._loops[-1] is not None:
-                self.loop_children.setdefault(self._loops[-1], []).append(name)
-            self._loops.append(name)
-            try:
-                self.generic_visit(node)
-            finally:
-                self._loops.pop()
-        else:
-            self.generic_visit(node)
-
-    def visit_FunctionDef(self, node):
-        outer = self._loops
-        self._loops = []
-        try:
-            self.generic_visit(node)
-        finally:
-            self._loops = outer
-
-    visit_AsyncFunctionDef = visit_FunctionDef
-    visit_ClassDef = visit_FunctionDef
+        self.generic_visit(node)
 
 
 class LoggedExpVisitor(ast.NodeVisitor):
@@ -150,15 +105,15 @@ class ResumeBlockVisitor(ast.NodeVisitor):
     `applies` records as a key of None -- the whole file goes into that target.
 
     Captures path, lhs name (keyed form only), and the (target, key) pairs so
-    flor.loop can auto-restore historical state on replay without
-    `flor.checkpointing(...)` enrollment. Each function/class is scanned
+    replay can turn the block into a no-op and recompute from the script's own
+    initialization. Each function/class is scanned
     separately: a load in one scope must never match an apply in another.
     A nested match records its scope so replay can bind the live objects there,
     before that frame returns to a caller with different variable names.
 
     Inference stops at one checkpoint file. A block loading two different paths
     is recorded in `multi_path` and emits nothing: ResumeSpec addresses a single
-    file, so picking one of them would silently restore half the state.
+    file, so neutralizing one of them would leave the other's load in place.
     """
 
     def __init__(self):
@@ -263,8 +218,8 @@ class ResumeBlockVisitor(ast.NodeVisitor):
     def _literal_load_path(call: ast.Call) -> Optional[str]:
         """The literal path a `torch.load(...)` call reads, if it is literal.
 
-        Dynamic paths fall back to `flor.restore(...)`: flor has to name the
-        mirror file before the script runs, and only a literal lets it.
+        Replay recognizes the load it neutralizes by the file it names, and
+        only a literal names one before the script runs.
         """
         if not call.args:
             return None
@@ -336,215 +291,51 @@ class ResumeBlockVisitor(ast.NodeVisitor):
         return True
 
 
-class SaveShapeVisitor(ast.NodeVisitor):
-    """Infer a checkpoint's layout from the `torch.save` call that writes it.
+class SetupLoadVisitor(ast.NodeVisitor):
+    """Whether the script calls torch.load outside every flor.loop / iteration.
 
-    ResumeBlockVisitor reads the *load* side, which is direct evidence: the
-    script names the object each slice of the file goes into. A script that
-    checkpoints but never resumes says nothing there -- and its save call
-    carries the same information one step less directly:
-
-        torch.save(net.state_dict(), "ckpt.pth")
-            -> [("net", None)]
-        torch.save({"model": net.state_dict(),
-                    "optimizer": opt.state_dict()}, "ckpt.pth")
-            -> [("net", "model"), ("opt", "optimizer")]
-
-    One step less directly, because saving and restoring are not the same
-    statement. `torch.save(best_model.state_dict(), p)` names the object the
-    forward run saved, which need not be the object replay should load into,
-    and nothing in the source separates the two: both are modules, both carry
-    matching shapes, so a wrong guess here restores *successfully* into the
-    wrong object instead of failing the way a bad target does. That is why this
-    is the last inference tried and why the caller announces the mapping it
-    deduced rather than applying it silently.
-
-    Only saves sharing a scope with a `flor.loop` (or `flor.iteration`) are
-    harvested: restore resolves these names against the frame the loop runs in,
-    so a save inside a helper function names locals replay cannot reach. Such a
-    save is recorded in `unscoped_match` so the caller can say so.
-
-    Entries that aren't `<name>.state_dict()` are skipped rather than refused --
-    the `"epoch"` and `"loss"` a checkpoint dict usually carries alongside are
-    not restore targets. The rest of the shape rules follow ResumeBlockVisitor:
-    one literal path, a second recorded in `multi_path` and emitting nothing.
-    Flat and keyed saves of one path contradict each other, as do two flat saves
-    of it, and land in `conflicting_shape`.
+    That is where a resume block sits, and so where a load can put an earlier
+    run's weights over the initialization replay recomputes from. A load inside
+    a function counts too: the source doesn't say where the function is called.
     """
 
     def __init__(self):
         super().__init__()
-        # Innermost enclosing def/class per the walk; None is module scope.
-        self._scopes: list = [None]
-        self._loop_scopes: set = set()
-        # (scope, path, applies, lineno) per matching torch.save.
-        self._saves: list = []
-        self.path: Optional[str] = None
-        self.lineno: Optional[int] = None
-        self.applies: list = []
-        self.multi_path: bool = False
-        self.conflicting_shape: bool = False
-        self.unscoped_match: bool = False
+        self.found = False
+        self._depth = 0
 
-    @property
-    def found(self) -> bool:
-        return self.path is not None and bool(self.applies)
-
-    def visit_Module(self, node: ast.Module):
-        # ast.NodeVisitor has no end-of-walk hook, and every result here is a
-        # judgment over all the saves rather than any one of them.
-        self.generic_visit(node)
-        self._finalize()
-
-    def _visit_scope(self, node):
-        self._scopes.append(node)
+    def _visit_body(self, node):
+        self._depth += 1
         try:
             self.generic_visit(node)
         finally:
-            self._scopes.pop()
-
-    visit_FunctionDef = _visit_scope
-    visit_AsyncFunctionDef = _visit_scope
-    visit_ClassDef = _visit_scope
+            self._depth -= 1
 
     def visit_For(self, node: ast.For):
         if ast.unparse(node.iter).strip().startswith("flor.loop"):
-            self._loop_scopes.add(id(self._scopes[-1]))
-        self.generic_visit(node)
+            self._visit_body(node)
+        else:
+            self.generic_visit(node)
 
     def visit_With(self, node: ast.With):
-        for item in node.items:
-            if ast.unparse(item.context_expr).strip().startswith("flor.iteration"):
-                self._loop_scopes.add(id(self._scopes[-1]))
-        self.generic_visit(node)
+        if any(
+            ast.unparse(item.context_expr).strip().startswith("flor.iteration")
+            for item in node.items
+        ):
+            self._visit_body(node)
+        else:
+            self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
-        if self._is_torch_save(node) and node.args:
-            path = self._literal_path(node)
-            applies = self._applies_for(node.args[0])
-            if path is not None and applies is not None:
-                self._saves.append(
-                    (id(self._scopes[-1]), path, applies, node.lineno)
-                )
-        self.generic_visit(node)
-
-    @staticmethod
-    def _is_torch_save(call: ast.Call) -> bool:
-        return (
-            isinstance(call.func, ast.Attribute)
-            and call.func.attr == "save"
-            and isinstance(call.func.value, ast.Name)
-            and call.func.value.id == "torch"
-        )
-
-    @staticmethod
-    def _literal_path(call: ast.Call) -> Optional[str]:
-        """The literal path a `torch.save(...)` writes, if it is literal.
-
-        Same requirement the load side has: flor names the mirror file before
-        the script runs, and only a literal lets it.
-        """
-        if len(call.args) < 2:
-            return None
-        arg = call.args[1]
-        if not (isinstance(arg, ast.Constant) and isinstance(arg.value, (str, bytes))):
-            return None
-        return str(arg.value) if isinstance(arg.value, str) else arg.value.decode()
-
-    @staticmethod
-    def _state_dict_owner(node) -> Optional[str]:
-        """`net` for `net.state_dict()`, else None.
-
-        The receiver has to be a plain name. `net.module.state_dict()` saves a
-        DataParallel's inner module, and restoring it means unwrapping `net` the
-        same way -- something the load side would have stated outright and this
-        side can only assume.
-        """
-        if not isinstance(node, ast.Call) or node.args or node.keywords:
-            return None
         func = node.func
         if (
-            isinstance(func, ast.Attribute)
-            and func.attr == "state_dict"
+            self._depth == 0
+            and isinstance(func, ast.Attribute)
+            and func.attr == "load"
             and isinstance(func.value, ast.Name)
+            and func.value.id == "torch"
         ):
-            return func.value.id
-        return None
-
-    @classmethod
-    def _applies_for(cls, saved) -> Optional[list]:
-        """The (target, key) pairs a saved object implies, or None if neither shape."""
-        owner = cls._state_dict_owner(saved)
-        if owner is not None:
-            return [(owner, None)]
-        if not isinstance(saved, ast.Dict):
-            return None
-        pairs = []
-        for key, value in zip(saved.keys, saved.values):
-            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
-                continue
-            owner = cls._state_dict_owner(value)
-            if owner is not None:
-                pairs.append((owner, key.value))
-        return pairs or None
-
-    def _finalize(self):
-        in_loop = [s for s in self._saves if s[0] in self._loop_scopes]
-        if not in_loop:
-            self.unscoped_match = bool(self._saves)
-            return
-        if len({path for _, path, _, _ in in_loop}) > 1:
-            self.multi_path = True
-            return
-        self.path = in_loop[0][1]
-        self.lineno = in_loop[0][3]
-        applies: list = []
-        for _, _, pairs, _ in in_loop:
-            for pair in pairs:
-                if pair not in applies:
-                    applies.append(pair)
-        # A flat save says the file *is* one object's state. Another save of the
-        # same path -- keyed, or flat into a second object -- says it is
-        # something else, and only the one that ran last is true. Two flat
-        # *loads* of one file are consistent (ResumeBlockVisitor takes them);
-        # two flat saves of it are not.
-        if any(key is None for _, key in applies) and len(applies) > 1:
-            self.conflicting_shape = True
-            return
-        self.applies = applies
-
-class RestoreSignalVisitor(ast.NodeVisitor):
-    """Whether the script says anything at all about how to restore state.
-
-    ResumeBlockVisitor matches one narrow shape. A script that checkpoints with
-    `torch.save` but declares its restore semantics some other way -- the flat
-    `model.load_state_dict(torch.load(p))` one-liner, a computed path, a resume
-    block inside a function -- leaves that visitor with nothing, and replay then
-    quietly restores nothing at all. This collects the coarse signals needed to
-    tell that silence apart from a script that simply has no checkpoints.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.torch_save = False
-        self.enrolled = False  # `with flor.checkpointing(...)`
-        self.declared = False  # `flor.restore(...)`
-
-    def visit_Call(self, node: ast.Call):
-        func = node.func
-        if isinstance(func, ast.Attribute):
-            if func.attr == "save" and isinstance(func.value, ast.Name):
-                if func.value.id == "torch":
-                    self.torch_save = True
-            elif func.attr == "restore" and isinstance(func.value, ast.Name):
-                self.declared = True
-            elif func.attr == "checkpointing":
-                # Matched as a call rather than off the `with` statement: the
-                # context manager is the documented idiom, but entering it by
-                # hand is still enrollment, and a false warning about a script
-                # that *does* declare its restore semantics is worse than
-                # missing an exotic one.
-                self.enrolled = True
+            self.found = True
         self.generic_visit(node)
 
 

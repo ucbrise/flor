@@ -99,7 +99,7 @@ for epoch in flor.loop("epoch", range(epochs)):
         flor.log("loss", loss.item())
     flor.log("val_acc", validate(net))
 
-    torch.save({"model": net.state_dict()}, "ckpt.pth")   # mirrored to flor (rate-limited)
+    torch.save({"model": net.state_dict()}, "ckpt.pth")   # flor keeps each run's copy
 ```
 
 Change hyperparameters from the CLI:
@@ -128,8 +128,14 @@ Each named `flor.loop` becomes its own column, and a row carries the loops that 
 `flor.log` that produced it. `loss` is logged inside `step`, so you get one row
 per step, with its epoch and the run's hyperparameters attached—no JOIN needed. 
 
-→ [Checkpoints](docs/checkpoints.md): what gets mirrored, enrolling objects
-explicitly, and bounding disk use.
+→ [Checkpoints](docs/checkpoints.md): what gets copied, and how replay treats
+your checkpoint file.
+
+To evaluate saved models in Jupyter, discover a run's checkpoints with
+`flor.checkpoints(row.tstamp)` and load one with
+`flor.load_checkpoint(row.tstamp, "ckpt.pth")`. See
+[Pull the model in Jupyter](docs/replay.md#path-1-pull-the-model-in-jupyter) and
+the [comparison notebook](notebooks/compare_models.ipynb).
 
 ## 🔍 Hindsight Logging, or Logging After the Fact
 
@@ -144,7 +150,7 @@ python -m flordb replay --apply grad_norm
 ```
 
 FlorDB walks the historical versions, splices your new statement into each one,
-restarts from the nearest checkpoint, and records the recovered values.
+re-executes it from the start, and records the recovered values.
 
 → [Replay](docs/replay.md): narrowing the work by iteration, replaying a single
 run, and `--override`.

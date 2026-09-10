@@ -1,20 +1,20 @@
 import argparse
 import glob
+import json
 import os
 from argparse import Namespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from .versions import to_shadow
-from .constants import RUNS_DIR
+from .constants import RUNS_DIR, VALUE_TYPE_START
 from . import orm
 import sys
 
 from .hlast.visitors import (
     WithExpVisitor,
     ResumeBlockVisitor,
-    RestoreSignalVisitor,
-    SaveShapeVisitor,
+    SetupLoadVisitor,
 )
 from .capture import flor_print
 import ast
@@ -25,13 +25,16 @@ IterKind = Literal["all", "last", "none", "indices"]
 
 @dataclass(frozen=True)
 class IterSpec:
-    """How a single flor.loop should be narrowed during replay.
+    """Which iterations of a single flor.loop replay should log.
 
     kind:
       - "all"     -> every iteration
       - "last"    -> only the final iteration (default for unmentioned loops)
-      - "none"    -> skip the loop entirely
+      - "none"    -> no iteration
       - "indices" -> only the iterations listed in `indices`
+
+    Replay still runs what the selection depends on: the outermost loop from
+    iteration 0 through the last selected iteration, nested loops in full.
     """
     kind: IterKind
     indices: Tuple[int, ...] = ()
@@ -99,9 +102,15 @@ class Flags:
     # into) so api.arg can cast an override to the type it is replacing.
     historical_args: Dict[str, Any] = field(default_factory=dict)
     wev_found: bool = False                    # WithExpVisitor result from the script
-    loop_children: Dict[str, List[Optional[str]]] = field(default_factory=dict)
     old_tstamp: Optional[str] = None
     resume_spec: Optional["ResumeSpec"] = None
+    # Where the replayed run's training started, if it resumed from an
+    # earlier run's checkpoint (api._record_start).
+    starts: List[dict] = field(default_factory=list)
+    # Calls with the same checkpoint name may select different source runs.
+    checkpoint_calls: Dict[Optional[str], int] = field(default_factory=dict)
+    consumed_starts: set = field(default_factory=set)
+    replay_start_failed: bool = False
     # CLI plumbing.
     args: Optional[Any] = None
     columns: Optional[Tuple[str, ...]] = None
@@ -109,26 +118,16 @@ class Flags:
 
 @dataclass
 class ResumeSpec:
+    """The script's resume block, which replay turns into a no-op."""
     path: str
     lhs_name: Optional[str]
     applies: list  # list[tuple[str, Optional[str]]] — (target_name, key)
-    # "ast" when ResumeBlockVisitor inferred this from the script's resume
-    # block, "save" when SaveShapeVisitor inferred it from the torch.save that
-    # writes the file, "explicit" when the user declared it with
-    # flor.restore(...). Inference is a guess about what the user's code means;
-    # a declaration is not. Only a guess needs the frame lookup, and only a
-    # guess can be wrong in a way worth warning about. "ast" additionally needs
-    # the neutralization dance -- it is the only source that implies the script
-    # loads the file during setup.
-    source: str = "ast"
-    # Source line the inference came from, for error messages. Set for "save",
-    # where the mapping is a step removed from what the script actually says.
+    # Line of the block; binding a function-scoped block's targets stops there.
     lineno: Optional[int] = None
-    # Live objects keyed by target name, explicit or bound during setup. Their
-    # presence is what lets flor.restore skip resolving names out of the user's
-    # stack frame -- the failure mode that silently skipped renamed targets.
+    # Live objects keyed by target name, bound while a function-scoped block
+    # runs. Module-scope blocks are resolved against the script's frame.
     targets: Optional[dict] = None
-    # Scope of an inferred resume block; None denotes module scope.
+    # Scope of the resume block; None denotes module scope.
     scope_name: Optional[str] = None
     scope_lineno: Optional[int] = None
 
@@ -252,7 +251,7 @@ def parse_args():
         default=[],
         type=parse_iter_arg,
         help=(
-            "Per-loop narrowing: --iter NAME=SPEC. "
+            "Which iterations replay logs: --iter NAME=SPEC. "
             "SPEC ∈ {all, last, none, comma-sep int list}. Repeatable."
         ),
     )
@@ -486,123 +485,16 @@ _defaulted_loops: set = set()
 
 # Env-shaped flor.arg names that may be overridden at replay time without
 # invalidating results. Keep this small and explicit.
-ENV_OVERRIDE_ALLOWLIST: set = {"device", "ckpt_interval_s"}
-
-
-def _describe_shape(path: str, applies: list) -> str:
-    """How an inferred mapping reads in a message.
-
-    Flat: `'ckpt.pth' holds net's state`.
-    Keyed: `'ckpt.pth' maps 'model' -> net, 'optimizer' -> opt`.
-    """
-    if len(applies) == 1 and applies[0][1] is None:
-        return f"{path!r} holds {applies[0][0]}'s state"
-    pairs = ", ".join(f"{key!r} -> {name}" for name, key in applies)
-    return f"{path!r} maps {pairs}"
-
-
-def _why_the_save_site_was_no_help(ssv: SaveShapeVisitor) -> str:
-    """The clause explaining what stopped save-site inference, for the warning."""
-    if ssv.multi_path:
-        return (
-            " Its torch.save calls write more than one file, and replay "
-            "addresses one file per run."
-        )
-    if ssv.conflicting_shape:
-        return (
-            f" Its torch.save calls disagree about what {ssv.path!r} holds, so "
-            "only whichever ran last is true and flor can't tell which."
-        )
-    if ssv.unscoped_match:
-        return (
-            " Its torch.save sits in a helper function, whose locals name "
-            "objects replay has no frame to reach."
-        )
-    return ""
-
-
-def _infer_from_save_site(
-    tree: ast.AST, filename: str, rsv: RestoreSignalVisitor
-) -> SaveShapeVisitor:
-    """Last resort: read the mapping off the torch.save that writes the file.
-
-    Weaker evidence than a resume block, and wrong in a way the restore path
-    cannot catch on its own. A run that saves `best_model` names an object that
-    resolves, takes its state cleanly, and succeeds -- while the object it
-    actually trains keeps whatever the fast-forward left in it, and the loop
-    logs metrics off that as history. No exception is coming, so the mapping is
-    announced instead of applied silently.
-    """
-    ssv = SaveShapeVisitor()
-    ssv.visit(tree)
-    if not ssv.found:
-        return ssv
-    if rsv.declared or rsv.enrolled:
-        # The script already says how to restore, and says it at runtime:
-        # flor.restore replaces whatever was inferred the moment it executes,
-        # and flor.checkpointing owns its objects through a path of its own. A
-        # guess read off the save site would be overwritten or redundant, and
-        # announcing one would tell a user who did declare that flor guessed.
-        return SaveShapeVisitor()
-    flags.resume_spec = ResumeSpec(
-        path=ssv.path,  # type: ignore[arg-type]
-        lhs_name=None,
-        applies=list(ssv.applies),
-        source="save",
-        lineno=ssv.lineno,
-    )
-    flor_print(
-        f"FLOR: {filename} saves a checkpoint but never loads one back, so "
-        f"flor read the layout off the torch.save at line {ssv.lineno}: "
-        f"{_describe_shape(ssv.path, ssv.applies)}. Replay restores that every "
-        f"iteration. Saving and restoring are not the same statement -- a run "
-        f"that saves a copy (best_model, an EMA) rather than the object it "
-        f"trains restores into the wrong one, and succeeds at it. If that is "
-        f"this run, name the real target: "
-        f"flor.restore({ssv.path!r}, <name>=<obj>, ...)."
-    )
-    return ssv
-
-
-def _warn_if_nothing_restores(
-    filename: str, rsv: RestoreSignalVisitor, ssv: SaveShapeVisitor
-) -> None:
-    """Say so when a script checkpoints but tells replay nothing about loading.
-
-    The forward run happily mirrors every torch.save; it is only replay that
-    needs to know which object each mirror belongs in. When neither inference
-    nor a declaration supplies that, replay used to proceed in silence and
-    reconstruct nothing -- reporting recomputed-from-the-wrong-state numbers as
-    historical fact. The whole failure is invisible from the outside, so the
-    warning is the only thing standing between the user and bad results.
-    """
-    if not rsv.torch_save:
-        # Nothing was checkpointed through the piggy-back path, so there is
-        # nothing for a resume block to restore. Enrollment-only scripts and
-        # scripts with no checkpoints at all land here.
-        return
-    if rsv.enrolled or rsv.declared:
-        return
-    flor_print(
-        f"FLOR: {filename} calls torch.save but declares no way to load it "
-        f"back: no flor.checkpointing(...), no flor.restore(...), no "
-        f"recognized `obj.load_state_dict(torch.load(<literal path>))` (or "
-        f"its keyed form), and nothing flor could read off the save itself."
-        f"{_why_the_save_site_was_no_help(ssv)} Replay will "
-        f"recompute from whatever state the script happens to build, which is "
-        f"not the state the forward run had. Add "
-        f"flor.restore(<path>, <name>=<obj>, ...) after you construct the "
-        f"model to make replay faithful."
-    )
+ENV_OVERRIDE_ALLOWLIST: set = {"device"}
 
 
 def _infer_resume_spec(tree: ast.AST, filename: str) -> None:
-    """Settle how replay will put mirrors back, in descending order of evidence.
+    """Find the resume block replay has to neutralize, or warn that it can't.
 
-    The resume block is the script saying outright which object takes which
-    slice. The save site says the same thing about the file, but not about
-    which object should end up holding it -- so it is consulted only when
-    there is no resume block to read, and it announces what it concluded.
+    Replay recomputes from iteration 0, so a setup block that loads a checkpoint
+    would put an earlier run's weights where the script's initialization should
+    be. flor answers a recognized block's load with its targets' own state; a
+    load it can't recognize gets through, which is worth saying up front.
     """
     rbv = ResumeBlockVisitor()
     rbv.visit(tree)
@@ -622,36 +514,33 @@ def _infer_resume_spec(tree: ast.AST, filename: str) -> None:
             api._install_resume_binding(flags.resume_spec, filename)
         return
     if rbv.multi_path:
-        # The script's own resume block reads two files, so its state really is
-        # split across them. The save site can only agree with that or
-        # contradict it; neither makes one file enough.
-        flor_print(
-            "FLOR: this script's resume block loads more than one checkpoint "
-            "file; auto-restore disabled, because replay addresses one file per "
-            "run. Save the pieces into a single checkpoint and declare it with "
-            "flor.restore(<path>, <name>=<obj>, ...), or enroll the objects "
-            "with flor.checkpointing(...)."
+        reason = "its resume block loads more than one checkpoint file"
+    elif rbv.ambiguous_scope:
+        reason = "it has resume blocks in more than one scope"
+    else:
+        slv = SetupLoadVisitor()
+        slv.visit(tree)
+        if not slv.found:
+            return
+        reason = (
+            "it calls torch.load outside the training loop, in a form flor "
+            "doesn't recognize as a resume block"
         )
-        return
-    if rbv.ambiguous_scope:
-        flor_print(
-            "FLOR: resume blocks found in multiple scopes; declare the intended "
-            "objects with flor.restore(<path>, <name>=<obj>, ...)."
-        )
-        return
-    rsv = RestoreSignalVisitor()
-    rsv.visit(tree)
-    ssv = _infer_from_save_site(tree, filename, rsv)
-    if flags.resume_spec is not None:
-        return
-    _warn_if_nothing_restores(filename, rsv, ssv)
+    flor_print(
+        f"FLOR: replay can't neutralize {filename}'s setup loads: {reason}. "
+        f"Replay recomputes from iteration 0, so if one of those loads puts an "
+        f"earlier run's weights over the script's initialization, the values "
+        f"it recovers will be wrong. Resume from a single file with a literal "
+        f"path, in one scope: `state = torch.load(\"ckpt.pth\")`, then "
+        f"`model.load_state_dict(state[\"model\"])`."
+    )
 
 
 def replay_initialize():
     if flags.args is not None and flags.args.kwargs:
         raise RuntimeError(
             "Cannot combine --kwargs with --replay_flor; use --override KEY=VALUE "
-            "for env-shaped knobs (device, ckpt_interval_s, ...)."
+            "for env-shaped knobs such as device."
         )
     jsonl_paths = sorted(glob.glob(os.path.join(RUNS_DIR, "*.jsonl")))
     assert jsonl_paths, f"No runs found in {RUNS_DIR}; cannot initialize replay."
@@ -664,7 +553,6 @@ def replay_initialize():
     wev = WithExpVisitor()
     wev.visit(tree)
     flags.wev_found = bool(wev.found)
-    flags.loop_children = wev.loop_children
 
     _infer_resume_spec(tree, filename)
 
@@ -691,3 +579,11 @@ def replay_initialize():
     flags.hyperparameters.update(historical_hps)
     flags.hyperparameters.update(flags.overrides)
     flags.old_tstamp = data[0]["tstamp"]
+    flags.starts = [
+        json.loads(obj["value"]) for obj in data if obj["type"] == VALUE_TYPE_START
+    ]
+    if any(start.get("via") == "torch.load" for start in flags.starts):
+        # The script may load its checkpoint before its first flor call.
+        from . import api
+
+        api._install_torch_hooks()

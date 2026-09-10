@@ -222,7 +222,7 @@ class TestReplay:
             "--iter",
             "step=none",
             "--override",
-            "ckpt_interval_s=0",
+            "device=cpu",
             check=False,
         )
         assert proc.returncode == 0, proc.stderr

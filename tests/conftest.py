@@ -62,6 +62,9 @@ finally:
 # drive `capture` directly.
 flordb.capture.uninstall()
 flordb.api.output_buffer.clear()
+# pytest looks like a training script to flordb. In-process tests read
+# checkpoints the way a notebook does, which must not record a run's start.
+flordb.api._script_run = False
 
 
 @pytest.fixture

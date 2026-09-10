@@ -5,7 +5,7 @@ Everything is project-local; nothing lands in your home directory.
 ```
 .flor/
   runs/<tstamp>.jsonl      tracked: one immutable record per forward run
-  obj_store/<tstamp>/      ignored: checkpoints, addressable by loop iteration
+  obj_store/<tstamp>/      ignored: the run's copy of each checkpoint file it saved
   <projid>.db              ignored: sqlite query cache, rebuildable at any time
 .flor.cmd                  tracked: the run's tstamp and command line
 ```
@@ -26,7 +26,7 @@ them differently in `.gitignore` (written on first run):
 | | Recomputable? | In git? |
 |---|---|---|
 | `runs/*.jsonl` | No — the one irreplaceable observation | **Yes**, ~69KB packed per run |
-| `obj_store/` | Yes, by replaying | No — ~19MB per run, and checkpoints don't dedup |
+| `obj_store/` | Yes, by retraining | No — one copy per checkpoint file per run, and checkpoints don't dedup |
 | `<projid>.db` | Yes, `flor unpack` in seconds | No |
 
 Only the first row is an observation. Everything else is a function of it, and
@@ -57,5 +57,7 @@ And because the runs live on the shadow branch, a collaborator has to check it
 out. A `git fetch` alone leaves `.flor/runs/` empty on `main`, and `unpack`
 reads whatever JSONL is in the working tree.
 
-Checkpoints don't travel. What that costs the first replay in a fresh clone, and
-how FlorDB pays it down, is covered in [Replay](replay.md#replaying-in-a-fresh-clone).
+Checkpoints don't travel either. Replay doesn't need them (see
+[Replay](replay.md#replaying-in-a-fresh-clone)), but comparing models in a
+notebook does: copy `.flor/obj_store/<tstamp>/` from the machine that trained a
+run to load its model elsewhere.
