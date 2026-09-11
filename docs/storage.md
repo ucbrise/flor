@@ -38,14 +38,19 @@ So run history travels with the code that produced it. A teammate runs
 `git fetch && git checkout flor.branch && python -m flordb unpack` and has
 everyone's metrics — no server, no bucket, no bill.
 
-## Auto-commits never land on your working branch
+## Where auto-commits land
 
 Those commits are noisy — one per run — so FlorDB keeps them off the branch you
 review and merge. On the first run from any branch not already prefixed
 `flor.`, FlorDB creates a shadow branch named `flor.branch` (`flor.branch1`,
 `flor.branch2`, … if that name is taken) and switches to it, then auto-commits
-there. Run again from that branch and you stay on it; nothing new is created.
+there. You stay on that branch after the run. If you're already on any branch
+whose name starts with `flor.`, including one you created yourself, FlorDB uses
+it without creating another branch.
 So `main` never accumulates run history unless you merge it there yourself.
+
+See [Working on a FlorDB branch](branches.md) for saving later edits, publishing
+the branch, and bringing selected code changes back for review.
 
 Two things follow. The auto-commit is a `git add -A`, so whatever is
 uncommitted when you launch a run — the edit you were mid-way through — is

@@ -71,7 +71,7 @@ flor.dataframe("message")
 0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
 ```
 
-## 🪵 Already Using `print` and `logging`? Add One Import
+## 🪵 Already using `print` and `logging`? Add one import
 
 Add one import to the script you run. The rest of your code stays as it is:
 
@@ -82,11 +82,22 @@ for epoch in range(3):
     print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
 ```
 
-Your output prints as before. When the run ends, FlorDB commits it to
-`flor.branch` and says so; the captured lines are queryable with `flor.io()`.
+Your output prints as before. When the run ends, FlorDB commits it and says so; the captured lines are queryable with `flor.io()`.
+
+### FlorDB commits to its own git branch
+
+Run from `main` and FlorDB creates and switches to `flor.branch` (or a numbered
+variant), keeping auto-commits off your working branches. You stay on that flor branch after the run: subsequent runs accumulate history. 
+
+Prefer to name the branch yourself? Create it with a `flor.` prefix, such as
+`flor.experiment`, and FlorDB commits there instead of creating one. Exploring
+several leads? Give each its own `flor.` branch.
 
 → [Automatic log capture](docs/capture.md): channels, naming your loops, and
 turning captured text into real metric columns.
+
+→ [Working on a FlorDB branch](docs/branches.md): saving changes, pushing your
+branch, and bringing code back for review.
 
 ## 🧪 Track Experiments with Zero Overhead
 
@@ -162,12 +173,13 @@ run, and `--override`.
 
 ## 📁 What FlorDB Writes
 
-Everything is project-local; nothing lands in your home directory. Your first
-run moves you off `main` onto a shadow branch named `flor.branch`, and every
-auto-commit lands there—run history is versioned alongside the code that
-produced it (without ever touching the branch you review and merge). A teammate
-runs `git fetch && git checkout flor.branch && python -m flordb unpack` and has
-everyone's metrics. 
+Everything is project-local; nothing lands in your home directory. FlorDB
+auto-commits to your current branch if its name starts with `flor.`. Otherwise,
+it creates and switches to `flor.branch` (or a numbered variant), keeping
+auto-commits off `main` and your other working branches. Run history is versioned
+alongside the code that produced it. A teammate runs
+`git fetch && git checkout flor.branch && python -m flordb unpack` (substituting
+your `flor.*` branch name) and has everyone's metrics.
 
 → [Storage](docs/storage.md): the `.flor/` layout, the shadow branch, and what
 syncs vs. what's rebuilt on demand.
