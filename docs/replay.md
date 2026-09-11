@@ -71,7 +71,7 @@ comparison = runs.merge(pd.DataFrame(measurements), on="tstamp", validate="one_t
 comparison.sort_values("grad_norm")
 ```
 
-The measurements stay in your dataframe. Loading a checkpoint doesn't start a
+The measurements stay in your notebook. Loading a checkpoint doesn't start a
 run or write replay logs.
 
 ### What gets loaded

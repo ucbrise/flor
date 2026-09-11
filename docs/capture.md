@@ -1,8 +1,9 @@
 # Automatic Log Capture
 
-FlorDB captures what your script already prints. Adding `import flordb as flor`
-to a script that uses `print` or `logging` is enough — the terminal looks the
-same, but every line is versioned, committed, and queryable.
+FlorDB captures what a run prints and logs from the moment `flordb` is imported.
+Add `import flordb as flor` to the script you run: your output prints as
+before, and when the run ends FlorDB commits the captured lines with the code
+that produced them.
 
 ```python
 import logging
