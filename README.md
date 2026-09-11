@@ -37,7 +37,7 @@ cd flor
 pip install -e .
 ```
 
-## 🪵 Already using `print` and `logging`? Add one import
+## 🪵 Already using `print` or `logging`? Add one import
 
 > *Requires a Git repository for automatic versioning.*
 
