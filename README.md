@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB starts with the `print` and `logging` output of the scripts you already run as part of model training, and, over time, grows with you into sustained experiment tracking, model evaluation, and some measure of reproducibility. No new schema or service to adopt. 
+FlorDB starts with the `print` and `logging` output of the scripts you already run as part of model training, and, over time, grows with you into sustained experiment tracking, model evaluation, and some measure of reproducibility. No new server to spin up or service to adopt. 
 
 ## 🌻 Why FlorDB?
 
