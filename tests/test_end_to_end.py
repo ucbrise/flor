@@ -11,6 +11,7 @@ import json
 import os
 
 import pytest
+from conftest import git
 
 pytestmark = pytest.mark.slow
 
@@ -94,7 +95,43 @@ class TestForwardRun:
         # The legacy bare entry would keep git from descending into .flor/ at
         # all, making the re-include below it dead.
         assert ".flor/" not in entries
-        assert os.path.exists(os.path.join(trained.root, ".flor.cmd"))
+        assert ".flor.branch.cmd" in trained.git_tracked_files()
+        assert not os.path.exists(os.path.join(trained.root, ".flor.cmd"))
+
+    @pytest.mark.parametrize("branches, filenames", [
+        (("flor.trial-a", "flor.trial-b"),
+         (".flor.trial-a.cmd", ".flor.trial-b.cmd")),
+        (("flor.trial/a", "flor.trial%2Fa"),
+         (".flor.trial%2Fa.cmd", ".flor.trial%252Fa.cmd")),
+    ])
+    def test_merging_trials_preserves_each_branch_command(self, trained, branches, filenames):
+        base = git(trained.root, "rev-parse", "HEAD").stdout.strip()
+        expected = {}
+        for epochs, (branch, filename) in enumerate(zip(branches, filenames), start=1):
+            git(trained.root, "checkout", "-b", branch, base)
+            trained.run("train.py", "--kwargs", f"epochs={epochs}")
+            with open(os.path.join(trained.root, filename)) as f:
+                expected[filename] = f.read()
+            assert f"epochs={epochs}" in expected[filename]
+            assert expected[filename].splitlines()[0] in {
+                r["tstamp"] for path in trained.run_files()
+                for r in trained.records(path)
+            }
+
+        git(trained.root, "checkout", "-b", "flor.dev", base)
+        for branch in branches:
+            git(trained.root, "merge", "--no-edit", branch)
+        for filename, contents in expected.items():
+            assert filename in trained.git_tracked_files()
+            with open(os.path.join(trained.root, filename)) as f:
+                assert f.read() == contents
+
+        # A later run on the merged branch leaves the trial commands intact.
+        trained.run("train.py")
+        assert ".flor.dev.cmd" in trained.git_tracked_files()
+        for filename, contents in expected.items():
+            with open(os.path.join(trained.root, filename)) as f:
+                assert f.read() == contents
 
     def test_run_jsonl_is_committed_but_cache_and_objstore_are_not(self, trained):
         tracked = trained.git_tracked_files()

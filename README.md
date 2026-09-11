@@ -23,9 +23,6 @@ FlorDB starts with the `print` and `logging` output of the scripts you already r
 
 Keep using the tools you already work with: Make, Airflow, Slurm, Jupyter, VSCode, or a plain terminal.
 
-
-
-
 ## 📦 Installation
 
 ```bash
@@ -106,9 +103,10 @@ flor.dataframe("message")
 0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
 ```
 
-### Record hyperparameters and metrics by iteration
+### Record hyperparameters and per-iteration metrics
 
-Adopt as much as you want. Every step buys a specific thing:
+Record learning rate and batch size for the run, loss at each training step,
+and validation accuracy after each epoch:
 
 ```python
 import flordb as flor
@@ -147,9 +145,9 @@ flor.dataframe("lr", "batch_size", "loss")
 5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     1  0.0005         64     0.2
 ```
 
-Each named `flor.loop` becomes its own column, and a row carries the loops that enclosed the
-`flor.log` that produced it. `loss` is logged inside `step`, so you get one row
-per step, with its epoch and the run's hyperparameters attached—no JOIN needed. 
+The `epoch` and `step` columns come from the named `flor.loop` calls.
+Each row pairs a logged `loss` with its epoch, step, and the run's `lr` and
+`batch_size`. FlorDB combines them automatically.
 
 → [Experiment tracking](docs/tracking.md): declaring inputs, recording metrics,
 and naming your loops with the Flor API.
@@ -157,13 +155,21 @@ and naming your loops with the Flor API.
 → [Checkpoints](docs/checkpoints.md): what gets copied, and how replay treats
 your checkpoint file.
 
-To evaluate saved models in Jupyter, discover a run's checkpoints with
-`flor.checkpoints(row.tstamp)` and load one with
-`flor.load_checkpoint(row.tstamp, "ckpt.pth")`. See
-[Pull the model in Jupyter](docs/replay.md#path-1-pull-the-model-in-jupyter) and
-the [comparison notebook](notebooks/compare_models.ipynb).
+## 🔍 Evaluate Past Runs
 
-## 🔍 Hindsight Logging, or Logging After the Fact
+New questions come up after training: a metric you forgot to log, or a bias
+that only surfaced in production. Load a past run's checkpoint in Jupyter and
+evaluate the model, or add the `flor.log` statement to your script and replay
+past runs to record it.
+
+### Pull the model into Jupyter
+
+Load saved models in a notebook to evaluate new metrics and compare past runs.
+<!-- TODO: Maybe we polish this API -->
+→ [Jupyter walkthrough](docs/replay.md#path-1-pull-the-model-in-jupyter) and
+[comparison notebook](notebooks/compare_models.ipynb).
+
+### Replay with hindsight logging
 
 Forgot to log gradient norms? Add the statement to the script now:
 
@@ -178,21 +184,17 @@ python -m flordb replay --apply grad_norm
 FlorDB walks the historical versions, splices your new statement into each one,
 re-executes it from the start, and records the recovered values.
 
-→ [Replay](docs/replay.md): narrowing the work by iteration, replaying a single
-run, and `--override`.
+→ [Replay](docs/replay.md): choosing which runs to log, replaying one run
+on a different device, and replaying from a fresh clone.
 
 ## 📁 What FlorDB Writes
 
-Everything is project-local; nothing lands in your home directory. FlorDB
-auto-commits to your current branch if its name starts with `flor.`. Otherwise,
-it creates and switches to `flor.branch` (or a numbered variant), keeping
-auto-commits off `main` and your other working branches. Run history is versioned
-alongside the code that produced it. A teammate runs
-`git fetch && git checkout flor.branch && python -m flordb unpack` (substituting
-your `flor.*` branch name) and has everyone's metrics.
+FlorDB stores run records, checkpoints, and its query cache in `.flor/`.
+Run records are tracked in Git; checkpoints and the cache stay local.
+FlorDB never pushes—you choose what to share.
 
-→ [Storage](docs/storage.md): the `.flor/` layout, the shadow branch, and what
-syncs vs. what's rebuilt on demand.
+→ [Storage](docs/storage.md): the file layout, what syncs, and how to rebuild
+the query cache after checkout.
 
 <!-- ## 🏗 Real ML Systems Built on FlorDB
 
@@ -223,5 +225,5 @@ make test        # full suite, including real forward runs and replays
 make test-fast   # unit tests only (~1s)
 ```
 
-**Email:** rolando.garcia@asu.edu  
-**Tutorial Video:** https://youtu.be/mKENSkk3S4Y
+**Email:** rogarcia@berkeley.edu (or) rolando.garcia@asu.edu  
+<!-- **Tutorial Video:** https://youtu.be/mKENSkk3S4Y -->

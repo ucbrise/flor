@@ -7,8 +7,14 @@ Everything is project-local; nothing lands in your home directory.
   runs/<tstamp>.jsonl      tracked: one immutable record per forward run
   obj_store/<tstamp>/      ignored: the run's copy of each checkpoint file it saved
   <projid>.db              ignored: sqlite query cache, rebuildable at any time
-.flor.cmd                  tracked: the run's tstamp and command line
+.<branch>.cmd              tracked: the branch's latest run tstamp and command line
 ```
+
+For example, runs on `flor.trial-a` update `.flor.trial-a.cmd`. Each branch
+has its own file, so merging trials preserves their latest commands without
+conflicts over a shared command file. Branch names are percent-encoded in the
+filename (`flor.trial/a` becomes `.flor.trial%2Fa.cmd`). Older `.flor.cmd`
+files are left intact; new runs write only the branch-specific file.
 
 Each run makes one `FLOR::Auto-commit::<tstamp>` commit whose message body
 carries the run's hyperparameters — so a run stays reproducible even if the logs
@@ -34,9 +40,11 @@ a derived thing FlorDB can recompute is one it declines to commit — including
 metrics read out of captured text, which live in the cache alone (see
 [capture](capture.md)).
 
-So run history travels with the code that produced it. A teammate runs
-`git fetch && git checkout flor.branch && python -m flordb unpack` and has
-everyone's metrics — no server, no bucket, no bill.
+So run history travels with the code that produced it, but only as far as you
+push it. Auto-commits stay local until you push a `flor.` branch, and you can
+merge selected trial branches into one, such as `flor.dev`, before sharing. A
+teammate who checks out a pushed branch runs `python -m flordb unpack` to load
+its metrics — no server, no bucket, no bill.
 
 ## Where auto-commits land
 

@@ -7,6 +7,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
+from urllib.parse import quote
 from .constants import *
 from .clock import Clock
 from . import orm
@@ -22,8 +23,6 @@ from contextlib import contextmanager
 
 from tqdm import tqdm
 import atexit
-
-CMD_FILE = os.path.join(CURRDIR, ".flor.cmd") # type: ignore
 
 T = TypeVar("T")
 
@@ -599,7 +598,7 @@ def commit():
             if branch is not None:
                 orm.to_jsonl(output_buffer, tstamp)
                 database.unpack(output_buffer, cursor, source="forward")
-                _write_cmd_file(tstamp)
+                _write_cmd_file(tstamp, branch.name)
                 git_message = _build_commit_message(tstamp, run_args)
         else:
             # Replay rows are scratch -- not written to JSONL or git, and wiped
@@ -637,9 +636,12 @@ def _build_commit_message(tstamp: str, args: dict) -> str:
     return f"{subject}\n\n{body}"
 
 
-def _write_cmd_file(tstamp: str):
+def _write_cmd_file(tstamp: str, branch_name: str):
+    # Resolve the name after switching to the flor branch. Encode slashes and
+    # percent signs so branch names map to distinct files at the repo root.
+    cmd_file = os.path.join(CURRDIR, f".{quote(branch_name, safe='')}.cmd")
     cmd = " ".join(shlex.quote(a) for a in [sys.executable, *sys.argv])
-    with open(CMD_FILE, "w") as f:
+    with open(cmd_file, "w") as f:
         f.write(f"{tstamp}\n{cmd}\n")
 
 
