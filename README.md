@@ -70,7 +70,9 @@ branch, and bringing code back for review.
 ## 🧪 Track Experiments with the Flor API
 
 Use `flor.arg` to declare inputs, `flor.log` to record named values, and
-`flor.loop` to attach iteration context. Query these records with `flor.dataframe()`.
+`flor.loop` to attach iteration context. 
+
+Query these records with `flor.dataframe()`.
 
 ### First Log in 30 Seconds
 
