@@ -30,35 +30,29 @@ flor.io()
 5  zero2 2026-08-13 12:34:47.951515  train.py  forward  io::log::info        checkpoint saved
 ```
 
-## Name the loop
+## Channels
 
-Naming a loop tells FlorDB what an iteration is, so each captured line is tagged
-with the iteration it came from:
+The `channel` column identifies where a line came from:
+
+| Channel | Output |
+|---|---|
+| `io::stdout` | Standard output, including `print` |
+| `io::stderr` | Standard error |
+| `io::log::<level>` | Python logging records, such as `io::log::info` |
+
+Filter captured output by channel:
 
 ```python
-for epoch in flor.loop("epoch", range(3)):   # was: for epoch in range(3):
+flor.io("io::stdout")
 ```
-
-```
-  projid                     tstamp  filename   source  epoch        channel                    line
-0  zero2 2026-08-13 12:34:49.944234  train.py  forward      0     io::stdout  epoch 0 | loss: 0.5000
-1  zero2 2026-08-13 12:34:49.944234  train.py  forward      0  io::log::info        checkpoint saved
-2  zero2 2026-08-13 12:34:49.944234  train.py  forward      1     io::stdout  epoch 1 | loss: 0.3333
-3  zero2 2026-08-13 12:34:49.944234  train.py  forward      1  io::log::info        checkpoint saved
-4  zero2 2026-08-13 12:34:49.944234  train.py  forward      2     io::stdout  epoch 2 | loss: 0.2500
-5  zero2 2026-08-13 12:34:49.944234  train.py  forward      2  io::log::info        checkpoint saved
-```
-
-That `epoch` column is what the rest of FlorDB is built on: checkpoints
-addressable by iteration (see [Checkpoints](checkpoints.md)), and replay that
-can jump to one (see [Replay](replay.md)).
 
 ## Extracting metrics from captured text
 
 Captured text is not included in `flor.dataframe()` because it is not a metric.
 FlorDB can extract metrics from captured text after a run has finished, so you
 do not need to enable anything or train again. Preview the results against your
-own logs first:
+own logs first. In the example above, extraction reads the `epoch` index
+and `loss` value from the printed text; the script uses an ordinary Python loop:
 
 ```bash
 python -m flordb capture --preview
@@ -82,11 +76,17 @@ visible before it becomes a column. When the reading looks right, write it:
 python -m flordb capture --extract
 ```
 
+Query the extracted metric:
+
+```python
+flor.dataframe("loss")
+```
+
 ```
   projid                     tstamp  filename   source  epoch    loss
-0  zero2 2026-08-13 12:34:49.944234  train.py  extract      0     0.5
-1  zero2 2026-08-13 12:34:49.944234  train.py  extract      1  0.3333
-2  zero2 2026-08-13 12:34:49.944234  train.py  extract      2    0.25
+0  zero2 2026-08-13 12:34:47.951515  train.py  extract      0     0.5
+1  zero2 2026-08-13 12:34:47.951515  train.py  extract      1  0.3333
+2  zero2 2026-08-13 12:34:47.951515  train.py  extract      2    0.25
 ```
 
 `loss` is a real column in `flor.dataframe("loss")` now, and the raw line stays
@@ -98,3 +98,9 @@ on record.
 flor.set_capture(max_records=50_000)   # per-run ceiling (default 10,000)
 flor.set_capture(False)                # or FLOR_CAPTURE=0 in the environment
 ```
+
+## Next: declare experiment data
+
+To record named values and iteration context in your code, see
+[Experiment tracking with the Flor API](tracking.md). That guide covers
+inputs, metrics, named loops, and how loop context also enriches captured output.

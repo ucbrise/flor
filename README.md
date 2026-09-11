@@ -40,7 +40,42 @@ cd flor
 pip install -e .
 ```
 
-## 📝 First Log in 30 Seconds
+## 🪵 Already using `print` and `logging`? Add one import
+
+> *Requires a Git repository for automatic versioning.*
+
+Add one import to the script you run. The rest of your code stays as it is:
+
+```python
+import flordb as flor          # <-- the only new line
+
+for epoch in range(3):
+    print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
+```
+
+Your output prints as before. When the run ends, FlorDB commits it and says so; the captured lines are queryable with `flor.io()`.
+
+→ [Automatic log capture](docs/capture.md): channels and turning captured text into real metric columns.
+
+### FlorDB commits to its own git branch
+
+Run from `main` and FlorDB creates and switches to `flor.branch` (or a numbered
+variant), keeping auto-commits off your working branches. You stay on that flor branch after the run: subsequent runs accumulate history.
+
+Prefer to name the branch yourself? Create it with a `flor.` prefix, such as
+`flor.experiment`, and FlorDB commits there instead of creating one. Exploring
+several leads? Give each its own `flor.` branch.
+
+
+→ [Working on Flor Branches](docs/branches.md): saving changes, pushing your
+branch, and bringing code back for review.
+
+## 🧪 Track Experiments with the Flor API
+
+Use `flor.arg` to declare inputs, `flor.log` to record named values, and
+`flor.loop` to attach iteration context. Query these records with `flor.dataframe()`.
+
+### First Log in 30 Seconds
 
 > *Requires a Git repository for automatic versioning.*
 
@@ -71,35 +106,7 @@ flor.dataframe("message")
 0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
 ```
 
-## 🪵 Already using `print` and `logging`? Add one import
-
-Add one import to the script you run. The rest of your code stays as it is:
-
-```python
-import flordb as flor          # <-- the only new line
-
-for epoch in range(3):
-    print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
-```
-
-Your output prints as before. When the run ends, FlorDB commits it and says so; the captured lines are queryable with `flor.io()`.
-
-### FlorDB commits to its own git branch
-
-Run from `main` and FlorDB creates and switches to `flor.branch` (or a numbered
-variant), keeping auto-commits off your working branches. You stay on that flor branch after the run: subsequent runs accumulate history. 
-
-Prefer to name the branch yourself? Create it with a `flor.` prefix, such as
-`flor.experiment`, and FlorDB commits there instead of creating one. Exploring
-several leads? Give each its own `flor.` branch.
-
-→ [Automatic log capture](docs/capture.md): channels, naming your loops, and
-turning captured text into real metric columns.
-
-→ [Working on a FlorDB branch](docs/branches.md): saving changes, pushing your
-branch, and bringing code back for review.
-
-## 🧪 Track Experiments with Zero Overhead
+### Record hyperparameters and metrics by iteration
 
 Adopt as much as you want. Every step buys a specific thing:
 
@@ -143,6 +150,9 @@ flor.dataframe("lr", "batch_size", "loss")
 Each named `flor.loop` becomes its own column, and a row carries the loops that enclosed the
 `flor.log` that produced it. `loss` is logged inside `step`, so you get one row
 per step, with its epoch and the run's hyperparameters attached—no JOIN needed. 
+
+→ [Experiment tracking](docs/tracking.md): declaring inputs, recording metrics,
+and naming your loops with the Flor API.
 
 → [Checkpoints](docs/checkpoints.md): what gets copied, and how replay treats
 your checkpoint file.
