@@ -6,7 +6,7 @@ FlorDB starts with the `print` and `logging` output of the scripts you already r
 
 ## 🌻 Why FlorDB?
 
-- **Starting from an Existing Project**  
+- **Continue from an Existing Project**  
   Add `import flordb as flor` to a `.py` script you run. FlorDB captures the run's `print` and `logging` output with each run tied to the code that produced it. You can query these values with `flor.io()`.
 
 - **Experiment Tracking with Logging Statements**  
