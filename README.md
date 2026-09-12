@@ -2,26 +2,23 @@
 
 [![PyPI](https://img.shields.io/pypi/v/flordb.svg?nocache=1)](https://pypi.org/project/flordb/)
 
-FlorDB starts with the `print` and `logging` output of the scripts you already run as part of model training, and, over time, grows with you into sustained experiment tracking, model evaluation, and some measure of reproducibility. No new server to spin up or service to adopt. 
+FlorDB starts with the `print` and `logging` output of the scripts you already run as part of model training, and, over time, grows with your help into sustained experiment tracking, model evaluation, and some measure of reproducibility. No new server to spin up or service to adopt. 
 
 ## 🌻 Why FlorDB?
 
-- **Continue from an Existing Project**  
-  Add `import flordb as flor` to a `.py` script you run. FlorDB captures the run's `print` and `logging` output with each run tied to the code that produced it. You can query these values with `flor.io()`.
+- **Start Tracking with One Line**  
+  Add `import flordb as flor` to a Python script you run. FlorDB captures that run's `print` and `logging` output and ties it to the code that produced it. You can query these values with `flor.io()`.
 
 - **Experiment Tracking with Logging Statements**  
-  `flor.log(n, v)` records what a run produces: loss, accuracy, anything you'd print. `flor.arg(n, v)` records what it consumes: learning rate, batch size, random seed, each settable from the command line. You can query these values with `flor.dataframe()`.
+  `flor.log(n, v)` records what a run produces: loss, accuracy, anything you'd print. `flor.arg(n, v)` declares and records arguments and inputs: learning rate, batch size, seed &mdash; all configurable from the command line. You can query these values with `flor.dataframe()`.
 
 - **Evaluation: Pull the Model or Push the Code**  
-  Missed a metric? Load a past run's checkpoint in a notebook and measure it, or add the log statement and replay past runs to retrieve it.
+  Missed a metric? Load a past run's checkpoint in a notebook (or anywhere else) and compute it. Or, add a log statement and replay past runs to record it.
 
-- **Reproducibility Without Friction**  
-  Every run is versioned via Git, replays reuse the forward run's hyperparameters and seed, and one checkpoint per run is mirrored automatically.
+- **Reproducibility, Replay with Recorded Inputs**  
+  FlorDB versions runs in Git and replays them with their recorded hyperparameters and seeds.
 
-- **Keep Run History With Your Project**  
-  Your run history stays local, alongside your code. FlorDB keeps a record of your experiments as you work, with no server to set up or maintain.
-
-Keep using the tools you already work with: Make, Airflow, Slurm, Jupyter, VSCode, or a plain terminal.
+Keep using the tools you already work with: Make, Airflow, Slurm, Jupyter, VS Code, or a plain terminal.
 
 ## 📦 Installation
 
@@ -153,6 +150,9 @@ Each row pairs a logged `loss` with its epoch, step, and the run's `lr` and
 
 → [Experiment tracking](docs/tracking.md): declaring inputs, recording metrics,
 and naming your loops with the Flor API.
+
+FlorDB keeps a local, gitignored copy of each checkpoint you save with `torch.save`.
+You decide whether to track the original file in Git.
 
 → [Checkpoints](docs/checkpoints.md): what gets copied, and how replay treats
 your checkpoint file.
