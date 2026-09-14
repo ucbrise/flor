@@ -4,21 +4,22 @@
 
 FlorDB starts with the `print` and `logging` output of the scripts you already run as part of model training, and, over time, grows with your help into sustained experiment tracking, model evaluation, and some measure of reproducibility. No new server to spin up or service to adopt. 
 
-## 🌻 Why FlorDB?
+### 🌻 Why FlorDB?
 
 - **Start Tracking with One Line**  
   Add `import flordb as flor` to a Python script you run. FlorDB captures that run's `print` and `logging` output and ties it to the code that produced it. You can query these values with `flor.io()`.
 
 - **Experiment Tracking with Logging Statements**  
-  `flor.log(n, v)` records what a run produces: loss, accuracy, anything you'd print. `flor.arg(n, v)` declares and records arguments and inputs: learning rate, batch size, seed &mdash; all configurable from the command line. You can query these values with `flor.dataframe()`.
+  `flor.log(n, v)` records what a run produces: loss, accuracy, anything you'd print. `flor.arg(n, v)` declares and records arguments: learning rate, batch size, seed &mdash; all configurable from the command line. You can query these values with `flor.dataframe()`.
 
-- **Evaluation: Pull the Model or Push the Code**  
-  Missed a metric? Load a past run's checkpoint in a notebook (or anywhere else) and compute it. Or, add a log statement and replay past runs to record it.
+- **Evaluation: Pull the Model or Push the Logging**  
+  Missed a metric? Load a past run's checkpoint in a notebook (or anywhere else) and compute it. Or, add a logging statement and replay past runs to record it.
 
 - **Reproducibility, Replay with Recorded Inputs**  
-  FlorDB versions runs in Git and replays them with their recorded hyperparameters and seeds.
+  FlorDB versions runs in Git and replays them with their recorded hyper-parameters and seeds.
 
-Keep using the tools you already work with: Make, Airflow, Slurm, Jupyter, VS Code, or a plain terminal.
+- **At Home in Your Workflow**  
+  Keep using your existing tools for orchestration, experiment tracking, and interactive work: from Make, Airflow, and Slurm to Jupyter, VS Code, or a terminal. FlorDB works within each run.
 
 ## 📦 Installation
 
@@ -51,14 +52,12 @@ Your output prints as before. When the run ends, FlorDB commits it and says so; 
 
 → [Automatic log capture](docs/capture.md): channels and turning captured text into real metric columns.
 
-### FlorDB commits to its own git branch
+## 🌿 FlorDB auto-commits to its designated git branch
 
 Run from `main` and FlorDB creates and switches to `flor.branch` (or a numbered
 variant), keeping auto-commits off your working branches. You stay on that flor branch after the run: subsequent runs accumulate history.
 
-Prefer to name the branch yourself? Create it with a `flor.` prefix, such as
-`flor.experiment`, and FlorDB commits there instead of creating one. Exploring
-several leads? Give each its own `flor.` branch.
+Prefer to name the branch yourself? Create it with a `flor.` prefix, such as `flor.experiment`, and FlorDB commits there instead of creating one. Exploring several leads? Give each its own `flor.` branch.
 
 
 → [Working on Flor Branches](docs/branches.md): saving changes, pushing your
@@ -66,51 +65,19 @@ branch, and bringing code back for review.
 
 ## 🧪 Track Experiments with the Flor API
 
-Use `flor.arg` to declare inputs, `flor.log` to record named values, and
-`flor.loop` to attach iteration context. 
+Your runs already have captured output and a place in Git history. Add named
+arguments and metrics when you want to compare experiments with `flor.dataframe()`.
+You can keep your existing `print` and `logging` calls alongside them.
+<!-- TODO: The overhead of this is something Akshit can evaluate. -->
 
-Query these records with `flor.dataframe()`.
-
-### First Log in 30 Seconds
-
-> *Requires a Git repository for automatic versioning.*
-
-```bash
-mkdir flor_sandbox
-cd flor_sandbox
-git init
-ipython
-```
-
-```python
-import flordb as flor
-flor.log("message", "Hello ML World!")
-```
-```
-message: Hello ML World!
-
-Run committed successfully.
-```
-
-Retrieve logs anytime:
-
-```python
-flor.dataframe("message")
-```
-```
-         projid              tstamp filename   source          message
-0  flor_sandbox 2025-10-13 18:13:48  ipython  forward  Hello ML World!
-```
-
-### Record hyperparameters and per-iteration metrics
-
-Record learning rate and batch size for the run, loss at each training step,
-and validation accuracy after each epoch:
+In a training script, use `flor.arg(n, v)` for hyper-parameters and `flor.log(n, v)` for
+metrics. Wrap your loops with `flor.loop` so each metric carries its epoch
+or training step:
 
 ```python
 import flordb as flor
 
-lr = flor.arg("lr", 1e-3)                     # CLI-settable, recorded with the run
+lr = flor.arg("lr", default=1e-3)
 batch_size = flor.arg("batch_size", 32)
 
 for epoch in flor.loop("epoch", range(epochs)):
@@ -119,19 +86,23 @@ for epoch in flor.loop("epoch", range(epochs)):
         flor.log("loss", loss.item())
     flor.log("val_acc", validate(net))
 
-    torch.save({"model": net.state_dict()}, "ckpt.pth")   # flor keeps each run's copy
+    torch.save({"model": net.state_dict()}, "ckpt.pth")
 ```
 
-Change hyperparameters from the CLI:
+Here, `loss` is recorded at each step and `val_acc` after each epoch. 
+`flor.arg` records and returns the learning rate and batch size before
+the loops begin. They use the supplied defaults unless you override them
+on the command line:
 
 ```bash
 python train.py --kwargs lr=5e-4 batch_size=64
 ```
 
-View metrics across runs:
+After running `train.py`, query the recorded arguments and metrics in Jupyter
+or a Python session. For example, inspect the first few loss records:
 
 ```python
-flor.dataframe("lr", "batch_size", "loss")
+flor.dataframe("lr", "batch_size", "loss").head(3)
 ```
 
 ```
@@ -139,30 +110,25 @@ flor.dataframe("lr", "batch_size", "loss")
 0  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      0     0  0.0005         64     0.5
 1  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      0     1  0.0005         64  0.3333
 2  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      1     0  0.0005         64  0.3333
-3  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      1     1  0.0005         64    0.25
-4  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     0  0.0005         64    0.25
-5  ml_tutorial 2026-08-13 11:27:06.417615  train.py  forward      2     1  0.0005         64     0.2
 ```
 
-The `epoch` and `step` columns come from the named `flor.loop` calls.
-Each row pairs a logged `loss` with its epoch, step, and the run's `lr` and
-`batch_size`. FlorDB combines them automatically.
+Using `flor` to set hyper-parameters, name loops, and log the metrics inside them, you give each *training* record its context. Use `flor.dataframe()` to query those values together and compare them across runs.
 
-→ [Experiment tracking](docs/tracking.md): declaring inputs, recording metrics,
+→ [Experiment tracking](docs/tracking.md): setting arguments, recording metrics,
 and naming your loops with the Flor API.
 
-FlorDB keeps a local, gitignored copy of each checkpoint you save with `torch.save`.
-You decide whether to track the original file in Git.
+For the `torch.save` call above, FlorDB keeps a local, gitignored copy of the
+file for each run. Each save updates that run's copy, leaving its last
+checkpoint available for evaluation. The filename is your choice (`ckpt.pth` is just an example). You decide whether to track the original file in Git.
 
 → [Checkpoints](docs/checkpoints.md): what gets copied, and how replay treats
 your checkpoint file.
 
 ## 🔍 Evaluate Past Runs
 
-New questions come up after training: a metric you forgot to log, or a bias
-that only surfaced in production. Load a past run's checkpoint in Jupyter and
-evaluate the model, or add the `flor.log` statement to your script and replay
-past runs to record it.
+New questions come up after training: a metric you forgot to log, or a bias that only surfaced in production. 
+Load a past run's checkpoint in Jupyter and
+evaluate the model. Or, add the `flor.log` statement to your script and replay past runs to record it.
 
 ### Pull the model into Jupyter
 
@@ -191,9 +157,10 @@ on a different device, and replaying from a fresh clone.
 
 ## 📁 What FlorDB Writes
 
-FlorDB stores run records, checkpoints, and its query cache in `.flor/`.
+FlorDB stores run records, checkpoints, and its query cache in a `.flor/`
+directory at the root of your Git repository.
 Run records are tracked in Git; checkpoints and the cache stay local.
-FlorDB never pushes—you choose what to share.
+FlorDB never pushes; you choose what and when to share.
 
 → [Storage](docs/storage.md): the file layout, what syncs, and how to rebuild
 the query cache after checkout.
@@ -208,7 +175,7 @@ integrations. -->
 
 ## 📚 Publications
 
-FlorDB is based on research from UC Berkeley’s RISE Lab continued at Arizona State University.
+FlorDB is based on research from UC Berkeley’s [RISE Lab](https://rise.cs.berkeley.edu) continued at Arizona State University.
 
 - *Flow with FlorDB: Incremental Context Maintenance for the Machine Learning Lifecycle* ([CIDR 2025](https://vldb.org/cidrdb/papers/2025/p33-garcia.pdf))  
 - *The Management of Context in the ML Lifecycle* ([UCB Tech Report 2024](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2024/EECS-2024-142.html))  
