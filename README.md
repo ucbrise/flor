@@ -6,12 +6,15 @@ FlorDB starts with the `print` and `logging` output of the scripts you already r
 
 ### 🌻 Why FlorDB?
 
+<!-- TODO: Measure, is this something we can leave on? -->
 - **Start Tracking with One Line**  
   Add `import flordb as flor` to a Python script you run. FlorDB captures that run's `print` and `logging` output and ties it to the code that produced it. You can query these values with `flor.io()`.
 
+<!-- TODO: Add support for multiprocessing via tests/test_ddp_concurrency.py -->
 - **Experiment Tracking with Logging Statements**  
   `flor.log(n, v)` records what a run produces: loss, accuracy, anything you'd print. `flor.arg(n, v)` declares and records arguments: learning rate, batch size, seed &mdash; all configurable from the command line. You can query these values with `flor.dataframe()`.
 
+<!-- TODO: Validate pulling the checkpoint in Jupyter -->
 - **Evaluation: Pull the Model or Push the Logging**  
   Missed a metric? Load a past run's checkpoint in a notebook (or anywhere else) and compute it. Or, add a logging statement and replay past runs to record it.
 
@@ -42,7 +45,7 @@ pip install -e .
 Add one import to the script you run. The rest of your code stays as it is:
 
 ```python
-import flordb as flor          # <-- the only new line
+import flordb as flor      # <-- the only new line
 
 for epoch in range(3):
     print(f"epoch {epoch} | loss: {1.0 / (epoch + 2):.4f}")
@@ -68,7 +71,6 @@ branch, and bringing code back for review.
 Your runs already have captured output and a place in Git history. Add named
 arguments and metrics when you want to compare experiments with `flor.dataframe()`.
 You can keep your existing `print` and `logging` calls alongside them.
-<!-- TODO: The overhead of this is something Akshit can evaluate. -->
 
 In a training script, use `flor.arg(n, v)` for hyper-parameters and `flor.log(n, v)` for
 metrics. Wrap your loops with `flor.loop` so each metric carries its epoch
@@ -133,7 +135,25 @@ evaluate the model. Or, add the `flor.log` statement to your script and replay p
 ### Pull the model into Jupyter
 
 Load saved models in a notebook to evaluate new metrics and compare past runs.
-<!-- TODO: Maybe we polish this API -->
+Define `make_model(row)` to rebuild the architecture from that run's recorded
+arguments, and replace `train.py` below with your training script's filename.
+This example loads the `{"model": net.state_dict()}` checkpoint saved above:
+
+```python
+import flordb as flor
+
+runs = flor.dataframe()
+runs = runs[(runs.source == "forward") & (runs.filename == "train.py")].drop_duplicates("tstamp")
+
+row = runs.iloc[0]
+checkpoint = flor.load_checkpoint(row.tstamp, "ckpt.pth")
+model = make_model(row)
+model.load_state_dict(checkpoint["model"])
+model.eval()
+```
+
+FlorDB loads the saved state; `make_model` builds the architecture that run used.
+
 → [Jupyter walkthrough](docs/replay.md#path-1-pull-the-model-in-jupyter) and
 [comparison notebook](notebooks/compare_models.ipynb).
 
@@ -145,6 +165,7 @@ Forgot to log gradient norms? Add the statement to the script now:
 flor.log("grad_norm", ...)
 ```
 
+Then from the command line,
 ```bash
 python -m flordb replay --apply grad_norm
 ```
