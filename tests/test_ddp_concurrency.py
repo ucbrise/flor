@@ -273,9 +273,11 @@ class TestRunIdentityIsNotRankAware:
     """Two runs that start in the same microsecond are one run as far as flor
     can tell, and the second overwrites the first.
 
-    Remove the xfail marker together with whatever makes a run's identity
-    unique per process -- a pid or rank component, or a uniquifying suffix
-    when the timestamp is already taken.
+    The UUID plan in REVISION-LOG.md gives each run a persistent run_id while
+    retaining equal timestamps as metadata. Update these assertions to use
+    run IDs and remove the xfail markers when that migration is implemented.
+    PID guards process ownership; rank identifies a worker within a job.
+    Neither serves as the persistent run identity.
     """
 
     @pytest.mark.xfail(

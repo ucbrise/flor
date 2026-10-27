@@ -124,8 +124,7 @@ keyword. Timestamp calls succeed when unique and report ambiguity otherwise.
 
 Add an explicit schema version and `run_id` to new records. Update ORM readers,
 SQLite schema/grouping, `flor unpack`, checkpoint lookup/lineage, commit parsing,
-and replay scheduling together. Cache rebuilding preserves persisted IDs;
-UUID filenames have no temporal ordering, so sort by timestamp metadata.
+and replay scheduling together. Cache rebuilding preserves persisted IDs.
 
 Mark `flor.arg` and captured launcher argument records explicitly, retaining
 their log-value representation and dataframe visibility. Currently `flor.arg`
@@ -135,30 +134,24 @@ use this provenance for selection and replay initialization. The index is a
 cache; JSONL remains the source of truth.
 
 Read legacy timestamp-named files without rewriting historical commits.
-Derive IDs in a `legacy:` namespace from the SHA-256 digest of original JSONL
-bytes: identical copies share an ID, while different artifacts with equal
-timestamps remain distinct. Keep explicit locators for legacy JSONL and
-checkpoint paths. Preserve this mapping across branch changes, cloning, and
-cache rebuilding.
-
-Resolve old timestamp commit subjects through legacy artifacts, verifying
-content when timestamps collide. Keep direct timestamp access to unambiguous
-legacy checkpoint-only shelves; without a recorded run, the helper cannot
-resolve a run ID. Ambiguous checkpoint ownership or commit mappings require
-explicit association. This migration cannot recover already lost observations.
+Keep explicit locators for legacy JSONL and checkpoint paths.
+Preserve this mapping across branch changes, cloning, and cache rebuilding.
 
 Recover legacy argument names from the matching auto-commit's argument body
-and typed values from its JSONL only when they identify one value. Missing or
+and typed values from its JSONL. Missing or
 conflicting evidence makes argument selection unavailable for that run;
-explicit ID/timestamp selection remains available. Do not infer arguments from
-all run-level metrics.
+explicit ID/timestamp selection remains available.
+
 
 #### Allocation timing and run boundaries
 
 Use one lazy internal context accessor holding `run_id`, `tstamp`, and owning
-PID across recording paths. Keep `Clock.get_datetime()` as a timestamp accessor
-and profiling timers independent of identity. Import and historical queries
-must not allocate a run ID.
+PID across recording paths. The PID identifies the OS process that owns the
+in-memory context and detects forked children; rank identifies a worker within
+a distributed job. Neither is a persistent run identity: `run_id` is the UUID
+used for that purpose. Keep `Clock.get_datetime()` as a timestamp accessor and
+profiling timers independent of identity. Import and historical queries must
+not allocate a run ID.
 
 Create the context before `_emit_io()` constructs its first `orm.Log`:
 currently that record precedes `_register_run()` and `_deferred_init()`, so
@@ -167,33 +160,66 @@ checkpoint capture share the accessor. For a captured file checkpoint, create
 it before the original save, even without prior logging. Exclude initialization
 diagnostics from automatic capture to prevent recursion.
 
-Close the active identity after durable observation publication and saving
-pending finalization metadata. Git retries use that saved identity. Clear the
-active context at the run boundary; the next recorded event, including the next
-interactive run, creates a new one. Replay uses the selected historical run ID
-and timestamp without allocating a forward-run identity.
+When a recording run ends, save its observations, run ID, and the metadata
+needed to finish its Git commit. Once these are durably saved, clear the
+in-memory context for that run.
 
-#### Fork policy
+If the Git commit fails, retry it using the saved run ID.
 
-Initially support independent interpreters, including `torchrun` ranks and
-Python spawn workers. Children inheriting Flor through `fork` have recording
-and replay hooks disabled until a fresh interpreter starts, preventing copies
-of parent records or use of its replay identity. Fork-launched training ranks
-are outside the initial scope.
+Each new forward run gets a new UUID when recording begins, including in an
+interactive session. Replay reuses the selected recorded run's ID and
+timestamp; it does not allocate a new run ID.
 
-An after-fork handler discards inherited recording state and disables the
-child. Check the importing PID at recording, checkpoint-hook, and finalization
-entry points before touching inherited locks or buffers. Disabled children:
+#### Forked workers
 
-- Forward output and execute original checkpoint save/load functions.
-- Preserve `flor.arg` return values, `flor.loop` iteration, and explicit
-  historical checkpoint reads.
-- Create no records, IDs, checkpoint copies, cache writes, or commits; cleanup
-  returns immediately.
-- Emit one uncaptured notice on the first attempted recording operation.
+A child created by `fork` continues the application from the fork point.
+Keep Flor's recording and replay hooks active, with a separate context for
+each child that records:
 
-Fresh interpreters initialize their own contexts. Close inherited project-lock
-descriptors without explicitly unlocking the parent's lock.
+- **Forward recording:** allocate a new UUID before the child's first record
+  or captured checkpoint save. Store its observations and checkpoint copies
+  under that ID. The parent's existing records remain owned by the parent.
+- **Replay:** bind the child to its corresponding recorded run before its first
+  Flor operation. Reuse that child's run ID and timestamp, restore its recorded
+  arguments and checkpoint lineage, and keep replay's checkpoint write
+  protection active. Allocate no new run ID.
+
+Persist the parent-child relationship and a stable child selector so replay
+can match each worker to its recorded run. PIDs change between executions;
+inherited rank values alone cannot distinguish a child from its parent.
+
+Replay the parent through the original fork point so the child inherits the
+application state produced by that computation. Preserve inherited argument
+values and record their provenance for child-run selection. Selecting a
+child's results still requires its parent's computation and any cooperating
+workers. Loop narrowing must preserve that work.
+
+After fork, give the child an empty queue for new observations. Remove only
+its copies of completed parent records waiting to be written. The parent
+retains the original queue and responsibility for publishing those records;
+the parent-child relationship preserves their provenance for the child.
+
+Preserve application state, resolved arguments, active Flor loop scopes,
+checkpoint provenance, and replay state needed to continue from the fork
+point. Preserve unfinished captured output with its origin so lines completed
+in a child can be reconstructed without losing or misattributing pre-fork
+text. Fork handling must preserve the application's stream writes.
+
+Reset process-specific publication bookkeeping and detach the child from
+the parent's pending Git finalizations. Check the context's owning PID before
+touching inherited locks or buffers; reopen database connections and recreate
+local locks in the child. Close inherited project-lock descriptors without
+explicitly unlocking the parent's lock.
+
+Finalize the child's own observations on orderly worker shutdown, including
+multiprocessing exit paths. Do not rely only on `atexit`:
+[`os._exit()` bypasses cleanup handlers](https://docs.python.org/3/library/os.html#os._exit).
+Report child publication or finalization failures to the parent or launcher.
+
+If child binding or safe initialization is unavailable, report an explicit
+recording or replay failure. Disabling hooks and continuing silently does not
+satisfy the record/replay contract. Independent interpreters, including
+`torchrun` ranks and Python spawn workers, initialize their own contexts.
 
 ### Coordinate repository changes and preserve every version mapping
 
@@ -292,16 +318,18 @@ based on job metadata.
 
 1. **Recording and identity migration.** Implement UUID contexts, schema and
    legacy readers, argument provenance, `flor.run_id(...)`, atomic publication,
-   coordinated finalization, failure recovery, and explicit run IDs for
-   single-process replay. Preserve recording signatures and timestamp lookup.
+   coordinated finalization, failure recovery, fork-safe forward recording,
+   parent-child lineage, and explicit run IDs for single-process replay.
+   Preserve recording signatures and timestamp lookup.
    Pass the identity/selection tests below. Exercise Git contention with
    explicit synchronization and inspect completed commits; `git ls-files`
    proves only index membership. Verify launcher-visible finalization failures
    and recovery without duplicate observations, cache rows, or commits.
 2. **Launcher arguments and rank binding.** Persist reserved arguments and job
-   identity; bind ranks to historical IDs. Test job/argument selection and
-   restoration of an older job's metadata and exact per-rank runs when the
-   checked-out commit contains several JSONLs.
+   identity; bind ranks to recorded IDs. Use recorded parent-child relationships
+   to bind replayed fork workers to their recorded child runs. Test
+   job/argument selection and restoration of an older job's metadata and exact
+   per-rank runs when the checked-out commit contains several JSONLs.
 3. **Distributed replay.** Implement job scheduling, topology reconstruction,
    compatible loop narrowing, and bounded failure handling. Pass the numerical,
    selection, recovery, and isolation tests below.
@@ -315,8 +343,9 @@ remain valid when data is preserved.
 
 ### Identity lifecycle and selection test plan
 
-Add these cases to the concurrency tests. Identity, selection, and migration
-belong to stage 1; launcher arguments and job binding belong to stage 2.
+Add these cases to the concurrency tests. Identity, selection, migration, and
+forward fork recording belong to stage 1; launcher arguments, job binding,
+and replay child binding belong to stage 2.
 
 - **Identity and copies:** force equal, unchanged timestamps in simultaneous
   processes; verify distinct IDs consistent across records, filenames, database
@@ -353,10 +382,25 @@ belong to stage 1; launcher arguments and job binding belong to stage 2.
   reserved writes/overrides. Reject replay rank/world-size mismatches before
   training.
 - **Fork:** fork before/after context creation, with buffered records and while
-  holding the project lock. Verify disabled recording, ordinary computation and
-  output, no parent publication/ownership changes, and cleanup that neither
-  releases the parent's lock nor retains it after parent exit. Spawned workers
-  record under separate IDs. Skip only fork cases on platforms without `fork`.
+  holding the project lock. Verify separate child IDs, complete child logs and
+  checkpoint copies, inherited argument provenance, and no duplicate parent
+  observations or changes to parent ownership. Fork inside an active Flor loop
+  and verify continued computation and correct observation context. Exercise
+  orderly multiprocessing shutdown as well as explicit commits. Child cleanup
+  neither releases the parent's lock nor retains it after parent exit.
+  Spawned workers also record under separate IDs. Skip only fork cases on
+  platforms without `fork`.
+- **Fork buffer ownership:** log before the fork and separately in each
+  process afterward. Publish the pre-fork event once under the parent's ID;
+  publish each later event under the emitting process's ID. Verify that an
+  empty child publication queue preserves inherited arguments, loop scopes,
+  and checkpoint/replay state. Fork between writing a partial line and its
+  completion; verify that captured text and its origins are preserved.
+- **Fork replay binding:** record multiple children and nested forks, then
+  replay with different PIDs and completion order. Match each child to its
+  exact recorded ID, arguments, and checkpoint lineage; allocate no new IDs.
+  Missing, ambiguous, or extra child bindings fail the replay attempt and
+  publish no partial results.
 
 ### Distributed replay test plan
 
@@ -391,6 +435,14 @@ insufficient.
    rank bindings, rendezvous resources, and results separate. Compare historical
    JSONL/checkpoints before and after, restore branches on success/failure, and
    clean up children and rendezvous artifacts.
+6. **Fork equivalence:** compute deterministic state and resolve arguments in
+   the parent before forking, then continue computation and log values in each
+   child. Replay through the original fork point and compare each child's
+   values with its forward reference. Exercise child-side checkpoint loads
+   and saves; verify restored starting state, unchanged forward checkpoint
+   files, and hindsight results owned by the recorded child IDs. Selecting one
+   child must preserve required parent and sibling computation. Child failure
+   must fail the attempt, exclude partial results, and terminate/reap peers.
 
 Use explicit synchronization and controlled fault injection. Give every
 subprocess group a deadline and `finally` cleanup that terminates and reaps
@@ -400,7 +452,7 @@ jobs and fresh resources for every replay. Concurrent replay in one working
 tree is deferred; it requires isolated checkouts or serialized checkout and
 execution.
 
-Run tests in order: collective, DDP equivalence, selection/narrowing,
+Run tests in order: collective, DDP and fork equivalence, selection/narrowing,
 failure/recovery, then concurrent-job isolation. Keep GPU-free recording tests
 separate so regressions remain diagnosable without PyTorch or distributed
 initialization.
