@@ -39,7 +39,7 @@ This is the resolved D1 scope. The [workload analysis](model-workloads.md)
 records the rationale. Write down any missing essential workflow; the remaining
 owner decisions concern launch integration, fidelity, isolation, and versioning.
 
-### 2. Review D1 and resolve the remaining four owner decisions
+### 2. Resolve the remaining design decisions
 
 Read **Decisions for the project owner** in this order:
 
