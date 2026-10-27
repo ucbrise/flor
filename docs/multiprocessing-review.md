@@ -9,17 +9,77 @@ the technical discussion in these repository documents; use chat for brief
 updates and decisions. Update the plan when a decision changes its requirements
 or stages, and record the resolution here.
 
-## Assessment
+## How to finish this review
 
-The plan is well developed as a requirements and acceptance-test specification,
-but is not yet a complete implementation design. It separates three necessary
-capabilities: preserving concurrent recordings, identifying related workers,
-and replaying their computation together.
+Your goal is to approve a useful first release and its proof of correctness.
+Read the delivery table, resolve the owner decisions, and check the acceptance
+scenarios below. The engineering details and evidence are reference material;
+you do not need to design each mechanism yourself.
 
-Identity, compatibility, and data preservation are the strongest parts.
-Launcher coordination, fork replay, shutdown failure reporting, and recovery
-across partially completed writes still need concrete protocols. Stage 1 is
-already a substantial migration, especially with full forward fork support.
+### 1. Check the intended user experience
+
+Read **Proposed delivery plan** and evaluate this workflow:
+
+> I launch a supported multiprocessing training job. Flor preserves each
+> worker's observations and checkpoint copies. Later I select that historical
+> job, add a hindsight log, and replay the cooperating workers. I get values
+> matching the original computation. If recording or replay fails, I can tell
+> that it failed and retry without corrupting history or duplicating results.
+
+Write down any missing essential workflow. In particular, decide whether your
+first release needs forked workers as well as independently launched ranks,
+and whether single-host CPU support is a useful first milestone.
+
+### 2. Resolve the five owner decisions
+
+Read **Decisions for the project owner** in this order:
+
+1. **D1 — Which worker types must ship first?** This sets the largest scope boundary.
+2. **D2 — How much may the launch command change?** This constrains coordination and failure reporting.
+3. **D3 — Under what conditions must replay match?** This defines the correctness promise.
+4. **D4 — Can recording and replay share a checkout at the same time?** This defines isolation behavior.
+5. **D5 — Are per-worker Git commits acceptable?** This confirms the versioning approach.
+
+For each, record a choice or explicitly delegate it with constraints. You can
+accept a recommendation, change it, or ask for a concrete example before
+deciding. Fill in the **Decision record** at the end; recommendations alone
+do not resolve a decision. A deferred feature needs a stated interim behavior,
+such as an explicit unsupported-operation error.
+
+### 3. Agree on what would demonstrate success
+
+Check these scenarios against your intended workloads. The revision plan has
+the detailed tests; add or change scenarios there if this list is insufficient.
+
+| Scenario | Required outcome |
+| --- | --- |
+| Workers start simultaneously, including with equal timestamps. | Every worker's observations, run identity, checkpoint copies, and version mapping survive. |
+| Several jobs exist and I select an older one. | Replay restores that job's exact workers, recorded arguments, and checkpoint lineage. |
+| I add a hindsight log to a supported collective or DDP job. | Each selected worker/iteration matches the forward reference within the agreed numerical tolerance; required peers still participate. |
+| A worker, rendezvous, or Git finalization fails. | Failure is visible, children are cleaned up, partial replay results stay hidden, and retry creates no duplicates. |
+| I use existing single-process history or checkpoints. | Supported legacy lookups still work; ambiguity is reported rather than silently resolved. |
+| I replay a fork-based job, if included in the release. | Children inherit the required computation state and bind to their historical runs despite changed PIDs. |
+
+### 4. Close the review
+
+You can declare **scope and acceptance review complete** when:
+
+- [ ] The first supported workloads and explicit deferrals are recorded.
+- [ ] D1–D5 have choices or explicit delegation with constraints.
+- [ ] The acceptance scenarios would convince you the capability works.
+- [ ] The revision plan reflects those decisions without contradictory promises.
+- [ ] Each remaining engineering item is assigned to a delivery stage, or deferred with its dependent feature.
+
+At that point, record the review outcome and date below. This approves the
+target and the work to reach it; it does not claim implementation is complete.
+The implementation is successful only when the agreed acceptance tests pass.
+
+## Current assessment
+
+The requirements and tests are thorough. Concrete protocols are still needed
+for job coordination, shutdown failures, fork binding, and interrupted writes.
+Those are engineering work items below. Stage 1 is substantial, especially
+with full forward fork support; D1 determines whether that scope stays intact.
 
 ## Proposed delivery plan
 
@@ -144,5 +204,15 @@ PyTorch.
 
 ## Decision record
 
-No decisions resolved yet. Record each resolution by ID, with its date,
-chosen behavior, and corresponding revision-plan change.
+Review outcome: **Open**. No owner decisions have been resolved.
+
+Replace each open entry with the chosen behavior or delegated constraints,
+date it, and link to the corresponding revision-plan change.
+
+| ID | Resolution or delegated constraints | Date / plan reference |
+| --- | --- | --- |
+| D1 — Initial worker support | Open | — |
+| D2 — Launch integration | Open | — |
+| D3 — Numerical fidelity | Open | — |
+| D4 — Checkout isolation | Open | — |
+| D5 — Commit granularity | Open | — |
