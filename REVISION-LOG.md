@@ -10,6 +10,9 @@ the review tracks readiness, unresolved design details, and decisions to make
 before implementation. Recommendations in the review are not accepted changes
 to this plan until recorded here.
 
+These repository documents are the ground truth for subsequent review rounds;
+resolved scope decisions carry forward unless the project owner revisits them.
+
 Target workloads are PyTorch/Hugging Face model training and serving. The
 [workload analysis](docs/model-workloads.md) maps natural multi-GPU alternatives
 to current support and the accepted first-release scope below.
@@ -33,17 +36,16 @@ development milestone; actual two-GPU CUDA/NCCL validation is required before
 claiming multi-GPU support.
 
 Keep process-safety and observation-ownership work needed by supported helper
-workers. Defer arbitrary nested-fork hindsight replay, programmatic-spawn
-training integration, FSDP/DeepSpeed, tensor/pipeline parallel training, multiple
-hosts, and online serving to separate integrations. Finite model evaluation and
+workers. Defer programmatic-spawn training integration, FSDP/DeepSpeed,
+tensor/pipeline parallel training, multiple hosts, and online serving to separate
+integrations. Finite model evaluation and
 offline inference are the first serving-related follow-on direction.
 
 Define supported helper start methods, lifecycle, observation ownership, and
 replay behavior, plus Hugging Face instrumentation and model-save formats,
 during implementation design. Unsupported operations must fail explicitly;
-deferral does not permit silently dropping child observations. The general
-fork-replay requirements below are retained as a future contract, with their
-tests marked deferred. D2–D5 remain open in the review.
+deferral does not permit silently dropping child observations. D2–D5 remain
+open in the review.
 
 ### Problem and evidence
 
@@ -201,61 +203,26 @@ Each new forward run gets a new UUID when recording begins, including in an
 interactive session. Replay reuses the selected recorded run's ID and
 timestamp; it does not allocate a new run ID.
 
-#### Forked workers
+#### Framework helper workers
 
-For the first release, apply recording safety and ownership rules to supported
-framework helpers, including DataLoader workers; they are not additional DDP
-ranks. Define and test their lifecycle and replay behavior in stages 2–3.
-The full arbitrary fork-child replay contract in this section is deferred.
+Apply recording safety and ownership rules to supported DataLoader workers;
+they are not additional DDP ranks. Define and test their supported start methods,
+lifecycle, seeding, observation ownership, and replay behavior in stages 2–3.
 
-A child created by `fork` continues the application from the fork point.
-Keep Flor's recording and replay hooks active, with a separate context for
-each child that records:
+Keep parent observations owned by the parent. Helpers must not republish
+inherited buffered records, release the parent's project lock, or finalize the
+parent's pending Git work. Check process ownership before using inherited
+buffers or locks, and recreate process-local resources where needed. Preserve
+application stream writes and define ownership for unfinished captured output.
 
-- **Forward recording:** allocate a new UUID before the child's first record
-  or captured checkpoint save. Store its observations and checkpoint copies
-  under that ID. The parent's existing records remain owned by the parent.
-- **Replay:** bind the child to its corresponding recorded run before its first
-  Flor operation. Reuse that child's run ID and timestamp, restore its recorded
-  arguments and checkpoint lineage, and keep replay's checkpoint write
-  protection active. Allocate no new run ID.
-
-Persist the parent-child relationship and a stable child selector so replay
-can match each worker to its recorded run. PIDs change between executions;
-inherited rank values alone cannot distinguish a child from its parent.
-
-Replay the parent through the original fork point so the child inherits the
-application state produced by that computation. Preserve inherited argument
-values and record their provenance for child-run selection. Selecting a
-child's results still requires its parent's computation and any cooperating
-workers. Loop narrowing must preserve that work.
-
-After fork, give the child an empty queue for new observations. Remove only
-its copies of completed parent records waiting to be written. The parent
-retains the original queue and responsibility for publishing those records;
-the parent-child relationship preserves their provenance for the child.
-
-Preserve application state, resolved arguments, active Flor loop scopes,
-checkpoint provenance, and replay state needed to continue from the fork
-point. Preserve unfinished captured output with its origin so lines completed
-in a child can be reconstructed without losing or misattributing pre-fork
-text. Fork handling must preserve the application's stream writes.
-
-Reset process-specific publication bookkeeping and detach the child from
-the parent's pending Git finalizations. Check the context's owning PID before
-touching inherited locks or buffers; reopen database connections and recreate
-local locks in the child. Close inherited project-lock descriptors without
-explicitly unlocking the parent's lock.
-
-Finalize the child's own observations on orderly worker shutdown, including
-multiprocessing exit paths. Do not rely only on `atexit`:
-[`os._exit()` bypasses cleanup handlers](https://docs.python.org/3/library/os.html#os._exit).
-Report child publication or finalization failures to the parent or launcher.
-
-If child binding or safe initialization is unavailable, report an explicit
-recording or replay failure. Disabling hooks and continuing silently does not
-satisfy the record/replay contract. Independent interpreters, including
-`torchrun` ranks and Python spawn workers, initialize their own contexts.
+Finalize helper observations on orderly worker shutdown, including
+multiprocessing exit paths, and report failures to the training rank or launcher. Do not rely
+only on `atexit`: [`os._exit()` bypasses cleanup handlers](https://docs.python.org/3/library/os.html#os._exit).
+Preserve deterministic input delivery and replay's checkpoint write protection.
+If safe initialization or supported replay behavior is unavailable, report an
+explicit failure; disabling hooks or silently dropping observations does not
+satisfy the contract. Independently launched training ranks initialize their
+own contexts.
 
 ### Coordinate repository changes and preserve every version mapping
 
@@ -373,7 +340,7 @@ based on job metadata.
    compatible loop narrowing, and bounded failure handling. Pass the numerical,
    selection, recovery, and isolation tests below. Validate PyTorch and Hugging
    Face DDP with helper workers, and pass actual two-GPU CUDA/NCCL tests before
-   claiming multi-GPU support. General fork-child hindsight replay is deferred.
+   claiming multi-GPU support.
 
 In stage 1, retain equal timestamps in the same-microsecond fixture but assert
 separate run IDs, logs, database groups, and checkpoints. Use run-ID-to-commit
@@ -386,8 +353,8 @@ remain valid when data is preserved.
 
 Add these cases to the concurrency tests. Identity, selection, migration, and
 supported helper-worker recording safety belong to stage 1; launcher arguments,
-job binding, and helper lifecycle/replay design belong to stage 2. General
-fork-child replay and programmatic-spawn training integration are deferred.
+job binding, and helper lifecycle/replay design belong to stage 2.
+Programmatic-spawn training integration is deferred.
 
 - **Identity and copies:** force equal, unchanged timestamps in simultaneous
   processes; verify distinct IDs consistent across records, filenames, database
@@ -427,28 +394,6 @@ fork-child replay and programmatic-spawn training integration are deferred.
   including fork where supported, with buffered records and process-local
   resources. Verify no parent-record duplication, changed ownership, inherited
   lock deadlock, or lost worker output; cover orderly worker shutdown and failures.
-- **General fork recording (follow-on coverage beyond supported helpers):**
-  fork before/after context creation, with buffered records and while
-  holding the project lock. Verify separate child IDs, complete child logs and
-  checkpoint copies, inherited argument provenance, and no duplicate parent
-  observations or changes to parent ownership. Fork inside an active Flor loop
-  and verify continued computation and correct observation context. Exercise
-  orderly multiprocessing shutdown as well as explicit commits. Child cleanup
-  neither releases the parent's lock nor retains it after parent exit.
-  Spawned workers also record under separate IDs. Skip only fork cases on
-  platforms without `fork`.
-- **Fork buffer ownership:** log before the fork and separately in each
-  process afterward. Publish the pre-fork event once under the parent's ID;
-  publish each later event under the emitting process's ID. Verify that an
-  empty child publication queue preserves inherited arguments, loop scopes,
-  and checkpoint/replay state. Fork between writing a partial line and its
-  completion; verify that captured text and its origins are preserved.
-- **Fork replay binding (deferred):** record multiple children and nested forks,
-  then
-  replay with different PIDs and completion order. Match each child to its
-  exact recorded ID, arguments, and checkpoint lineage; allocate no new IDs.
-  Missing, ambiguous, or extra child bindings fail the replay attempt and
-  publish no partial results.
 
 ### Distributed replay test plan
 
@@ -489,14 +434,6 @@ values; successful exits, files, and mappings alone are insufficient.
    restoration, rank-zero checkpoint saves, and supported Hugging Face model
    saves. Test actual two-GPU CUDA/NCCL forward and hindsight numerical
    equivalence, selection, failure cleanup, and checkpoint write protection.
-7. **Fork equivalence (deferred):** compute deterministic state and resolve
-   arguments in the parent before forking, then continue computation and log values in each
-   child. Replay through the original fork point and compare each child's
-   values with its forward reference. Exercise child-side checkpoint loads
-   and saves; verify restored starting state, unchanged forward checkpoint
-   files, and hindsight results owned by the recorded child IDs. Selecting one
-   child must preserve required parent and sibling computation. Child failure
-   must fail the attempt, exclude partial results, and terminate/reap peers.
 
 Use explicit synchronization and controlled fault injection. Give every
 subprocess group a deadline and `finally` cleanup that terminates and reaps
@@ -508,7 +445,5 @@ execution.
 
 Run tests in order: collective, CPU DDP equivalence, selection/narrowing,
 failure/recovery, concurrent-job isolation, then supported training integrations
-and GPU/NCCL validation. General fork equivalence is follow-on work.
-Keep GPU-free recording tests separate so regressions remain diagnosable
-without PyTorch or distributed
-initialization.
+and GPU/NCCL validation. Keep GPU-free recording tests separate so regressions
+remain diagnosable without PyTorch or distributed initialization.

@@ -9,6 +9,9 @@ the technical discussion in these repository documents; use chat for brief
 updates and decisions. Update the plan when a decision changes its requirements
 or stages, and record the resolution here.
 
+These repository documents are the ground truth for subsequent review rounds.
+Carry resolved decisions forward unless the project owner revisits them.
+
 ## How to finish this review
 
 Your goal is to approve a useful first release and its proof of correctness.
@@ -29,8 +32,8 @@ Read **Proposed delivery plan** and evaluate this workflow:
 The first release targets single-host PyTorch and Hugging Face DDP training,
 including DataLoader-worker compatibility and concurrent independent trials.
 CPU/Gloo is the development milestone; actual GPU/NCCL validation is required
-before claiming multi-GPU support. Arbitrary nested-fork hindsight replay,
-sharded/model-parallel training, and online serving are follow-on work.
+before claiming multi-GPU support. Sharded/model-parallel training and online
+serving are follow-on work.
 
 This is the resolved D1 scope. The [workload analysis](model-workloads.md)
 records the rationale. Write down any missing essential workflow; the remaining
@@ -102,9 +105,9 @@ truth and SQLite as a cache, and rejects ambiguous historical selection.
 Every rank retains its own observations, checkpoint shelf, and commit mapping.
 Initial distributed replay targets one host, starting with CPU/Gloo and requiring
 GPU/NCCL validation for release. Multiple hosts, concurrent replay in one working
-tree, arbitrary nested-fork hindsight replay, sharded/model-parallel training,
-and online serving are deferred. Finite model evaluation/offline inference is
-the first serving-related direction; its integration is follow-on work.
+tree, sharded/model-parallel training, and online serving are deferred.
+Finite model evaluation/offline inference is the first serving-related direction;
+its integration is follow-on work.
 
 ## Strengths to retain
 
@@ -126,7 +129,7 @@ D1 is resolved. D2–D5 remain open; their recommendations are proposals.
 
 | ID | Decision | Recommendation and consequence |
 | --- | --- | --- |
-| D1 | Which model-training and serving workflows must ship first, and which require fork-child replay? | **Resolved 2026-10-27:** single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent concurrent trials, and actual GPU/NCCL validation. Arbitrary nested-fork hindsight replay, sharded/model-parallel training, and online serving are follow-on work. See the [workload analysis](model-workloads.md). |
+| D1 | Which model-training and serving workflows must ship first? | **Resolved 2026-10-27:** single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent concurrent trials, and actual GPU/NCCL validation. Sharded/model-parallel training and online serving are follow-on work. See the [workload analysis](model-workloads.md). |
 | D2 | May multiprocessing support require a Flor launch wrapper or explicit launcher integration? | Allow one to own job-ID distribution, shutdown status, and supervision. Logging calls remain unchanged. If ordinary `torchrun` must work with only `import flordb`, state that constraint before selecting the coordination mechanism. |
 | D3 | What numerical fidelity does the first release guarantee? | Guarantee equivalence for deterministic workloads with supported topology and matching inputs and environment. Define user responsibilities for randomness and external state; broader automatic capture is additional scope. |
 | D4 | May replay overlap an active recording job in the same checkout? | Initially reject the overlap, or use isolated worktrees. Choose one explicitly; short Git locks do not protect running code from later checkout changes. |
@@ -151,12 +154,9 @@ a separate owner approval unless they change the supported behavior.
 3. **Helper-worker identity and replay (D1).** Define supported DataLoader start
    methods, observation ownership, lifecycle, seeding, and replay behavior.
    Preserve parent records and application stream writes without silently
-   dropping child observations. General fork-child hindsight replay is deferred.
-   Its later design must define the stable child selector
-   for repeated forks at one location, nested forks, and worker replacement.
-   Specify how creation order affects matching. Preserve the inherited state
-   required for computation while separating publication ownership. Cover
-   loop scopes, arguments, checkpoints, partial output, locks, and completion.
+   dropping child observations. Cover worker replacement, partial output,
+   process-local resources, and completion within the supported DataLoader
+   lifecycle.
 4. **Publication and recovery state machine.** Specify ordering and durable
    markers for pending metadata, JSONL publication, cache insertion, Git
    finalization, and completion. For every interruption point, explain how
@@ -216,8 +216,8 @@ The existing concurrency fixtures still need the stronger synchronization,
 completed-commit inspection, and timeout cleanup required by the plan.
 Implement the deterministic collective before DDP, then exercise selection,
 failure recovery, and concurrent-job isolation. Include DataLoader compatibility,
-Hugging Face integration, and GPU/NCCL release validation. General fork
-equivalence remains deferred. Keep recording tests independent of PyTorch.
+Hugging Face integration, and GPU/NCCL release validation. Keep recording tests
+independent of PyTorch.
 
 ## Decision record
 
@@ -228,7 +228,7 @@ date it, and link to the corresponding revision-plan change.
 
 | ID | Resolution or delegated constraints | Date / plan reference |
 | --- | --- | --- |
-| D1 — Initial worker support | Resolved: single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent trials, CPU/Gloo development and GPU/NCCL release validation. General nested-fork replay, sharded/model-parallel training, and online serving deferred. | 2026-10-27 / [revision-plan scope](../REVISION-LOG.md#scope-decision--2026-10-27), [workload analysis](model-workloads.md#accepted-scope-d1) |
+| D1 — Initial worker support | Resolved: single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent trials, CPU/Gloo development and GPU/NCCL release validation. Sharded/model-parallel training and online serving deferred. | 2026-10-27 / [revision-plan scope](../REVISION-LOG.md#scope-decision--2026-10-27), [workload analysis](model-workloads.md#accepted-scope-d1) |
 | D2 — Launch integration | Open | — |
 | D3 — Numerical fidelity | Open | — |
 | D4 — Checkout isolation | Open | — |

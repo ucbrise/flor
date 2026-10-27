@@ -38,9 +38,8 @@ launcher, strategy, and save format rather than granting blanket support.
 
 **GPU ranks:** ordinary CUDA multiprocessing should not depend on inheriting an
 already initialized CUDA runtime through `fork`. PyTorch documents `spawn` or
-`forkserver` for CUDA subprocesses. Thus full replay of arbitrary inherited
-application state after fork is not a prerequisite for the documented DDP
-training path. This is a scope inference, not a frequency estimate.
+`forkserver` for CUDA subprocesses. These constraints guide supported worker
+initialization for the DDP training path.
 [PyTorch multiprocessing guidance](https://docs.pytorch.org/docs/2.14/notes/multiprocessing.html#cuda-in-multiprocessing).
 
 **DataLoader workers:** `num_workers > 0` creates data-loading processes under
@@ -57,11 +56,9 @@ some sections describe older engine behavior, so do not infer every current
 entrypoint's defaults from them. Pin versions and test the chosen entrypoint.
 [vLLM multiprocessing design](https://docs.vllm.ai/en/latest/design/multiprocessing/).
 
-Accepted scope separates **compatibility with framework-created helper
-workers** from **general fork-child hindsight replay**. The former belongs in
-release validation; the latter is deferred. The helper-worker
-contract must explicitly define helper observation ownership, finalization,
-and replay behavior. Silently dropping child records or disabling hooks would
+Compatibility with framework-created helper workers belongs in release
+validation. The helper-worker contract must define observation ownership,
+finalization, and replay behavior. Silently dropping child records or disabling hooks would
 contradict the current revision plan and is not an accepted shortcut.
 
 ## What Flor supports today, and what the plan would add
@@ -136,8 +133,8 @@ that the capability is implemented.
    Do not claim them as automatic consequences of DDP support.
 4. **Serving follow-on:** finite model evaluation/offline inference first. Choose
    an engine and request/window contract before promising online serving replay.
-5. **Fork decision:** retain the process-safety work needed by supported
-   framework workers; defer arbitrary nested-fork hindsight replay.
+5. **Helper compatibility:** retain the process-safety work needed by supported
+   framework workers.
 
 D1 is resolved. D2–D5 in the review still govern launch integration, numerical
 fidelity, checkout isolation, and commit granularity. The Hugging Face
