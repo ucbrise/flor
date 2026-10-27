@@ -4,6 +4,12 @@
 
 Status: design and test plan proposed; implementation pending.
 
+Review and open decisions: [Multiprocessing design review](docs/multiprocessing-review.md).
+This revision entry defines the proposed requirements and acceptance tests;
+the review tracks readiness, unresolved design details, and decisions to make
+before implementation. Recommendations in the review are not accepted changes
+to this plan until recorded here.
+
 Support concurrent training processes without changing `flor.log`, `flor.arg`,
 `flor.loop`, `flor.iteration`, or automatic output capture. Introduce UUID run
 identity and a read-only `flor.run_id(...)` selection helper. Checkpoint access
