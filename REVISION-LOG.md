@@ -12,8 +12,7 @@ to this plan until recorded here.
 
 Target workloads are PyTorch/Hugging Face model training and serving. The
 [workload analysis](docs/model-workloads.md) maps natural multi-GPU alternatives
-to current support and proposed scope. Specific framework, GPU, and serving
-support boundaries remain under review; the stages below are unchanged.
+to current support and the accepted first-release scope below.
 
 Support concurrent training processes without changing `flor.log`, `flor.arg`,
 `flor.loop`, `flor.iteration`, or automatic output capture. Introduce UUID run
@@ -24,6 +23,27 @@ Implement in three stages: recording and identity migration, launcher
 configuration, and distributed replay. Recording must preserve observations
 and complete version mappings; hindsight replay must recover the original
 job's per-rank numerical results.
+
+### Scope decision — 2026-10-27
+
+D1 is resolved: the first release targets single-host PyTorch DDP through
+`torchrun`, Hugging Face Trainer/Accelerate using DDP, DataLoader-worker
+compatibility, and independent concurrent training trials. CPU/Gloo is a
+development milestone; actual two-GPU CUDA/NCCL validation is required before
+claiming multi-GPU support.
+
+Keep process-safety and observation-ownership work needed by supported helper
+workers. Defer arbitrary nested-fork hindsight replay, programmatic-spawn
+training integration, FSDP/DeepSpeed, tensor/pipeline parallel training, multiple
+hosts, and online serving to separate integrations. Finite model evaluation and
+offline inference are the first serving-related follow-on direction.
+
+Define supported helper start methods, lifecycle, observation ownership, and
+replay behavior, plus Hugging Face instrumentation and model-save formats,
+during implementation design. Unsupported operations must fail explicitly;
+deferral does not permit silently dropping child observations. The general
+fork-replay requirements below are retained as a future contract, with their
+tests marked deferred. D2–D5 remain open in the review.
 
 ### Problem and evidence
 
@@ -40,8 +60,8 @@ failures with real subprocesses in temporary Git repositories:
 
 `versions.git_commit()` prints and swallows Git errors, so launchers can report
 success despite failed finalization. These tests isolate recording races;
-actual PyTorch/DDP replay requires the CPU/Gloo tests below. GPU/NCCL coverage
-is deferred.
+actual PyTorch/DDP replay requires the CPU/Gloo development tests and GPU/NCCL
+release validation below.
 
 ### Give each run a UUID and retain timestamps as metadata
 
@@ -182,6 +202,11 @@ interactive session. Replay reuses the selected recorded run's ID and
 timestamp; it does not allocate a new run ID.
 
 #### Forked workers
+
+For the first release, apply recording safety and ownership rules to supported
+framework helpers, including DataLoader workers; they are not additional DDP
+ranks. Define and test their lifecycle and replay behavior in stages 2–3.
+The full arbitrary fork-child replay contract in this section is deferred.
 
 A child created by `fork` continues the application from the fork point.
 Keep Flor's recording and replay hooks active, with a separate context for
@@ -329,21 +354,26 @@ based on job metadata.
 
 1. **Recording and identity migration.** Implement UUID contexts, schema and
    legacy readers, argument provenance, `flor.run_id(...)`, atomic publication,
-   coordinated finalization, failure recovery, fork-safe forward recording,
-   parent-child lineage, and explicit run IDs for single-process replay.
+   coordinated finalization, failure recovery, supported helper-worker
+   recording safety and lineage, and explicit run IDs for single-process replay.
    Preserve recording signatures and timestamp lookup.
    Pass the identity/selection tests below. Exercise Git contention with
    explicit synchronization and inspect completed commits; `git ls-files`
    proves only index membership. Verify launcher-visible finalization failures
-   and recovery without duplicate observations, cache rows, or commits.
+   and recovery without duplicate observations, cache rows, or commits. Include
+   independent concurrent training trials.
 2. **Launcher arguments and rank binding.** Persist reserved arguments and job
-   identity; bind ranks to recorded IDs. Use recorded parent-child relationships
-   to bind replayed fork workers to their recorded child runs. Test
+   identity; bind ranks to recorded IDs. Define supported DataLoader-worker
+   start methods, lifecycle, observation ownership, and replay behavior without
+   treating helpers as training ranks. Specify Hugging Face instrumentation,
+   resolved configuration capture, and model-save/restore protection. Test
    job/argument selection and restoration of an older job's metadata and exact
    per-rank runs when the checked-out commit contains several JSONLs.
 3. **Distributed replay.** Implement job scheduling, topology reconstruction,
    compatible loop narrowing, and bounded failure handling. Pass the numerical,
-   selection, recovery, and isolation tests below.
+   selection, recovery, and isolation tests below. Validate PyTorch and Hugging
+   Face DDP with helper workers, and pass actual two-GPU CUDA/NCCL tests before
+   claiming multi-GPU support. General fork-child hindsight replay is deferred.
 
 In stage 1, retain equal timestamps in the same-microsecond fixture but assert
 separate run IDs, logs, database groups, and checkpoints. Use run-ID-to-commit
@@ -355,8 +385,9 @@ remain valid when data is preserved.
 ### Identity lifecycle and selection test plan
 
 Add these cases to the concurrency tests. Identity, selection, migration, and
-forward fork recording belong to stage 1; launcher arguments, job binding,
-and replay child binding belong to stage 2.
+supported helper-worker recording safety belong to stage 1; launcher arguments,
+job binding, and helper lifecycle/replay design belong to stage 2. General
+fork-child replay and programmatic-spawn training integration are deferred.
 
 - **Identity and copies:** force equal, unchanged timestamps in simultaneous
   processes; verify distinct IDs consistent across records, filenames, database
@@ -392,7 +423,12 @@ and replay child binding belong to stage 2.
   once as integers, preserve user `rank`, leave absent values absent, and reject
   reserved writes/overrides. Reject replay rank/world-size mismatches before
   training.
-- **Fork:** fork before/after context creation, with buffered records and while
+- **Helper-worker safety:** exercise supported DataLoader start methods,
+  including fork where supported, with buffered records and process-local
+  resources. Verify no parent-record duplication, changed ownership, inherited
+  lock deadlock, or lost worker output; cover orderly worker shutdown and failures.
+- **General fork recording (follow-on coverage beyond supported helpers):**
+  fork before/after context creation, with buffered records and while
   holding the project lock. Verify separate child IDs, complete child logs and
   checkpoint copies, inherited argument provenance, and no duplicate parent
   observations or changes to parent ownership. Fork inside an active Flor loop
@@ -407,7 +443,8 @@ and replay child binding belong to stage 2.
   empty child publication queue preserves inherited arguments, loop scopes,
   and checkpoint/replay state. Fork between writing a partial line and its
   completion; verify that captured text and its origins are preserved.
-- **Fork replay binding:** record multiple children and nested forks, then
+- **Fork replay binding (deferred):** record multiple children and nested forks,
+  then
   replay with different PIDs and completion order. Match each child to its
   exact recorded ID, arguments, and checkpoint lineage; allocate no new IDs.
   Missing, ambiguous, or extra child bindings fail the replay attempt and
@@ -415,10 +452,10 @@ and replay child binding belong to stage 2.
 
 ### Distributed replay test plan
 
-Stages 2–3 target single-host CPU jobs with real interprocess communication.
-GPU/NCCL and multiple hosts follow later. Acceptance requires recovering the
-forward job's per-rank values; successful exits, files, and mappings alone are
-insufficient.
+Stages 2–3 start with single-host CPU jobs and real interprocess communication,
+then require actual two-GPU CUDA/NCCL validation for release. Multiple hosts
+remain deferred. Acceptance requires recovering the forward job's per-rank
+values; successful exits, files, and mappings alone are insufficient.
 
 1. **Deterministic fixture:** launch two Gloo ranks with fixed seeds, synthetic
    inputs, and fresh rendezvous resources. Start with an exactly known
@@ -446,8 +483,14 @@ insufficient.
    rank bindings, rendezvous resources, and results separate. Compare historical
    JSONL/checkpoints before and after, restore branches on success/failure, and
    clean up children and rendezvous artifacts.
-6. **Fork equivalence:** compute deterministic state and resolve arguments in
-   the parent before forking, then continue computation and log values in each
+6. **Supported training integrations:** run PyTorch DDP via `torchrun` and a
+   documented Hugging Face Trainer/Accelerate DDP fixture. Include DataLoader
+   workers, deterministic transforms and seeding, historical configuration
+   restoration, rank-zero checkpoint saves, and supported Hugging Face model
+   saves. Test actual two-GPU CUDA/NCCL forward and hindsight numerical
+   equivalence, selection, failure cleanup, and checkpoint write protection.
+7. **Fork equivalence (deferred):** compute deterministic state and resolve
+   arguments in the parent before forking, then continue computation and log values in each
    child. Replay through the original fork point and compare each child's
    values with its forward reference. Exercise child-side checkpoint loads
    and saves; verify restored starting state, unchanged forward checkpoint
@@ -463,7 +506,9 @@ jobs and fresh resources for every replay. Concurrent replay in one working
 tree is deferred; it requires isolated checkouts or serialized checkout and
 execution.
 
-Run tests in order: collective, DDP and fork equivalence, selection/narrowing,
-failure/recovery, then concurrent-job isolation. Keep GPU-free recording tests
-separate so regressions remain diagnosable without PyTorch or distributed
+Run tests in order: collective, CPU DDP equivalence, selection/narrowing,
+failure/recovery, concurrent-job isolation, then supported training integrations
+and GPU/NCCL validation. General fork equivalence is follow-on work.
+Keep GPU-free recording tests separate so regressions remain diagnosable
+without PyTorch or distributed
 initialization.

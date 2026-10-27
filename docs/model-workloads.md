@@ -3,7 +3,8 @@
 Researched: 2026-10-27. Supports decision D1 in the
 [multiprocessing review](multiprocessing-review.md#decisions-for-the-project-owner).
 Target users train PyTorch or Hugging Face models, possibly on several GPUs,
-and evaluate or serve those models. Recommendations here remain proposed.
+and evaluate or serve those models. D1 scope is accepted below; detailed
+integration mechanisms remain to be designed.
 
 ## What the evidence establishes
 
@@ -27,7 +28,7 @@ See [Transformers' Accelerate integration](https://huggingface.co/docs/transform
 | Training state exceeds one GPU's memory | FSDP or DeepSpeed ZeRO. | Shard state across cooperating GPU ranks. FSDP shards parameters, gradients, and optimizer state; ZeRO does so progressively by stage. These are important large-model workflows with additional configuration and checkpoint requirements. [FSDP2](https://huggingface.co/docs/transformers/en/fsdp), [ZeRO](https://huggingface.co/docs/transformers/en/deepspeed). |
 | Large-model training needing additional partitioning | Tensor parallelism, pipeline parallelism, or combinations with data parallelism. | Split tensor operations or model stages across devices. Flor must preserve the process groups and dependencies, not merely rank/world size. Specialized follow-on integration. [Parallelism methods](https://huggingface.co/docs/transformers/en/perf_train_gpu_many). |
 | Existing single-process multi-GPU code | `torch.nn.DataParallel`. | Uses model replicas and threads in one process. PyTorch recommends DDP instead, even on one host. Avoid making this the primary new target; logs inside threaded forwards require separate scrutiny. [DataParallel](https://docs.pytorch.org/docs/2.14/generated/torch.nn.DataParallel.html). |
-| Independent experiments, one per GPU | Separate single-GPU training commands, each assigned a device. | No gradient collectives or shared distributed job required. This is a useful Flor workload: concurrent recording safety should cover it even without distributed replay. This is a proposed acceptance scenario, not a measured usage claim. |
+| Independent experiments, one per GPU | Separate single-GPU training commands, each assigned a device. | No gradient collectives or shared distributed job required. Concurrent recording safety must cover this accepted workload even without distributed replay. This is a scope choice, not a measured usage claim. |
 
 LoRA and other parameter-efficient methods change what is trained; they do not
 by themselves choose the worker topology. Classify those jobs by their actual
@@ -56,9 +57,9 @@ some sections describe older engine behavior, so do not infer every current
 entrypoint's defaults from them. Pin versions and test the chosen entrypoint.
 [vLLM multiprocessing design](https://docs.vllm.ai/en/latest/design/multiprocessing/).
 
-Recommendation: separate **compatibility with framework-created helper
+Accepted scope separates **compatibility with framework-created helper
 workers** from **general fork-child hindsight replay**. The former belongs in
-realistic training validation; the latter can be a distinct feature. An interim
+release validation; the latter is deferred. The helper-worker
 contract must explicitly define helper observation ownership, finalization,
 and replay behavior. Silently dropping child records or disabling hooks would
 contradict the current revision plan and is not an accepted shortcut.
@@ -72,7 +73,7 @@ faithful hindsight replay. Importing Flor successfully establishes less.
 | --- | --- | --- |
 | Single-process PyTorch custom training loop | Existing logging, loop replay, and file-path `torch.save`/`torch.load` checkpoint workflows have tests. CUDA behavior is not established by those CPU examples. | Preserve compatibility while migrating identity and lookup. |
 | Concurrent independent runs in one repository | Unsafe: timestamp collisions and missing Git mappings are reproduced by concurrency tests. | Stage 1 directly addresses recording; test independent trials explicitly. |
-| Multi-process DDP via `torchrun` | No reliable distributed recording/replay contract. Current replay starts one process. | Direct target, initially tested with CPU/Gloo. GPU/NCCL is deferred, so the existing plan alone cannot certify a multi-GPU release. |
+| Multi-process DDP via `torchrun` | No reliable distributed recording/replay contract. Current replay starts one process. | Direct target: CPU/Gloo development tests, followed by required GPU/NCCL release validation. |
 | DDP via programmatic spawn | No verified worker lifecycle or distributed replay support. | Separate contexts are intended, but parent entrypoint, worker targeting, and shutdown need end-to-end coverage. |
 | Hugging Face Trainer / Accelerate DDP | No dedicated integration or tests found. General text capture and explicit Flor calls provide partial building blocks. | DDP infrastructure helps, but Trainer metrics, resolved configuration, internal loop access, and model saving still need explicit integration and acceptance tests. |
 | FSDP, DeepSpeed, tensor/pipeline parallel training | No verified integration. Capturing individual save calls does not establish a complete distributed checkpoint. | Generic identity helps; strategy-specific configuration, process groups, checkpoint bundles, and replay are not yet specified. |
@@ -118,7 +119,10 @@ Dynamic batching, concurrency, and engine caches complicate equivalence.
 Specify output/metric reproducibility separately from reproducing latency or
 request scheduling. Generic child-run IDs alone do not supply this contract.
 
-## Proposed scope for owner review
+## Accepted scope (D1)
+
+Resolved 2026-10-27. These are release priorities and boundaries, not a claim
+that the capability is implemented.
 
 1. **First training target:** single-host PyTorch DDP through `torchrun`, then
    Hugging Face Trainer/Accelerate using DDP with a documented instrumentation
@@ -130,12 +134,12 @@ request scheduling. Generic child-run IDs alone do not supply this contract.
 3. **Separate integrations:** programmatic spawn, FSDP/DeepSpeed, and
    tensor/pipeline parallelism each require named fixtures and artifact rules.
    Do not claim them as automatic consequences of DDP support.
-4. **Serving target:** finite model evaluation/offline inference first. Choose
+4. **Serving follow-on:** finite model evaluation/offline inference first. Choose
    an engine and request/window contract before promising online serving replay.
 5. **Fork decision:** retain the process-safety work needed by supported
-   framework workers; consider deferring arbitrary nested-fork hindsight replay.
+   framework workers; defer arbitrary nested-fork hindsight replay.
 
-The owner question is now: **Does DDP plus Hugging Face integration cover the
-first training workloads, or must the first release also train models whose
-state requires sharding, or replay an online serving engine?** That answer is
-more useful than deciding fork support in isolation. D1 remains open.
+D1 is resolved. D2–D5 in the review still govern launch integration, numerical
+fidelity, checkout isolation, and commit granularity. The Hugging Face
+instrumentation/model-save surface and helper-worker behavior need concrete
+engineering designs within the accepted scope.
