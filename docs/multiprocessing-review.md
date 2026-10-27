@@ -35,9 +35,10 @@ CPU/Gloo is the development milestone; actual GPU/NCCL validation is required
 before claiming multi-GPU support. Sharded/model-parallel training and online
 serving are follow-on work.
 
-This is the resolved D1 scope. The [workload analysis](model-workloads.md)
-records the rationale. Write down any missing essential workflow; the remaining
-owner decisions concern launch integration, fidelity, isolation, and versioning.
+The [workload analysis](model-workloads.md) records the rationale. 
+Write down any missing essential workflow; 
+the remaining owner decisions concern launch integration, 
+fidelity, isolation, and versioning.
 
 ### 2. Resolve the remaining design decisions
 
