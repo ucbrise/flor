@@ -44,8 +44,63 @@ offline inference are the first serving-related follow-on direction.
 Define supported helper start methods, lifecycle, observation ownership, and
 replay behavior, plus Hugging Face instrumentation and model-save formats,
 during implementation design. Unsupported operations must fail explicitly;
-deferral does not permit silently dropping child observations. D2–D5 remain
-open in the review.
+deferral does not permit silently dropping child observations. D2 is resolved
+below; D3–D5 remain open in the review.
+
+### Launch integration decision (D2) — 2026-10-27
+
+D2 is resolved: require `flor run -- <launcher and arguments>` for supported
+distributed recording in the first release. Add a `flor` console entry point
+for the existing CLI and one new `run` command. Extend the existing `replay`
+command for distributed hindsight execution, sharing supervision internally;
+users do not manually relaunch historical ranks. Implementation is pending.
+
+```sh
+flor run -- torchrun --standalone --nnodes=1 --nproc-per-node=2 train.py --batch-size 32
+flor run -- accelerate launch --multi_gpu --num_processes=2 train.py
+```
+
+Keep recording calls and existing single-process commands unchanged. Preserve
+concurrent independent-trial recording safety. Limit `run` options to Flor
+supervision controls, such as an optional execution deadline; exact flags are
+engineering choices. Pass the command after `--` unchanged while validating
+supported launcher configurations. GPU count, strategy, rendezvous, and script
+arguments remain in their existing interfaces. Preserve the working directory,
+application environment, and output streams, adding Flor coordination metadata.
+Do not treat delegated command arguments as Flor wrapper options.
+
+Support tested fixed-size, single-host torchrun and Accelerate DDP
+configurations. Reject unsupported configurations, elastic membership, and
+automatic worker restarts explicitly before training. An unintegrated
+distributed launch must report an actionable unsupported-launch error. The
+command syntax does not promise support for arbitrary launchers or backends.
+
+Flor's supervisor creates and distributes a fresh shared job UUID before
+workers start and persists expected training-rank membership. Helpers follow
+their defined ownership and completion rules without counting as extra ranks.
+Success requires both a successful launcher exit and durable finalization of
+every expected rank, including required helper observations and Git mappings.
+Missing completion or fatal capture/finalization errors must produce a nonzero
+Flor result even if the launcher exits zero. Worker status reporting and
+completion validation are required; the outer wrapper alone is insufficient.
+
+On failure, interruption, or timeout, terminate and reap remaining children
+within a deadline, report phase/job/rank where available, and preserve pending
+artifacts for recovery. A new training execution receives a fresh job UUID;
+finalization retries retain the saved identities. Replay retains historical
+job/run bindings and uses a fresh replay-attempt ID.
+
+Keep the public surface to the new `run` command and distributed extensions to
+`replay`, preserving `capture`, `query`, `dataframe`, `unpack`, and `stat`.
+Separate `init`, `start`, `stop`, `worker`, and `commit` commands are not
+required. Pending-finalization discovery and retry still need a documented,
+testable interface during recovery design; `unpack` is not Git recovery.
+
+Deliver minimum supervision/completion handling needed to prove recording
+failure reporting in stage 1, the public CLI and launcher adapters/job
+membership in stage 2, and distributed replay orchestration in stage 3.
+See the launch integration acceptance tests below and the
+[accepted review contract](docs/multiprocessing-review.md#d2--launch-integration).
 
 ### Problem and evidence
 
@@ -263,7 +318,9 @@ JSONL is the observation source of truth; SQLite is a rebuildable cache.
 Explicit `flor.commit()` can propagate failures. Automatic shutdown requires
 a tested mechanism that gives launchers a nonzero exit status: raising from
 `atexit` is insufficient. Durable pending status enables recovery but does not
-satisfy this exit-status requirement.
+satisfy this exit-status requirement. Under D2, the Flor supervisor must check
+durable worker completion as well as child exit status. Fatal automatic-capture
+errors and missing completion must fail the supervised execution.
 
 ### Capture launcher configuration as Flor arguments
 
@@ -283,9 +340,9 @@ A user argument or metric named `rank` stays independent. Initialize the
 context before emitting arguments, without recursively calling public
 `flor.arg`. Use argument records rather than separate rank fields or schemas.
 
-Distribute one shared `job_id` per forward execution attempt. Use launcher
-identity only if it distinguishes that attempt; otherwise a coordinator
-creates and distributes a job UUID. Do not generate job IDs independently in
+Under D2, the Flor supervisor creates and distributes one fresh shared `job_id`
+UUID per forward execution attempt before workers start and records expected
+training-rank membership. Do not generate job IDs independently in
 each rank or infer grouping from timestamps, project names, Git authors, or
 rank numbers. Retain insufficiently unique launcher IDs as metadata. Replay
 keeps the historical job ID and uses a separate attempt ID for completion and
@@ -315,7 +372,9 @@ terminate and reap remaining children after failure. Track completion for the
 whole attempt, exclude partial failed results, avoid duplicate results on
 retry, and restore the working branch on success and failure. Retain the
 existing replay API with additive launcher settings and internal orchestration
-based on job metadata.
+based on job metadata. Extend the existing `replay` command and share the
+supervision machinery with `run` internally, retaining historical bindings and
+using a fresh replay-attempt ID.
 
 ### Implementation stages and acceptance criteria
 
@@ -323,21 +382,28 @@ based on job metadata.
    legacy readers, argument provenance, `flor.run_id(...)`, atomic publication,
    coordinated finalization, failure recovery, supported helper-worker
    recording safety and lineage, and explicit run IDs for single-process replay.
+   Implement the minimum supervision/completion mechanism needed to verify
+   durable worker finalization and propagate recording failures under D2.
    Preserve recording signatures and timestamp lookup.
    Pass the identity/selection tests below. Exercise Git contention with
    explicit synchronization and inspect completed commits; `git ls-files`
    proves only index membership. Verify launcher-visible finalization failures
    and recovery without duplicate observations, cache rows, or commits. Include
-   independent concurrent training trials.
+   independent concurrent training trials and failure reporting despite a
+   successful child/launcher exit with missing or failed finalization.
 2. **Launcher arguments and rank binding.** Persist reserved arguments and job
-   identity; bind ranks to recorded IDs. Define supported DataLoader-worker
+   identity and expected membership; bind ranks to recorded IDs. Add the `flor`
+   console entry point and `run` command with tested torchrun/Accelerate DDP
+   adapters, unchanged argument forwarding, supported-configuration validation,
+   and completion-aware supervision. Define supported DataLoader-worker
    start methods, lifecycle, observation ownership, and replay behavior without
    treating helpers as training ranks. Specify Hugging Face instrumentation,
    resolved configuration capture, and model-save/restore protection. Test
    job/argument selection and restoration of an older job's metadata and exact
    per-rank runs when the checked-out commit contains several JSONLs.
 3. **Distributed replay.** Implement job scheduling, topology reconstruction,
-   compatible loop narrowing, and bounded failure handling. Pass the numerical,
+   compatible loop narrowing, and bounded failure handling through the existing
+   `replay` command, sharing supervision internally with `run`. Pass the numerical,
    selection, recovery, and isolation tests below. Validate PyTorch and Hugging
    Face DDP with helper workers, and pass actual two-GPU CUDA/NCCL tests before
    claiming multi-GPU support.
@@ -395,6 +461,39 @@ Programmatic-spawn training integration is deferred.
   resources. Verify no parent-record duplication, changed ownership, inherited
   lock deadlock, or lost worker output; cover orderly worker shutdown and failures.
 
+### Launch integration acceptance tests (D2)
+
+Stage 1 proves the minimum supervision/completion contract with GPU-free
+subprocess fixtures; stage 2 tests the public CLI and supported real launcher
+adapters. Stage 3 exercises the same supervision through distributed replay.
+
+- **CLI and forwarding:** verify the installed `flor` entry point and module
+  entry point expose the same commands. Exercise `run -- <command>` with spaces,
+  quoted values, and script arguments named like Flor commands/options. Preserve
+  argument boundaries, working directory, application environment, and output.
+  Keep existing commands and single-process invocation behavior compatible.
+- **Identity and membership:** launch two supported jobs simultaneously and
+  verify fresh separate job UUIDs, exact expected rank sets, and correct
+  per-worker run bindings. Helpers are not counted as training ranks. New
+  executions get new job IDs; retrying saved finalization retains its IDs.
+- **Success gate:** require all expected durable completion records and Git
+  mappings. A zero launcher exit with a missing rank completion, failed Git
+  finalization, or a fatal capture error must still return nonzero from Flor
+  and leave the job explicitly incomplete. A failed helper finalization must
+  reach the owning rank or supervisor and prevent success.
+- **Cleanup and retry:** inject worker failure, interruption, and timeout;
+  verify bounded termination/reaping, useful diagnostics, and preserved pending
+  artifacts. Exercise the documented finalization retry path without duplicate
+  observations, cache rows, or commits.
+- **Unsupported execution:** reject unintegrated distributed launches with an
+  actionable error. Reject unsupported launcher/topology configurations,
+  elastic membership, and automatic restarts before training. Forwarding an
+  arbitrary command does not establish its distributed compatibility.
+- **Distributed replay:** use the existing replay command to launch historical
+  workers internally with a fresh attempt ID and the recorded run bindings;
+  no manual per-rank launches are required. Apply the existing whole-attempt
+  success, partial-result hiding, and cleanup acceptance tests.
+
 ### Distributed replay test plan
 
 Stages 2–3 start with single-host CPU jobs and real interprocess communication,
@@ -428,8 +527,9 @@ values; successful exits, files, and mappings alone are insufficient.
    rank bindings, rendezvous resources, and results separate. Compare historical
    JSONL/checkpoints before and after, restore branches on success/failure, and
    clean up children and rendezvous artifacts.
-6. **Supported training integrations:** run PyTorch DDP via `torchrun` and a
-   documented Hugging Face Trainer/Accelerate DDP fixture. Include DataLoader
+6. **Supported training integrations:** record through `flor run --` using
+   PyTorch DDP via `torchrun` and a documented Hugging Face Trainer/Accelerate
+   DDP fixture, then use the existing replay command. Include DataLoader
    workers, deterministic transforms and seeding, historical configuration
    restoration, rank-zero checkpoint saves, and supported Hugging Face model
    saves. Test actual two-GPU CUDA/NCCL forward and hindsight numerical

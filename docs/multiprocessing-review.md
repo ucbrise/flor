@@ -37,15 +37,14 @@ serving are follow-on work.
 
 The [workload analysis](model-workloads.md) records the rationale. 
 Write down any missing essential workflow; 
-the remaining owner decisions concern launch integration, 
-fidelity, isolation, and versioning.
+the remaining owner decisions concern fidelity, isolation, and versioning.
 
 ### 2. Resolve the remaining design decisions
 
 Read **Decisions for the project owner** in this order:
 
 1. **D1 — Initial workloads: resolved.** PyTorch/Hugging Face DDP, helper-worker compatibility, and GPU validation as described above.
-2. **D2 — How much may the launch command change?** This constrains coordination and failure reporting.
+2. **D2 — Launch integration: resolved.** Require `flor run -- <launcher and arguments>` for supported distributed recording; extend `flor replay` for distributed hindsight execution.
 3. **D3 — Under what conditions must replay match?** This defines the correctness promise.
 4. **D4 — Can recording and replay share a checkout at the same time?** This defines isolation behavior.
 5. **D5 — Are per-worker Git commits acceptable?** This confirms the versioning approach.
@@ -75,6 +74,7 @@ the detailed tests; add or change scenarios there if this list is insufficient.
 You can declare **scope and acceptance review complete** when:
 
 - [x] The first supported workloads and explicit deferrals are recorded (D1).
+- [x] The launch integration and CLI boundary are recorded (D2).
 - [ ] D1–D5 have choices or explicit delegation with constraints.
 - [ ] The acceptance scenarios would convince you the capability works.
 - [ ] The revision plan reflects those decisions without contradictory promises.
@@ -89,17 +89,18 @@ The implementation is successful only when the agreed acceptance tests pass.
 The requirements and tests are thorough. Concrete protocols are still needed
 for job coordination, shutdown failures, helper-worker handling, and interrupted
 writes. Those are engineering work items below. D1 resolves the workload scope;
-the remaining design must make DDP and framework-worker support concrete.
+D2 establishes the supervising `flor run` integration. Internal protocols must
+still make DDP and framework-worker support concrete.
 
 ## Proposed delivery plan
 
-These stages reflect the resolved D1 scope.
+These stages reflect the resolved D1 scope and D2 launch integration.
 
 | Stage | Deliverables | Acceptance |
 | --- | --- | --- |
-| 1. Reliable recording and identity migration | UUID contexts; schema and legacy readers; argument provenance; historical selection; atomic publication; serialized Git finalization; recovery; helper-worker recording safety and lineage; explicit run selection for single-process replay. | Equal timestamps lose no observations or checkpoints. Every run has a valid commit mapping. Failures reach the launcher. Retries duplicate neither observations, cache rows, nor commits. Independent trials and supported helper workers preserve parent ownership. |
-| 2. Launcher arguments and worker binding | Reserved rank arguments; a shared job ID; exact historical rank bindings; helper-worker lifecycle and replay ownership; Hugging Face instrumentation/configuration and model-save contract. | An older job restores its actual arguments, workers, and checkpoint lineage even when its commit contains several JSONLs. Supported helper workers are distinguished from training ranks. |
-| 3. Distributed replay | Job scheduling; topology and rendezvous reconstruction; compatible loop narrowing; bounded failure handling; PyTorch and Hugging Face DDP acceptance. | CPU/Gloo development tests and actual two-GPU CUDA/NCCL tests reproduce forward values, including helper-worker configurations. Failed attempts expose no partial results. Processes are reaped and the working branch is restored. |
+| 1. Reliable recording and identity migration | UUID contexts; schema and legacy readers; argument provenance; historical selection; atomic publication; serialized Git finalization; recovery; helper-worker recording safety and lineage; minimum supervision/completion mechanism for failure reporting; explicit run selection for single-process replay. | Equal timestamps lose no observations or checkpoints. Every run has a valid commit mapping. Recording/finalization failures and missing completion cause a nonzero supervised result. Retries duplicate neither observations, cache rows, nor commits. Independent trials and supported helper workers preserve parent ownership. |
+| 2. Launcher arguments and worker binding | `flor` console entry point and `run` command; tested torchrun/Accelerate DDP adapters; reserved rank arguments; shared job ID and expected membership; exact historical rank bindings; helper-worker lifecycle and replay ownership; Hugging Face instrumentation/configuration and model-save contract. | Launcher/script arguments pass unchanged. Separate launches receive separate identities. Unsupported launches/restarts fail explicitly. An older job restores its actual arguments, workers, and checkpoint lineage even when its commit contains several JSONLs. Supported helper workers are distinguished from training ranks. |
+| 3. Distributed replay | Existing `replay` command extended with shared supervision; job scheduling; topology and rendezvous reconstruction; compatible loop narrowing; bounded failure handling; PyTorch and Hugging Face DDP acceptance. | CPU/Gloo development tests and actual two-GPU CUDA/NCCL tests reproduce forward values, including helper-worker configurations. Failed attempts expose no partial results. Processes are reaped and the working branch is restored. |
 
 The proposed contract preserves the recording API, uses JSONL as observation
 truth and SQLite as a cache, and rejects ambiguous historical selection.
@@ -126,26 +127,131 @@ its integration is follow-on work.
 
 ## Decisions for the project owner
 
-D1 is resolved. D2–D5 remain open; their recommendations are proposals.
+D1 and D2 are resolved. D3–D5 remain open; their recommendations are proposals.
 
 | ID | Decision | Recommendation and consequence |
 | --- | --- | --- |
 | D1 | Which model-training and serving workflows must ship first? | **Resolved 2026-10-27:** single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent concurrent trials, and actual GPU/NCCL validation. Sharded/model-parallel training and online serving are follow-on work. See the [workload analysis](model-workloads.md). |
-| D2 | May multiprocessing support require a Flor launch wrapper or explicit launcher integration? | Allow one to own job-ID distribution, shutdown status, and supervision. Logging calls remain unchanged. If ordinary `torchrun` must work with only `import flordb`, state that constraint before selecting the coordination mechanism. |
+| D2 | May multiprocessing support require a Flor launch wrapper or explicit launcher integration? | **Resolved 2026-10-27:** require `flor run -- <launcher and arguments>` for supported distributed recording; extend the existing `replay` command for distributed hindsight execution. Preserve launcher arguments, recording APIs, and existing single-process commands. Flor owns job identity, completion checks, and supervision. See the [accepted contract](#d2--launch-integration). |
 | D3 | What numerical fidelity does the first release guarantee? | Guarantee equivalence for deterministic workloads with supported topology and matching inputs and environment. Define user responsibilities for randomness and external state; broader automatic capture is additional scope. |
 | D4 | May replay overlap an active recording job in the same checkout? | Initially reject the overlap, or use isolated worktrees. Choose one explicitly; short Git locks do not protect running code from later checkout changes. |
 | D5 | Is one finalization commit per run/rank acceptable? | Retain the proposed per-run commits initially. A tracked job manifest could reduce commit volume later but would expand mapping and migration work now. |
+
+### D2 — launch integration
+
+Accepted 2026-10-27. Require `flor run -- <launcher and arguments>` for supported
+distributed recording in the first release, with unchanged logging calls and
+launcher arguments. Distributed hindsight execution uses the existing `replay`
+command, extended to supervise the cooperating ranks internally. Existing
+single-process commands retain their current form. The
+[revision-plan decision](../REVISION-LOG.md#launch-integration-decision-d2--2026-10-27)
+records the requirements, stages, and acceptance checks.
+
+The objective is a reliable job-level success/failure result backed by shared
+identity and verified completion of every expected worker's recording. A
+supervising Flor process is the accepted mechanism for meeting that objective.
+
+Accepted CLI shape, **implementation pending**:
+
+```sh
+# Existing launch.
+torchrun --standalone --nnodes=1 --nproc-per-node=2 train.py --batch-size 32
+
+# Required Flor launch for supported distributed recording.
+flor run -- torchrun --standalone --nnodes=1 --nproc-per-node=2 train.py --batch-size 32
+
+# The same boundary for the supported Hugging Face DDP integration.
+flor run -- accelerate launch --multi_gpu --num_processes=2 train.py
+```
+
+The existing launcher continues to create training ranks and configure their
+distributed environment. [PyTorch documents this role for torchrun](https://docs.pytorch.org/docs/2.14/elastic/run.html);
+[Accelerate documents both launch paths](https://huggingface.co/docs/accelerate/en/basic_tutorials/launch).
+Flor adds coordination around tested launcher configurations. Supervision flags
+and the internal status protocol remain engineering choices.
+
+#### Accepted CLI surface
+
+Add one new public command, `run`, for supervised forward execution.
+Keep distributed hindsight execution in the existing `replay` command, sharing
+the supervision machinery internally. A small public interface still requires
+substantial lifecycle and failure-handling implementation.
+
+The repository currently exposes these commands through `python -m flordb`;
+[`setup.py`](../setup.py) does not install a `flor` console entry point.
+Add a `flor` console entry point exposing the same CLI:
+
+| Command | Role | Status |
+| --- | --- | --- |
+| `flor run [Flor options] -- <launcher and arguments>` | Start and supervise a supported recording job. | Accepted new command; implementation pending. |
+| `flor replay ...` | Select history and orchestrate hindsight execution, extended to distributed jobs. | Existing command; distributed extension accepted, implementation pending. |
+| `flor capture ...` | Inspect captured output, preview extraction, or extract metrics. | Existing command via `python -m flordb`. |
+| `flor query ...`, `flor dataframe ...` | Query recorded observations. | Existing commands via `python -m flordb`. |
+| `flor unpack` | Rebuild the local cache from recorded history. | Existing command via `python -m flordb`. |
+| `flor stat` | Print platform/Python environment information. | Existing command via `python -m flordb`. |
+
+Keep `run` options limited to Flor supervision controls, such as an optional
+execution deadline; exact flags remain to be designed. Pass the command after
+`--` unchanged, while validating supported launcher configurations. Keep GPU
+count, distributed strategy, rendezvous, and training arguments in the existing
+launcher/script interface. Job/run IDs and worker completion reporting are
+managed internally. Parse the delegated command separately so its arguments
+cannot be mistaken for Flor wrapper options.
+
+This decision does not require separate public `init`, `start`, `stop`, `worker`,
+or `commit` commands. Pending-finalization recovery still needs a documented,
+testable retry path; decide its interface during recovery design rather than
+assuming `unpack` repairs Git finalization. Existing single-process commands
+retain their current form; optional supervised single-process execution can
+share `run` if included in the implementation scope.
+
+Implementation constraints:
+
+- Create and distribute one fresh job UUID before workers start; record expected
+  training-rank membership. Helpers retain their defined ownership and are not
+  counted as extra ranks. Concurrent launches receive separate identities.
+- Return success only after the launcher succeeds and all expected ranks have
+  durably finalized their recording, including required helper output and Git
+  mappings. Missing completion or a fatal capture/finalization error must fail
+  the Flor command even if the underlying launcher returns zero. An outer
+  wrapper alone cannot supply this guarantee; worker status reporting and
+  completion validation are required.
+- On failure, interruption, or timeout, terminate and reap remaining children
+  within a deadline, identify the failing phase/job/rank where available, and
+  retain recoverable pending artifacts. Ordinary shutdown and helper exit
+  paths still need the engineering protocols below; Python documents that
+  [`os._exit()` and some other exits bypass atexit](https://docs.python.org/3/library/atexit.html).
+- Preserve launcher and script arguments, working directory, application
+  environment, and output streams, adding Flor coordination metadata. Validate
+  supported fixed-size, single-host configurations before training. Defer
+  elastic membership and automatic worker restarts, rejecting those
+  configurations explicitly; a new training execution gets a fresh job UUID.
+  Retrying finalization of saved work retains its existing identities.
+- Preserve existing single-process commands and concurrent independent-trial
+  recording safety. Require the supported integration for the new distributed
+  contract; an unintegrated distributed launch must report an actionable
+  unsupported-launch error rather than silently claim a replayable job.
+- Use the same integration boundary internally for distributed replay, retaining
+  historical job/run bindings with a fresh replay-attempt ID. Users do not
+  manually relaunch historical ranks.
+
+The revision plan places the minimum supervision/completion mechanism needed
+to prove stage-1 failure reporting in stage 1, the public CLI, launcher adapters,
+and job membership in stage 2, and replay orchestration in stage 3.
+Acceptance covers unchanged argument forwarding, simultaneous launches,
+missing rank completion despite launcher exit zero, failed helper finalization,
+interruption cleanup, and explicit unsupported-launch/restart errors.
 
 ## Engineering design still required
 
 These details need written implementation choices. They need not each become
 a separate owner approval unless they change the supported behavior.
 
-1. **Job coordination and completeness (D2).** Specify who creates the shared
-   job UUID, how workers receive it, and how concurrent launches and restarts
-   remain separate. Persist expected membership and distinguish incomplete
-   recording jobs from replayable jobs. Define ownership and cleanup of the
-   coordination resources.
+1. **Job coordination and completeness (D2).** Specify how the supervisor
+   distributes the shared job UUID to workers and keeps concurrent launches
+   separate. Reject unsupported automatic restarts. Persist expected membership
+   and distinguish incomplete recording jobs from replayable jobs. Define
+   ownership and cleanup of the coordination resources.
 2. **Shutdown and failure propagation (D2).** Choose how ordinary interpreter
    shutdown and orderly multiprocessing worker shutdown finalize observations
    and produce launcher-visible failure. Explicit `flor.commit()` exceptions,
@@ -222,7 +328,7 @@ independent of PyTorch.
 
 ## Decision record
 
-Review outcome: **In progress**. D1 is resolved; D2–D5 remain open.
+Review outcome: **In progress**. D1 and D2 are resolved; D3–D5 remain open.
 
 Replace each open entry with the chosen behavior or delegated constraints,
 date it, and link to the corresponding revision-plan change.
@@ -230,7 +336,7 @@ date it, and link to the corresponding revision-plan change.
 | ID | Resolution or delegated constraints | Date / plan reference |
 | --- | --- | --- |
 | D1 — Initial worker support | Resolved: single-host PyTorch/Hugging Face DDP, DataLoader-worker compatibility, independent trials, CPU/Gloo development and GPU/NCCL release validation. Sharded/model-parallel training and online serving deferred. | 2026-10-27 / [revision-plan scope](../REVISION-LOG.md#scope-decision--2026-10-27), [workload analysis](model-workloads.md#accepted-scope-d1) |
-| D2 — Launch integration | Open | — |
+| D2 — Launch integration | Resolved: require `flor run` around supported distributed recording launchers; add the console entry point, extend `replay`, preserve launcher/script arguments and existing single-process commands. Verify all expected worker finalization before success; reject unsupported launches, elastic membership, and automatic restarts. Internal protocols and the recovery retry interface remain engineering work. | 2026-10-27 / [revision-plan launch integration](../REVISION-LOG.md#launch-integration-decision-d2--2026-10-27), [accepted CLI surface](#accepted-cli-surface) |
 | D3 — Numerical fidelity | Open | — |
 | D4 — Checkout isolation | Open | — |
 | D5 — Commit granularity | Open | — |

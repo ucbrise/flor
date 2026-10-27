@@ -136,7 +136,10 @@ that the capability is implemented.
 5. **Helper compatibility:** retain the process-safety work needed by supported
    framework workers.
 
-D1 is resolved. D2–D5 in the review still govern launch integration, numerical
-fidelity, checkout isolation, and commit granularity. The Hugging Face
+D1 and D2 are resolved. The accepted
+[launch integration](multiprocessing-review.md#d2--launch-integration) requires
+`flor run` for supported distributed recording and extends the existing replay
+command. D3–D5 remain open for numerical fidelity, checkout isolation, and
+commit granularity. The Hugging Face
 instrumentation/model-save surface and helper-worker behavior need concrete
 engineering designs within the accepted scope.
