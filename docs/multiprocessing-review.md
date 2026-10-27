@@ -30,6 +30,12 @@ Write down any missing essential workflow. In particular, decide whether your
 first release needs forked workers as well as independently launched ranks,
 and whether single-host CPU support is a useful first milestone.
 
+Use the [model training and serving workload analysis](model-workloads.md)
+to make that choice. It maps documented PyTorch/Hugging Face training and
+serving alternatives to Flor's current support and plan gaps, and distinguishes
+GPU ranks from DataLoader workers. CPU/Gloo is a development milestone;
+actual GPU/NCCL validation is needed for a multi-GPU support claim.
+
 ### 2. Resolve the five owner decisions
 
 Read **Decisions for the project owner** in this order:
@@ -117,7 +123,7 @@ All decisions below are open. Recommendations are proposals, not approvals.
 
 | ID | Decision | Recommendation and consequence |
 | --- | --- | --- |
-| D1 | Must full fork support ship with the first distributed release, including nested forks and forks inside active Flor loops? | Deliver independent-interpreter recording and CPU/Gloo replay first, then full fork support, unless fork workloads are essential immediately. Accepting this recommendation changes the current stage boundaries and requires an explicit interim fork policy. |
+| D1 | Which model-training and serving workflows must ship first, and which require fork-child replay? | See the [workload analysis](model-workloads.md). Prioritize PyTorch/Hugging Face DDP with helper-worker compatibility and actual GPU validation; consider deferring arbitrary nested-fork replay. Sharded training and online serving need separate contracts. These recommendations change current scope and remain open. |
 | D2 | May multiprocessing support require a Flor launch wrapper or explicit launcher integration? | Allow one to own job-ID distribution, shutdown status, and supervision. Logging calls remain unchanged. If ordinary `torchrun` must work with only `import flordb`, state that constraint before selecting the coordination mechanism. |
 | D3 | What numerical fidelity does the first release guarantee? | Guarantee equivalence for deterministic workloads with supported topology and matching inputs and environment. Define user responsibilities for randomness and external state; broader automatic capture is additional scope. |
 | D4 | May replay overlap an active recording job in the same checkout? | Initially reject the overlap, or use isolated worktrees. Choose one explicitly; short Git locks do not protect running code from later checkout changes. |
@@ -211,7 +217,7 @@ date it, and link to the corresponding revision-plan change.
 
 | ID | Resolution or delegated constraints | Date / plan reference |
 | --- | --- | --- |
-| D1 — Initial worker support | Open | — |
+| D1 — Initial worker support | Open; target domain clarified as PyTorch/Hugging Face model training and serving. Workload and process support boundaries still to choose. | 2026-10-27 / [workload analysis](model-workloads.md) |
 | D2 — Launch integration | Open | — |
 | D3 — Numerical fidelity | Open | — |
 | D4 — Checkout isolation | Open | — |

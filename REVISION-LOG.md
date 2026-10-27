@@ -10,6 +10,11 @@ the review tracks readiness, unresolved design details, and decisions to make
 before implementation. Recommendations in the review are not accepted changes
 to this plan until recorded here.
 
+Target workloads are PyTorch/Hugging Face model training and serving. The
+[workload analysis](docs/model-workloads.md) maps natural multi-GPU alternatives
+to current support and proposed scope. Specific framework, GPU, and serving
+support boundaries remain under review; the stages below are unchanged.
+
 Support concurrent training processes without changing `flor.log`, `flor.arg`,
 `flor.loop`, `flor.iteration`, or automatic output capture. Introduce UUID run
 identity and a read-only `flor.run_id(...)` selection helper. Checkpoint access
